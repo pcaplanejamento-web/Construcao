@@ -1,17 +1,34 @@
 /**
- * Design tokens — variáveis CSS globais.
- * Ficam em :root para que TANTO o CSS global QUANTO o Shadow DOM dos
- * componentes (que herdam custom properties) usem a mesma paleta.
- * Princípio: nenhum componente define cor "na mão"; tudo vem daqui.
+ * Design tokens — variáveis CSS globais (fonte única de verdade do visual).
+ *
+ * Princípios: tudo (cor, fonte, espaço, raio, sombra) vem daqui; componentes
+ * nunca usam valor mágico. Custom properties em :root são herdadas pelo Shadow
+ * DOM, então valem também dentro dos componentes.
+ *
+ * Tema: o conjunto CLARO fica em :root. O ESCURO é aplicado quando o SO pede
+ * (prefers-color-scheme: dark) — a menos que o usuário force claro — ou quando
+ * data-tema="escuro" é definido manualmente (ver core/theme.js).
  */
 :root {
-  /* Cores de marca */
+  /* Marca (constante nos dois temas) */
   --cor-primaria: #0f766e;
   --cor-primaria-escura: #115e59;
   --cor-primaria-clara: #14b8a6;
   --cor-primaria-suave: #ccfbf1;
 
-  /* Tons neutros */
+  /* Acentos semânticos (usados em badges/estados) */
+  --cor-sucesso: #16a34a;
+  --cor-sucesso-suave: #dcfce7;
+  --cor-erro: #dc2626;
+  --cor-erro-suave: #fee2e2;
+  --cor-aviso: #d97706;
+  --cor-aviso-suave: #fef3c7;
+  --cor-info: #2563eb;
+  --cor-info-suave: #dbeafe;
+  --cor-roxo: #7c3aed; /* admin */
+  --cor-neutro: #64748b; /* genérico / sem categoria */
+
+  /* Superfícies / texto / borda (CLARO) */
   --cor-fundo: #f1f5f9;
   --cor-superficie: #ffffff;
   --cor-superficie-2: #f8fafc;
@@ -21,17 +38,10 @@
   --cor-texto-suave: #475569;
   --cor-texto-fraco: #94a3b8;
 
-  /* Cores semânticas */
-  --cor-sucesso: #16a34a;
-  --cor-sucesso-suave: #dcfce7;
-  --cor-erro: #dc2626;
-  --cor-erro-suave: #fee2e2;
-  --cor-aviso: #d97706;
-  --cor-aviso-suave: #fef3c7;
-  --cor-info: #2563eb;
-  --cor-info-suave: #dbeafe;
+  /* Overlay de modais/drawer (escurece em ambos os temas) */
+  --cor-overlay: rgba(15, 23, 42, 0.45);
 
-  /* Tipografia */
+  /* Tipografia — fonte padrão = stack do sistema */
   --fonte-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
   --fonte-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -40,14 +50,14 @@
   --fs-md: 1rem;
   --fs-lg: 1.125rem;
   --fs-xl: 1.375rem;
-  --fs-2xl: 1.75rem;
+  --fs-2xl: clamp(1.5rem, 1.1rem + 1.6vw, 1.875rem); /* título fluido */
   --fs-3xl: 2.25rem;
   --peso-normal: 400;
   --peso-medio: 500;
   --peso-semi: 600;
   --peso-forte: 700;
 
-  /* Espaçamentos (escala de 4px) */
+  /* Espaçamento (escala de 4px) — padrão entre componentes */
   --esp-1: 0.25rem;
   --esp-2: 0.5rem;
   --esp-3: 0.75rem;
@@ -74,4 +84,64 @@
 
   /* Transições */
   --transicao: 160ms ease;
+
+  /* Breakpoints padrão (referência; CSS não aceita var() em @media):
+     sm = 600px · md = 900px · lg = 1100px */
+  color-scheme: light;
+}
+
+/* Valores escuros aplicados via media query do SO (quando não forçado claro). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --cor-primaria: #14b8a6;
+    --cor-primaria-escura: #0d9488;
+    --cor-primaria-suave: #134e4a;
+
+    --cor-sucesso-suave: #064e3b;
+    --cor-erro-suave: #4c1d1d;
+    --cor-aviso-suave: #4a2e07;
+    --cor-info-suave: #1e3a5f;
+
+    --cor-fundo: #0b1220;
+    --cor-superficie: #111c2e;
+    --cor-superficie-2: #1b2840;
+    --cor-borda: #2a3a55;
+    --cor-borda-forte: #3a4d6e;
+    --cor-texto: #e9eef5;
+    --cor-texto-suave: #aab6c8;
+    --cor-texto-fraco: #6b7a90;
+
+    --cor-overlay: rgba(0, 0, 0, 0.6);
+    --sombra-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+    --sombra-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+    color-scheme: dark;
+  }
+}
+
+/* Modo ESCURO forçado pelo usuário (independe do SO). */
+:root[data-tema="escuro"] {
+  --cor-primaria: #14b8a6;
+  --cor-primaria-escura: #0d9488;
+  --cor-primaria-suave: #134e4a;
+
+  --cor-sucesso-suave: #064e3b;
+  --cor-erro-suave: #4c1d1d;
+  --cor-aviso-suave: #4a2e07;
+  --cor-info-suave: #1e3a5f;
+
+  --cor-fundo: #0b1220;
+  --cor-superficie: #111c2e;
+  --cor-superficie-2: #1b2840;
+  --cor-borda: #2a3a55;
+  --cor-borda-forte: #3a4d6e;
+  --cor-texto: #e9eef5;
+  --cor-texto-suave: #aab6c8;
+  --cor-texto-fraco: #6b7a90;
+
+  --cor-overlay: rgba(0, 0, 0, 0.6);
+  --sombra-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --sombra-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
 }

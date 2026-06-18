@@ -71,6 +71,45 @@ erro de negócio.
 
 ---
 
+## Princípios de UI/design
+
+Detalhes e valores em [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md).
+
+### 13. Nunca usar emoji
+Emoji é proibido como ícone ou enfeite. Todo ícone vem de
+[`<ui-icon>`](../src/components/ui-icon.js).
+
+### 14. Biblioteca de ícones padrão única
+A "biblioteca" é o `<ui-icon>` — registro SVG curado (estilo Lucide) com traço
+`currentColor`. Sem dependência externa; o ícone herda a cor do contexto e do
+tema. Adicionar ícone = adicionar um path ao registro.
+
+### 15. Fonte padrão única
+Uma só fonte para todo o sistema, via `--fonte-base` (stack do sistema). Nunca
+declarar `font-family` fixa em componente — herda do `:host` (base-element).
+
+### 16. Design único e consistente
+Toda decisão visual vem dos **tokens** ([tokens.css](../src/styles/tokens.css)):
+cor, raio, sombra, tipografia. Proibido valor mágico de cor/tamanho; cores de
+chrome usam `var(--cor-*)`. Cores escolhidas pelo usuário (categorias) são dados.
+
+### 17. Espaçamento padrão
+Usar a escala `--esp-1..8` (base 4px) para paddings, gaps e margens. Seções de
+página separadas por gap padrão; nada de espaçamento arbitrário.
+
+### 18. Tema claro/escuro em todos os componentes
+Claro e escuro funcionam em 100% dos componentes porque o chrome só usa tokens
+(que mudam por tema). Segue o SO (`prefers-color-scheme`) com alternador no
+header e escolha persistida ([theme.js](../src/core/theme.js)). Badges usam
+`color-mix` para recalcular no tema. Nenhum hex de chrome fixo.
+
+### 19. Proporcional em todas as telas
+Layouts fluidos (max-width, %, `minmax`, `clamp`) e breakpoints padrão (sm 600,
+md 900, lg 1100). Sidebar vira drawer no mobile; grids reflowam; tabelas rolam.
+Nada deve estourar em telas pequenas, médias ou grandes.
+
+---
+
 ## Nota de segurança sobre senhas
 
 O hashing usa **SHA-256 + salt por usuário** (pedido do projeto). O Apps Script

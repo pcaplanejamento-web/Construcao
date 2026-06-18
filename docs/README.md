@@ -18,6 +18,8 @@ cadastra os demais usuários e define as configurações de cada um.
 
 - 🔐 **Login** por e-mail e senha (senha com hash SHA-256 + salt).
 - 🧭 **Header persistente + menu lateral** em abas; navegação instantânea.
+- 🌗 **Tema claro/escuro** (segue o SO + alternador) em todos os componentes;
+  ícones em SVG (`ui-icon`), sem emoji; design consistente por tokens.
 - 🏢 Cada usuário cadastra e gerencia **suas próprias obras**; pode **compartilhá-las**.
 - 💸 Registro de **despesas** com item, valor, **classificação** e data.
 - 📊 **Dashboard em tempo real**: total gasto, orçamento, saldo e gasto por categoria.
@@ -48,6 +50,7 @@ Abra `http://localhost:8123`. Para que o login funcione, configure a API
 |-----------|----------|
 | [ARQUITETURA.md](ARQUITETURA.md) | Camadas, fluxo de uma requisição e decisão de CORS. |
 | [PRINCIPIOS-DE-EXECUCAO.md](PRINCIPIOS-DE-EXECUCAO.md) | As regras que governam todo o sistema. |
+| [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) | Fonte, ícones, cores/tokens, tema claro/escuro, espaçamento, breakpoints. |
 | [COMPONENTES.md](COMPONENTES.md) | Catálogo de cada Web Component (props/eventos). |
 | [API.md](API.md) | Contrato JSON de cada `action`. |
 | [MODELO-DE-DADOS.md](MODELO-DE-DADOS.md) | Abas e colunas do Google Sheets. |

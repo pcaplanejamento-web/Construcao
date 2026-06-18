@@ -5,6 +5,7 @@
  */
 import { BaseElement } from "../components/base-element.js";
 import "../components/ui-spinner.js";
+import "../components/ui-icon.js";
 
 class AppLoader extends BaseElement {
   estilos() {
@@ -15,7 +16,7 @@ class AppLoader extends BaseElement {
       .box { text-align: center; display: flex; flex-direction: column;
         align-items: center; gap: var(--esp-4); animation: surgir .2s ease; }
       @keyframes surgir { from { opacity: 0; } }
-      .logo { font-size: 3rem; }
+      .logo { color: var(--cor-primaria); }
       h1 { font-size: var(--fs-xl); font-weight: var(--peso-forte); color: var(--cor-primaria); }
       p { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
     `;
@@ -24,7 +25,7 @@ class AppLoader extends BaseElement {
     const texto = this.getAttribute("texto") || "Carregando seus dados...";
     return `
       <div class="box">
-        <div class="logo">🏗️</div>
+        <div class="logo"><ui-icon name="obra" size="48"></ui-icon></div>
         <h1>Gestão de Obras</h1>
         <ui-spinner></ui-spinner>
         <p>${texto}</p>

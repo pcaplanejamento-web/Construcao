@@ -39,10 +39,10 @@ class PerfilView extends BaseElement {
             <div class="campo"><div class="rotulo">Nome</div><div class="valor">${u.nome || "—"}</div></div>
             <div class="campo"><div class="rotulo">E-mail</div><div class="valor">${u.email || "—"}</div></div>
             <div class="campo"><div class="rotulo">Papel</div><div class="valor">
-              <ui-badge color="${u.role === "admin" ? "#7c3aed" : "#2563eb"}" text="${papel}"></ui-badge>
+              <ui-badge color="${u.role === "admin" ? "var(--cor-roxo)" : "var(--cor-info)"}" text="${papel}"></ui-badge>
             </div></div>
             <div class="campo"><div class="rotulo">Status</div><div class="valor">
-              <ui-badge color="${u.ativo ? "#16a34a" : "#94a3b8"}" text="${u.ativo ? "Ativo" : "Inativo"}"></ui-badge>
+              <ui-badge color="${u.ativo ? "var(--cor-sucesso)" : "var(--cor-neutro)"}" text="${u.ativo ? "Ativo" : "Inativo"}"></ui-badge>
             </div></div>
           </div>
         </ui-card>

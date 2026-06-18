@@ -60,7 +60,7 @@ class ObrasListView extends BaseElement {
     const obras = dataStore.obras();
     if (!obras.length) {
       alvo.innerHTML = `
-        <ui-empty-state icone="🏗️" titulo="Nenhuma obra ainda"
+        <ui-empty-state icone="obra" titulo="Nenhuma obra ainda"
           texto="Crie sua primeira obra para começar a registrar despesas.">
           <ui-button slot="acao" id="vazioNova">+ Criar obra</ui-button>
         </ui-empty-state>`;

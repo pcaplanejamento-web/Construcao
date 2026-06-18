@@ -17,7 +17,7 @@ class CategoryBadge extends BaseElement {
   }
   template() {
     const nome = this.getAttribute("nome") || "Sem categoria";
-    const cor = this.getAttribute("cor") || "#94a3b8";
+    const cor = this.getAttribute("cor") || "var(--cor-neutro)";
     return `<ui-badge color="${cor}" text="${nome}"></ui-badge>`;
   }
 }

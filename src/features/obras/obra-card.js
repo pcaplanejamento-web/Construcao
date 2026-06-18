@@ -7,11 +7,12 @@
 import { BaseElement } from "../../components/base-element.js";
 import { moeda, percentual } from "../../core/formatters.js";
 import "../../components/ui-badge.js";
+import "../../components/ui-icon.js";
 
 const STATUS_INFO = {
-  ativa: { rotulo: "Ativa", cor: "#16a34a" },
-  pausada: { rotulo: "Pausada", cor: "#d97706" },
-  concluida: { rotulo: "Concluída", cor: "#2563eb" },
+  ativa: { rotulo: "Ativa", cor: "var(--cor-sucesso)" },
+  pausada: { rotulo: "Pausada", cor: "var(--cor-aviso)" },
+  concluida: { rotulo: "Concluída", cor: "var(--cor-info)" },
 };
 
 class ObraCard extends BaseElement {
@@ -50,7 +51,9 @@ class ObraCard extends BaseElement {
       }
       .acoes button:hover { background: var(--cor-superficie-2); }
       .acoes button.perigo { color: var(--cor-erro); }
-      .dono { font-size: var(--fs-xs); color: var(--cor-texto-fraco); }
+      .dono { font-size: var(--fs-xs); color: var(--cor-texto-fraco);
+        display: flex; align-items: center; gap: var(--esp-1); }
+      .end { display: flex; align-items: center; gap: var(--esp-1); }
       .badges { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
     `;
   }
@@ -68,12 +71,12 @@ class ObraCard extends BaseElement {
         <div class="topo">
           <h3>${o.nome || ""}</h3>
           <div class="badges">
-            ${!ehDono ? `<ui-badge color="#7c3aed" text="Compartilhada"></ui-badge>` : ""}
+            ${!ehDono ? `<ui-badge color="var(--cor-roxo)" text="Compartilhada"></ui-badge>` : ""}
             <ui-badge color="${st.cor}" text="${st.rotulo}"></ui-badge>
           </div>
         </div>
-        ${!ehDono && o.dono_email ? `<div class="dono">👤 de ${o.dono_email}</div>` : ""}
-        ${o.endereco ? `<div class="end">📍 ${o.endereco}</div>` : ""}
+        ${!ehDono && o.dono_email ? `<div class="dono"><ui-icon name="usuario" size="13"></ui-icon> de ${o.dono_email}</div>` : ""}
+        ${o.endereco ? `<div class="end"><ui-icon name="local" size="14"></ui-icon> ${o.endereco}</div>` : ""}
         <div class="valores">
           <span class="rotulo">Gasto</span>
           <span class="gasto" style="${estouro ? "color:var(--cor-erro)" : ""}">${moeda(gasto)}</span>

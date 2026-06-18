@@ -13,6 +13,7 @@ import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
+import "../../components/ui-icon.js";
 import "../dashboard/dashboard-summary.js";
 import "../dashboard/category-breakdown.js";
 import "../despesas/despesa-form.js";
@@ -124,9 +125,15 @@ class ObraDetailView extends BaseElement {
     topo.innerHTML = `
       <div>
         <h1>${o.nome || ""}</h1>
-        <div class="meta">${o.endereco ? "📍 " + o.endereco + " · " : ""}${
-      o.descricao || ""
-    }${!ehDono && o.dono_email ? ` · 👤 compartilhada por ${o.dono_email}` : ""}</div>
+        <div class="meta">${
+          o.endereco
+            ? `<ui-icon name="local" size="14"></ui-icon> ${o.endereco} · `
+            : ""
+        }${o.descricao || ""}${
+      !ehDono && o.dono_email
+        ? ` · <ui-icon name="usuario" size="14"></ui-icon> compartilhada por ${o.dono_email}`
+        : ""
+    }</div>
       </div>
       <div class="acoes-topo">
         ${

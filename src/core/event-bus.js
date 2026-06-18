@@ -13,6 +13,7 @@ export const EVENTOS = {
   OBRAS: "obras:changed", // CRUD de obras
   DESPESAS: "despesas:changed", // CRUD de despesas
   CATEGORIAS: "categorias:changed", // CRUD de categorias
+  TEMA: "tema:changed", // troca de tema claro/escuro
   TOAST: "toast", // notificação para o usuário
 };
 

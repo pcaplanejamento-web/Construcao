@@ -45,7 +45,7 @@ class DespesaTable extends BaseElement {
         // Lê o mapa dinamicamente (this.mapaCat) para refletir categorias
         // definidas DEPOIS do primeiro render (ex.: setter .categorias).
         formato: (id) => {
-          const c = this.mapaCat[id] || { nome: "Sem categoria", cor: "#94a3b8" };
+          const c = this.mapaCat[id] || { nome: "Sem categoria", cor: "var(--cor-neutro)" };
           return `<category-badge nome="${c.nome}" cor="${c.cor}"></category-badge>`;
         },
       },

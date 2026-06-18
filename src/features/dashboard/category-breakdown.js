@@ -45,7 +45,7 @@ class CategoryBreakdown extends BaseElement {
             <span class="nome">${c.nome}</span>
             <span class="total">${moeda(c.total)} · ${pct}%</span>
           </div>
-          <div class="barra"><div style="width:${pct}%;background:${c.cor || "#94a3b8"}"></div></div>
+          <div class="barra"><div style="width:${pct}%;background:${c.cor || "var(--cor-neutro)"}"></div></div>
         </div>`;
       })
       .join("");

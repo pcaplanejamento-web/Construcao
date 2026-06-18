@@ -11,6 +11,7 @@ import { dataStore } from "./core/data-store.js";
 import { criarRouter } from "./core/router.js";
 import { bus, EVENTOS, notificarErro } from "./core/event-bus.js";
 import { CONFIG } from "./core/config.js";
+import { tema } from "./core/theme.js";
 
 // Notificações (define <toast-host>, usado no index.html).
 import "./components/ui-toast.js";
@@ -59,6 +60,7 @@ async function carregarDados(forcar) {
 }
 
 async function iniciar() {
+  tema.init(); // aplica tema salvo + reage a mudanças do SO
   await customElements.whenDefined("app-shell");
   const shell = document.querySelector("app-shell");
   const outlet = shell.outlet;

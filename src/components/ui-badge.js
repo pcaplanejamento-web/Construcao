@@ -15,14 +15,16 @@ class UiBadge extends BaseElement {
   }
 
   estilos() {
-    const cor = this.getAttribute("color") || "#64748b";
+    // Aceita hex (cores de dados) ou var(--token) (cores semânticas). O fundo
+    // usa color-mix para recalcular no tema atual (claro/escuro).
+    const cor = this.getAttribute("color") || "var(--cor-neutro)";
     return `
       :host { display: inline-block; }
       .badge {
         display: inline-flex; align-items: center; gap: 6px;
         padding: 2px 10px; border-radius: var(--raio-completo);
         font-size: var(--fs-xs); font-weight: var(--peso-semi);
-        color: ${cor}; background: ${cor}1f; /* cor com ~12% alpha */
+        color: ${cor}; background: color-mix(in srgb, ${cor} 16%, transparent);
         white-space: nowrap;
       }
       .ponto { width: 8px; height: 8px; border-radius: 50%; background: ${cor}; }

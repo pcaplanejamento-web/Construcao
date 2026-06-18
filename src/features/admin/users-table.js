@@ -33,7 +33,7 @@ class UsersTable extends BaseElement {
         chave: "role",
         titulo: "Papel",
         formato: (r) =>
-          `<ui-badge color="${r === "admin" ? "#7c3aed" : "#2563eb"}" text="${
+          `<ui-badge color="${r === "admin" ? "var(--cor-roxo)" : "var(--cor-info)"}" text="${
             r === "admin" ? "Administrador" : "Usuário"
           }"></ui-badge>`,
       },
@@ -41,7 +41,7 @@ class UsersTable extends BaseElement {
         chave: "ativo",
         titulo: "Status",
         formato: (a) =>
-          `<ui-badge color="${a ? "#16a34a" : "#94a3b8"}" text="${
+          `<ui-badge color="${a ? "var(--cor-sucesso)" : "var(--cor-neutro)"}" text="${
             a ? "Ativo" : "Inativo"
           }"></ui-badge>`,
       },

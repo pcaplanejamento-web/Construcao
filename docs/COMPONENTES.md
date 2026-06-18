@@ -18,7 +18,8 @@ sobem por `CustomEvent`**.
 | `ui-toast` / `toast-host` | `tipo`, `message` | — | Notificações; host ouve o `event-bus`. |
 | `ui-card` | `title`; slots: default, `acoes` | — | Cartão de superfície. |
 | `ui-data-table` | `.columns`, `.rows`, `.acoes`; attr `empty-text` | `acao` ({acao, linha}) | Tabela genérica orientada a dados. |
-| `ui-badge` | `color`, `text` | — | Etiqueta colorida. |
+| `ui-icon` | `name`, `size` | — | Biblioteca de ícones padrão (SVG `currentColor`). Sem emoji. |
+| `ui-badge` | `color` (hex ou `var(--token)`), `text` | — | Etiqueta colorida; fundo via `color-mix` (tema-seguro). |
 | `ui-spinner` | `text`, `centro` | — | Indicador de carregamento. |
 | `ui-empty-state` | `icone`, `titulo`, `texto`; slot `acao` | — | Estado vazio. |
 
@@ -30,7 +31,7 @@ sobem por `CustomEvent`**.
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
 | `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Esconde header/sidebar no login. |
-| `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky): marca, ☰ (mobile), chip do usuário → `#/perfil`, Sair. |
+| `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky): marca, menu (mobile), **alternador de tema** (sol/lua), chip do usuário → `#/perfil`, Sair. Ícones via `ui-icon`. |
 | `app-sidebar` | attr `aberto`; evento `navegou` | Menu lateral em abas (Obras, Classificações, Administração via `role-guard`, Perfil). Drawer retrátil no mobile. |
 | `app-loader` | attr `texto` | Tela de carregamento inicial (overlay) exibida enquanto o snapshot carrega. |
 | `role-guard` | attr `role="admin"\|"usuario"` | Mostra/oculta o slot conforme o papel (UX). |

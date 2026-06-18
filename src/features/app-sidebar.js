@@ -1,5 +1,6 @@
 /**
- * <app-sidebar> — Menu lateral em abas. Reusa <role-guard> para o item admin.
+ * <app-sidebar> — Menu lateral em abas. Reusa <role-guard> para o item admin
+ * e <ui-icon> para os ícones (sem emoji).
  *
  * Atributo: aberto (no mobile, controla o drawer).
  * Eventos: "navegou" (após clicar num item — o shell fecha o drawer no mobile).
@@ -7,11 +8,12 @@
  */
 import { BaseElement } from "../components/base-element.js";
 import "./role-guard.js";
+import "../components/ui-icon.js";
 
 const ITENS = [
-  { rota: "#/obras", rotulo: "Minhas obras", icone: "🏗️" },
-  { rota: "#/categorias", rotulo: "Classificações", icone: "🏷️" },
-  { rota: "#/perfil", rotulo: "Meu perfil", icone: "👤" },
+  { rota: "#/obras", rotulo: "Minhas obras", icone: "obra" },
+  { rota: "#/categorias", rotulo: "Classificações", icone: "tag" },
+  { rota: "#/perfil", rotulo: "Meu perfil", icone: "usuario" },
 ];
 
 class AppSidebar extends BaseElement {
@@ -36,7 +38,7 @@ class AppSidebar extends BaseElement {
         font-weight: var(--peso-medio); font-size: var(--fs-sm); }
       a:hover { background: var(--cor-superficie-2); text-decoration: none; }
       a.ativo { color: var(--cor-primaria); background: var(--cor-primaria-suave); }
-      .icone { font-size: 1.1rem; width: 1.4rem; text-align: center; }
+      a ui-icon { color: inherit; }
       role-guard { display: contents; }
       .sep { height: 1px; background: var(--cor-borda); margin: var(--esp-2) 0; }
 
@@ -46,7 +48,7 @@ class AppSidebar extends BaseElement {
         :host([aberto]) { transform: translateX(0); }
         nav { box-shadow: var(--sombra-lg); }
         .backdrop { display: block; position: fixed; inset: 0; z-index: -1;
-          background: rgba(15,23,42,.4); opacity: 0; pointer-events: none;
+          background: var(--cor-overlay); opacity: 0; pointer-events: none;
           transition: opacity .2s; }
         :host([aberto]) .backdrop { opacity: 1; pointer-events: auto; }
       }
@@ -55,14 +57,14 @@ class AppSidebar extends BaseElement {
 
   template() {
     const link = (it) =>
-      `<a href="${it.rota}" data-rota="${it.rota}"><span class="icone">${it.icone}</span>${it.rotulo}</a>`;
+      `<a href="${it.rota}" data-rota="${it.rota}"><ui-icon name="${it.icone}" size="18"></ui-icon>${it.rotulo}</a>`;
     return `
       <div class="backdrop" id="backdrop"></div>
       <nav>
         ${link(ITENS[0])}
         ${link(ITENS[1])}
         <role-guard role="admin">
-          <a href="#/admin" data-rota="#/admin"><span class="icone">⚙️</span>Administração</a>
+          <a href="#/admin" data-rota="#/admin"><ui-icon name="config" size="18"></ui-icon>Administração</a>
         </role-guard>
         <div class="sep"></div>
         ${link(ITENS[2])}

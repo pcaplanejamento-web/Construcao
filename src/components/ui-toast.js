@@ -9,6 +9,7 @@
  */
 import { BaseElement } from "./base-element.js";
 import { bus, EVENTOS } from "../core/event-bus.js";
+import "./ui-icon.js";
 
 class UiToast extends BaseElement {
   static get observedAttributes() {
@@ -41,10 +42,10 @@ class UiToast extends BaseElement {
   template() {
     const tipo = this.getAttribute("tipo") || "info";
     const msg = this.getAttribute("message") || "";
-    const icones = { sucesso: "✓", erro: "!", aviso: "⚠", info: "i" };
+    const icones = { sucesso: "sucesso", erro: "aviso", aviso: "aviso", info: "info" };
     return `
       <div class="toast ${tipo}" role="status">
-        <span class="icone">${icones[tipo] || "i"}</span>
+        <span class="icone"><ui-icon name="${icones[tipo] || "info"}" size="18"></ui-icon></span>
         <span>${msg}</span>
       </div>
     `;

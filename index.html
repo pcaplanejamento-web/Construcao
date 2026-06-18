@@ -7,6 +7,15 @@
     <meta name="theme-color" content="#0f766e" />
     <title>Gestão de Obras</title>
 
+    <!-- Aplica o tema salvo antes do CSS (evita flash de tema errado). -->
+    <script>
+      try {
+        var t = localStorage.getItem("obras.tema");
+        if (t === "claro" || t === "escuro")
+          document.documentElement.dataset.tema = t;
+      } catch (e) {}
+    </script>
+
     <!-- Estilos globais (fora do Shadow DOM): tokens, reset e layout -->
     <link rel="stylesheet" href="src/styles/tokens.css" />
     <link rel="stylesheet" href="src/styles/reset.css" />

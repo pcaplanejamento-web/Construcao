@@ -69,7 +69,7 @@ class CategoriasView extends BaseElement {
 
     if (!minhas.length) {
       minhasEl.innerHTML = `
-        <ui-empty-state icone="🏷️" titulo="Nenhuma classificação sua"
+        <ui-empty-state icone="tag" titulo="Nenhuma classificação sua"
           texto="Crie classificações personalizadas para organizar suas despesas.">
           <ui-button slot="acao" id="vaziaNova">+ Criar classificação</ui-button>
         </ui-empty-state>`;
