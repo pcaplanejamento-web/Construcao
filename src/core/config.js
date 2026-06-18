@@ -8,7 +8,7 @@
 export const CONFIG = {
   /** URL do Web App do Apps Script (deployment "/exec"). */
   API_URL:
-    "https://script.google.com/macros/s/COLE_AQUI_O_ID_DO_DEPLOY/exec",
+    "https://script.google.com/macros/s/AKfycbxDCNTuP8GLFU3grKNDtYXf_CjpHq5INgB2EJdbGyckCLec0ricpmmBWbAMh5W8X0gxFg/exec",
 
   /** Chaves usadas no localStorage para persistir a sessão. */
   STORAGE: {
