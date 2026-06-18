@@ -1,10 +1,13 @@
 /**
- * <app-sidebar> — Menu lateral em abas. Reusa <role-guard> para o item admin
- * e <ui-icon> para os ícones (sem emoji).
+ * <app-sidebar> — Menu lateral em abas. Reusa <role-guard> e <ui-icon>.
  *
- * Atributo: aberto (no mobile, controla o drawer).
- * Eventos: "navegou" (após clicar num item — o shell fecha o drawer no mobile).
- * Item ativo destacado por location.hash.
+ * Atributos:
+ *   aberto    — no mobile, controla o drawer (slide in/out).
+ *   recolhido — no desktop, vira uma régua só de ícones (rótulos somem; o ícone
+ *               permanece na MESMA posição horizontal; a largura fica
+ *               proporcional ao ícone). No mobile o recolhimento não se aplica
+ *               (o drawer mostra sempre os rótulos).
+ * Evento: "navegou" (após clicar num item — o shell fecha o drawer no mobile).
  */
 import { BaseElement } from "../components/base-element.js";
 import "./role-guard.js";
@@ -18,10 +21,10 @@ const ITENS = [
 
 class AppSidebar extends BaseElement {
   static get observedAttributes() {
-    return ["aberto"];
+    return ["aberto", "recolhido"];
   }
   attributeChangedCallback() {
-    if (this.shadowRoot.childElementCount) this._atualizarAberto();
+    if (this.shadowRoot.childElementCount) this.marcarAtivo();
   }
 
   estilos() {
@@ -31,22 +34,32 @@ class AppSidebar extends BaseElement {
       nav { display: flex; flex-direction: column; gap: var(--esp-1);
         width: 230px; padding: var(--esp-4) var(--esp-3);
         background: var(--cor-superficie); border-right: 1px solid var(--cor-borda);
-        min-height: 100%; }
+        height: 100%; overflow: hidden; transition: width .2s ease; }
       a { display: flex; align-items: center; gap: var(--esp-3);
         padding: var(--esp-3) var(--esp-3); border-radius: var(--raio-sm);
         color: var(--cor-texto-suave); text-decoration: none;
         font-weight: var(--peso-medio); font-size: var(--fs-sm); }
       a:hover { background: var(--cor-superficie-2); text-decoration: none; }
       a.ativo { color: var(--cor-primaria); background: var(--cor-primaria-suave); }
-      a ui-icon { color: inherit; }
+      a ui-icon { color: inherit; flex: none; } /* ícone nunca encolhe */
+      .rotulo { white-space: nowrap; overflow: hidden; max-width: 160px; opacity: 1;
+        transition: opacity .15s ease, max-width .2s ease; }
       role-guard { display: contents; }
       .sep { height: 1px; background: var(--cor-borda); margin: var(--esp-2) 0; }
 
+      /* DESKTOP: recolhido = régua de ícones (ícone fica no mesmo x). */
+      @media (min-width: 821px) {
+        :host([recolhido]) nav { width: 66px; }
+        :host([recolhido]) a { gap: 0; }
+        :host([recolhido]) .rotulo { opacity: 0; max-width: 0; }
+      }
+
+      /* MOBILE: drawer (sempre com rótulos; ignora "recolhido"). */
       @media (max-width: 820px) {
         :host { position: fixed; inset: 0 auto 0 0; z-index: var(--z-nav);
           transform: translateX(-100%); transition: transform .2s ease; }
         :host([aberto]) { transform: translateX(0); }
-        nav { box-shadow: var(--sombra-lg); }
+        nav { box-shadow: var(--sombra-lg); width: 230px; }
         .backdrop { display: block; position: fixed; inset: 0; z-index: -1;
           background: var(--cor-overlay); opacity: 0; pointer-events: none;
           transition: opacity .2s; }
@@ -57,14 +70,18 @@ class AppSidebar extends BaseElement {
 
   template() {
     const link = (it) =>
-      `<a href="${it.rota}" data-rota="${it.rota}"><ui-icon name="${it.icone}" size="18"></ui-icon>${it.rotulo}</a>`;
+      `<a href="${it.rota}" data-rota="${it.rota}" title="${it.rotulo}">
+        <ui-icon name="${it.icone}" size="18"></ui-icon><span class="rotulo">${it.rotulo}</span>
+      </a>`;
     return `
       <div class="backdrop" id="backdrop"></div>
       <nav>
         ${link(ITENS[0])}
         ${link(ITENS[1])}
         <role-guard role="admin">
-          <a href="#/admin" data-rota="#/admin"><ui-icon name="config" size="18"></ui-icon>Administração</a>
+          <a href="#/admin" data-rota="#/admin" title="Administração">
+            <ui-icon name="config" size="18"></ui-icon><span class="rotulo">Administração</span>
+          </a>
         </role-guard>
         <div class="sep"></div>
         ${link(ITENS[2])}
@@ -81,10 +98,6 @@ class AppSidebar extends BaseElement {
       a.addEventListener("click", () => this.emitir("navegou"))
     );
     this.$("#backdrop").addEventListener("click", () => this.emitir("navegou"));
-  }
-
-  _atualizarAberto() {
-    // estado refletido via atributo :host([aberto]) no CSS — nada a fazer.
   }
 
   marcarAtivo() {

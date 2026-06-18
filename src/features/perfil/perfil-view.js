@@ -13,7 +13,7 @@ class PerfilView extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
-      .area { max-width: 760px; margin: 0 auto; padding: var(--esp-6) var(--esp-4);
+      .area { max-width: 760px; margin: 0 auto; padding: var(--esp-5);
         display: flex; flex-direction: column; gap: var(--esp-5); }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       p.sub { color: var(--cor-texto-suave); margin-bottom: var(--esp-2); }

@@ -31,8 +31,8 @@ sobem por `CustomEvent`**.
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
 | `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Esconde header/sidebar no login. |
-| `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky): marca, menu (mobile), **alternador de tema** (sol/lua), chip do usuário → `#/perfil`, Sair. Ícones via `ui-icon`. |
-| `app-sidebar` | attr `aberto`; evento `navegou` | Menu lateral em abas (Obras, Classificações, Administração via `role-guard`, Perfil). Drawer retrátil no mobile. |
+| `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky): marca, **botão sanduíche** (recolhe no desktop / drawer no mobile), **alternador de tema** (sol/lua), chip do usuário → `#/perfil`, Sair. Ícones via `ui-icon`. |
+| `app-sidebar` | attr `aberto` (drawer mobile), `recolhido` (régua de ícones no desktop); evento `navegou` | Menu lateral em abas (Obras, Classificações, Administração via `role-guard`, Perfil). Ao recolher, os rótulos somem e o ícone fica no mesmo lugar; altura sempre 100% do conteúdo. Preferência persistida. |
 | `app-loader` | attr `texto` | Tela de carregamento inicial (overlay) exibida enquanto o snapshot carrega. |
 | `role-guard` | attr `role="admin"\|"usuario"` | Mostra/oculta o slot conforme o papel (UX). |
 

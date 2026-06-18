@@ -20,7 +20,7 @@ class CategoriasView extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
-      .area { max-width: 1100px; margin: 0 auto; padding: var(--esp-6) var(--esp-4);
+      .area { max-width: 1100px; margin: 0 auto; padding: var(--esp-5);
         display: flex; flex-direction: column; gap: var(--esp-5); }
       .cabecalho { display: flex; align-items: center; justify-content: space-between;
         gap: var(--esp-3); flex-wrap: wrap; }

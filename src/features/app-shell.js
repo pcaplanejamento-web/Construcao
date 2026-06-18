@@ -41,9 +41,23 @@ class AppShell extends BaseElement {
 
     const hdr = this.$("#hdr");
     const sb = this.$("#sb");
-    hdr.addEventListener("toggle-sidebar", () =>
-      sb.toggleAttribute("aberto")
-    );
+
+    // Restaura a preferência de recolhimento (desktop).
+    try {
+      if (localStorage.getItem("obras.sidebar") === "recolhido")
+        sb.setAttribute("recolhido", "");
+    } catch (e) {}
+
+    hdr.addEventListener("toggle-sidebar", () => {
+      if (window.matchMedia("(max-width: 820px)").matches) {
+        sb.toggleAttribute("aberto"); // mobile: abre/fecha o drawer
+      } else {
+        const recolhido = sb.toggleAttribute("recolhido"); // desktop: recolhe/expande
+        try {
+          localStorage.setItem("obras.sidebar", recolhido ? "recolhido" : "expandido");
+        } catch (e) {}
+      }
+    });
     sb.addEventListener("navegou", () => sb.removeAttribute("aberto"));
   }
 

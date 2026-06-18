@@ -28,8 +28,9 @@ class AppHeader extends BaseElement {
       }
       .barra { display: flex; align-items: center; gap: var(--esp-3);
         padding: var(--esp-3) var(--esp-4); }
-      .menu-btn { display: none; background: none; border: none;
-        color: var(--cor-texto-suave); padding: 6px; border-radius: var(--raio-sm); }
+      .menu-btn { display: inline-flex; align-items: center; justify-content: center;
+        background: none; border: none; color: var(--cor-texto-suave);
+        padding: 8px; border-radius: var(--raio-sm); }
       .menu-btn:hover { background: var(--cor-superficie-2); }
       .marca { display: flex; align-items: center; gap: var(--esp-2);
         font-weight: var(--peso-forte); color: var(--cor-primaria); font-size: var(--fs-lg);
@@ -56,7 +57,6 @@ class AppHeader extends BaseElement {
         padding: 6px 12px; font-size: var(--fs-sm); }
       .sair:hover { background: var(--cor-superficie-2); }
       @media (max-width: 820px) {
-        .menu-btn { display: inline-flex; }
         .papel { display: none; }
       }
     `;

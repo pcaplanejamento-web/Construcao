@@ -18,7 +18,7 @@ class AdminView extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
-      .area { max-width: 1100px; margin: 0 auto; padding: var(--esp-6) var(--esp-4); }
+      .area { max-width: 1100px; margin: 0 auto; padding: var(--esp-5); }
       .cabecalho { display: flex; align-items: center; justify-content: space-between;
         gap: var(--esp-3); margin-bottom: var(--esp-5); flex-wrap: wrap; }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
