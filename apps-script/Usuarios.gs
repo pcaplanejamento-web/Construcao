@@ -5,6 +5,22 @@
  * via exigirAdmin). Hashes/salts nunca são devolvidos ao cliente.
  */
 
+/**
+ * usuarios.listar -> { usuarios: [{id,nome,email}] }.
+ * Disponível a qualquer usuário autenticado (usado no seletor de
+ * compartilhamento). Retorna só ativos, exceto o próprio usuário, e nunca
+ * expõe hash/salt.
+ */
+function usuariosListar(data, sessao) {
+  const usuarios = repoFiltrar(SCHEMA.USUARIOS, function (u) {
+    const ativo = u.ativo === true || u.ativo === "TRUE" || u.ativo === "true";
+    return ativo && String(u.id) !== String(sessao.usuario_id);
+  }).map(function (u) {
+    return { id: u.id, nome: u.nome, email: u.email };
+  });
+  return { usuarios: usuarios };
+}
+
 /** admin.usuarios.listar -> { usuarios: [...] }. */
 function adminUsuariosListar(data, sessao) {
   exigirAdmin(sessao);

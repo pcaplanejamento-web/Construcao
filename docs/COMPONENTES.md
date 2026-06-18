@@ -45,6 +45,7 @@ sobem por `CustomEvent`**.
 | `obras-list-view` | — | Rota `#/obras`. Grid de cartões + criar/editar/excluir. |
 | `obra-card` | `.obra`; eventos `abrir`, `editar`, `remover` | Cartão com barra de orçamento. |
 | `obra-form` | `.obra`; eventos `salvo`, `fechar` | Modal criar/editar obra (chama a API). |
+| `obra-share-form` | `.obra`; evento `fechar` | Modal (só dono) para compartilhar a obra com outros usuários. |
 | `obra-detail-view` | attr `id` (rota); — | **Coração do tempo real**: dashboard + despesas (otimista + polling). |
 
 ### Despesas — `features/despesas/`

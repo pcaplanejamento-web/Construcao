@@ -12,6 +12,7 @@ import "../../components/ui-spinner.js";
 import "../../components/ui-empty-state.js";
 import "./obra-card.js";
 import "./obra-form.js";
+import "./obra-share-form.js";
 
 class ObrasListView extends BaseElement {
   constructor() {
@@ -96,6 +97,7 @@ class ObrasListView extends BaseElement {
         location.hash = "#/obras/" + e.detail.obra.id;
       });
       card.addEventListener("editar", (e) => this.abrirForm(e.detail.obra));
+      card.addEventListener("compartilhar", (e) => this.abrirShare(e.detail.obra));
       card.addEventListener("remover", (e) => this.remover(e.detail.obra));
       grid.appendChild(card);
     });
@@ -108,6 +110,13 @@ class ObrasListView extends BaseElement {
     const fechar = () => form.remove();
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", fechar);
+    document.body.appendChild(form);
+  }
+
+  abrirShare(obra) {
+    const form = document.createElement("obra-share-form");
+    form.obra = obra;
+    form.addEventListener("fechar", () => form.remove());
     document.body.appendChild(form);
   }
 

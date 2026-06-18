@@ -19,6 +19,9 @@ const ROTAS = {
   "obras.criar": { fn: obrasCriar },
   "obras.atualizar": { fn: obrasAtualizar },
   "obras.remover": { fn: obrasRemover },
+  "obras.compartilhamentos": { fn: obrasCompartilhamentos },
+  "obras.compartilhar": { fn: obrasCompartilhar },
+  "obras.descompartilhar": { fn: obrasDescompartilhar },
 
   // Despesas
   "despesas.listar": { fn: despesasListar },
@@ -32,6 +35,9 @@ const ROTAS = {
   "categorias.criar": { fn: categoriasCriar },
   "categorias.atualizar": { fn: categoriasAtualizar },
   "categorias.remover": { fn: categoriasRemover },
+
+  // Usuários (autenticado)
+  "usuarios.listar": { fn: usuariosListar },
 
   // Admin
   "admin.usuarios.listar": { fn: adminUsuariosListar },

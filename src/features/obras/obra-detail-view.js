@@ -26,6 +26,7 @@ import "../dashboard/category-breakdown.js";
 import "../despesas/despesa-form.js";
 import "../despesas/despesa-table.js";
 import "./obra-form.js";
+import "./obra-share-form.js";
 
 class ObraDetailView extends BaseElement {
   constructor() {
@@ -50,6 +51,7 @@ class ObraDetailView extends BaseElement {
       .voltar { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
       .topo { display: flex; align-items: center; justify-content: space-between;
         gap: var(--esp-3); flex-wrap: wrap; }
+      .acoes-topo { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
       .colunas { display: grid; gap: var(--esp-5); grid-template-columns: 2fr 1fr; }
@@ -75,14 +77,14 @@ class ObraDetailView extends BaseElement {
 
   async carregar() {
     try {
-      const [obraR, catR, despR, resR] = await Promise.all([
+      const [obraR, despR, resR] = await Promise.all([
         api.call("obras.obter", { id: this.obraId }),
-        api.call("categorias.listar"),
         api.call("despesas.listar", { obra_id: this.obraId }),
         api.call("despesas.resumo", { obra_id: this.obraId }),
       ]);
       this._obra = obraR.obra;
-      this._categorias = catR.categorias || [];
+      // Categorias da obra (global + do dono), vindas de obras.obter.
+      this._categorias = obraR.categorias || [];
       this._despesas = despR.despesas || [];
       this._resumo = resR;
       this.indexarCategorias();
@@ -164,18 +166,31 @@ class ObraDetailView extends BaseElement {
     const topo = this.shadowRoot.querySelector("#topo");
     if (!topo || !this._obra) return;
     const o = this._obra;
+    const ehDono = o.ehDono !== false;
     topo.innerHTML = `
       <div>
         <h1>${o.nome || ""}</h1>
         <div class="meta">${o.endereco ? "📍 " + o.endereco + " · " : ""}${
       o.descricao || ""
-    }</div>
+    }${!ehDono && o.dono_email ? ` · 👤 compartilhada por ${o.dono_email}` : ""}</div>
       </div>
-      <ui-button id="editarObra" variant="secundario">Editar obra</ui-button>
+      <div class="acoes-topo">
+        ${
+          ehDono
+            ? `<ui-button id="compartilharObra" variant="secundario">Compartilhar</ui-button>
+               <ui-button id="editarObra" variant="secundario">Editar obra</ui-button>`
+            : ""
+        }
+      </div>
     `;
-    topo
-      .querySelector("#editarObra")
-      .addEventListener("click", () => this.editarObra());
+    if (ehDono) {
+      topo
+        .querySelector("#editarObra")
+        .addEventListener("click", () => this.editarObra());
+      topo
+        .querySelector("#compartilharObra")
+        .addEventListener("click", () => this.compartilharObra());
+    }
   }
 
   atualizarDados() {
@@ -284,6 +299,13 @@ class ObraDetailView extends BaseElement {
     const fechar = () => form.remove();
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", fechar);
+    document.body.appendChild(form);
+  }
+
+  compartilharObra() {
+    const form = document.createElement("obra-share-form");
+    form.obra = this._obra;
+    form.addEventListener("fechar", () => form.remove());
     document.body.appendChild(form);
   }
 }

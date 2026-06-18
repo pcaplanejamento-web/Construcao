@@ -15,6 +15,7 @@ Usuarios 1───* Obras 1───* Despesas *───1 Categorias
 Usuarios 1───* Configuracoes
 Usuarios 1───* Categorias (próprias)   +   Categorias GLOBAL (compartilhadas)
 Usuarios 1───* Sessoes
+Obras *───* Usuarios  (via Compartilhamentos — colaboradores convidados)
 ```
 
 ## Aba `Usuarios`
@@ -78,6 +79,20 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 
 Categorias semente (`GLOBAL`) são criadas no bootstrap. A listagem de um usuário
 = categorias `GLOBAL` + as próprias.
+
+## Aba `Compartilhamentos`
+Relaciona obras a usuários convidados (colaboradores). O dono permanece em
+`Obras.usuario_id`; cada linha aqui dá acesso de colaboração a outro usuário.
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| obra_id | UUID | FK → Obras.id |
+| usuario_id | UUID | FK → Usuarios.id (convidado) |
+| criado_em | ISO datetime | |
+
+Colaboradores podem ver a obra e lançar/editar despesas; **não** podem editar,
+excluir nem compartilhar a obra (só o dono).
 
 ## Aba `Sessoes`
 | Coluna | Tipo | Descrição |

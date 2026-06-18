@@ -8,12 +8,14 @@
 
 /** Calcula o resumo financeiro de uma obra. */
 function _calcularResumo(obraId, usuarioId) {
-  const obra = _obraDoUsuario(obraId, usuarioId);
+  const obra = _obraAcessivel(obraId, usuarioId);
   const despesas = repoFiltrar(SCHEMA.DESPESAS, function (d) {
     return String(d.obra_id) === String(obraId);
   });
 
-  const mapaCat = mapaCategorias(usuarioId);
+  // Mapeia categorias pelo DONO da obra (global + dele), garantindo rótulos
+  // consistentes para todos os colaboradores.
+  const mapaCat = mapaCategorias(obra.usuario_id);
   const acumulado = {}; // categoria_id -> total
   let total = 0;
   despesas.forEach(function (d) {
@@ -46,10 +48,10 @@ function _calcularResumo(obraId, usuarioId) {
   };
 }
 
-/** despesas.listar -> { despesas: [...] } (da obra do usuário). */
+/** despesas.listar -> { despesas: [...] } (da obra acessível). */
 function despesasListar(data, sessao) {
   const obraId = data && data.obra_id;
-  _obraDoUsuario(obraId, sessao.usuario_id);
+  _obraAcessivel(obraId, sessao.usuario_id);
   const despesas = repoFiltrar(SCHEMA.DESPESAS, function (d) {
     return String(d.obra_id) === String(obraId);
   });
@@ -67,7 +69,7 @@ function despesasResumo(data, sessao) {
 /** despesas.criar -> { despesa, resumo }. */
 function despesasCriar(data, sessao) {
   const obraId = data && data.obra_id;
-  _obraDoUsuario(obraId, sessao.usuario_id);
+  _obraAcessivel(obraId, sessao.usuario_id);
 
   const item = String((data && data.item) || "").trim();
   const valor = Number(data && data.valor);
@@ -91,21 +93,20 @@ function despesasCriar(data, sessao) {
   });
 }
 
-/** Localiza despesa garantindo posse via obra do usuário. */
-function _despesaDoUsuario(despesaId, usuarioId) {
+/** Localiza despesa garantindo acesso via a OBRA (dono ou compartilhado). */
+function _despesaAcessivel(despesaId, usuarioId) {
   const d = repoEncontrar(SCHEMA.DESPESAS, function (x) {
     return String(x.id) === String(despesaId);
   });
-  if (!d || String(d.usuario_id) !== String(usuarioId)) {
-    lancar(ERRO.NAO_ENCONTRADO, "Despesa não encontrada.");
-  }
+  if (!d) lancar(ERRO.NAO_ENCONTRADO, "Despesa não encontrada.");
+  _obraAcessivel(d.obra_id, usuarioId); // valida acesso à obra (lança se não tiver)
   return d;
 }
 
 /** despesas.atualizar -> { despesa, resumo }. */
 function despesasAtualizar(data, sessao) {
   const id = data && data.id;
-  const atual = _despesaDoUsuario(id, sessao.usuario_id);
+  const atual = _despesaAcessivel(id, sessao.usuario_id);
 
   const patch = {};
   if (data.item !== undefined) {
@@ -136,7 +137,7 @@ function despesasAtualizar(data, sessao) {
 /** despesas.remover -> { id, resumo }. */
 function despesasRemover(data, sessao) {
   const id = data && data.id;
-  const atual = _despesaDoUsuario(id, sessao.usuario_id);
+  const atual = _despesaAcessivel(id, sessao.usuario_id);
 
   return comLock(function () {
     repoRemover(SCHEMA.DESPESAS, "id", id);

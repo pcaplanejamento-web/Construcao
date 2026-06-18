@@ -1,50 +1,131 @@
 /**
- * Obras.gs — CRUD de obras, sempre escopado ao usuário da sessão.
+ * Obras.gs — CRUD de obras + compartilhamento entre usuários.
  *
- * Princípio nº 7: o `usuario_id` vem SEMPRE da sessão; qualquer valor enviado
- * pelo cliente é ignorado (previne IDOR).
+ * Modelo de acesso:
+ *  - DONO (obra.usuario_id): pode tudo (editar, excluir, compartilhar).
+ *  - COMPARTILHADO (linha em Compartilhamentos): pode ver a obra e colaborar
+ *    nas despesas, mas NÃO pode editar/excluir a obra nem gerir compartilhamento.
+ *
+ * Princípio nº 7: o acesso é sempre verificado no servidor a partir da sessão.
  */
 
-/** Garante que a obra existe e pertence ao usuário; retorna a obra. */
-function _obraDoUsuario(obraId, usuarioId) {
+/* ----------------------- Helpers de acesso ---------------------------- */
+
+/** Verdadeiro se a obra está compartilhada com o usuário. */
+function _temCompartilhamento(obraId, usuarioId) {
+  return !!repoEncontrar(SCHEMA.COMPARTILHAMENTOS, function (s) {
+    return (
+      String(s.obra_id) === String(obraId) &&
+      String(s.usuario_id) === String(usuarioId)
+    );
+  });
+}
+
+/** Retorna a obra se o usuário é dono OU tem compartilhamento; senão lança. */
+function _obraAcessivel(obraId, usuarioId) {
+  const obra = repoEncontrar(SCHEMA.OBRAS, function (o) {
+    return String(o.id) === String(obraId);
+  });
+  if (
+    obra &&
+    (String(obra.usuario_id) === String(usuarioId) ||
+      _temCompartilhamento(obraId, usuarioId))
+  ) {
+    return obra;
+  }
+  lancar(ERRO.NAO_ENCONTRADO, "Obra não encontrada.");
+}
+
+/** Retorna a obra apenas se o usuário for o DONO; senão lança. */
+function _obraDono(obraId, usuarioId) {
   const obra = repoEncontrar(SCHEMA.OBRAS, function (o) {
     return String(o.id) === String(obraId);
   });
   if (!obra || String(obra.usuario_id) !== String(usuarioId)) {
-    lancar(ERRO.NAO_ENCONTRADO, "Obra não encontrada.");
+    lancar(ERRO.NAO_AUTORIZADO, "Apenas o dono da obra pode fazer isso.");
   }
   return obra;
 }
 
-/** Normaliza/valida o status, com fallback para "ativa". */
+/** Lista os compartilhamentos de uma obra com nome/e-mail de cada usuário. */
+function _listarCompartilhamentos(obraId) {
+  const shares = repoFiltrar(SCHEMA.COMPARTILHAMENTOS, function (s) {
+    return String(s.obra_id) === String(obraId);
+  });
+  const usuarios = _mapaUsuarios();
+  return shares.map(function (s) {
+    const u = usuarios[s.usuario_id] || {};
+    return { usuario_id: s.usuario_id, nome: u.nome || "", email: u.email || "" };
+  });
+}
+
+/** Mapa id -> { nome, email } de todos os usuários (uso interno). */
+function _mapaUsuarios() {
+  const mapa = {};
+  repoListar(SCHEMA.USUARIOS).forEach(function (u) {
+    mapa[u.id] = { nome: u.nome, email: u.email };
+  });
+  return mapa;
+}
+
 function _statusValido(status) {
   return STATUS_OBRA.indexOf(status) >= 0 ? status : "ativa";
 }
 
-/** obras.listar -> { obras: [...] } (apenas as do usuário, com total_gasto). */
+/* ------------------------------ CRUD ---------------------------------- */
+
+/** obras.listar -> { obras: [...] } (próprias + compartilhadas comigo). */
 function obrasListar(data, sessao) {
-  const obras = repoFiltrar(SCHEMA.OBRAS, function (o) {
-    return String(o.usuario_id) === String(sessao.usuario_id);
+  const uid = sessao.usuario_id;
+
+  const compartilhadasComigo = {};
+  repoFiltrar(SCHEMA.COMPARTILHAMENTOS, function (s) {
+    return String(s.usuario_id) === String(uid);
+  }).forEach(function (s) {
+    compartilhadasComigo[s.obra_id] = true;
   });
 
-  // Soma as despesas do usuário por obra numa única leitura (eficiente).
+  const acessiveis = repoFiltrar(SCHEMA.OBRAS, function (o) {
+    return String(o.usuario_id) === String(uid) || compartilhadasComigo[o.id];
+  });
+
+  // Soma TODAS as despesas de cada obra acessível (independe de quem lançou).
+  const idsAcc = {};
+  acessiveis.forEach(function (o) {
+    idsAcc[o.id] = true;
+  });
   const totais = {};
-  repoFiltrar(SCHEMA.DESPESAS, function (d) {
-    return String(d.usuario_id) === String(sessao.usuario_id);
-  }).forEach(function (d) {
-    totais[d.obra_id] = (totais[d.obra_id] || 0) + (Number(d.valor) || 0);
+  repoListar(SCHEMA.DESPESAS).forEach(function (d) {
+    if (idsAcc[d.obra_id]) {
+      totais[d.obra_id] = (totais[d.obra_id] || 0) + (Number(d.valor) || 0);
+    }
   });
 
-  obras.forEach(function (o) {
+  const usuarios = _mapaUsuarios();
+  acessiveis.forEach(function (o) {
     o.total_gasto = totais[o.id] || 0;
+    o.ehDono = String(o.usuario_id) === String(uid);
+    const dono = usuarios[o.usuario_id] || {};
+    o.dono_nome = dono.nome || "";
+    o.dono_email = dono.email || "";
   });
-  return { obras: obras };
+  return { obras: acessiveis };
 }
 
-/** obras.obter -> { obra }. */
+/** obras.obter -> { obra, categorias, compartilhamentos }. */
 function obrasObter(data, sessao) {
-  const obra = _obraDoUsuario(data && data.id, sessao.usuario_id);
-  return { obra: obra };
+  const obra = _obraAcessivel(data && data.id, sessao.usuario_id);
+  obra.ehDono = String(obra.usuario_id) === String(sessao.usuario_id);
+  const dono = _mapaUsuarios()[obra.usuario_id] || {};
+  obra.dono_nome = dono.nome || "";
+  obra.dono_email = dono.email || "";
+  return {
+    obra: obra,
+    // Categorias da obra = as do DONO (global + próprias), para que todos os
+    // colaboradores vejam/usem o mesmo conjunto de classificações.
+    categorias: listarCategoriasUsuario(obra.usuario_id),
+    compartilhamentos: obra.ehDono ? _listarCompartilhamentos(obra.id) : [],
+  };
 }
 
 /** obras.criar -> { obra }. */
@@ -69,10 +150,10 @@ function obrasCriar(data, sessao) {
   });
 }
 
-/** obras.atualizar -> { obra }. */
+/** obras.atualizar -> { obra } (apenas o dono). */
 function obrasAtualizar(data, sessao) {
   const id = data && data.id;
-  _obraDoUsuario(id, sessao.usuario_id); // valida posse.
+  _obraDono(id, sessao.usuario_id);
 
   const patch = { atualizado_em: agoraIso() };
   if (data.nome !== undefined) {
@@ -92,20 +173,74 @@ function obrasAtualizar(data, sessao) {
   });
 }
 
-/** obras.remover -> { id } (remove a obra e suas despesas). */
+/** obras.remover -> { id } (apenas o dono; remove despesas e compartilhamentos). */
 function obrasRemover(data, sessao) {
   const id = data && data.id;
-  _obraDoUsuario(id, sessao.usuario_id); // valida posse.
+  _obraDono(id, sessao.usuario_id);
 
   return comLock(function () {
-    // Remove despesas vinculadas primeiro (varre de baixo p/ cima).
-    const despesas = repoFiltrar(SCHEMA.DESPESAS, function (d) {
+    repoFiltrar(SCHEMA.DESPESAS, function (d) {
       return String(d.obra_id) === String(id);
-    });
-    despesas.forEach(function (d) {
+    }).forEach(function (d) {
       repoRemover(SCHEMA.DESPESAS, "id", d.id);
+    });
+    repoFiltrar(SCHEMA.COMPARTILHAMENTOS, function (s) {
+      return String(s.obra_id) === String(id);
+    }).forEach(function (s) {
+      repoRemover(SCHEMA.COMPARTILHAMENTOS, "id", s.id);
     });
     repoRemover(SCHEMA.OBRAS, "id", id);
     return { id: id };
+  });
+}
+
+/* ------------------------ Compartilhamento ---------------------------- */
+
+/** obras.compartilhamentos -> { compartilhamentos } (apenas o dono). */
+function obrasCompartilhamentos(data, sessao) {
+  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  return { compartilhamentos: _listarCompartilhamentos(obra.id) };
+}
+
+/** obras.compartilhar -> { compartilhamentos } (apenas o dono). */
+function obrasCompartilhar(data, sessao) {
+  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  const alvoId = data && data.usuario_id;
+  if (!alvoId) lancar(ERRO.VALIDACAO, "Informe o usuário.");
+  if (String(alvoId) === String(sessao.usuario_id)) {
+    lancar(ERRO.VALIDACAO, "Você já é o dono desta obra.");
+  }
+  if (!buscarUsuarioPorId(alvoId)) {
+    lancar(ERRO.NAO_ENCONTRADO, "Usuário não encontrado.");
+  }
+
+  return comLock(function () {
+    if (!_temCompartilhamento(obra.id, alvoId)) {
+      repoInserir(SCHEMA.COMPARTILHAMENTOS, {
+        id: novoId(),
+        obra_id: obra.id,
+        usuario_id: alvoId,
+        criado_em: agoraIso(),
+      });
+    }
+    return { compartilhamentos: _listarCompartilhamentos(obra.id) };
+  });
+}
+
+/** obras.descompartilhar -> { compartilhamentos } (apenas o dono). */
+function obrasDescompartilhar(data, sessao) {
+  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  const alvoId = data && data.usuario_id;
+
+  return comLock(function () {
+    repoFiltrar(SCHEMA.COMPARTILHAMENTOS, function (s) {
+      return (
+        String(s.obra_id) === String(obra.id) &&
+        String(s.usuario_id) === String(alvoId)
+      );
+    }).forEach(function (s) {
+      repoRemover(SCHEMA.COMPARTILHAMENTOS, "id", s.id);
+    });
+    return { compartilhamentos: _listarCompartilhamentos(obra.id) };
   });
 }

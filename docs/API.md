@@ -40,14 +40,26 @@ A API é um **único Web App** do Apps Script. Um `doPost` despacha por `action`
 | `auth.logout` | `{}` | `{ encerrada: true }` |
 | `auth.me` | `{}` | `{ usuario, config }` |
 
-### Obras (escopadas ao usuário da sessão)
+### Obras (próprias + compartilhadas)
+Cada obra inclui `ehDono` (bool), `dono_nome`/`dono_email` e `total_gasto`.
+Editar/remover/compartilhar exigem ser o **dono**; ver e lançar despesas valem
+para dono **e** colaboradores.
+
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `obras.listar` | `{}` | `{ obras: [{..., total_gasto}] }` |
-| `obras.obter` | `{ id }` | `{ obra }` |
+| `obras.listar` | `{}` | `{ obras: [...] }` (próprias + compartilhadas comigo) |
+| `obras.obter` | `{ id }` | `{ obra, categorias, compartilhamentos }` |
 | `obras.criar` | `{ nome, endereco?, descricao?, orcamento?, status? }` | `{ obra }` |
-| `obras.atualizar` | `{ id, ...campos }` | `{ obra }` |
-| `obras.remover` | `{ id }` | `{ id }` (remove também as despesas) |
+| `obras.atualizar` | `{ id, ...campos }` | `{ obra }` (só dono) |
+| `obras.remover` | `{ id }` | `{ id }` (só dono; remove despesas e compartilhamentos) |
+| `obras.compartilhamentos` | `{ obra_id }` | `{ compartilhamentos: [{usuario_id,nome,email}] }` (só dono) |
+| `obras.compartilhar` | `{ obra_id, usuario_id }` | `{ compartilhamentos }` (só dono) |
+| `obras.descompartilhar` | `{ obra_id, usuario_id }` | `{ compartilhamentos }` (só dono) |
+
+### Usuários (autenticado)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `usuarios.listar` | `{}` | `{ usuarios: [{id,nome,email}] }` (ativos, exceto você — usado no compartilhamento) |
 
 ### Despesas
 | Action | `data` | Retorno |

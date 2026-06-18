@@ -65,6 +65,11 @@ const SCHEMA = {
     colunas: ["id", "usuario_id", "nome", "cor", "ativo"],
   },
 
+  COMPARTILHAMENTOS: {
+    aba: "Compartilhamentos",
+    colunas: ["id", "obra_id", "usuario_id", "criado_em"],
+  },
+
   SESSOES: {
     aba: "Sessoes",
     colunas: [

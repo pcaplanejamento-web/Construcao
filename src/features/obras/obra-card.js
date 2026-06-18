@@ -50,6 +50,8 @@ class ObraCard extends BaseElement {
       }
       .acoes button:hover { background: var(--cor-superficie-2); }
       .acoes button.perigo { color: var(--cor-erro); }
+      .dono { font-size: var(--fs-xs); color: var(--cor-texto-fraco); }
+      .badges { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
     `;
   }
 
@@ -60,12 +62,17 @@ class ObraCard extends BaseElement {
     const gasto = Number(o.total_gasto) || 0;
     const pct = orcamento ? percentual(gasto, orcamento) : 0;
     const estouro = orcamento && gasto > orcamento;
+    const ehDono = o.ehDono !== false; // default dono se não informado
     return `
       <div class="card" id="card">
         <div class="topo">
           <h3>${o.nome || ""}</h3>
-          <ui-badge color="${st.cor}" text="${st.rotulo}"></ui-badge>
+          <div class="badges">
+            ${!ehDono ? `<ui-badge color="#7c3aed" text="Compartilhada"></ui-badge>` : ""}
+            <ui-badge color="${st.cor}" text="${st.rotulo}"></ui-badge>
+          </div>
         </div>
+        ${!ehDono && o.dono_email ? `<div class="dono">👤 de ${o.dono_email}</div>` : ""}
         ${o.endereco ? `<div class="end">📍 ${o.endereco}</div>` : ""}
         <div class="valores">
           <span class="rotulo">Gasto</span>
@@ -82,10 +89,15 @@ class ObraCard extends BaseElement {
                )} · ${pct}%</span></div>`
             : `<div class="valores"><span class="rotulo">Orçamento</span><span>não definido</span></div>`
         }
-        <div class="acoes">
-          <button id="editar">Editar</button>
-          <button id="remover" class="perigo">Excluir</button>
-        </div>
+        ${
+          ehDono
+            ? `<div class="acoes">
+                 <button id="editar">Editar</button>
+                 <button id="compartilhar">Compartilhar</button>
+                 <button id="remover" class="perigo">Excluir</button>
+               </div>`
+            : ""
+        }
       </div>
     `;
   }
@@ -95,12 +107,21 @@ class ObraCard extends BaseElement {
       if (e.target.closest(".acoes")) return; // cliques nos botões não abrem
       this.emitir("abrir", { obra: this.obra });
     });
-    this.$("#editar").addEventListener("click", () =>
-      this.emitir("editar", { obra: this.obra })
-    );
-    this.$("#remover").addEventListener("click", () =>
-      this.emitir("remover", { obra: this.obra })
-    );
+    const editar = this.$("#editar");
+    if (editar)
+      editar.addEventListener("click", () =>
+        this.emitir("editar", { obra: this.obra })
+      );
+    const compartilhar = this.$("#compartilhar");
+    if (compartilhar)
+      compartilhar.addEventListener("click", () =>
+        this.emitir("compartilhar", { obra: this.obra })
+      );
+    const remover = this.$("#remover");
+    if (remover)
+      remover.addEventListener("click", () =>
+        this.emitir("remover", { obra: this.obra })
+      );
   }
 }
 
