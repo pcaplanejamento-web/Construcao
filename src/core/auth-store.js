@@ -1,0 +1,95 @@
+/**
+ * auth-store.js — Estado de sessão (token, usuário, config) + persistência.
+ *
+ * Fonte única de verdade da sessão no front. Persiste em localStorage para
+ * sobreviver a refresh e revalida no boot via auth.me. Emite EVENTOS.AUTH.
+ */
+import { api } from "./api-client.js";
+import { CONFIG } from "./config.js";
+import { bus, EVENTOS } from "./event-bus.js";
+
+let estado = { token: null, usuario: null, config: {} };
+
+function persistir() {
+  try {
+    const s = CONFIG.STORAGE;
+    if (estado.token) {
+      localStorage.setItem(s.TOKEN, estado.token);
+      localStorage.setItem(s.USUARIO, JSON.stringify(estado.usuario || null));
+      localStorage.setItem(s.CONFIG_USUARIO, JSON.stringify(estado.config || {}));
+    } else {
+      localStorage.removeItem(s.TOKEN);
+      localStorage.removeItem(s.USUARIO);
+      localStorage.removeItem(s.CONFIG_USUARIO);
+    }
+  } catch (e) {
+    /* localStorage indisponível: segue só em memória. */
+  }
+}
+
+function lerStorage() {
+  try {
+    const s = CONFIG.STORAGE;
+    const token = localStorage.getItem(s.TOKEN);
+    if (!token) return;
+    estado.token = token;
+    estado.usuario = JSON.parse(localStorage.getItem(s.USUARIO) || "null");
+    estado.config = JSON.parse(localStorage.getItem(s.CONFIG_USUARIO) || "{}");
+  } catch (e) {
+    /* ignora storage corrompido */
+  }
+}
+
+export const auth = {
+  estado: () => estado,
+  token: () => estado.token,
+  usuario: () => estado.usuario,
+  config: () => estado.config,
+  estaAutenticado: () => !!estado.token,
+  ehAdmin: () => !!(estado.usuario && estado.usuario.role === "admin"),
+
+  /** Autentica e popula a sessão. */
+  async login(email, senha) {
+    const data = await api.call("auth.login", { email, senha });
+    estado = {
+      token: data.token,
+      usuario: data.usuario,
+      config: data.config || {},
+    };
+    persistir();
+    bus.emit(EVENTOS.AUTH, { autenticado: true, usuario: data.usuario });
+    return data.usuario;
+  },
+
+  /** Encerra a sessão (server-side e local). */
+  async logout() {
+    try {
+      await api.call("auth.logout");
+    } catch (e) {
+      /* mesmo se o servidor falhar, limpamos localmente */
+    }
+    estado = { token: null, usuario: null, config: {} };
+    persistir();
+    bus.emit(EVENTOS.AUTH, { autenticado: false });
+  },
+
+  /**
+   * Restaura a sessão no boot: lê o storage e revalida via auth.me.
+   * @returns {Promise<boolean>} true se a sessão é válida.
+   */
+  async restaurar() {
+    lerStorage();
+    if (!estado.token) return false;
+    try {
+      const data = await api.call("auth.me");
+      estado.usuario = data.usuario;
+      estado.config = data.config || {};
+      persistir();
+      return true;
+    } catch (e) {
+      estado = { token: null, usuario: null, config: {} };
+      persistir();
+      return false;
+    }
+  },
+};

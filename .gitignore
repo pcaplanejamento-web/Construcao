@@ -1,0 +1,19 @@
+# Apps Script / clasp
+apps-script/.clasp.json
+apps-script/.clasprc.json
+
+# Dependências (não usamos, mas evita commit acidental)
+node_modules/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editores / ferramentas locais
+.vscode/
+.idea/
+*.swp
+.claude/
+
+# Logs
+*.log

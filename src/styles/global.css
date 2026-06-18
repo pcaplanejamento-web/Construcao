@@ -1,0 +1,57 @@
+/**
+ * Estilos de layout que vivem fora do Shadow DOM.
+ * Mantemos o mínimo aqui: a maior parte do estilo é encapsulada por componente.
+ */
+
+app-shell {
+  display: block;
+  min-height: 100vh;
+}
+
+/* Utilitários genéricos usados pelo conteúdo em Light DOM (slots). */
+.container {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--esp-5) var(--esp-4);
+}
+
+.grid {
+  display: grid;
+  gap: var(--esp-4);
+}
+
+.grid-auto {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.titulo-pagina {
+  font-size: var(--fs-2xl);
+  font-weight: var(--peso-forte);
+  margin-bottom: var(--esp-2);
+}
+
+.subtitulo-pagina {
+  color: var(--cor-texto-suave);
+  margin-bottom: var(--esp-5);
+}
+
+.linha-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-3);
+  align-items: center;
+}
+
+.entre {
+  justify-content: space-between;
+}
+
+/* Tela de carregamento inicial (antes do app montar). */
+.carregando-inicial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  color: var(--cor-texto-suave);
+}

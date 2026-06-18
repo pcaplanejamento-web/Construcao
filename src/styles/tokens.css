@@ -1,0 +1,77 @@
+/**
+ * Design tokens — variáveis CSS globais.
+ * Ficam em :root para que TANTO o CSS global QUANTO o Shadow DOM dos
+ * componentes (que herdam custom properties) usem a mesma paleta.
+ * Princípio: nenhum componente define cor "na mão"; tudo vem daqui.
+ */
+:root {
+  /* Cores de marca */
+  --cor-primaria: #0f766e;
+  --cor-primaria-escura: #115e59;
+  --cor-primaria-clara: #14b8a6;
+  --cor-primaria-suave: #ccfbf1;
+
+  /* Tons neutros */
+  --cor-fundo: #f1f5f9;
+  --cor-superficie: #ffffff;
+  --cor-superficie-2: #f8fafc;
+  --cor-borda: #e2e8f0;
+  --cor-borda-forte: #cbd5e1;
+  --cor-texto: #0f172a;
+  --cor-texto-suave: #475569;
+  --cor-texto-fraco: #94a3b8;
+
+  /* Cores semânticas */
+  --cor-sucesso: #16a34a;
+  --cor-sucesso-suave: #dcfce7;
+  --cor-erro: #dc2626;
+  --cor-erro-suave: #fee2e2;
+  --cor-aviso: #d97706;
+  --cor-aviso-suave: #fef3c7;
+  --cor-info: #2563eb;
+  --cor-info-suave: #dbeafe;
+
+  /* Tipografia */
+  --fonte-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  --fonte-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem;
+  --fs-3xl: 2.25rem;
+  --peso-normal: 400;
+  --peso-medio: 500;
+  --peso-semi: 600;
+  --peso-forte: 700;
+
+  /* Espaçamentos (escala de 4px) */
+  --esp-1: 0.25rem;
+  --esp-2: 0.5rem;
+  --esp-3: 0.75rem;
+  --esp-4: 1rem;
+  --esp-5: 1.5rem;
+  --esp-6: 2rem;
+  --esp-8: 3rem;
+
+  /* Bordas e raios */
+  --raio-sm: 6px;
+  --raio-md: 10px;
+  --raio-lg: 16px;
+  --raio-completo: 999px;
+
+  /* Sombras */
+  --sombra-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --sombra-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --sombra-lg: 0 12px 32px rgba(15, 23, 42, 0.14);
+
+  /* Camadas (z-index) */
+  --z-nav: 100;
+  --z-modal: 1000;
+  --z-toast: 2000;
+
+  /* Transições */
+  --transicao: 160ms ease;
+}

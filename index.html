@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Sistema de Gestão de Obras — cadastre obras e acompanhe despesas em tempo real." />
+    <meta name="theme-color" content="#0f766e" />
+    <title>Gestão de Obras</title>
+
+    <!-- Estilos globais (fora do Shadow DOM): tokens, reset e layout -->
+    <link rel="stylesheet" href="src/styles/tokens.css" />
+    <link rel="stylesheet" href="src/styles/reset.css" />
+    <link rel="stylesheet" href="src/styles/global.css" />
+  </head>
+  <body>
+    <!-- O app-shell é o único elemento de UI montado diretamente no HTML.
+         Ele assume o controle da renderização das views via roteador. -->
+    <app-shell></app-shell>
+
+    <!-- Host singleton de notificações (toasts), fora do shell para sobrepor tudo. -->
+    <toast-host></toast-host>
+
+    <noscript>
+      <p style="padding: 1rem; font-family: sans-serif">
+        Este sistema precisa de JavaScript habilitado para funcionar.
+      </p>
+    </noscript>
+
+    <!-- Ponto de entrada da aplicação. type="module" habilita ES Modules. -->
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
