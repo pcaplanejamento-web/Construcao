@@ -66,8 +66,10 @@ preflight e falharia. Por isso:
   navegação). Trocar de aba é instantâneo.
 - **Write-through:** mutações chamam a API, atualizam o store e persistem o
   cache; a UI reage por assinatura do store.
-- **Layout:** `app-header` (persistente) + `app-sidebar` (abas; drawer no
-  mobile) + outlet do roteador, montados pelo `app-shell`.
+- **Layout:** `app-header` (persistente) + `app-sidebar` (abas; recolhível no
+  desktop; drawer no mobile) + outlet do roteador, montados pelo `app-shell`. A
+  altura é de viewport fixa e o conteúdo rola no `main` → a sidebar tem **altura
+  constante** em todas as telas. Gutter padrão de 24px (header/sidebar/conteúdo).
 
 ## "Tempo real" sem websocket
 

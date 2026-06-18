@@ -27,7 +27,7 @@ class AppHeader extends BaseElement {
         border-bottom: 1px solid var(--cor-borda);
       }
       .barra { display: flex; align-items: center; gap: var(--esp-3);
-        padding: var(--esp-3) var(--esp-4); }
+        padding: var(--esp-3) var(--esp-5); } /* gutter padrão (24px) = conteúdo/sidebar */
       .menu-btn { display: inline-flex; align-items: center; justify-content: center;
         background: none; border: none; color: var(--cor-texto-suave);
         padding: 8px; border-radius: var(--raio-sm); }

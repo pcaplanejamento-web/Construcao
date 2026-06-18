@@ -14,9 +14,12 @@ import "./app-sidebar.js";
 class AppShell extends BaseElement {
   estilos() {
     return `
-      :host { display: flex; flex-direction: column; min-height: 100vh; }
-      .corpo { flex: 1; display: flex; align-items: stretch; }
-      main { flex: 1; min-width: 0; }
+      /* Altura de viewport fixa: o conteúdo (main) rola internamente, então a
+         sidebar tem altura CONSTANTE em todas as telas (não estica por página). */
+      :host { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+      app-header { flex: none; }
+      .corpo { flex: 1; display: flex; align-items: stretch; min-height: 0; overflow: hidden; }
+      main { flex: 1; min-width: 0; min-height: 0; overflow: auto; }
     `;
   }
 

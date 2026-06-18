@@ -49,6 +49,21 @@ class DespesaTable extends BaseElement {
           return `<category-badge nome="${c.nome}" cor="${c.cor}"></category-badge>`;
         },
       },
+      {
+        chave: "criado_em",
+        titulo: "Registro",
+        formato: (criadoEm, linha) => {
+          if (!criadoEm) return "—";
+          const autor = linha.autor_nome || "—";
+          const editou =
+            linha.editor_nome &&
+            linha.atualizado_em &&
+            String(linha.atualizado_em) !== String(linha.criado_em);
+          return `<div>${fmtData(criadoEm)}</div><small style="color:var(--cor-texto-fraco)">por ${autor}${
+            editou ? ` · editado por ${linha.editor_nome}` : ""
+          }</small>`;
+        },
+      },
       { chave: "valor", titulo: "Valor", alinhar: "dir", formato: (v) => moeda(v) },
     ];
     tabela.acoes = [

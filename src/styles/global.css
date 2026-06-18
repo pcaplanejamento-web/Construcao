@@ -3,7 +3,10 @@
  * Mantemos o mínimo aqui: a maior parte do estilo é encapsulada por componente.
  */
 
-app-shell {
+/* Apenas ANTES do upgrade do componente (evita FOUC). Depois de definido, o
+   layout é controlado por :host (display:flex; height:100vh) — esta regra não
+   pode vencer o :host, senão o flex não clampa a altura. */
+app-shell:not(:defined) {
   display: block;
   min-height: 100vh;
 }

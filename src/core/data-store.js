@@ -231,9 +231,20 @@ async function removerObra(id) {
 /* ---------------------- Mutações: despesas --------------------------- */
 
 async function adicionarDespesa(obraId, dados) {
-  // 1) Otimista
+  // 1) Otimista (preenche autor/datas com o usuário atual; o servidor confirma)
+  const u = usuario() || {};
+  const agora = new Date().toISOString();
   const temp = Object.assign(
-    { id: "temp-" + Date.now() + "-" + Math.round(Math.random() * 1e6), obra_id: obraId, usuario_id: (usuario() || {}).id, _otimista: true },
+    {
+      id: "temp-" + Date.now() + "-" + Math.round(Math.random() * 1e6),
+      obra_id: obraId,
+      usuario_id: u.id,
+      autor_nome: u.nome || "",
+      editor_nome: u.nome || "",
+      criado_em: agora,
+      atualizado_em: agora,
+      _otimista: true,
+    },
     dados
   );
   _setDespesasObra(obraId, [temp, ...despesas(obraId)]);

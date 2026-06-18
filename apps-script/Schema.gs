@@ -57,6 +57,10 @@ const SCHEMA = {
       "data",
       "observacao",
       "criado_em",
+      // Auditoria (nomes desnormalizados p/ exibir sem lookup no cliente):
+      "autor_nome", // quem adicionou
+      "atualizado_em", // data da última edição
+      "editor_nome", // quem editou por último
     ],
   },
 

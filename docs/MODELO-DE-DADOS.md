@@ -66,7 +66,14 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | categoria_id | UUID | FK → Categorias.id |
 | data | ISO `YYYY-MM-DD` | data da despesa |
 | observacao | string | opcional |
-| criado_em | ISO datetime | |
+| criado_em | ISO datetime | data da adição |
+| autor_nome | string | quem adicionou (desnormalizado) |
+| atualizado_em | ISO datetime | data da última edição |
+| editor_nome | string | quem editou por último (desnormalizado) |
+
+> Auditoria: `criado_em`/`autor_nome` registram a adição; `atualizado_em`/
+> `editor_nome` a última edição. Nomes são desnormalizados para exibir sem
+> lookup no cliente (definidos no servidor a cada criar/atualizar).
 
 ## Aba `Categorias`
 | Coluna | Tipo | Descrição |

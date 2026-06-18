@@ -76,7 +76,9 @@ function despesasCriar(data, sessao) {
   if (!item) lancar(ERRO.VALIDACAO, "Informe o item da despesa.");
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
 
+  const nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
   return comLock(function () {
+    const agora = agoraIso();
     const despesa = {
       id: novoId(),
       obra_id: obraId,
@@ -84,9 +86,12 @@ function despesasCriar(data, sessao) {
       item: item,
       valor: valor,
       categoria_id: String((data && data.categoria_id) || ""),
-      data: String((data && data.data) || agoraIso().substring(0, 10)),
+      data: String((data && data.data) || agora.substring(0, 10)),
       observacao: String((data && data.observacao) || ""),
-      criado_em: agoraIso(),
+      criado_em: agora,
+      autor_nome: nome,
+      atualizado_em: agora,
+      editor_nome: nome,
     };
     repoInserir(SCHEMA.DESPESAS, despesa);
     return { despesa: despesa, resumo: _calcularResumo(obraId, sessao.usuario_id) };
@@ -124,6 +129,10 @@ function despesasAtualizar(data, sessao) {
   if (data.data !== undefined) patch.data = String(data.data);
   if (data.observacao !== undefined)
     patch.observacao = String(data.observacao);
+
+  // Auditoria: registra quem editou e quando.
+  patch.atualizado_em = agoraIso();
+  patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
   return comLock(function () {
     const despesa = repoAtualizar(SCHEMA.DESPESAS, "id", id, patch);

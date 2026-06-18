@@ -70,7 +70,7 @@ para dono **e** colaboradores.
 ### Despesas
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `despesas.listar` | `{ obra_id }` | `{ despesas: [...] }` |
+| `despesas.listar` | `{ obra_id }` | `{ despesas: [...] }` (cada despesa inclui `criado_em`/`autor_nome` e `atualizado_em`/`editor_nome` — auditoria) |
 | `despesas.resumo` | `{ obra_id }` | `{ total, qtd, orcamento, saldo, por_categoria:[{categoria_id,nome,cor,total}] }` |
 | `despesas.criar` | `{ obra_id, item, valor, categoria_id, data, observacao? }` | `{ despesa, resumo }` |
 | `despesas.atualizar` | `{ id, ...campos }` | `{ despesa, resumo }` |

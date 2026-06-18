@@ -30,7 +30,7 @@ sobem por `CustomEvent`**.
 ### Shell e navegação
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Esconde header/sidebar no login. |
+| `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Altura de viewport fixa: o conteúdo rola no `main` → **sidebar com altura constante** em todas as telas. Esconde header/sidebar no login. |
 | `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky): marca, **botão sanduíche** (recolhe no desktop / drawer no mobile), **alternador de tema** (sol/lua), chip do usuário → `#/perfil`, Sair. Ícones via `ui-icon`. |
 | `app-sidebar` | attr `aberto` (drawer mobile), `recolhido` (régua de ícones no desktop); evento `navegou` | Menu lateral em abas (Obras, Classificações, Administração via `role-guard`, Perfil). Ao recolher, os rótulos somem e o ícone fica no mesmo lugar; altura sempre 100% do conteúdo. Preferência persistida. |
 | `app-loader` | attr `texto` | Tela de carregamento inicial (overlay) exibida enquanto o snapshot carrega. |
@@ -63,7 +63,7 @@ sobem por `CustomEvent`**.
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
 | `despesa-form` | `.categorias`, `.emEdicao`; eventos `adicionar`, `salvar`, `cancelar` | Formulário inline (não chama API; emite eventos). |
-| `despesa-table` | `.despesas`, `.categorias`; eventos `editar`, `remover` | Reutiliza `ui-data-table` + `category-badge`. |
+| `despesa-table` | `.despesas`, `.categorias`; eventos `editar`, `remover` | Reutiliza `ui-data-table` + `category-badge`. Coluna **Registro**: data da adição + autor + quem editou. |
 | `category-badge` | `nome`, `cor` | Reutiliza `ui-badge`. |
 
 ### Classificações — `features/categorias/`
