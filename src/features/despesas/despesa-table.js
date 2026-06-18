@@ -36,15 +36,16 @@ class DespesaTable extends BaseElement {
 
   aposRender() {
     const tabela = this.$("#tabela");
-    const mapa = this.mapaCat;
     tabela.columns = [
       { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
       { chave: "item", titulo: "Item" },
       {
         chave: "categoria_id",
         titulo: "Classificação",
+        // Lê o mapa dinamicamente (this.mapaCat) para refletir categorias
+        // definidas DEPOIS do primeiro render (ex.: setter .categorias).
         formato: (id) => {
-          const c = mapa[id] || { nome: "Sem categoria", cor: "#94a3b8" };
+          const c = this.mapaCat[id] || { nome: "Sem categoria", cor: "#94a3b8" };
           return `<category-badge nome="${c.nome}" cor="${c.cor}"></category-badge>`;
         },
       },

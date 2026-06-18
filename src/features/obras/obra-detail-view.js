@@ -65,6 +65,7 @@ class ObraDetailView extends BaseElement {
 
   aoConectar() {
     this.aoLimpar(bus.on(EVENTOS.OBRAS, () => this.recarregarObra()));
+    this.aoLimpar(bus.on(EVENTOS.CATEGORIAS, () => this.recarregarCategorias()));
     this.carregar();
     this._timer = setInterval(
       () => this.recarregarSilencioso(),
@@ -125,6 +126,19 @@ class ObraDetailView extends BaseElement {
   indexarCategorias() {
     this._mapaCat = {};
     this._categorias.forEach((c) => (this._mapaCat[c.id] = c));
+  }
+
+  /** Recarrega as classificações da obra (ex.: usuário criou uma nova). */
+  async recarregarCategorias() {
+    try {
+      const r = await api.call("obras.obter", { id: this.obraId });
+      this._categorias = r.categorias || [];
+      this.indexarCategorias();
+      if (this._form) this._form.categorias = this._categorias;
+      this.atualizarDados();
+    } catch (e) {
+      /* silencioso */
+    }
   }
 
   /* --------------------------- Montagem ------------------------------ */

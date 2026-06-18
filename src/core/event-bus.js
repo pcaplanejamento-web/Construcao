@@ -12,6 +12,7 @@ export const EVENTOS = {
   AUTH: "auth:changed", // login/logout
   OBRAS: "obras:changed", // CRUD de obras
   DESPESAS: "despesas:changed", // CRUD de despesas
+  CATEGORIAS: "categorias:changed", // CRUD de categorias
   TOAST: "toast", // notificação para o usuário
 };
 

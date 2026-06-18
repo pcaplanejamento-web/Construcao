@@ -24,6 +24,7 @@ class AppNav extends BaseElement {
     return `
       <nav>
         <a href="#/obras" data-rota="#/obras">Minhas obras</a>
+        <a href="#/categorias" data-rota="#/categorias">Classificações</a>
         <role-guard role="admin">
           <a href="#/admin" data-rota="#/admin">Administração</a>
         </role-guard>

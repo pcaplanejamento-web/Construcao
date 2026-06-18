@@ -22,6 +22,7 @@ import "./features/app-shell.js";
 import "./features/auth/login-view.js";
 import "./features/obras/obras-list-view.js";
 import "./features/obras/obra-detail-view.js";
+import "./features/categorias/categorias-view.js";
 import "./features/admin/admin-view.js";
 
 async function iniciar() {
@@ -34,6 +35,7 @@ async function iniciar() {
     .adicionar("#/login", "login-view", { somentePublico: true })
     .adicionar("#/obras", "obras-list-view", { protegida: true })
     .adicionar("#/obras/:id", "obra-detail-view", { protegida: true })
+    .adicionar("#/categorias", "categorias-view", { protegida: true })
     .adicionar("#/admin", "admin-view", { protegida: true, admin: true });
 
   // Restaura/valida a sessão (auth.me) antes de decidir a rota inicial.

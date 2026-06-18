@@ -55,6 +55,15 @@ sobem por `CustomEvent`**.
 | `despesa-table` | `.despesas`, `.categorias`; eventos `editar`, `remover` | Reutiliza `ui-data-table` + `category-badge`. |
 | `category-badge` | `nome`, `cor` | Reutiliza `ui-badge`. |
 
+### Classificações — `features/categorias/`
+| Componente | Props/Eventos | Descrição |
+|------------|---------------|-----------|
+| `categorias-view` | — | Rota `#/categorias`. Cada usuário cria/edita/remove suas classificações; mostra as globais como referência. Reusa `ui-data-table` + `category-badge`. |
+| `categoria-form` | `.categoria`; eventos `salvo`, `fechar` | Modal criar/editar classificação (nome + cor). Emite `EVENTOS.CATEGORIAS`. |
+
+> Ao criar/editar uma classificação, `EVENTOS.CATEGORIAS` faz a `obra-detail-view`
+> recarregar as categorias (atualiza o select de despesa e os rótulos da tabela).
+
 ### Dashboard — `features/dashboard/`
 | Componente | Props | Descrição |
 |------------|-------|-----------|
