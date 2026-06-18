@@ -1,29 +1,62 @@
 /**
- * app.js — Ponto de entrada e composition root da aplicação.
+ * app.js — Ponto de entrada e composition root.
  *
- * Responsabilidades:
- *  - Registrar (via import) os componentes raiz e as views.
- *  - Criar o roteador apontando para o outlet do <app-shell>.
- *  - Restaurar a sessão antes de resolver a primeira rota.
- *  - Re-resolver a rota quando a autenticação muda (login/logout).
- *
- * Princípio de execução: este é o ÚNICO lugar que conhece o mapa de rotas.
+ * Boot cache-first: restaura sessão → carrega o estado (snapshot único) com
+ * <app-loader> no primeiro acesso (ou instantâneo via cache) → roteia. Mantém
+ * o cache fresco com refresh em 2º plano (foco da aba + intervalo). Único lugar
+ * que conhece o mapa de rotas.
  */
 import { auth } from "./core/auth-store.js";
+import { dataStore } from "./core/data-store.js";
 import { criarRouter } from "./core/router.js";
-import { bus, EVENTOS } from "./core/event-bus.js";
+import { bus, EVENTOS, notificarErro } from "./core/event-bus.js";
 import { CONFIG } from "./core/config.js";
 
 // Notificações (define <toast-host>, usado no index.html).
 import "./components/ui-toast.js";
 
-// Shell e views (cada módulo se auto-registra como Custom Element).
+// Shell, loader e views (cada módulo se auto-registra como Custom Element).
 import "./features/app-shell.js";
+import "./features/app-loader.js";
 import "./features/auth/login-view.js";
 import "./features/obras/obras-list-view.js";
 import "./features/obras/obra-detail-view.js";
 import "./features/categorias/categorias-view.js";
+import "./features/perfil/perfil-view.js";
 import "./features/admin/admin-view.js";
+
+let loaderEl = null;
+function mostrarLoader() {
+  if (loaderEl) return;
+  loaderEl = document.createElement("app-loader");
+  document.body.appendChild(loaderEl);
+}
+function esconderLoader() {
+  if (loaderEl) {
+    loaderEl.remove();
+    loaderEl = null;
+  }
+}
+
+/**
+ * Garante o estado carregado.
+ * @param {boolean} forcar  true (login) força snapshot com loader; false (boot)
+ *                          usa cache instantâneo + refresh em 2º plano.
+ */
+async function carregarDados(forcar) {
+  if (!forcar && dataStore.restaurarCache()) {
+    dataStore.atualizarEmSegundoPlano();
+    return;
+  }
+  mostrarLoader();
+  try {
+    await dataStore.inicializar();
+  } catch (e) {
+    notificarErro(e);
+  } finally {
+    esconderLoader();
+  }
+}
 
 async function iniciar() {
   await customElements.whenDefined("app-shell");
@@ -36,15 +69,29 @@ async function iniciar() {
     .adicionar("#/obras", "obras-list-view", { protegida: true })
     .adicionar("#/obras/:id", "obra-detail-view", { protegida: true })
     .adicionar("#/categorias", "categorias-view", { protegida: true })
+    .adicionar("#/perfil", "perfil-view", { protegida: true })
     .adicionar("#/admin", "admin-view", { protegida: true, admin: true });
 
-  // Restaura/valida a sessão (auth.me) antes de decidir a rota inicial.
   await auth.restaurar();
+  if (auth.estaAutenticado()) await carregarDados(false);
 
-  // Navega conforme login/logout.
-  bus.on(EVENTOS.AUTH, ({ autenticado }) => {
-    router.navegar(autenticado ? CONFIG.ROTA_INICIAL : "#/login");
+  bus.on(EVENTOS.AUTH, async ({ autenticado }) => {
+    if (autenticado) {
+      await carregarDados(true);
+      router.navegar(CONFIG.ROTA_INICIAL);
+    } else {
+      dataStore.limparCache();
+      router.navegar("#/login");
+    }
   });
+
+  // Refresh em 2º plano: ao focar a aba e em intervalo lento.
+  window.addEventListener("focus", () => {
+    if (auth.estaAutenticado()) dataStore.atualizarEmSegundoPlano();
+  });
+  setInterval(() => {
+    if (auth.estaAutenticado()) dataStore.atualizarEmSegundoPlano();
+  }, 60000);
 
   router.iniciar();
 }

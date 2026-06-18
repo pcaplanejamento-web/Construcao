@@ -1,14 +1,13 @@
 /**
  * <categorias-view> — Gestão das classificações de itens (rota #/categorias).
  *
- * Cada usuário cria/edita/remove as SUAS classificações. As classificações
- * padrão (globais) são exibidas como referência (somente leitura).
+ * Lê do data-store (cache-first) e assina mudanças. Cada usuário cria/edita/
+ * remove as SUAS classificações; as globais aparecem como referência.
  * Reusa ui-card, ui-data-table, category-badge, ui-button, ui-empty-state.
  */
 import { BaseElement } from "../../components/base-element.js";
-import { api } from "../../core/api-client.js";
-import { auth } from "../../core/auth-store.js";
-import { bus, EVENTOS, toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { dataStore } from "../../core/data-store.js";
+import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-button.js";
@@ -18,12 +17,6 @@ import "../despesas/category-badge.js";
 import "./categoria-form.js";
 
 class CategoriasView extends BaseElement {
-  constructor() {
-    super();
-    this._categorias = [];
-    this._carregando = true;
-  }
-
   estilos() {
     return `
       :host { display: block; }
@@ -55,23 +48,7 @@ class CategoriasView extends BaseElement {
 
   aoConectar() {
     this.$("#nova").addEventListener("click", () => this.abrirForm(null));
-    this.aoLimpar(bus.on(EVENTOS.CATEGORIAS, () => this.carregar()));
-    this.carregar();
-  }
-
-  async carregar() {
-    this._carregando = true;
-    this.pintar();
-    try {
-      const r = await api.call("categorias.listar");
-      this._categorias = r.categorias || [];
-    } catch (e) {
-      notificarErro(e);
-      this._categorias = [];
-    } finally {
-      this._carregando = false;
-      this.pintar();
-    }
+    this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
 
   pintar() {
@@ -79,17 +56,17 @@ class CategoriasView extends BaseElement {
     const globaisEl = this.$("#globais");
     if (!minhasEl) return;
 
-    if (this._carregando) {
+    if (!dataStore.carregado()) {
       minhasEl.innerHTML = `<ui-spinner centro text="Carregando..."></ui-spinner>`;
       globaisEl.innerHTML = "";
       return;
     }
 
-    const meuId = (auth.usuario() || {}).id;
-    const minhas = this._categorias.filter((c) => String(c.usuario_id) === String(meuId));
-    const globais = this._categorias.filter((c) => String(c.usuario_id) !== String(meuId));
+    const meuId = (dataStore.usuario() || {}).id;
+    const todas = dataStore.categorias();
+    const minhas = todas.filter((c) => String(c.usuario_id) === String(meuId));
+    const globais = todas.filter((c) => String(c.usuario_id) !== String(meuId));
 
-    // Minhas classificações: tabela com ações (reusa ui-data-table + category-badge).
     if (!minhas.length) {
       minhasEl.innerHTML = `
         <ui-empty-state icone="🏷️" titulo="Nenhuma classificação sua"
@@ -119,7 +96,6 @@ class CategoriasView extends BaseElement {
       minhasEl.replaceChildren(tabela);
     }
 
-    // Globais: badges somente leitura (reusa category-badge).
     globaisEl.innerHTML = `<div class="globais">${globais
       .map((c) => `<category-badge nome="${c.nome}" cor="${c.cor}"></category-badge>`)
       .join("")}</div>`;
@@ -137,9 +113,8 @@ class CategoriasView extends BaseElement {
   async remover(categoria) {
     if (!confirm(`Excluir a classificação "${categoria.nome}"?`)) return;
     try {
-      await api.call("categorias.remover", { id: categoria.id });
+      await dataStore.removerCategoria(categoria.id);
       toastSucesso("Classificação removida.");
-      bus.emit(EVENTOS.CATEGORIAS, { tipo: "removida" });
     } catch (e) {
       notificarErro(e);
     }

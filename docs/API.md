@@ -39,6 +39,12 @@ A API é um **único Web App** do Apps Script. Um `doPost` despacha por `action`
 | `auth.login` | `{ email, senha }` | `{ token, usuario, config }` |
 | `auth.logout` | `{}` | `{ encerrada: true }` |
 | `auth.me` | `{}` | `{ usuario, config }` |
+| `auth.alterarSenha` | `{ senhaAtual, novaSenha }` | `{ alterada: true }` (o próprio usuário) |
+
+### Estado inicial (cache-first)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
 
 ### Obras (próprias + compartilhadas)
 Cada obra inclui `ehDono` (bool), `dono_nome`/`dono_email` e `total_gasto`.

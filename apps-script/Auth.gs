@@ -195,3 +195,25 @@ function authMe(data, sessao) {
     config: montarConfigUsuario(u.id),
   };
 }
+
+/** auth.alterarSenha — o próprio usuário troca a senha. */
+function authAlterarSenha(data, sessao) {
+  const senhaAtual = data && data.senhaAtual;
+  const novaSenha = String((data && data.novaSenha) || "");
+  const u = buscarUsuarioPorId(sessao.usuario_id);
+  if (!u) lancar(ERRO.NAO_AUTENTICADO, "Usuário não encontrado.");
+  if (!verificarSenha(senhaAtual, u.senha_hash, u.salt)) {
+    lancar(ERRO.CREDENCIAIS_INVALIDAS, "Senha atual incorreta.");
+  }
+  if (novaSenha.length < 6) {
+    lancar(ERRO.VALIDACAO, "A nova senha deve ter ao menos 6 caracteres.");
+  }
+  return comLock(function () {
+    const par = criarHashSenha(novaSenha);
+    repoAtualizar(SCHEMA.USUARIOS, "id", u.id, {
+      senha_hash: par.hash,
+      salt: par.salt,
+    });
+    return { alterada: true };
+  });
+}

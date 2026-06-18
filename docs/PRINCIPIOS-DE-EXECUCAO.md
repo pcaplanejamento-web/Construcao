@@ -32,10 +32,14 @@ acoplam diretamente.
 `components/` (os `ui-*`) jamais importam API, auth ou regra de negócio. Toda
 regra de negócio vive em `features/`.
 
-### 6. Servidor é a fonte de verdade; cliente é otimista
-A UI atualiza de forma otimista para fluidez (ex.: ao lançar despesa), mas
-**sempre reconcilia** com a resposta/refetch do servidor.
-→ ver [`obra-detail-view.js`](../src/features/obras/obra-detail-view.js).
+### 6. Cache-first; servidor é a fonte de verdade
+Todo o estado é carregado uma vez (`dados.snapshot`) para um **data-store**
+central, persistido em cache (localStorage por usuário). As views leem do store
+(sem recarregar); as mutações são **write-through** (API → store → cache) e a UI
+atualiza de forma otimista. Mas a verdade é sempre o servidor: a resposta de
+cada mutação e o refresh em 2º plano reconciliam o cache.
+→ ver [`data-store.js`](../src/core/data-store.js) e
+[`obra-detail-view.js`](../src/features/obras/obra-detail-view.js).
 
 ### 7. Autorização é server-side
 O gating no cliente (rotas, `role-guard`) é só UX. Toda `action` revalida o

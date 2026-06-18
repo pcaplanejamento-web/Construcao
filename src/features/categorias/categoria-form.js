@@ -6,8 +6,8 @@
  * emite EVENTOS.CATEGORIAS para os demais componentes reagirem.
  */
 import { BaseElement } from "../../components/base-element.js";
-import { api } from "../../core/api-client.js";
-import { bus, EVENTOS, toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { dataStore } from "../../core/data-store.js";
+import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { obrigatorio } from "../../core/validators.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
@@ -75,13 +75,12 @@ class CategoriaForm extends BaseElement {
     btn.setAttribute("loading", "");
     try {
       if (this.ehEdicao) {
-        await api.call("categorias.atualizar", { id: this.categoria.id, nome, cor });
+        await dataStore.atualizarCategoria(this.categoria.id, { nome, cor });
         toastSucesso("Classificação atualizada.");
       } else {
-        await api.call("categorias.criar", { nome, cor });
+        await dataStore.criarCategoria({ nome, cor });
         toastSucesso("Classificação criada.");
       }
-      bus.emit(EVENTOS.CATEGORIAS, { tipo: this.ehEdicao ? "atualizada" : "criada" });
       this.emitir("salvo");
       this.emitir("fechar");
     } catch (e) {

@@ -5,7 +5,7 @@
  * Eventos: "salvo", "fechar". Auto-contido (chama a API admin.usuarios.*).
  */
 import { BaseElement } from "../../components/base-element.js";
-import { api } from "../../core/api-client.js";
+import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { primeiroErro, obrigatorio, email as validarEmail, senhaMinima } from "../../core/validators.js";
 import "../../components/ui-modal.js";
@@ -112,10 +112,10 @@ class UserForm extends BaseElement {
         const ativo = this.$("#ativo");
         if (ativo) dados.ativo = ativo.value === "1";
         if (senha) dados.novaSenha = senha;
-        await api.call("admin.usuarios.atualizar", dados);
+        await dataStore.adminAtualizarUsuario(dados);
         toastSucesso("Usuário atualizado.");
       } else {
-        await api.call("admin.usuarios.criar", {
+        await dataStore.adminCriarUsuario({
           nome,
           email: this.$("#email").value.trim(),
           senha,

@@ -1,13 +1,12 @@
 /**
  * <admin-view> — Painel de administração (rota #/admin, somente admin).
  *
- * Lista usuários, permite criar/editar e gerir configurações por usuário.
- * A rota é protegida no client (router) e cada action admin.* é revalidada
- * server-side (princípio nº 7).
+ * Lê os usuários do data-store (vêm no snapshot quando admin) e assina mudanças.
+ * Criar/editar usuário vão pelas mutações do store; configurações por usuário
+ * continuam via <user-config-form> (chamada direta à API admin).
  */
 import { BaseElement } from "../../components/base-element.js";
-import { api } from "../../core/api-client.js";
-import { notificarErro } from "../../core/event-bus.js";
+import { dataStore } from "../../core/data-store.js";
 import "../../components/ui-button.js";
 import "../../components/ui-card.js";
 import "../../components/ui-spinner.js";
@@ -16,12 +15,6 @@ import "./user-form.js";
 import "./user-config-form.js";
 
 class AdminView extends BaseElement {
-  constructor() {
-    super();
-    this._usuarios = [];
-    this._carregando = true;
-  }
-
   estilos() {
     return `
       :host { display: block; }
@@ -52,33 +45,18 @@ class AdminView extends BaseElement {
 
   aoConectar() {
     this.$("#novo").addEventListener("click", () => this.abrirUserForm(null));
-    this.carregar();
-  }
-
-  async carregar() {
-    this._carregando = true;
-    this.pintar();
-    try {
-      const r = await api.call("admin.usuarios.listar");
-      this._usuarios = r.usuarios || [];
-    } catch (e) {
-      notificarErro(e);
-      this._usuarios = [];
-    } finally {
-      this._carregando = false;
-      this.pintar();
-    }
+    this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
 
   pintar() {
     const alvo = this.$("#conteudo");
     if (!alvo) return;
-    if (this._carregando) {
+    if (!dataStore.carregado()) {
       alvo.innerHTML = `<ui-spinner centro text="Carregando usuários..."></ui-spinner>`;
       return;
     }
     const tabela = document.createElement("users-table");
-    tabela.usuarios = this._usuarios;
+    tabela.usuarios = dataStore.usuarios();
     tabela.addEventListener("editar", (e) => this.abrirUserForm(e.detail.usuario));
     tabela.addEventListener("config", (e) => this.abrirConfig(e.detail.usuario));
     alvo.replaceChildren(tabela);
@@ -89,7 +67,7 @@ class AdminView extends BaseElement {
     form.usuario = usuario;
     const fechar = () => form.remove();
     form.addEventListener("fechar", fechar);
-    form.addEventListener("salvo", () => this.carregar());
+    form.addEventListener("salvo", fechar); // o store atualiza a tabela
     document.body.appendChild(form);
   }
 

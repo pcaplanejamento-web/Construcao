@@ -12,6 +12,10 @@ const ROTAS = {
   "auth.login": { fn: authLogin, publica: true },
   "auth.logout": { fn: authLogout },
   "auth.me": { fn: authMe },
+  "auth.alterarSenha": { fn: authAlterarSenha },
+
+  // Estado inicial completo (carregamento único + cache no cliente)
+  "dados.snapshot": { fn: dadosSnapshot },
 
   // Obras
   "obras.listar": { fn: obrasListar },

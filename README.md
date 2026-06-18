@@ -32,6 +32,8 @@ Passo a passo completo: **[docs/SETUP-E-DEPLOY.md](docs/SETUP-E-DEPLOY.md)**.
 
 ## Funcionalidades
 
-Login • obras por usuário • despesas com classificação • dashboard de gastos em
-tempo real • categorias globais e próprias • admin cadastra usuários e define
-configurações por usuário.
+Login • header persistente + menu lateral em abas • obras por usuário •
+compartilhamento de obras entre usuários • despesas com classificação •
+dashboard de gastos em tempo real • classificações próprias por usuário •
+página de perfil com troca de senha • carregamento único com cache (todas as
+telas instantâneas) • admin cadastra usuários e define configurações.

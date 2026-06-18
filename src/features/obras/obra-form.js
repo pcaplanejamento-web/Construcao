@@ -6,8 +6,8 @@
  * Auto-contido: faz a chamada à API e emite EVENTOS.OBRAS para a lista atualizar.
  */
 import { BaseElement } from "../../components/base-element.js";
-import { api } from "../../core/api-client.js";
-import { bus, EVENTOS, toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { dataStore } from "../../core/data-store.js";
+import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { obrigatorio } from "../../core/validators.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
@@ -106,16 +106,14 @@ class ObraForm extends BaseElement {
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");
     try {
-      let resp;
       if (this.ehEdicao) {
-        resp = await api.call("obras.atualizar", { id: this.obra.id, ...dados });
+        await dataStore.atualizarObra(this.obra.id, dados);
         toastSucesso("Obra atualizada.");
       } else {
-        resp = await api.call("obras.criar", dados);
+        await dataStore.criarObra(dados);
         toastSucesso("Obra criada.");
       }
-      bus.emit(EVENTOS.OBRAS, { tipo: this.ehEdicao ? "atualizada" : "criada" });
-      this.emitir("salvo", { obra: resp.obra });
+      this.emitir("salvo");
       this.emitir("fechar");
     } catch (e) {
       notificarErro(e);

@@ -1,12 +1,12 @@
 /**
  * <obras-list-view> — Lista as obras do usuário (rota #/obras).
  *
- * Busca via obras.listar, renderiza um grid de <obra-card>, permite criar,
- * editar e excluir. Reage a EVENTOS.OBRAS para recarregar.
+ * Lê do data-store (cache-first, sem recarregar): assina o store e repinta.
+ * Criar/editar/excluir vão pelas mutações do store (write-through).
  */
 import { BaseElement } from "../../components/base-element.js";
-import { api } from "../../core/api-client.js";
-import { bus, EVENTOS, toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { dataStore } from "../../core/data-store.js";
+import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-empty-state.js";
@@ -15,12 +15,6 @@ import "./obra-form.js";
 import "./obra-share-form.js";
 
 class ObrasListView extends BaseElement {
-  constructor() {
-    super();
-    this._obras = [];
-    this._carregando = true;
-  }
-
   estilos() {
     return `
       :host { display: block; }
@@ -51,34 +45,20 @@ class ObrasListView extends BaseElement {
 
   aoConectar() {
     this.$("#nova").addEventListener("click", () => this.abrirForm(null));
-    this.aoLimpar(bus.on(EVENTOS.OBRAS, () => this.carregar()));
-    this.carregar();
-  }
-
-  async carregar() {
-    this._carregando = true;
-    this.pintar();
-    try {
-      const data = await api.call("obras.listar");
-      this._obras = data.obras || [];
-    } catch (e) {
-      notificarErro(e);
-      this._obras = [];
-    } finally {
-      this._carregando = false;
-      this.pintar();
-    }
+    // Assina o store: repinta quando as obras (ou totais) mudam.
+    this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
 
   pintar() {
     const alvo = this.$("#conteudo");
     if (!alvo) return;
 
-    if (this._carregando) {
+    if (!dataStore.carregado()) {
       alvo.innerHTML = `<ui-spinner centro text="Carregando obras..."></ui-spinner>`;
       return;
     }
-    if (!this._obras.length) {
+    const obras = dataStore.obras();
+    if (!obras.length) {
       alvo.innerHTML = `
         <ui-empty-state icone="🏗️" titulo="Nenhuma obra ainda"
           texto="Crie sua primeira obra para começar a registrar despesas.">
@@ -90,7 +70,7 @@ class ObrasListView extends BaseElement {
 
     const grid = document.createElement("div");
     grid.className = "grid";
-    this._obras.forEach((o) => {
+    obras.forEach((o) => {
       const card = document.createElement("obra-card");
       card.obra = o;
       card.addEventListener("abrir", (e) => {
@@ -123,9 +103,8 @@ class ObrasListView extends BaseElement {
   async remover(obra) {
     if (!confirm(`Excluir a obra "${obra.nome}" e todas as suas despesas?`)) return;
     try {
-      await api.call("obras.remover", { id: obra.id });
+      await dataStore.removerObra(obra.id);
       toastSucesso("Obra excluída.");
-      bus.emit(EVENTOS.OBRAS, { tipo: "removida" });
     } catch (e) {
       notificarErro(e);
     }

@@ -29,15 +29,25 @@ sobem por `CustomEvent`**.
 ### Shell e navegação
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `app-shell` | getter `.outlet` | Layout raiz: cabeçalho + outlet do roteador. Esconde o cabeçalho no login. |
-| `app-nav` | — | Navegação; item de admin via `role-guard`. |
+| `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Esconde header/sidebar no login. |
+| `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky): marca, ☰ (mobile), chip do usuário → `#/perfil`, Sair. |
+| `app-sidebar` | attr `aberto`; evento `navegou` | Menu lateral em abas (Obras, Classificações, Administração via `role-guard`, Perfil). Drawer retrátil no mobile. |
+| `app-loader` | attr `texto` | Tela de carregamento inicial (overlay) exibida enquanto o snapshot carrega. |
 | `role-guard` | attr `role="admin"\|"usuario"` | Mostra/oculta o slot conforme o papel (UX). |
+
+> As views leem do **data-store** ([data-store.js](../src/core/data-store.js)) — cache-first, sem recarregar. Navegação entre abas é instantânea.
 
 ### Autenticação — `features/auth/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
 | `login-view` | — | Tela `#/login` (cartão centralizado). |
 | `login-form` | — | Formulário; chama `auth.login`. |
+
+### Perfil — `features/perfil/`
+| Componente | Props/Eventos | Descrição |
+|------------|---------------|-----------|
+| `perfil-view` | — | Rota `#/perfil`. Dados do usuário (do data-store) + segurança. |
+| `senha-form` | — | Troca de senha (atual/nova/confirmar) → `auth.alterarSenha`. Reusa `ui-input`/`ui-button`. |
 
 ### Obras — `features/obras/`
 | Componente | Props/Eventos | Descrição |

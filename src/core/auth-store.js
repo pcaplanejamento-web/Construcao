@@ -61,6 +61,11 @@ export const auth = {
     return data.usuario;
   },
 
+  /** Altera a própria senha (exige a senha atual). */
+  async alterarSenha(senhaAtual, novaSenha) {
+    return api.call("auth.alterarSenha", { senhaAtual, novaSenha });
+  },
+
   /** Encerra a sessão (server-side e local). */
   async logout() {
     try {
@@ -85,6 +90,9 @@ export const auth = {
       estado.usuario = data.usuario;
       estado.config = data.config || {};
       persistir();
+      // Avisa a UI (shell/header/sidebar) que há sessão ativa. Emitido ANTES de
+      // app.js assinar AUTH, então não dispara recarga/navegação — só atualiza o layout.
+      bus.emit(EVENTOS.AUTH, { autenticado: true, usuario: estado.usuario });
       return true;
     } catch (e) {
       estado = { token: null, usuario: null, config: {} };

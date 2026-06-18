@@ -21,6 +21,9 @@
 1. **`core/`** — sem UI. Conhece o backend e o estado global.
    - `api-client.js`: único ponto que fala com a API.
    - `auth-store.js`: sessão (token/usuário/config) + persistência.
+   - `data-store.js`: **estado central + cache** (cache-first). Carrega tudo via
+     `dados.snapshot`, persiste em localStorage por usuário, e expõe getters +
+     mutações write-through. As views leem daqui (sem recarregar).
    - `router.js`: roteamento hash-based + gating de rota.
    - `store.js`, `event-bus.js`: estado reativo e pub/sub.
    - `formatters.js`, `validators.js`, `config.js`: utilitários e configuração.
@@ -53,18 +56,30 @@ preflight e falharia. Por isso:
   `action`**.
 - Respostas são sempre JSON via `ContentService`, sempre HTTP 200.
 
+## Carregamento único, cache e layout
+
+- **Carregamento inicial:** no boot, `app.js` mostra `<app-loader>` e chama
+  `dataStore.inicializar()` → uma única requisição `dados.snapshot` traz todo o
+  estado do usuário. Em recargas seguintes, `dataStore.restaurarCache()` pinta a
+  UI **instantânea** a partir do localStorage e atualiza em 2º plano.
+- **Cache-first:** as views leem do `data-store` (sem recarregar a cada
+  navegação). Trocar de aba é instantâneo.
+- **Write-through:** mutações chamam a API, atualizam o store e persistem o
+  cache; a UI reage por assinatura do store.
+- **Layout:** `app-header` (persistente) + `app-sidebar` (abas; drawer no
+  mobile) + outlet do roteador, montados pelo `app-shell`.
+
 ## "Tempo real" sem websocket
 
-O Apps Script não tem websockets. O acompanhamento ao vivo dos gastos é obtido
-por (ver [`obra-detail-view.js`](../src/features/obras/obra-detail-view.js)):
+O Apps Script não tem websockets. O acompanhamento ao vivo é obtido por:
 
-1. **UI otimista** — a despesa entra na lista e o resumo é recalculado
-   localmente no instante do envio.
+1. **UI otimista** — a despesa entra na lista e o resumo é recalculado no store
+   no instante do envio (ver [`data-store.js`](../src/core/data-store.js)).
 2. **Confirmação** — `despesas.criar` devolve o `resumo` do servidor, que vira a
    verdade (substitui o item otimista).
-3. **Refetch por evento** — mutações emitem `despesas:changed`.
-4. **Polling leve** — enquanto a tela de detalhe está aberta, recarrega o resumo
-   a cada `CONFIG.POLLING_RESUMO_MS`, reconciliando alterações de outra aba.
+3. **Refresh em 2º plano** — `app.js` chama `dataStore.atualizarEmSegundoPlano()`
+   ao focar a aba e a cada ~60s, refazendo o snapshot silenciosamente. Assim
+   mudanças de outros usuários (ex.: colaborador) aparecem sem recarregar.
 
 ## Sessão e cache
 

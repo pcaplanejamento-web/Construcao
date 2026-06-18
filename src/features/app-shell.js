@@ -1,50 +1,33 @@
 /**
- * <app-shell> — Layout raiz: cabeçalho (logo, navegação, usuário, sair) +
- * <main> que serve de "outlet" para o roteador renderizar a view ativa.
+ * <app-shell> — Layout raiz: <app-header> persistente + <app-sidebar> + <main>
+ * outlet onde o roteador renderiza a view ativa.
  *
- * O cabeçalho some na tela de login (sem sessão). O outlet NUNCA é destruído
- * em re-render do cabeçalho — só o roteador mexe no seu conteúdo.
+ * Header e sidebar só aparecem com sessão (somem no login). O outlet é estável
+ * (nunca destruído ao alternar auth) — apenas o roteador mexe no seu conteúdo.
  */
 import { BaseElement } from "../components/base-element.js";
 import { auth } from "../core/auth-store.js";
 import { bus, EVENTOS } from "../core/event-bus.js";
-import "./app-nav.js";
+import "./app-header.js";
+import "./app-sidebar.js";
 
 class AppShell extends BaseElement {
   estilos() {
     return `
-      :host { display: block; min-height: 100vh; }
-      header {
-        background: var(--cor-superficie); border-bottom: 1px solid var(--cor-borda);
-        position: sticky; top: 0; z-index: var(--z-nav);
-      }
-      .barra {
-        max-width: 1100px; margin: 0 auto; padding: var(--esp-3) var(--esp-4);
-        display: flex; align-items: center; gap: var(--esp-5);
-      }
-      .marca { display: flex; align-items: center; gap: var(--esp-2);
-        font-weight: var(--peso-forte); color: var(--cor-primaria); font-size: var(--fs-lg); }
-      .marca .logo { font-size: 1.3rem; }
-      .cresce { flex: 1; }
-      .usuario { display: flex; align-items: center; gap: var(--esp-3); }
-      .nome { font-size: var(--fs-sm); color: var(--cor-texto-suave); }
-      .nome strong { color: var(--cor-texto); }
-      .sair {
-        border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
-        color: var(--cor-texto-suave); border-radius: var(--raio-sm);
-        padding: 6px 12px; font-size: var(--fs-sm);
-      }
-      .sair:hover { background: var(--cor-superficie-2); }
-      main { display: block; }
-      @media (max-width: 640px) {
-        .barra { flex-wrap: wrap; gap: var(--esp-3); }
-        .nome { display: none; }
-      }
+      :host { display: flex; flex-direction: column; min-height: 100vh; }
+      .corpo { flex: 1; display: flex; align-items: stretch; }
+      main { flex: 1; min-width: 0; }
     `;
   }
 
   template() {
-    return `<header id="cab" hidden></header><main id="outlet"></main>`;
+    return `
+      <app-header id="hdr" hidden></app-header>
+      <div class="corpo">
+        <app-sidebar id="sb" hidden></app-sidebar>
+        <main id="outlet"></main>
+      </div>
+    `;
   }
 
   /** O roteador renderiza as views aqui. */
@@ -53,35 +36,22 @@ class AppShell extends BaseElement {
   }
 
   aoConectar() {
-    this.renderCabecalho();
-    this.aoLimpar(bus.on(EVENTOS.AUTH, () => this.renderCabecalho()));
+    this.refletirAuth();
+    this.aoLimpar(bus.on(EVENTOS.AUTH, () => this.refletirAuth()));
+
+    const hdr = this.$("#hdr");
+    const sb = this.$("#sb");
+    hdr.addEventListener("toggle-sidebar", () =>
+      sb.toggleAttribute("aberto")
+    );
+    sb.addEventListener("navegou", () => sb.removeAttribute("aberto"));
   }
 
-  renderCabecalho() {
-    const cab = this.$("#cab");
-    if (!auth.estaAutenticado()) {
-      cab.hidden = true;
-      cab.innerHTML = "";
-      return;
-    }
-    const u = auth.usuario() || {};
-    cab.hidden = false;
-    cab.innerHTML = `
-      <div class="barra">
-        <a class="marca" href="#/obras" style="text-decoration:none">
-          <span class="logo">🏗️</span> Gestão de Obras
-        </a>
-        <app-nav></app-nav>
-        <span class="cresce"></span>
-        <div class="usuario">
-          <span class="nome">Olá, <strong>${u.nome || ""}</strong>${
-      u.role === "admin" ? " (admin)" : ""
-    }</span>
-          <button class="sair" id="sair">Sair</button>
-        </div>
-      </div>
-    `;
-    cab.querySelector("#sair").addEventListener("click", () => auth.logout());
+  refletirAuth() {
+    const autenticado = auth.estaAutenticado();
+    this.$("#hdr").hidden = !autenticado;
+    this.$("#sb").hidden = !autenticado;
+    if (!autenticado) this.$("#sb").removeAttribute("aberto");
   }
 }
 

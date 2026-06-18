@@ -1,23 +1,15 @@
 /**
- * <obra-detail-view> — Detalhe da obra: dashboard + despesas em tempo real.
+ * <obra-detail-view> — Detalhe da obra: dashboard + despesas (rota #/obras/:id).
  *
- * Rota: #/obras/:id  (o roteador injeta o atributo "id").
- *
- * Orquestra o requisito de "tempo real" (sem websocket):
- *  1) Otimista: ao adicionar despesa, atualiza a lista e recalcula o resumo
- *     localmente na hora.
- *  2) Confirmação: a resposta de despesas.criar traz o resumo do servidor, que
- *     vira a verdade.
- *  3) Refetch por evento + polling leve (CONFIG.POLLING_RESUMO_MS) enquanto a
- *     view está montada, reconciliando alterações feitas em outra aba.
- *
- * Constrói o DOM dos filhos UMA vez e atualiza por propriedades, para não
- * destruir o formulário (foco) a cada mudança.
+ * Lê do data-store (cache-first): assina o store e sincroniza os componentes
+ * filhos (dashboard, tabela, breakdown) sem reconstruir o formulário. As
+ * mutações (add/editar/remover despesa) vão pelas mutações do store, que fazem
+ * UI otimista + reconciliação com o servidor. A frescura entre usuários vem do
+ * refresh em 2º plano (app.js) — sem polling local.
  */
 import { BaseElement } from "../../components/base-element.js";
-import { api } from "../../core/api-client.js";
-import { CONFIG } from "../../core/config.js";
-import { bus, EVENTOS, toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { dataStore } from "../../core/data-store.js";
+import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -31,12 +23,8 @@ import "./obra-share-form.js";
 class ObraDetailView extends BaseElement {
   constructor() {
     super();
-    this._obra = null;
-    this._categorias = [];
-    this._despesas = [];
-    this._resumo = {};
-    this._mapaCat = {};
     this._montado = false;
+    this._catSig = null;
   }
 
   get obraId() {
@@ -64,81 +52,13 @@ class ObraDetailView extends BaseElement {
   }
 
   aoConectar() {
-    this.aoLimpar(bus.on(EVENTOS.OBRAS, () => this.recarregarObra()));
-    this.aoLimpar(bus.on(EVENTOS.CATEGORIAS, () => this.recarregarCategorias()));
-    this.carregar();
-    this._timer = setInterval(
-      () => this.recarregarSilencioso(),
-      CONFIG.POLLING_RESUMO_MS
-    );
-    this.aoLimpar(() => clearInterval(this._timer));
-  }
-
-  /* ----------------------------- Carga ------------------------------- */
-
-  async carregar() {
-    try {
-      const [obraR, despR, resR] = await Promise.all([
-        api.call("obras.obter", { id: this.obraId }),
-        api.call("despesas.listar", { obra_id: this.obraId }),
-        api.call("despesas.resumo", { obra_id: this.obraId }),
-      ]);
-      this._obra = obraR.obra;
-      // Categorias da obra (global + do dono), vindas de obras.obter.
-      this._categorias = obraR.categorias || [];
-      this._despesas = despR.despesas || [];
-      this._resumo = resR;
-      this.indexarCategorias();
-      this.montarConteudo();
-      this.atualizarDados();
-    } catch (e) {
-      notificarErro(e);
-      this.$("#conteudo").innerHTML = `<p>Não foi possível carregar a obra. <a href="#/obras">Voltar</a></p>`;
+    if (!dataStore.obra(this.obraId)) {
+      this.$("#conteudo").innerHTML = `<p>Obra não encontrada. <a href="#/obras">Voltar</a></p>`;
+      return;
     }
-  }
-
-  async recarregarSilencioso() {
-    try {
-      const [despR, resR] = await Promise.all([
-        api.call("despesas.listar", { obra_id: this.obraId }),
-        api.call("despesas.resumo", { obra_id: this.obraId }),
-      ]);
-      this._despesas = despR.despesas || [];
-      this._resumo = resR;
-      this.atualizarDados();
-    } catch (e) {
-      /* silencioso: polling não incomoda o usuário com erros transitórios */
-    }
-  }
-
-  async recarregarObra() {
-    try {
-      const r = await api.call("obras.obter", { id: this.obraId });
-      this._obra = r.obra;
-      this.pintarTopo();
-      this._resumo = await api.call("despesas.resumo", { obra_id: this.obraId });
-      this.atualizarDados();
-    } catch (e) {
-      /* obra pode ter sido removida; ignora */
-    }
-  }
-
-  indexarCategorias() {
-    this._mapaCat = {};
-    this._categorias.forEach((c) => (this._mapaCat[c.id] = c));
-  }
-
-  /** Recarrega as classificações da obra (ex.: usuário criou uma nova). */
-  async recarregarCategorias() {
-    try {
-      const r = await api.call("obras.obter", { id: this.obraId });
-      this._categorias = r.categorias || [];
-      this.indexarCategorias();
-      if (this._form) this._form.categorias = this._categorias;
-      this.atualizarDados();
-    } catch (e) {
-      /* silencioso */
-    }
+    this.montarConteudo();
+    this.sincronizar();
+    this.aoLimpar(dataStore.subscribe(() => this.sincronizar()));
   }
 
   /* --------------------------- Montagem ------------------------------ */
@@ -162,17 +82,37 @@ class ObraDetailView extends BaseElement {
     this._tabela = alvo.querySelector("#tabela");
     this._form = alvo.querySelector("#form");
 
-    this._form.categorias = this._categorias;
     this._form.addEventListener("adicionar", (e) => this.adicionar(e.detail));
-    this._form.addEventListener("salvar", (e) =>
-      this.salvarEdicao(e.detail.id, e.detail.dados)
-    );
+    this._form.addEventListener("salvar", (e) => this.salvarEdicao(e.detail.id, e.detail.dados));
     this._form.addEventListener("cancelar", () => (this._form.emEdicao = null));
-
     this._tabela.addEventListener("editar", (e) => this.editar(e.detail.despesa));
     this._tabela.addEventListener("remover", (e) => this.remover(e.detail.despesa));
 
     this._montado = true;
+  }
+
+  /** Sincroniza os filhos a partir do store (sem reconstruir o formulário). */
+  sincronizar() {
+    if (!this._montado) return;
+    const o = dataStore.obra(this.obraId);
+    if (!o) {
+      location.hash = "#/obras"; // obra removida
+      return;
+    }
+    this._obra = o;
+    const categorias = dataStore.categoriasDaObra(this.obraId);
+    const resumo = dataStore.resumo(this.obraId);
+
+    this._dash.resumo = resumo;
+    this._break.porCategoria = resumo.por_categoria || [];
+    this._tabela.categorias = categorias;
+    this._tabela.despesas = dataStore.despesas(this.obraId);
+
+    const sig = categorias.map((c) => c.id).join(",");
+    if (sig !== this._catSig) {
+      this._catSig = sig;
+      this._form.categorias = categorias; // só atualiza o select quando muda
+    }
     this.pintarTopo();
   }
 
@@ -198,93 +138,31 @@ class ObraDetailView extends BaseElement {
       </div>
     `;
     if (ehDono) {
-      topo
-        .querySelector("#editarObra")
-        .addEventListener("click", () => this.editarObra());
-      topo
-        .querySelector("#compartilharObra")
-        .addEventListener("click", () => this.compartilharObra());
+      topo.querySelector("#editarObra").addEventListener("click", () => this.editarObra());
+      topo.querySelector("#compartilharObra").addEventListener("click", () => this.compartilharObra());
     }
-  }
-
-  atualizarDados() {
-    if (!this._montado) return;
-    this._dash.resumo = this._resumo;
-    this._break.porCategoria = this._resumo.por_categoria || [];
-    this._tabela.categorias = this._categorias;
-    this._tabela.despesas = this._despesas;
   }
 
   /* --------------------------- Ações --------------------------------- */
 
-  recalcularResumoLocal() {
-    const orcamento = Number(this._obra && this._obra.orcamento) || 0;
-    const acc = {};
-    let total = 0;
-    this._despesas.forEach((d) => {
-      const v = Number(d.valor) || 0;
-      total += v;
-      acc[d.categoria_id] = (acc[d.categoria_id] || 0) + v;
-    });
-    const por = Object.keys(acc).map((id) => {
-      const c = this._mapaCat[id] || { nome: "Sem categoria", cor: "#94a3b8" };
-      return { categoria_id: id, nome: c.nome, cor: c.cor, total: acc[id] };
-    });
-    por.sort((a, b) => b.total - a.total);
-    this._resumo = {
-      obra_id: this.obraId,
-      total,
-      qtd: this._despesas.length,
-      orcamento,
-      saldo: orcamento - total,
-      por_categoria: por,
-    };
-    this.atualizarDados();
-  }
-
   async adicionar(dados) {
-    // 1) Otimista
-    const temp = Object.assign(
-      { id: "temp-" + Date.now() + "-" + Math.round(Math.random() * 1e6), obra_id: this.obraId },
-      dados
-    );
-    this._despesas = [temp, ...this._despesas];
-    this.recalcularResumoLocal();
-
-    // 2) Confirmação
     try {
-      const resp = await api.call("despesas.criar", {
-        obra_id: this.obraId,
-        ...dados,
-      });
-      this._despesas = this._despesas.map((d) =>
-        d.id === temp.id ? resp.despesa : d
-      );
-      this._resumo = resp.resumo;
-      this.atualizarDados();
-      bus.emit(EVENTOS.DESPESAS, { tipo: "criada", obra_id: this.obraId });
+      await dataStore.adicionarDespesa(this.obraId, dados); // otimista + reconcilia
     } catch (e) {
-      this._despesas = this._despesas.filter((d) => d.id !== temp.id);
-      this.recalcularResumoLocal();
       notificarErro(e);
     }
   }
 
   editar(despesa) {
     this._form.emEdicao = despesa;
-    this._form.categorias = this._categorias;
+    this._form.categorias = dataStore.categoriasDaObra(this.obraId);
     this._form.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   async salvarEdicao(id, dados) {
     try {
-      const resp = await api.call("despesas.atualizar", { id, ...dados });
-      this._despesas = this._despesas.map((d) =>
-        d.id === id ? resp.despesa : d
-      );
-      this._resumo = resp.resumo;
+      await dataStore.atualizarDespesa(this.obraId, id, dados);
       this._form.emEdicao = null;
-      this.atualizarDados();
       toastSucesso("Despesa atualizada.");
     } catch (e) {
       notificarErro(e);
@@ -293,16 +171,9 @@ class ObraDetailView extends BaseElement {
 
   async remover(despesa) {
     if (!confirm(`Excluir a despesa "${despesa.item}"?`)) return;
-    const backup = this._despesas;
-    this._despesas = this._despesas.filter((d) => d.id !== despesa.id);
-    this.recalcularResumoLocal();
     try {
-      const resp = await api.call("despesas.remover", { id: despesa.id });
-      this._resumo = resp.resumo;
-      this.atualizarDados();
+      await dataStore.removerDespesa(this.obraId, despesa.id);
     } catch (e) {
-      this._despesas = backup;
-      this.recalcularResumoLocal();
       notificarErro(e);
     }
   }

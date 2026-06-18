@@ -17,11 +17,15 @@ cadastra os demais usuários e define as configurações de cada um.
 ## Funcionalidades
 
 - 🔐 **Login** por e-mail e senha (senha com hash SHA-256 + salt).
-- 🏢 Cada usuário cadastra e gerencia **suas próprias obras**.
+- 🧭 **Header persistente + menu lateral** em abas; navegação instantânea.
+- 🏢 Cada usuário cadastra e gerencia **suas próprias obras**; pode **compartilhá-las**.
 - 💸 Registro de **despesas** com item, valor, **classificação** e data.
 - 📊 **Dashboard em tempo real**: total gasto, orçamento, saldo e gasto por categoria.
-- 🏷️ **Categorias** globais + categorias próprias por usuário.
-- 👤 **Admin** cadastra usuários e define **configurações por usuário** (chave-valor).
+- 🏷️ **Classificações** globais + próprias por usuário.
+- 👤 **Página de perfil** com os dados do usuário e **troca de senha**.
+- ⚡ **Carregamento único + cache**: tudo é carregado de uma vez (`dados.snapshot`)
+  e as telas ficam disponíveis sem recarregar; refresh em 2º plano mantém fresco.
+- 🛠️ **Admin** cadastra usuários e define **configurações por usuário** (chave-valor).
 
 ## Como rodar localmente
 
