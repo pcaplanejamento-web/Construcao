@@ -19,6 +19,7 @@ sobem por `CustomEvent`**.
 | `ui-card` | `title`; slots: default, `acoes` | — | Cartão de superfície. |
 | `ui-data-table` | `.columns`, `.rows`, `.acoes`; attrs `empty-text`, `fluido` (células proporcionais/quebram), `clicavel` (linha clicável) | `acao` ({acao,linha}), `linha` ({linha}) | Tabela genérica orientada a dados. |
 | `ui-icon` | `name`, `size` | — | Biblioteca de ícones padrão (SVG `currentColor`). Sem emoji. |
+| `ui-tabs` | `.abas=[{id,rotulo,icone}]`, attr `ativo`; evento `mudar` | Abas com slots nomeados (`slot="<id>"`); mostra só a aba ativa. |
 | `ui-badge` | `color` (hex ou `var(--token)`), `text` | — | Etiqueta colorida; fundo via `color-mix` (tema-seguro). |
 | `ui-spinner` | `text`, `centro` | — | Indicador de carregamento. |
 | `ui-empty-state` | `icone`, `titulo`, `texto`; slot `acao` | — | Estado vazio. |
@@ -82,9 +83,13 @@ sobem por `CustomEvent`**.
 | Componente | Props | Descrição |
 |------------|-------|-----------|
 | `dashboard-summary` | `.resumo` | KPIs em **cartões com gradiente + ícone** (total, orçamento, saldo, qtd); reusa `ui-icon` e tokens `--grad-*`. |
-| `category-breakdown` | `.porCategoria` | Barras de gasto por categoria (CSS puro). |
-| `grafico-rosca` | `.porCategoria` | Donut (SVG) da distribuição por categoria + legenda. |
-| `grafico-mensal` | `.despesas` | Barras verticais (CSS) do gasto por mês. |
+| `category-breakdown` | `.porCategoria` | Barras de gasto por categoria; preenche a altura e **rola na vertical** com muitas categorias. |
+| `grafico-rosca` | `.porCategoria` | Donut (SVG) **sem número central** + legenda (rola se necessário). |
+| `grafico-mensal` | `.despesas` | Barras por mês; **rola na horizontal** com muitos meses. |
+
+> Os 3 gráficos ficam em `ui-card` de **tamanho igual** (grade 1×3, altura fixa);
+> cada um preenche o cartão e rola internamente. A view do detalhe usa `ui-tabs`
+> (**Gráficos** / **Despesas**) abaixo dos KPIs.
 
 ### Admin — `features/admin/`
 | Componente | Props/Eventos | Descrição |

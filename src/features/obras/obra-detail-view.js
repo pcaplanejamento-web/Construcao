@@ -13,6 +13,7 @@ import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-icon.js";
+import "../../components/ui-tabs.js";
 import "../dashboard/dashboard-summary.js";
 import "../dashboard/category-breakdown.js";
 import "../dashboard/grafico-rosca.js";
@@ -46,10 +47,14 @@ class ObraDetailView extends BaseElement {
       .acoes-topo { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
-      /* Gráficos abaixo dos KPIs, em grade 1 x 3 (empilha no mobile). */
+      /* Gráficos em grade 1 x 3, todos do MESMO tamanho (largura e altura). */
       .graficos { display: grid; gap: var(--esp-5); grid-template-columns: repeat(3, 1fr); }
-      .graficos > * { min-width: 0; }
-      @media (max-width: 900px) { .graficos { grid-template-columns: 1fr; } }
+      .graficos > * { min-width: 0; height: 340px; }
+      @media (max-width: 900px) {
+        .graficos { grid-template-columns: 1fr; }
+        .graficos > * { height: auto; min-height: 300px; }
+      }
+      .despesas-aba { display: flex; flex-direction: column; gap: var(--esp-5); }
     `;
   }
 
@@ -75,17 +80,25 @@ class ObraDetailView extends BaseElement {
       <a class="voltar" href="#/obras">← Minhas obras</a>
       <div class="topo" id="topo"></div>
       <dashboard-summary id="dash"></dashboard-summary>
-      <div class="graficos">
-        <ui-card><category-breakdown id="break"></category-breakdown></ui-card>
-        <ui-card><grafico-rosca id="rosca"></grafico-rosca></ui-card>
-        <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
-      </div>
-      <ui-card title="Registrar despesa"><despesa-form id="form"></despesa-form></ui-card>
-      <ui-card title="Despesas">
-        <despesa-filtros id="filtros"></despesa-filtros>
-        <despesa-table id="tabela"></despesa-table>
-      </ui-card>
+      <ui-tabs id="abas">
+        <div slot="graficos" class="graficos">
+          <ui-card><category-breakdown id="break"></category-breakdown></ui-card>
+          <ui-card><grafico-rosca id="rosca"></grafico-rosca></ui-card>
+          <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
+        </div>
+        <div slot="despesas" class="despesas-aba">
+          <ui-card title="Registrar despesa"><despesa-form id="form"></despesa-form></ui-card>
+          <ui-card title="Despesas">
+            <despesa-filtros id="filtros"></despesa-filtros>
+            <despesa-table id="tabela"></despesa-table>
+          </ui-card>
+        </div>
+      </ui-tabs>
     `;
+    alvo.querySelector("#abas").abas = [
+      { id: "graficos", rotulo: "Gráficos", icone: "grafico" },
+      { id: "despesas", rotulo: "Despesas", icone: "recibo" },
+    ];
     this._dash = alvo.querySelector("#dash");
     this._break = alvo.querySelector("#break");
     this._rosca = alvo.querySelector("#rosca");

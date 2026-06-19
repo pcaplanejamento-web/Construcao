@@ -1,5 +1,6 @@
 /**
- * <grafico-mensal> — Barras verticais do gasto por mês (CSS, sem dependência).
+ * <grafico-mensal> — Barras verticais do gasto por mês (CSS). Preenche a altura
+ * do cartão; com muitos meses, rola horizontalmente.
  * Propriedade: .despesas = [{ valor, data }]
  */
 import { BaseElement } from "../../components/base-element.js";
@@ -18,16 +19,17 @@ class GraficoMensal extends BaseElement {
 
   estilos() {
     return `
-      :host { display: block; }
-      .titulo { font-size: var(--fs-md); font-weight: var(--peso-semi); margin-bottom: var(--esp-4); }
-      .grafico { display: flex; align-items: flex-end; gap: var(--esp-3);
-        height: 150px; padding-top: var(--esp-4); overflow-x: auto; }
+      :host { display: flex; flex-direction: column; height: 100%; }
+      .titulo { font-size: var(--fs-md); font-weight: var(--peso-semi);
+        margin-bottom: var(--esp-4); flex: none; }
+      .grafico { flex: 1; min-height: 0; display: flex; align-items: flex-end;
+        gap: var(--esp-3); padding-top: var(--esp-4); overflow-x: auto; }
       .col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-        gap: var(--esp-1); flex: 1; min-width: 36px; height: 100%; }
+        gap: var(--esp-1); flex: 1; min-width: 44px; height: 100%; }
       .val { font-size: var(--fs-xs); color: var(--cor-texto-suave); white-space: nowrap; }
-      .barra-wrap { flex: 1; width: 70%; display: flex; align-items: flex-end; }
-      .barra { width: 100%; background: var(--cor-primaria); border-radius: var(--raio-sm) var(--raio-sm) 0 0;
-        min-height: 2px; transition: height .3s; }
+      .barra-wrap { flex: 1; min-height: 0; width: 70%; display: flex; align-items: flex-end; }
+      .barra { width: 100%; background: var(--cor-primaria);
+        border-radius: var(--raio-sm) var(--raio-sm) 0 0; min-height: 2px; transition: height .3s; }
       .rotulo { font-size: var(--fs-xs); color: var(--cor-texto-fraco); }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
     `;
@@ -36,7 +38,7 @@ class GraficoMensal extends BaseElement {
   template() {
     const acc = {};
     this.despesas.forEach((d) => {
-      const ym = String(d.data || "").substring(0, 7); // YYYY-MM
+      const ym = String(d.data || "").substring(0, 7);
       if (ym.length === 7) acc[ym] = (acc[ym] || 0) + (Number(d.valor) || 0);
     });
     const meses = Object.keys(acc).sort();

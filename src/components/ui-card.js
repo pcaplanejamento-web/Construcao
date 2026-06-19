@@ -17,18 +17,20 @@ class UiCard extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
+      /* card em coluna ocupando 100% da altura do host (quando o host tem
+         altura definida, ex.: grade de gráficos) — corpo flexível e rolável. */
       .card {
         background: var(--cor-superficie); border: 1px solid var(--cor-borda);
         border-radius: var(--raio-lg); box-shadow: var(--sombra-sm);
-        overflow: hidden;
+        overflow: hidden; display: flex; flex-direction: column; height: 100%;
       }
       header {
         display: flex; align-items: center; justify-content: space-between;
-        gap: var(--esp-3); padding: var(--esp-4) var(--esp-5);
+        gap: var(--esp-3); padding: var(--esp-4) var(--esp-5); flex: none;
         border-bottom: 1px solid var(--cor-borda);
       }
       h3 { font-size: var(--fs-md); font-weight: var(--peso-semi); }
-      .corpo { padding: var(--esp-5); }
+      .corpo { padding: var(--esp-5); flex: 1; min-height: 0; }
       .rodape { padding: var(--esp-4) var(--esp-5); border-top: 1px solid var(--cor-borda); }
       ::slotted([slot="rodape"]) { display: block; }
       slot[name="rodape"]:not(:empty) { display: block; }

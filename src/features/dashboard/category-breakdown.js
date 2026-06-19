@@ -1,5 +1,6 @@
 /**
- * <category-breakdown> — Gastos por categoria em barras proporcionais (CSS puro).
+ * <category-breakdown> — Gastos por categoria em barras (CSS puro).
+ * Preenche a altura do cartão; com muitas categorias, rola verticalmente.
  *
  * Propriedade: .porCategoria = [{ categoria_id, nome, cor, total }]
  */
@@ -17,13 +18,16 @@ class CategoryBreakdown extends BaseElement {
 
   estilos() {
     return `
-      :host { display: block; }
-      .titulo { font-size: var(--fs-md); font-weight: var(--peso-semi); margin-bottom: var(--esp-4); }
+      :host { display: flex; flex-direction: column; height: 100%; }
+      .titulo { font-size: var(--fs-md); font-weight: var(--peso-semi);
+        margin-bottom: var(--esp-4); flex: none; }
+      .lista { flex: 1; min-height: 0; overflow-y: auto; padding-right: var(--esp-2); }
       .linha { margin-bottom: var(--esp-3); }
       .top { display: flex; justify-content: space-between; font-size: var(--fs-sm);
-        margin-bottom: 4px; }
-      .nome { color: var(--cor-texto); font-weight: var(--peso-medio); }
-      .total { color: var(--cor-texto-suave); }
+        margin-bottom: 4px; gap: var(--esp-2); }
+      .nome { color: var(--cor-texto); font-weight: var(--peso-medio);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .total { color: var(--cor-texto-suave); white-space: nowrap; }
       .barra { height: 10px; background: var(--cor-borda); border-radius: var(--raio-completo); overflow: hidden; }
       .barra > div { height: 100%; border-radius: var(--raio-completo); transition: width .3s; }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
@@ -49,7 +53,7 @@ class CategoryBreakdown extends BaseElement {
         </div>`;
       })
       .join("");
-    return `<div class="titulo">Gastos por categoria</div>${linhas}`;
+    return `<div class="titulo">Gastos por categoria</div><div class="lista">${linhas}</div>`;
   }
 }
 
