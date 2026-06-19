@@ -7,7 +7,9 @@
  * Eventos: "salvar" ({ id, dados }), "remover" ({ despesa }), "fechar".
  */
 import { BaseElement } from "../../components/base-element.js";
+import { dataStore } from "../../core/data-store.js";
 import { data as fmtData } from "../../core/formatters.js";
+import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { primeiroErro, obrigatorio, valorPositivo } from "../../core/validators.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
@@ -98,7 +100,7 @@ class DespesaDetail extends BaseElement {
     sel.value = this.despesa.categoria_id || (this.categorias[0] || {}).id || "";
   }
 
-  salvar() {
+  async salvar() {
     const item = this.$("#item").value.trim();
     const valor = Number(this.$("#valor").value);
     const erro = primeiroErro(obrigatorio(item, "O item"), valorPositivo(valor));
@@ -107,21 +109,36 @@ class DespesaDetail extends BaseElement {
       this.$("#valor").setAttribute("error", valorPositivo(valor));
       return;
     }
-    this.emitir("salvar", {
-      id: this.despesa.id,
-      dados: {
-        item,
-        valor,
-        categoria_id: this.$("#categoria").value,
-        data: this.$("#data").value || String(this.despesa.data || "").substring(0, 10),
-        observacao: this.$("#observacao").value.trim(),
-      },
-    });
+    const dados = {
+      item,
+      valor,
+      categoria_id: this.$("#categoria").value,
+      data: this.$("#data").value || String(this.despesa.data || "").substring(0, 10),
+      observacao: this.$("#observacao").value.trim(),
+    };
+    const btn = this.$("#salvar");
+    btn.setAttribute("loading", "");
+    try {
+      await dataStore.atualizarDespesa(this.despesa.obra_id, this.despesa.id, dados);
+      toastSucesso("Despesa atualizada.");
+      this.emitir("fechar");
+    } catch (e) {
+      notificarErro(e);
+      btn.removeAttribute("loading");
+    }
   }
 
-  excluir() {
+  async excluir() {
     if (!confirm(`Excluir a despesa "${this.despesa.item}"?`)) return;
-    this.emitir("remover", { despesa: this.despesa });
+    const btn = this.$("#excluir");
+    btn.setAttribute("loading", "");
+    try {
+      await dataStore.removerDespesa(this.despesa.obra_id, this.despesa.id);
+      this.emitir("fechar");
+    } catch (e) {
+      notificarErro(e);
+      btn.removeAttribute("loading");
+    }
   }
 }
 

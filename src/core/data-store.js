@@ -285,12 +285,28 @@ async function adicionarDespesa(obraId, dados) {
 }
 
 async function atualizarDespesa(obraId, id, dados) {
-  const r = await api.call("despesas.atualizar", { id, ...dados });
-  const lista = despesas(obraId).map((d) => (String(d.id) === String(id) ? r.despesa : d));
-  _setDespesasObra(obraId, lista, r.resumo);
-  persistir();
-  bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada", obra_id: obraId });
-  return r.despesa;
+  const u = usuario() || {};
+  const agora = new Date().toISOString();
+  const backup = despesas(obraId);
+  // 1) Otimista: reflete na hora (inclui editor e data de edição).
+  const otim = backup.map((d) =>
+    String(d.id) === String(id)
+      ? { ...d, ...dados, editor_nome: u.nome || d.editor_nome, atualizado_em: agora }
+      : d
+  );
+  _setDespesasObra(obraId, otim);
+  // 2) Confirmação com o servidor (fonte de verdade).
+  try {
+    const r = await api.call("despesas.atualizar", { id, ...dados });
+    const lista = despesas(obraId).map((d) => (String(d.id) === String(id) ? r.despesa : d));
+    _setDespesasObra(obraId, lista, r.resumo);
+    persistir();
+    bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada", obra_id: obraId });
+    return r.despesa;
+  } catch (e) {
+    _setDespesasObra(obraId, backup); // rollback
+    throw e;
+  }
 }
 
 async function removerDespesa(obraId, id) {

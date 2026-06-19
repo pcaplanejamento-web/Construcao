@@ -66,7 +66,7 @@ sobem por `CustomEvent`**.
 |------------|---------------|-----------|
 | `despesa-form` | `.categorias`; evento `adicionar` | Formulário **só de adição** (edição é no banner). Não chama API. |
 | `despesa-table` | `.despesas`, `.categorias`; eventos `abrir` (clique na linha), `editar`, `remover` | Tabela **full-width** e fluida; colunas **Adicionado** e **Editado por** separadas. Reusa `ui-data-table` + `category-badge`. |
-| `despesa-detail` | `.despesa`, `.categorias`; eventos `salvar`, `remover`, `fechar` | **Banner (modal)** com info completa + edição + exclusão da despesa. |
+| `despesa-detail` | `.despesa`, `.categorias`; evento `fechar` | **Banner (modal)** com info completa; **edita/exclui via data-store** (otimista, com loading) — item, valor, classificação, data e **observação** persistem; preenche **autor/editor**. |
 | `despesa-filtros` | `.categorias`; evento `filtrar` ({texto, categoria}) | Pesquisa por item + filtro por classificação (aplicado só na tabela). |
 | `category-badge` | `nome`, `cor` | Reutiliza `ui-badge`. |
 

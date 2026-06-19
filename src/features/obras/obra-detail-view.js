@@ -204,30 +204,12 @@ class ObraDetailView extends BaseElement {
     }
   }
 
-  /** Abre o banner com a despesa (ver/editar/excluir). */
+  /** Abre o banner com a despesa (ver/editar/excluir). O banner é autossuficiente. */
   abrirBanner(despesa) {
     const banner = document.createElement("despesa-detail");
     banner.despesa = despesa;
     banner.categorias = dataStore.categoriasDaObra(this.obraId);
-    const fechar = () => banner.remove();
-    banner.addEventListener("fechar", fechar);
-    banner.addEventListener("salvar", async (e) => {
-      try {
-        await dataStore.atualizarDespesa(this.obraId, e.detail.id, e.detail.dados);
-        toastSucesso("Despesa atualizada.");
-        fechar();
-      } catch (err) {
-        notificarErro(err);
-      }
-    });
-    banner.addEventListener("remover", async (e) => {
-      try {
-        await dataStore.removerDespesa(this.obraId, e.detail.despesa.id);
-        fechar();
-      } catch (err) {
-        notificarErro(err);
-      }
-    });
+    banner.addEventListener("fechar", () => banner.remove());
     document.body.appendChild(banner);
   }
 
