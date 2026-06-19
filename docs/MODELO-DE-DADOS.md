@@ -54,7 +54,7 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | status | `ativa` \| `pausada` \| `concluida` | |
 | criado_em | ISO datetime | |
 | atualizado_em | ISO datetime | |
-| link_token | string | token do link público de leitura (vazio = desativado) |
+| link_token | string | token curto (12 chars) do link público de leitura (vazio = desativado) |
 
 ## Aba `Despesas`
 | Coluna | Tipo | Descrição |
@@ -101,6 +101,16 @@ Relaciona obras a usuários convidados (colaboradores). O dono permanece em
 
 Colaboradores podem ver a obra e lançar/editar despesas; **não** podem editar,
 excluir nem compartilhar a obra (só o dono).
+
+## Aba `AcessosLink`
+Registra cada acesso ao link público de uma obra (log).
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| obra_id | UUID | FK → Obras.id |
+| token | string | token do link usado no acesso |
+| acessado_em | ISO datetime | quando foi acessado |
 
 ## Aba `Sessoes`
 | Coluna | Tipo | Descrição |

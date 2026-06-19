@@ -247,14 +247,43 @@ function obrasDescompartilhar(data, sessao) {
 
 /* --------------------- Link público (somente leitura) ----------------- */
 
-/** obras.gerarLink -> { link_token } (apenas o dono). Gera/renova o token. */
+/** Gera um token curto (12 hex) e único entre as obras. */
+function _tokenCurtoUnico() {
+  for (var i = 0; i < 5; i++) {
+    var t = novoId().replace(/-/g, "").substring(0, 12);
+    var existe = repoEncontrar(SCHEMA.OBRAS, function (o) {
+      return String(o.link_token) === t;
+    });
+    if (!existe) return t;
+  }
+  return novoId().replace(/-/g, "").substring(0, 16);
+}
+
+/** obras.gerarLink -> { link_token } (apenas o dono). Gera/renova o token curto. */
 function obrasGerarLink(data, sessao) {
   const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
-  const token = novoId() + novoId().replace(/-/g, ""); // token longo, não adivinhável
   return comLock(function () {
+    const token = _tokenCurtoUnico();
     repoAtualizar(SCHEMA.OBRAS, "id", obra.id, { link_token: token });
     return { link_token: token };
   });
+}
+
+/** obras.acessosLink -> { total, acessos:[{acessado_em}] } (apenas o dono). */
+function obrasAcessosLink(data, sessao) {
+  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  const acessos = repoFiltrar(SCHEMA.ACESSOS_LINK, function (a) {
+    return String(a.obra_id) === String(obra.id);
+  });
+  acessos.sort(function (a, b) {
+    return String(b.acessado_em).localeCompare(String(a.acessado_em));
+  });
+  return {
+    total: acessos.length,
+    acessos: acessos.slice(0, 50).map(function (a) {
+      return { acessado_em: a.acessado_em };
+    }),
+  };
 }
 
 /** obras.removerLink -> { link_token: "" } (apenas o dono). Desativa o link. */
@@ -277,6 +306,17 @@ function publicoObra(data) {
     return o.link_token && String(o.link_token) === String(token);
   });
   if (!obra) lancar(ERRO.NAO_ENCONTRADO, "Link inválido ou desativado.");
+
+  // Registra o acesso (log do link).
+  comLock(function () {
+    repoInserir(SCHEMA.ACESSOS_LINK, {
+      id: novoId(),
+      obra_id: obra.id,
+      token: token,
+      acessado_em: agoraIso(),
+    });
+    return true;
+  });
 
   const despesas = repoFiltrar(SCHEMA.DESPESAS, function (d) {
     return String(d.obra_id) === String(obra.id);

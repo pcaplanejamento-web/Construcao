@@ -20,6 +20,7 @@ import "../dashboard/grafico-mensal.js";
 import "../despesas/despesa-form.js";
 import "../despesas/despesa-table.js";
 import "../despesas/despesa-detail.js";
+import "../despesas/despesa-filtros.js";
 import "./obra-form.js";
 import "./obra-share-form.js";
 
@@ -45,9 +46,10 @@ class ObraDetailView extends BaseElement {
       .acoes-topo { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
-      .graficos { display: grid; gap: var(--esp-5);
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+      /* Gráficos abaixo dos KPIs, em grade 1 x 3 (empilha no mobile). */
+      .graficos { display: grid; gap: var(--esp-5); grid-template-columns: repeat(3, 1fr); }
       .graficos > * { min-width: 0; }
+      @media (max-width: 900px) { .graficos { grid-template-columns: 1fr; } }
     `;
   }
 
@@ -79,7 +81,10 @@ class ObraDetailView extends BaseElement {
         <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
       </div>
       <ui-card title="Registrar despesa"><despesa-form id="form"></despesa-form></ui-card>
-      <ui-card title="Despesas"><despesa-table id="tabela"></despesa-table></ui-card>
+      <ui-card title="Despesas">
+        <despesa-filtros id="filtros"></despesa-filtros>
+        <despesa-table id="tabela"></despesa-table>
+      </ui-card>
     `;
     this._dash = alvo.querySelector("#dash");
     this._break = alvo.querySelector("#break");
@@ -87,8 +92,14 @@ class ObraDetailView extends BaseElement {
     this._mensal = alvo.querySelector("#mensal");
     this._tabela = alvo.querySelector("#tabela");
     this._form = alvo.querySelector("#form");
+    this._filtros = alvo.querySelector("#filtros");
+    this._filtro = { texto: "", categoria: "" };
 
     this._form.addEventListener("adicionar", (e) => this.adicionar(e.detail));
+    this._filtros.addEventListener("filtrar", (e) => {
+      this._filtro = e.detail;
+      this.aplicarFiltro();
+    });
     this._tabela.addEventListener("abrir", (e) => this.abrirBanner(e.detail.despesa));
     this._tabela.addEventListener("editar", (e) => this.abrirBanner(e.detail.despesa));
     this._tabela.addEventListener("remover", (e) => this.remover(e.detail.despesa));
@@ -108,19 +119,33 @@ class ObraDetailView extends BaseElement {
     const resumo = dataStore.resumo(this.obraId);
     const despesas = dataStore.despesas(this.obraId);
 
+    this._despesas = despesas; // todas (KPIs/gráficos usam o total; tabela é filtrada)
     this._dash.resumo = resumo;
     this._break.porCategoria = resumo.por_categoria || [];
     this._rosca.porCategoria = resumo.por_categoria || [];
     this._mensal.despesas = despesas;
     this._tabela.categorias = categorias;
-    this._tabela.despesas = despesas;
+    this.aplicarFiltro();
 
     const sig = categorias.map((c) => c.id).join(",");
     if (sig !== this._catSig) {
       this._catSig = sig;
       this._form.categorias = categorias;
+      this._filtros.categorias = categorias;
     }
     this.pintarTopo();
+  }
+
+  /** Aplica pesquisa (item) + filtro (classificação) à tabela; KPIs ficam no total. */
+  aplicarFiltro() {
+    const f = this._filtro || { texto: "", categoria: "" };
+    const texto = (f.texto || "").toLowerCase();
+    const filtradas = (this._despesas || []).filter((d) => {
+      const okTexto = !texto || String(d.item || "").toLowerCase().includes(texto);
+      const okCat = !f.categoria || String(d.categoria_id) === String(f.categoria);
+      return okTexto && okCat;
+    });
+    this._tabela.despesas = filtradas;
   }
 
   pintarTopo() {

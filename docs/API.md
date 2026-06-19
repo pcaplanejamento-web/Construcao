@@ -61,8 +61,9 @@ para dono **e** colaboradores.
 | `obras.compartilhamentos` | `{ obra_id }` | `{ compartilhamentos: [{usuario_id,nome,email}] }` (só dono) |
 | `obras.compartilhar` | `{ obra_id, usuario_id }` | `{ compartilhamentos }` (só dono) |
 | `obras.descompartilhar` | `{ obra_id, usuario_id }` | `{ compartilhamentos }` (só dono) |
-| `obras.gerarLink` | `{ obra_id }` | `{ link_token }` (só dono — gera/renova o link público) |
+| `obras.gerarLink` | `{ obra_id }` | `{ link_token }` (só dono — token curto de 12 chars) |
 | `obras.removerLink` | `{ obra_id }` | `{ link_token: "" }` (só dono — desativa o link) |
+| `obras.acessosLink` | `{ obra_id }` | `{ total, acessos:[{acessado_em}] }` (só dono — log de acessos ao link) |
 
 ### Público (sem login — somente leitura)
 | Action | `data` | Retorno |

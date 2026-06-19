@@ -28,6 +28,7 @@ const ROTAS = {
   "obras.descompartilhar": { fn: obrasDescompartilhar },
   "obras.gerarLink": { fn: obrasGerarLink },
   "obras.removerLink": { fn: obrasRemoverLink },
+  "obras.acessosLink": { fn: obrasAcessosLink },
 
   // Visão pública somente-leitura (sem login)
   "publico.obra": { fn: publicoObra, publica: true },

@@ -10,6 +10,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { api } from "../../core/api-client.js";
 import { dataStore } from "../../core/data-store.js";
+import { data as fmtData } from "../../core/formatters.js";
 import { bus, EVENTOS, toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-button.js";
@@ -52,6 +53,10 @@ class ObraShareForm extends BaseElement {
       .nome { font-weight: var(--peso-medio); }
       .email { font-size: var(--fs-sm); color: var(--cor-texto-suave); }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); padding: var(--esp-4); text-align: center; }
+      .acessos { margin-top: var(--esp-3); font-size: var(--fs-sm); }
+      .acessos-lista { margin: var(--esp-2) 0 0; padding-left: var(--esp-5);
+        max-height: 160px; overflow: auto; color: var(--cor-texto-suave); }
+      .acessos-lista li { margin-bottom: 2px; }
     `;
   }
 
@@ -100,12 +105,15 @@ class ObraShareForm extends BaseElement {
         <div class="acoes-link">
           <ui-button id="copiar" tamanho="sm"><ui-icon name="copiar" size="14"></ui-icon> Copiar link</ui-button>
           <ui-button id="abrir" tamanho="sm" variant="secundario">Abrir</ui-button>
+          <ui-button id="acessos" tamanho="sm" variant="secundario"><ui-icon name="relogio" size="14"></ui-icon> Log de acessos</ui-button>
           <ui-button id="desativar" tamanho="sm" variant="perigo">Desativar</ui-button>
-        </div>`;
+        </div>
+        <div id="acessosBox"></div>`;
       box.querySelector("#copiar").addEventListener("click", () => this.copiar(token));
       box.querySelector("#abrir").addEventListener("click", () =>
         window.open(this._url(token), "_blank")
       );
+      box.querySelector("#acessos").addEventListener("click", () => this.carregarAcessos());
       box.querySelector("#desativar").addEventListener("click", () => this.desativarLink());
     } else {
       box.innerHTML = `<ui-button id="gerar"><ui-icon name="link" size="16"></ui-icon> Gerar link público</ui-button>`;
@@ -145,6 +153,35 @@ class ObraShareForm extends BaseElement {
     } catch (e) {
       window.prompt("Copie o link:", url);
     }
+  }
+
+  async carregarAcessos() {
+    const box = this.$("#acessosBox");
+    box.innerHTML = `<ui-spinner text="Carregando acessos..."></ui-spinner>`;
+    try {
+      const r = await api.call("obras.acessosLink", { obra_id: this.obra.id });
+      const itens = (r.acessos || [])
+        .map((a) => `<li>${this._fmtDataHora(a.acessado_em)}</li>`)
+        .join("");
+      box.innerHTML = `
+        <div class="acessos">
+          <strong>${r.total} acesso(s)</strong>
+          ${
+            r.total
+              ? `<ul class="acessos-lista">${itens}</ul>`
+              : `<div class="vazio">Ninguém acessou o link ainda.</div>`
+          }
+        </div>`;
+    } catch (e) {
+      notificarErro(e);
+      box.innerHTML = "";
+    }
+  }
+
+  _fmtDataHora(iso) {
+    if (!iso) return "—";
+    const hora = String(iso).substring(11, 16);
+    return `${fmtData(iso)}${hora ? " " + hora : ""}`;
   }
 
   /* --------------------- Convite por usuário -------------------------- */

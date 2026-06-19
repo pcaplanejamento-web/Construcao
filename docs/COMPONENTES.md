@@ -56,7 +56,7 @@ sobem por `CustomEvent`**.
 | `obras-list-view` | — | Rota `#/obras`. Grid de cartões + criar/editar/excluir. |
 | `obra-card` | `.obra`; eventos `abrir`, `editar`, `remover` | Cartão com barra de orçamento. |
 | `obra-form` | `.obra`; eventos `salvo`, `fechar` | Modal criar/editar obra (chama a API). |
-| `obra-share-form` | `.obra`; evento `fechar` | Modal (só dono): **link público** somente-leitura (gerar/copiar/desativar) + convidar usuários para colaboração. |
+| `obra-share-form` | `.obra`; evento `fechar` | Modal (só dono): **link público** curto (gerar/copiar/abrir/desativar) + **log de acessos** + convidar usuários para colaboração. |
 | `obra-detail-view` | attr `id` (rota); — | **Coração do tempo real**: dashboard + despesas (otimista + cache). |
 | `publico-view` | attr `token` (rota `#/publico/:token`) | Visão **pública somente-leitura** (sem login): dashboard + itens + gasto por categoria. |
 
@@ -66,6 +66,7 @@ sobem por `CustomEvent`**.
 | `despesa-form` | `.categorias`; evento `adicionar` | Formulário **só de adição** (edição é no banner). Não chama API. |
 | `despesa-table` | `.despesas`, `.categorias`; eventos `abrir` (clique na linha), `editar`, `remover` | Tabela **full-width** e fluida; colunas **Adicionado** e **Editado por** separadas. Reusa `ui-data-table` + `category-badge`. |
 | `despesa-detail` | `.despesa`, `.categorias`; eventos `salvar`, `remover`, `fechar` | **Banner (modal)** com info completa + edição + exclusão da despesa. |
+| `despesa-filtros` | `.categorias`; evento `filtrar` ({texto, categoria}) | Pesquisa por item + filtro por classificação (aplicado só na tabela). |
 | `category-badge` | `nome`, `cor` | Reutiliza `ui-badge`. |
 
 ### Classificações — `features/categorias/`

@@ -75,6 +75,11 @@ const SCHEMA = {
     colunas: ["id", "obra_id", "usuario_id", "criado_em"],
   },
 
+  ACESSOS_LINK: {
+    aba: "AcessosLink",
+    colunas: ["id", "obra_id", "token", "acessado_em"],
+  },
+
   SESSOES: {
     aba: "Sessoes",
     colunas: [
