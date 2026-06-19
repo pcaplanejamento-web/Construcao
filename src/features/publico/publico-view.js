@@ -1,0 +1,104 @@
+/**
+ * <publico-view> — Visão SOMENTE LEITURA de uma obra via link público.
+ *
+ * Rota: #/publico/:token (sem login). Busca publico.obra(token) e mostra o
+ * dashboard, o gasto por categoria e a lista de itens — sem ações de edição.
+ * Reusa dashboard-summary, category-breakdown, ui-data-table, category-badge.
+ */
+import { BaseElement } from "../../components/base-element.js";
+import { api } from "../../core/api-client.js";
+import { moeda, data as fmtData } from "../../core/formatters.js";
+import "../../components/ui-card.js";
+import "../../components/ui-icon.js";
+import "../../components/ui-spinner.js";
+import "../../components/ui-data-table.js";
+import "../dashboard/dashboard-summary.js";
+import "../dashboard/category-breakdown.js";
+import "../despesas/category-badge.js";
+
+class PublicoView extends BaseElement {
+  get token() {
+    return this.getAttribute("token");
+  }
+
+  estilos() {
+    return `
+      :host { display: block; min-height: 100vh; background: var(--cor-fundo); }
+      .topo { background: var(--cor-superficie); border-bottom: 1px solid var(--cor-borda);
+        padding: var(--esp-3) var(--esp-5); display: flex; align-items: center; gap: var(--esp-2); }
+      .marca { display: flex; align-items: center; gap: var(--esp-2);
+        font-weight: var(--peso-forte); color: var(--cor-primaria); }
+      .somente-leitura { margin-left: auto; display: flex; align-items: center; gap: 6px;
+        font-size: var(--fs-xs); color: var(--cor-texto-suave);
+        border: 1px solid var(--cor-borda); border-radius: var(--raio-completo); padding: 4px 10px; }
+      .area { max-width: 1100px; margin: 0 auto; padding: var(--esp-5);
+        display: flex; flex-direction: column; gap: var(--esp-5); }
+      h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
+      .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm);
+        display: flex; align-items: center; gap: var(--esp-1); }
+      .colunas { display: grid; gap: var(--esp-5); grid-template-columns: 2fr 1fr; }
+      .colunas > * { min-width: 0; }
+      @media (max-width: 860px) { .colunas { grid-template-columns: 1fr; } }
+    `;
+  }
+
+  template() {
+    return `
+      <div class="topo">
+        <span class="marca"><ui-icon name="obra" size="20"></ui-icon> Gestão de Obras</span>
+        <span class="somente-leitura"><ui-icon name="olho" size="14"></ui-icon> Somente leitura</span>
+      </div>
+      <div class="area" id="conteudo"><ui-spinner centro text="Carregando..."></ui-spinner></div>
+    `;
+  }
+
+  aoConectar() {
+    this.carregar();
+  }
+
+  async carregar() {
+    const alvo = this.$("#conteudo");
+    try {
+      const d = await api.call("publico.obra", { token: this.token });
+      this.pintar(d);
+    } catch (e) {
+      alvo.innerHTML = `<ui-card title="Link indisponível"><p>${
+        e.message || "Este link não está mais válido."
+      }</p></ui-card>`;
+    }
+  }
+
+  pintar(d) {
+    const o = d.obra || {};
+    this.$("#conteudo").innerHTML = `
+      <div>
+        <h1>${o.nome || "Obra"}</h1>
+        <div class="meta">${
+          o.endereco ? `<ui-icon name="local" size="14"></ui-icon> ${o.endereco}` : ""
+        }${o.descricao ? (o.endereco ? " · " : "") + o.descricao : ""}</div>
+      </div>
+      <dashboard-summary id="dash"></dashboard-summary>
+      <div class="colunas">
+        <ui-card title="Itens"><ui-data-table id="tabela" empty-text="Nenhuma despesa registrada."></ui-data-table></ui-card>
+        <ui-card><category-breakdown id="break"></category-breakdown></ui-card>
+      </div>
+    `;
+    this.$("#dash").resumo = d.resumo || {};
+    this.$("#break").porCategoria = (d.resumo && d.resumo.por_categoria) || [];
+    const tabela = this.$("#tabela");
+    tabela.columns = [
+      { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
+      { chave: "item", titulo: "Item" },
+      {
+        chave: "categoria_nome",
+        titulo: "Classificação",
+        formato: (nome, linha) =>
+          `<category-badge nome="${nome || "Sem categoria"}" cor="${linha.categoria_cor || ""}"></category-badge>`,
+      },
+      { chave: "valor", titulo: "Valor", alinhar: "dir", formato: (v) => moeda(v) },
+    ];
+    tabela.rows = d.despesas || [];
+  }
+}
+
+customElements.define("publico-view", PublicoView);

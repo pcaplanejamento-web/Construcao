@@ -26,6 +26,11 @@ const ROTAS = {
   "obras.compartilhamentos": { fn: obrasCompartilhamentos },
   "obras.compartilhar": { fn: obrasCompartilhar },
   "obras.descompartilhar": { fn: obrasDescompartilhar },
+  "obras.gerarLink": { fn: obrasGerarLink },
+  "obras.removerLink": { fn: obrasRemoverLink },
+
+  // Visão pública somente-leitura (sem login)
+  "publico.obra": { fn: publicoObra, publica: true },
 
   // Despesas
   "despesas.listar": { fn: despesasListar },

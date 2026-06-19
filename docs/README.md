@@ -20,7 +20,8 @@ cadastra os demais usuários e define as configurações de cada um.
 - 🧭 **Header persistente + menu lateral** em abas; navegação instantânea.
 - 🌗 **Tema claro/escuro** (segue o SO + alternador) em todos os componentes;
   ícones em SVG (`ui-icon`), sem emoji; design consistente por tokens.
-- 🏢 Cada usuário cadastra e gerencia **suas próprias obras**; pode **compartilhá-las**.
+- 🏢 Cada usuário cadastra e gerencia **suas próprias obras**; pode **compartilhá-las**
+  (colaboração) ou gerar um **link público somente-leitura** (`#/publico/:token`, sem login).
 - 💸 Registro de **despesas** com item, valor, **classificação** e data.
 - 📊 **Dashboard em tempo real**: total gasto, orçamento, saldo e gasto por categoria.
 - 🏷️ **Classificações** globais + próprias por usuário.

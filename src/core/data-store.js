@@ -228,6 +228,28 @@ async function removerObra(id) {
   bus.emit(EVENTOS.OBRAS, { tipo: "removida" });
 }
 
+/** Atualiza o link_token de uma obra no store (write-through). */
+function _setLinkObra(id, token) {
+  const s = store.get();
+  store.set({
+    obras: s.obras.map((o) =>
+      String(o.id) === String(id) ? { ...o, link_token: token } : o
+    ),
+  });
+  persistir();
+}
+
+async function gerarLinkPublico(obraId) {
+  const r = await api.call("obras.gerarLink", { obra_id: obraId });
+  _setLinkObra(obraId, r.link_token);
+  return r.link_token;
+}
+
+async function removerLinkPublico(obraId) {
+  await api.call("obras.removerLink", { obra_id: obraId });
+  _setLinkObra(obraId, "");
+}
+
 /* ---------------------- Mutações: despesas --------------------------- */
 
 async function adicionarDespesa(obraId, dados) {
@@ -365,6 +387,7 @@ export const dataStore = {
   usuario, config, categorias, usuarios, obras, obra, despesas, resumo, categoriasDaObra,
   // mutações
   criarObra, atualizarObra, removerObra,
+  gerarLinkPublico, removerLinkPublico,
   adicionarDespesa, atualizarDespesa, removerDespesa,
   criarCategoria, atualizarCategoria, removerCategoria,
   adminCriarUsuario, adminAtualizarUsuario,

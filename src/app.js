@@ -25,6 +25,7 @@ import "./features/obras/obra-detail-view.js";
 import "./features/categorias/categorias-view.js";
 import "./features/perfil/perfil-view.js";
 import "./features/admin/admin-view.js";
+import "./features/publico/publico-view.js";
 
 let loaderEl = null;
 function mostrarLoader() {
@@ -67,6 +68,7 @@ async function iniciar() {
 
   const router = criarRouter(outlet);
   router
+    .adicionar("#/publico/:token", "publico-view", {}) // pública: sem login, só leitura
     .adicionar("#/login", "login-view", { somentePublico: true })
     .adicionar("#/obras", "obras-list-view", { protegida: true })
     .adicionar("#/obras/:id", "obra-detail-view", { protegida: true })

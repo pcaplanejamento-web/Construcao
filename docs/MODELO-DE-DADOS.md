@@ -54,6 +54,7 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | status | `ativa` \| `pausada` \| `concluida` | |
 | criado_em | ISO datetime | |
 | atualizado_em | ISO datetime | |
+| link_token | string | token do link público de leitura (vazio = desativado) |
 
 ## Aba `Despesas`
 | Coluna | Tipo | Descrição |

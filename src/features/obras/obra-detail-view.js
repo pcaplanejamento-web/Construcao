@@ -44,6 +44,7 @@ class ObraDetailView extends BaseElement {
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
       .colunas { display: grid; gap: var(--esp-5); grid-template-columns: 2fr 1fr; }
+      .colunas > * { min-width: 0; } /* deixa a tabela rolar internamente, não estourar */
       @media (max-width: 860px) { .colunas { grid-template-columns: 1fr; } }
     `;
   }

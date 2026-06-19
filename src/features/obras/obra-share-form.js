@@ -1,18 +1,20 @@
 /**
- * <obra-share-form> — Modal para o DONO compartilhar a obra com outros usuários.
+ * <obra-share-form> — Modal do DONO: compartilhar a obra com usuários (acesso
+ * de colaboração) E gerar um LINK PÚBLICO somente-leitura.
  *
- * Propriedade: .obra (a obra a compartilhar)
- * Evento: "fechar".
- * Carrega a lista de usuários (usuarios.listar) e os compartilhamentos atuais
- * (obras.compartilhamentos); cada usuário tem um botão alternar (compartilhar /
- * remover) que chama a API na hora.
+ * Propriedade: .obra  Evento: "fechar".
+ * - Link público: via data-store (gerar/remover); qualquer pessoa com o link vê
+ *   itens e gastos, sem login e sem editar.
+ * - Por usuário: chama a API de compartilhamento (colaboração).
  */
 import { BaseElement } from "../../components/base-element.js";
 import { api } from "../../core/api-client.js";
+import { dataStore } from "../../core/data-store.js";
 import { bus, EVENTOS, toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
+import "../../components/ui-icon.js";
 
 class ObraShareForm extends BaseElement {
   set obra(v) {
@@ -23,9 +25,25 @@ class ObraShareForm extends BaseElement {
     return this._obra || null;
   }
 
+  /** URL pública a partir do token (relativa à app atual). */
+  _url(token) {
+    return `${location.origin}${location.pathname}#/publico/${token}`;
+  }
+
   estilos() {
     return `
-      .lista { display: flex; flex-direction: column; gap: var(--esp-2); min-height: 60px; }
+      .secao { margin-bottom: var(--esp-5); }
+      .titulo-secao { display: flex; align-items: center; gap: var(--esp-2);
+        font-size: var(--fs-sm); font-weight: var(--peso-semi); margin-bottom: var(--esp-2); }
+      .dica { font-size: var(--fs-sm); color: var(--cor-texto-suave); margin-bottom: var(--esp-3); }
+      .link-row { display: flex; gap: var(--esp-2); align-items: center; }
+      .link-url { flex: 1; min-width: 0; padding: var(--esp-2) var(--esp-3);
+        border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
+        background: var(--cor-superficie-2); color: var(--cor-texto-suave);
+        font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .acoes-link { display: flex; gap: var(--esp-2); margin-top: var(--esp-2); flex-wrap: wrap; }
+      hr { border: none; border-top: 1px solid var(--cor-borda); margin: var(--esp-4) 0; }
+      .lista { display: flex; flex-direction: column; gap: var(--esp-2); min-height: 50px; }
       .item { display: flex; align-items: center; justify-content: space-between;
         gap: var(--esp-3); padding: var(--esp-3); border: 1px solid var(--cor-borda);
         border-radius: var(--raio-sm); }
@@ -34,7 +52,6 @@ class ObraShareForm extends BaseElement {
       .nome { font-weight: var(--peso-medio); }
       .email { font-size: var(--fs-sm); color: var(--cor-texto-suave); }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); padding: var(--esp-4); text-align: center; }
-      .dica { font-size: var(--fs-sm); color: var(--cor-texto-suave); margin-bottom: var(--esp-3); }
     `;
   }
 
@@ -42,9 +59,19 @@ class ObraShareForm extends BaseElement {
     const o = this.obra || {};
     return `
       <ui-modal open title="Compartilhar: ${o.nome || ""}">
-        <p class="dica">Selecione com quem compartilhar esta obra. Os convidados
-        poderão ver a obra e lançar despesas, mas não editá-la nem excluí-la.</p>
-        <div class="lista" id="lista"><ui-spinner centro text="Carregando usuários..."></ui-spinner></div>
+        <div class="secao">
+          <div class="titulo-secao"><ui-icon name="olho" size="16"></ui-icon> Link público (somente leitura)</div>
+          <p class="dica">Qualquer pessoa com o link vê os itens e os gastos desta
+          obra, sem login e sem poder editar.</p>
+          <div id="linkBox"></div>
+        </div>
+        <hr />
+        <div class="secao">
+          <div class="titulo-secao"><ui-icon name="compartilhar" size="16"></ui-icon> Convidar usuários (colaboração)</div>
+          <p class="dica">Convidados podem ver a obra e lançar despesas, mas não
+          editá-la nem excluí-la.</p>
+          <div class="lista" id="lista"><ui-spinner centro text="Carregando usuários..."></ui-spinner></div>
+        </div>
         <div slot="rodape">
           <ui-button id="fechar" variant="secundario">Concluir</ui-button>
         </div>
@@ -55,8 +82,72 @@ class ObraShareForm extends BaseElement {
   aoConectar() {
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#fechar").addEventListener("click", () => this.emitir("fechar"));
+    this.pintarLink();
     this.carregar();
   }
+
+  /* ----------------------- Link público ------------------------------ */
+
+  pintarLink() {
+    const box = this.$("#linkBox");
+    const atual = dataStore.obra(this.obra.id) || this.obra;
+    const token = atual.link_token;
+    if (token) {
+      box.innerHTML = `
+        <div class="link-row">
+          <span class="link-url" id="url">${this._url(token)}</span>
+        </div>
+        <div class="acoes-link">
+          <ui-button id="copiar" tamanho="sm"><ui-icon name="copiar" size="14"></ui-icon> Copiar link</ui-button>
+          <ui-button id="abrir" tamanho="sm" variant="secundario">Abrir</ui-button>
+          <ui-button id="desativar" tamanho="sm" variant="perigo">Desativar</ui-button>
+        </div>`;
+      box.querySelector("#copiar").addEventListener("click", () => this.copiar(token));
+      box.querySelector("#abrir").addEventListener("click", () =>
+        window.open(this._url(token), "_blank")
+      );
+      box.querySelector("#desativar").addEventListener("click", () => this.desativarLink());
+    } else {
+      box.innerHTML = `<ui-button id="gerar"><ui-icon name="link" size="16"></ui-icon> Gerar link público</ui-button>`;
+      box.querySelector("#gerar").addEventListener("click", () => this.gerarLink());
+    }
+  }
+
+  async gerarLink() {
+    const btn = this.$("#linkBox ui-button");
+    btn && btn.setAttribute("loading", "");
+    try {
+      await dataStore.gerarLinkPublico(this.obra.id);
+      toastSucesso("Link público gerado.");
+      this.pintarLink();
+    } catch (e) {
+      notificarErro(e);
+      btn && btn.removeAttribute("loading");
+    }
+  }
+
+  async desativarLink() {
+    if (!confirm("Desativar o link público? Quem tiver o link perderá o acesso.")) return;
+    try {
+      await dataStore.removerLinkPublico(this.obra.id);
+      toastSucesso("Link público desativado.");
+      this.pintarLink();
+    } catch (e) {
+      notificarErro(e);
+    }
+  }
+
+  async copiar(token) {
+    const url = this._url(token);
+    try {
+      await navigator.clipboard.writeText(url);
+      toastSucesso("Link copiado para a área de transferência.");
+    } catch (e) {
+      window.prompt("Copie o link:", url);
+    }
+  }
+
+  /* --------------------- Convite por usuário -------------------------- */
 
   async carregar() {
     try {
@@ -71,12 +162,12 @@ class ObraShareForm extends BaseElement {
       this.pintar();
     } catch (e) {
       notificarErro(e);
-      this.emitir("fechar");
     }
   }
 
   pintar() {
     const lista = this.$("#lista");
+    if (!lista) return;
     if (!this._usuarios.length) {
       lista.innerHTML = `<div class="vazio">Nenhum outro usuário cadastrado. Peça ao administrador para criar usuários.</div>`;
       return;

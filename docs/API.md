@@ -61,6 +61,13 @@ para dono **e** colaboradores.
 | `obras.compartilhamentos` | `{ obra_id }` | `{ compartilhamentos: [{usuario_id,nome,email}] }` (só dono) |
 | `obras.compartilhar` | `{ obra_id, usuario_id }` | `{ compartilhamentos }` (só dono) |
 | `obras.descompartilhar` | `{ obra_id, usuario_id }` | `{ compartilhamentos }` (só dono) |
+| `obras.gerarLink` | `{ obra_id }` | `{ link_token }` (só dono — gera/renova o link público) |
+| `obras.removerLink` | `{ obra_id }` | `{ link_token: "" }` (só dono — desativa o link) |
+
+### Público (sem login — somente leitura)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `publico.obra` | `{ token }` | `{ obra:{nome,endereco,descricao,orcamento,status}, resumo, despesas:[{item,valor,data,categoria_nome,categoria_cor}] }` — **não** expõe usuários/observações |
 
 ### Usuários (autenticado)
 | Action | `data` | Retorno |

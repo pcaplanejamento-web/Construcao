@@ -42,6 +42,7 @@ const SCHEMA = {
       "status",
       "criado_em",
       "atualizado_em",
+      "link_token", // token do link público de visualização (vazio = desativado)
     ],
   },
 

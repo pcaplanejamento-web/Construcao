@@ -46,10 +46,12 @@ class UiDataTable extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
-      .wrap { overflow-x: auto; }
+      /* Rola horizontalmente quando as colunas não cabem (sem espremer textos). */
+      .wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
       th, td { padding: var(--esp-3) var(--esp-3); text-align: left;
-        border-bottom: 1px solid var(--cor-borda); }
+        border-bottom: 1px solid var(--cor-borda); white-space: nowrap;
+        vertical-align: middle; }
       th { color: var(--cor-texto-suave); font-weight: var(--peso-semi);
         font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .03em; }
       tr:last-child td { border-bottom: none; }

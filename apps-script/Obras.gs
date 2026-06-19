@@ -244,3 +244,71 @@ function obrasDescompartilhar(data, sessao) {
     return { compartilhamentos: _listarCompartilhamentos(obra.id) };
   });
 }
+
+/* --------------------- Link público (somente leitura) ----------------- */
+
+/** obras.gerarLink -> { link_token } (apenas o dono). Gera/renova o token. */
+function obrasGerarLink(data, sessao) {
+  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  const token = novoId() + novoId().replace(/-/g, ""); // token longo, não adivinhável
+  return comLock(function () {
+    repoAtualizar(SCHEMA.OBRAS, "id", obra.id, { link_token: token });
+    return { link_token: token };
+  });
+}
+
+/** obras.removerLink -> { link_token: "" } (apenas o dono). Desativa o link. */
+function obrasRemoverLink(data, sessao) {
+  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  return comLock(function () {
+    repoAtualizar(SCHEMA.OBRAS, "id", obra.id, { link_token: "" });
+    return { link_token: "" };
+  });
+}
+
+/**
+ * publico.obra -> visão SOMENTE LEITURA via link público (sem login).
+ * data: { token }. Não expõe usuários/observações — só itens e gastos.
+ */
+function publicoObra(data) {
+  const token = data && data.token;
+  if (!token) lancar(ERRO.VALIDACAO, "Link inválido.");
+  const obra = repoEncontrar(SCHEMA.OBRAS, function (o) {
+    return o.link_token && String(o.link_token) === String(token);
+  });
+  if (!obra) lancar(ERRO.NAO_ENCONTRADO, "Link inválido ou desativado.");
+
+  const despesas = repoFiltrar(SCHEMA.DESPESAS, function (d) {
+    return String(d.obra_id) === String(obra.id);
+  });
+  const catMap = mapaCategorias(obra.usuario_id);
+  const resumo = _resumoEmMemoria(obra, despesas, catMap); // reusa Snapshot.gs
+
+  const lista = despesas
+    .map(function (d) {
+      const c = catMap[d.categoria_id] || { nome: "Sem categoria", cor: "#94a3b8" };
+      return {
+        item: d.item,
+        valor: Number(d.valor) || 0,
+        data: d.data,
+        categoria_nome: c.nome,
+        categoria_cor: c.cor,
+      };
+    })
+    .sort(function (a, b) {
+      return String(b.data).localeCompare(String(a.data));
+    });
+
+  return {
+    obra: {
+      nome: obra.nome,
+      endereco: obra.endereco,
+      descricao: obra.descricao,
+      orcamento: Number(obra.orcamento) || 0,
+      status: obra.status,
+    },
+    resumo: resumo,
+    despesas: lista,
+    servidor_em: agoraIso(),
+  };
+}
