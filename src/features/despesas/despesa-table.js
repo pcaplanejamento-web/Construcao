@@ -1,9 +1,9 @@
 /**
- * <despesa-table> — Tabela de despesas. Reutiliza <ui-data-table> e
- * <category-badge>. Recebe despesas + categorias e emite ações de linha.
+ * <despesa-table> — Tabela de despesas (largura total, células proporcionais).
+ * Reutiliza <ui-data-table> (fluido + clicavel) e <category-badge>.
  *
  * Propriedades: .despesas = [...], .categorias = [{id,nome,cor}]
- * Eventos: "editar" ({ despesa }), "remover" ({ despesa }).
+ * Eventos: "abrir" ({despesa}) ao clicar na linha; "editar"/"remover" ({despesa}).
  */
 import { BaseElement } from "../../components/base-element.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
@@ -31,7 +31,8 @@ class DespesaTable extends BaseElement {
     return `:host { display: block; }`;
   }
   template() {
-    return `<ui-data-table id="tabela" empty-text="Nenhuma despesa registrada nesta obra."></ui-data-table>`;
+    return `<ui-data-table id="tabela" fluido clicavel
+      empty-text="Nenhuma despesa registrada nesta obra."></ui-data-table>`;
   }
 
   aposRender() {
@@ -42,8 +43,6 @@ class DespesaTable extends BaseElement {
       {
         chave: "categoria_id",
         titulo: "Classificação",
-        // Lê o mapa dinamicamente (this.mapaCat) para refletir categorias
-        // definidas DEPOIS do primeiro render (ex.: setter .categorias).
         formato: (id) => {
           const c = this.mapaCat[id] || { nome: "Sem categoria", cor: "var(--cor-neutro)" };
           return `<category-badge nome="${c.nome}" cor="${c.cor}"></category-badge>`;
@@ -51,17 +50,25 @@ class DespesaTable extends BaseElement {
       },
       {
         chave: "criado_em",
-        titulo: "Registro",
-        formato: (criadoEm, linha) => {
-          if (!criadoEm) return "—";
-          const autor = linha.autor_nome || "—";
+        titulo: "Adicionado",
+        formato: (criadoEm, linha) =>
+          criadoEm
+            ? `<div>${fmtData(criadoEm)}</div><small style="color:var(--cor-texto-fraco)">por ${
+                linha.autor_nome || "—"
+              }</small>`
+            : "—",
+      },
+      {
+        chave: "editor_nome",
+        titulo: "Editado por",
+        formato: (editor, linha) => {
           const editou =
-            linha.editor_nome &&
-            linha.atualizado_em &&
-            String(linha.atualizado_em) !== String(linha.criado_em);
-          return `<div>${fmtData(criadoEm)}</div><small style="color:var(--cor-texto-fraco)">por ${autor}${
-            editou ? ` · editado por ${linha.editor_nome}` : ""
-          }</small>`;
+            editor && linha.atualizado_em && String(linha.atualizado_em) !== String(linha.criado_em);
+          return editou
+            ? `<div>${editor}</div><small style="color:var(--cor-texto-fraco)">${fmtData(
+                linha.atualizado_em
+              )}</small>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`;
         },
       },
       { chave: "valor", titulo: "Valor", alinhar: "dir", formato: (v) => moeda(v) },
@@ -70,9 +77,12 @@ class DespesaTable extends BaseElement {
       { nome: "editar", rotulo: "Editar" },
       { nome: "remover", rotulo: "Excluir", variant: "perigo" },
     ];
-    tabela.addEventListener("acao", (e) => {
-      this.emitir(e.detail.acao, { despesa: e.detail.linha });
-    });
+    tabela.addEventListener("acao", (e) =>
+      this.emitir(e.detail.acao, { despesa: e.detail.linha })
+    );
+    tabela.addEventListener("linha", (e) =>
+      this.emitir("abrir", { despesa: e.detail.linha })
+    );
     this.atualizarTabela();
   }
 

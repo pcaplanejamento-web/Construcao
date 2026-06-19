@@ -14,7 +14,7 @@ import { BaseElement } from "./base-element.js";
 
 class UiDataTable extends BaseElement {
   static get observedAttributes() {
-    return ["empty-text"];
+    return ["empty-text", "fluido", "clicavel"];
   }
 
   set columns(v) {
@@ -52,6 +52,11 @@ class UiDataTable extends BaseElement {
       th, td { padding: var(--esp-3) var(--esp-3); text-align: left;
         border-bottom: 1px solid var(--cor-borda); white-space: nowrap;
         vertical-align: middle; }
+      /* fluido: células proporcionais que quebram texto e preenchem a largura */
+      :host([fluido]) table { table-layout: auto; }
+      :host([fluido]) th, :host([fluido]) td { white-space: normal; }
+      /* clicavel: linha clicável (abre detalhe) */
+      :host([clicavel]) tbody tr { cursor: pointer; }
       th { color: var(--cor-texto-suave); font-weight: var(--peso-semi);
         font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .03em; }
       tr:last-child td { border-bottom: none; }
@@ -109,7 +114,7 @@ class UiDataTable extends BaseElement {
               )
               .join("")}</div></td>`
           : "";
-        return `<tr>${celulas}${botoes}</tr>`;
+        return `<tr data-idx="${idx}">${celulas}${botoes}</tr>`;
       })
       .join("");
 
@@ -118,11 +123,20 @@ class UiDataTable extends BaseElement {
 
   aposRender() {
     this.$$(".btn-acao").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation(); // não dispara o clique da linha
         const idx = Number(btn.dataset.idx);
         this.emitir("acao", { acao: btn.dataset.acao, linha: this.rows[idx] });
       });
     });
+    if (this.hasAttribute("clicavel")) {
+      this.$$("tbody tr").forEach((tr) => {
+        tr.addEventListener("click", () => {
+          const idx = Number(tr.dataset.idx);
+          this.emitir("linha", { linha: this.rows[idx] });
+        });
+      });
+    }
   }
 }
 

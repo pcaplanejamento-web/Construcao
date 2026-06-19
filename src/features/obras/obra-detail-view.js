@@ -1,11 +1,10 @@
 /**
- * <obra-detail-view> — Detalhe da obra: dashboard + despesas (rota #/obras/:id).
+ * <obra-detail-view> — Detalhe da obra (rota #/obras/:id).
  *
- * Lê do data-store (cache-first): assina o store e sincroniza os componentes
- * filhos (dashboard, tabela, breakdown) sem reconstruir o formulário. As
- * mutações (add/editar/remover despesa) vão pelas mutações do store, que fazem
- * UI otimista + reconciliação com o servidor. A frescura entre usuários vem do
- * refresh em 2º plano (app.js) — sem polling local.
+ * Layout: cabeçalho → dashboard → GRÁFICOS (categoria/rosca/mês) → formulário de
+ * adição → TABELA full-width. Lê do data-store (cache-first) e sincroniza os
+ * filhos por propriedade. A edição de um item é feita no BANNER <despesa-detail>
+ * (clique na linha ou em Editar), não mais no formulário de adição.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -16,8 +15,11 @@ import "../../components/ui-spinner.js";
 import "../../components/ui-icon.js";
 import "../dashboard/dashboard-summary.js";
 import "../dashboard/category-breakdown.js";
+import "../dashboard/grafico-rosca.js";
+import "../dashboard/grafico-mensal.js";
 import "../despesas/despesa-form.js";
 import "../despesas/despesa-table.js";
+import "../despesas/despesa-detail.js";
 import "./obra-form.js";
 import "./obra-share-form.js";
 
@@ -43,9 +45,9 @@ class ObraDetailView extends BaseElement {
       .acoes-topo { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
-      .colunas { display: grid; gap: var(--esp-5); grid-template-columns: 2fr 1fr; }
-      .colunas > * { min-width: 0; } /* deixa a tabela rolar internamente, não estourar */
-      @media (max-width: 860px) { .colunas { grid-template-columns: 1fr; } }
+      .graficos { display: grid; gap: var(--esp-5);
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+      .graficos > * { min-width: 0; }
     `;
   }
 
@@ -71,49 +73,52 @@ class ObraDetailView extends BaseElement {
       <a class="voltar" href="#/obras">← Minhas obras</a>
       <div class="topo" id="topo"></div>
       <dashboard-summary id="dash"></dashboard-summary>
-      <ui-card title="Registrar despesa">
-        <despesa-form id="form"></despesa-form>
-      </ui-card>
-      <div class="colunas">
-        <ui-card title="Despesas"><despesa-table id="tabela"></despesa-table></ui-card>
+      <div class="graficos">
         <ui-card><category-breakdown id="break"></category-breakdown></ui-card>
+        <ui-card><grafico-rosca id="rosca"></grafico-rosca></ui-card>
+        <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
       </div>
+      <ui-card title="Registrar despesa"><despesa-form id="form"></despesa-form></ui-card>
+      <ui-card title="Despesas"><despesa-table id="tabela"></despesa-table></ui-card>
     `;
     this._dash = alvo.querySelector("#dash");
     this._break = alvo.querySelector("#break");
+    this._rosca = alvo.querySelector("#rosca");
+    this._mensal = alvo.querySelector("#mensal");
     this._tabela = alvo.querySelector("#tabela");
     this._form = alvo.querySelector("#form");
 
     this._form.addEventListener("adicionar", (e) => this.adicionar(e.detail));
-    this._form.addEventListener("salvar", (e) => this.salvarEdicao(e.detail.id, e.detail.dados));
-    this._form.addEventListener("cancelar", () => (this._form.emEdicao = null));
-    this._tabela.addEventListener("editar", (e) => this.editar(e.detail.despesa));
+    this._tabela.addEventListener("abrir", (e) => this.abrirBanner(e.detail.despesa));
+    this._tabela.addEventListener("editar", (e) => this.abrirBanner(e.detail.despesa));
     this._tabela.addEventListener("remover", (e) => this.remover(e.detail.despesa));
 
     this._montado = true;
   }
 
-  /** Sincroniza os filhos a partir do store (sem reconstruir o formulário). */
   sincronizar() {
     if (!this._montado) return;
     const o = dataStore.obra(this.obraId);
     if (!o) {
-      location.hash = "#/obras"; // obra removida
+      location.hash = "#/obras";
       return;
     }
     this._obra = o;
     const categorias = dataStore.categoriasDaObra(this.obraId);
     const resumo = dataStore.resumo(this.obraId);
+    const despesas = dataStore.despesas(this.obraId);
 
     this._dash.resumo = resumo;
     this._break.porCategoria = resumo.por_categoria || [];
+    this._rosca.porCategoria = resumo.por_categoria || [];
+    this._mensal.despesas = despesas;
     this._tabela.categorias = categorias;
-    this._tabela.despesas = dataStore.despesas(this.obraId);
+    this._tabela.despesas = despesas;
 
     const sig = categorias.map((c) => c.id).join(",");
     if (sig !== this._catSig) {
       this._catSig = sig;
-      this._form.categorias = categorias; // só atualiza o select quando muda
+      this._form.categorias = categorias;
     }
     this.pintarTopo();
   }
@@ -155,26 +160,37 @@ class ObraDetailView extends BaseElement {
 
   async adicionar(dados) {
     try {
-      await dataStore.adicionarDespesa(this.obraId, dados); // otimista + reconcilia
+      await dataStore.adicionarDespesa(this.obraId, dados);
     } catch (e) {
       notificarErro(e);
     }
   }
 
-  editar(despesa) {
-    this._form.emEdicao = despesa;
-    this._form.categorias = dataStore.categoriasDaObra(this.obraId);
-    this._form.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-
-  async salvarEdicao(id, dados) {
-    try {
-      await dataStore.atualizarDespesa(this.obraId, id, dados);
-      this._form.emEdicao = null;
-      toastSucesso("Despesa atualizada.");
-    } catch (e) {
-      notificarErro(e);
-    }
+  /** Abre o banner com a despesa (ver/editar/excluir). */
+  abrirBanner(despesa) {
+    const banner = document.createElement("despesa-detail");
+    banner.despesa = despesa;
+    banner.categorias = dataStore.categoriasDaObra(this.obraId);
+    const fechar = () => banner.remove();
+    banner.addEventListener("fechar", fechar);
+    banner.addEventListener("salvar", async (e) => {
+      try {
+        await dataStore.atualizarDespesa(this.obraId, e.detail.id, e.detail.dados);
+        toastSucesso("Despesa atualizada.");
+        fechar();
+      } catch (err) {
+        notificarErro(err);
+      }
+    });
+    banner.addEventListener("remover", async (e) => {
+      try {
+        await dataStore.removerDespesa(this.obraId, e.detail.despesa.id);
+        fechar();
+      } catch (err) {
+        notificarErro(err);
+      }
+    });
+    document.body.appendChild(banner);
   }
 
   async remover(despesa) {

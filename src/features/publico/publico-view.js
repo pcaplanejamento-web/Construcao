@@ -79,7 +79,7 @@ class PublicoView extends BaseElement {
       </div>
       <dashboard-summary id="dash"></dashboard-summary>
       <div class="colunas">
-        <ui-card title="Itens"><ui-data-table id="tabela" empty-text="Nenhuma despesa registrada."></ui-data-table></ui-card>
+        <ui-card title="Itens"><ui-data-table id="tabela" fluido empty-text="Nenhuma despesa registrada."></ui-data-table></ui-card>
         <ui-card><category-breakdown id="break"></category-breakdown></ui-card>
       </div>
     `;

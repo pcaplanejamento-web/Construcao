@@ -17,7 +17,7 @@ sobem por `CustomEvent`**.
 | `ui-modal` | `open`, `title`; slots: default, `rodape` | `fechar` | Diálogo overlay (X, backdrop, Esc). |
 | `ui-toast` / `toast-host` | `tipo`, `message` | — | Notificações; host ouve o `event-bus`. |
 | `ui-card` | `title`; slots: default, `acoes` | — | Cartão de superfície. |
-| `ui-data-table` | `.columns`, `.rows`, `.acoes`; attr `empty-text` | `acao` ({acao, linha}) | Tabela genérica orientada a dados. |
+| `ui-data-table` | `.columns`, `.rows`, `.acoes`; attrs `empty-text`, `fluido` (células proporcionais/quebram), `clicavel` (linha clicável) | `acao` ({acao,linha}), `linha` ({linha}) | Tabela genérica orientada a dados. |
 | `ui-icon` | `name`, `size` | — | Biblioteca de ícones padrão (SVG `currentColor`). Sem emoji. |
 | `ui-badge` | `color` (hex ou `var(--token)`), `text` | — | Etiqueta colorida; fundo via `color-mix` (tema-seguro). |
 | `ui-spinner` | `text`, `centro` | — | Indicador de carregamento. |
@@ -63,8 +63,9 @@ sobem por `CustomEvent`**.
 ### Despesas — `features/despesas/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `despesa-form` | `.categorias`, `.emEdicao`; eventos `adicionar`, `salvar`, `cancelar` | Formulário inline (não chama API; emite eventos). |
-| `despesa-table` | `.despesas`, `.categorias`; eventos `editar`, `remover` | Reutiliza `ui-data-table` + `category-badge`. Coluna **Registro**: data da adição + autor + quem editou. |
+| `despesa-form` | `.categorias`; evento `adicionar` | Formulário **só de adição** (edição é no banner). Não chama API. |
+| `despesa-table` | `.despesas`, `.categorias`; eventos `abrir` (clique na linha), `editar`, `remover` | Tabela **full-width** e fluida; colunas **Adicionado** e **Editado por** separadas. Reusa `ui-data-table` + `category-badge`. |
+| `despesa-detail` | `.despesa`, `.categorias`; eventos `salvar`, `remover`, `fechar` | **Banner (modal)** com info completa + edição + exclusão da despesa. |
 | `category-badge` | `nome`, `cor` | Reutiliza `ui-badge`. |
 
 ### Classificações — `features/categorias/`
@@ -81,6 +82,8 @@ sobem por `CustomEvent`**.
 |------------|-------|-----------|
 | `dashboard-summary` | `.resumo` | Cartões: total, orçamento, saldo, qtd. |
 | `category-breakdown` | `.porCategoria` | Barras de gasto por categoria (CSS puro). |
+| `grafico-rosca` | `.porCategoria` | Donut (SVG) da distribuição por categoria + legenda. |
+| `grafico-mensal` | `.despesas` | Barras verticais (CSS) do gasto por mês. |
 
 ### Admin — `features/admin/`
 | Componente | Props/Eventos | Descrição |
