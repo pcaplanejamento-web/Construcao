@@ -1,12 +1,13 @@
 /**
- * <dashboard-summary> — Cartões de totais (gasto, orçamento, saldo, qtd).
+ * <dashboard-summary> — KPIs em cartões com gradiente e ícone (estilo PCA).
  *
  * Propriedade: .resumo = { total, qtd, orcamento, saldo }
- * Atualiza em tempo real: a obra-detail-view passa um novo resumo a cada
- * mudança (otimista ou confirmada pelo servidor).
+ * Atualiza em tempo real: obra-detail-view passa um novo resumo a cada mudança.
+ * Reusa <ui-icon> e os tokens de gradiente (--grad-*).
  */
 import { BaseElement } from "../../components/base-element.js";
 import { moeda, numero, percentual } from "../../core/formatters.js";
+import "../../components/ui-icon.js";
 
 class DashboardSummary extends BaseElement {
   set resumo(v) {
@@ -20,17 +21,42 @@ class DashboardSummary extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
-      .grid { display: grid; gap: var(--esp-3);
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-      .cartao { background: var(--cor-superficie); border: 1px solid var(--cor-borda);
-        border-radius: var(--raio-lg); padding: var(--esp-4); box-shadow: var(--sombra-sm); }
-      .rotulo { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em;
-        color: var(--cor-texto-suave); font-weight: var(--peso-semi); }
-      .valor { font-size: var(--fs-xl); font-weight: var(--peso-forte); margin-top: var(--esp-1); }
-      .positivo { color: var(--cor-sucesso); }
-      .negativo { color: var(--cor-erro); }
-      .dica { font-size: var(--fs-xs); color: var(--cor-texto-fraco); margin-top: 2px; }
+      .grid { display: grid; gap: var(--esp-5);
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+      .cartao {
+        position: relative; overflow: hidden; color: #fff;
+        border-radius: var(--raio-lg); padding: var(--esp-5);
+        box-shadow: var(--sombra-md); min-height: 132px;
+        display: flex; flex-direction: column; gap: var(--esp-2);
+      }
+      /* círculo decorativo sutil */
+      .cartao::after { content: ""; position: absolute; top: -28px; right: -28px;
+        width: 110px; height: 110px; border-radius: 50%;
+        background: rgba(255, 255, 255, .12); }
+      .azul { background: var(--grad-azul); }
+      .verde { background: var(--grad-verde); }
+      .laranja { background: var(--grad-laranja); }
+      .roxo { background: var(--grad-roxo); }
+      .vermelho { background: var(--grad-vermelho); }
+      .icone { width: 40px; height: 40px; border-radius: var(--raio-md);
+        background: rgba(255, 255, 255, .18); display: flex; align-items: center;
+        justify-content: center; position: relative; z-index: 1; }
+      .rotulo { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .05em;
+        font-weight: var(--peso-semi); opacity: .9; position: relative; z-index: 1; }
+      .valor { font-size: var(--fs-2xl); font-weight: var(--peso-forte); line-height: 1.1;
+        position: relative; z-index: 1; }
+      .dica { font-size: var(--fs-xs); opacity: .85; position: relative; z-index: 1; }
     `;
+  }
+
+  cartao(cor, icone, rotulo, valor, dica) {
+    return `
+      <div class="cartao ${cor}">
+        <div class="icone"><ui-icon name="${icone}" size="20"></ui-icon></div>
+        <div class="rotulo">${rotulo}</div>
+        <div class="valor">${valor}</div>
+        ${dica ? `<div class="dica">${dica}</div>` : ""}
+      </div>`;
   }
 
   template() {
@@ -41,26 +67,16 @@ class DashboardSummary extends BaseElement {
     const pct = orcamento ? percentual(total, orcamento) : 0;
     return `
       <div class="grid">
-        <div class="cartao">
-          <div class="rotulo">Total gasto</div>
-          <div class="valor">${moeda(total)}</div>
-          ${orcamento ? `<div class="dica">${pct}% do orçamento</div>` : ""}
-        </div>
-        <div class="cartao">
-          <div class="rotulo">Orçamento</div>
-          <div class="valor">${orcamento ? moeda(orcamento) : "—"}</div>
-        </div>
-        <div class="cartao">
-          <div class="rotulo">Saldo</div>
-          <div class="valor ${saldo < 0 ? "negativo" : "positivo"}">${
-      orcamento ? moeda(saldo) : "—"
-    }</div>
-          ${orcamento && saldo < 0 ? `<div class="dica">Orçamento estourado</div>` : ""}
-        </div>
-        <div class="cartao">
-          <div class="rotulo">Despesas</div>
-          <div class="valor">${numero(r.qtd || 0)}</div>
-        </div>
+        ${this.cartao("azul", "cifrao", "Total gasto", moeda(total), orcamento ? `${pct}% do orçamento` : "")}
+        ${this.cartao("laranja", "carteira", "Orçamento", orcamento ? moeda(orcamento) : "—", "")}
+        ${this.cartao(
+          orcamento && saldo < 0 ? "vermelho" : "verde",
+          "tendencia",
+          "Saldo",
+          orcamento ? moeda(saldo) : "—",
+          orcamento && saldo < 0 ? "Orçamento estourado" : ""
+        )}
+        ${this.cartao("roxo", "recibo", "Despesas", numero(r.qtd || 0), "itens")}
       </div>
     `;
   }

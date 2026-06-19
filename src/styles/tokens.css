@@ -28,6 +28,13 @@
   --cor-roxo: #7c3aed; /* admin */
   --cor-neutro: #64748b; /* genérico / sem categoria */
 
+  /* Gradientes dos cartões de KPI (texto branco; iguais nos dois temas) */
+  --grad-azul: linear-gradient(135deg, #4f6ef7, #7b93ff);
+  --grad-verde: linear-gradient(135deg, #0ea5a3, #34d399);
+  --grad-laranja: linear-gradient(135deg, #f59e0b, #fb923c);
+  --grad-roxo: linear-gradient(135deg, #7c3aed, #a855f7);
+  --grad-vermelho: linear-gradient(135deg, #e11d48, #fb7185);
+
   /* Superfícies / texto / borda (CLARO) */
   --cor-fundo: #f1f5f9;
   --cor-superficie: #ffffff;

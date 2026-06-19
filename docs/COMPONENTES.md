@@ -81,7 +81,7 @@ sobem por `CustomEvent`**.
 ### Dashboard — `features/dashboard/`
 | Componente | Props | Descrição |
 |------------|-------|-----------|
-| `dashboard-summary` | `.resumo` | Cartões: total, orçamento, saldo, qtd. |
+| `dashboard-summary` | `.resumo` | KPIs em **cartões com gradiente + ícone** (total, orçamento, saldo, qtd); reusa `ui-icon` e tokens `--grad-*`. |
 | `category-breakdown` | `.porCategoria` | Barras de gasto por categoria (CSS puro). |
 | `grafico-rosca` | `.porCategoria` | Donut (SVG) da distribuição por categoria + legenda. |
 | `grafico-mensal` | `.despesas` | Barras verticais (CSS) do gasto por mês. |

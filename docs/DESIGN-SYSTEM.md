@@ -35,6 +35,9 @@ Para um ícone novo, adicione o path ao registro `ICONES` em
   `--cor-texto-suave`, `--cor-texto-fraco`. `--cor-overlay` para modais/drawer.
 - **Regra:** chrome usa sempre `var(--cor-*)`. Cores de categoria escolhidas
   pelo usuário são **dados** (hex), não chrome.
+- **Gradientes de KPI:** `--grad-azul`, `--grad-verde`, `--grad-laranja`,
+  `--grad-roxo`, `--grad-vermelho` — usados nos cartões de `dashboard-summary`
+  (texto branco; iguais nos dois temas).
 
 ## Tema claro/escuro
 - Conjunto claro em `:root`; escuro aplicado por `@media (prefers-color-scheme:
