@@ -112,7 +112,8 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `fornecedores-view` | — | Rota `#/fornecedores`. CRUD de fornecedores (nome, telefone, e-mail, classificação). Reusa `ui-data-table` + `category-badge`. |
+| `fornecedores-view` | — | Rota `#/fornecedores`. CRUD de fornecedores (nome, telefone, e-mail, classificação). Linha **clicável** → abre a página do fornecedor. Reusa `ui-data-table` + `category-badge`. |
+| `fornecedor-detail-view` | attr `id` (rota `#/fornecedores/:id`) | Página do fornecedor: cabeçalho + `ui-tabs` com **Contatos** (os contatos deste fornecedor; CRUD via `contato-form`) e **Ofertas** (ofertas feitas pelos contatos dele em todas as cotações, com link para a cotação). |
 | `fornecedor-form` | `.fornecedor`; eventos `salvo`, `fechar` | Modal criar/editar (nome*, telefone, e-mail, cnpj, classificação, observação). |
 | `contatos-view` | — | Rota `#/contatos`. CRUD de contatos; mostra a **empresa** (fornecedor vinculado). |
 | `contato-form` | `.contato`; eventos `salvo`, `fechar` | Modal criar/editar (nome*, telefone, e-mail, cargo, **fornecedor** opcional, observação). |

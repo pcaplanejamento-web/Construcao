@@ -24,6 +24,7 @@ import "./features/obras/obras-list-view.js";
 import "./features/obras/obra-detail-view.js";
 import "./features/categorias/categorias-view.js";
 import "./features/fornecedores/fornecedores-view.js";
+import "./features/fornecedores/fornecedor-detail-view.js";
 import "./features/contatos/contatos-view.js";
 import "./features/cotacoes/cotacoes-view.js";
 import "./features/cotacoes/cotacao-detail-view.js";
@@ -78,6 +79,7 @@ async function iniciar() {
     .adicionar("#/obras/:id", "obra-detail-view", { protegida: true })
     .adicionar("#/categorias", "categorias-view", { protegida: true })
     .adicionar("#/fornecedores", "fornecedores-view", { protegida: true })
+    .adicionar("#/fornecedores/:id", "fornecedor-detail-view", { protegida: true })
     .adicionar("#/contatos", "contatos-view", { protegida: true })
     .adicionar("#/cotacoes", "cotacoes-view", { protegida: true })
     .adicionar("#/cotacoes/:id", "cotacao-detail-view", { protegida: true })

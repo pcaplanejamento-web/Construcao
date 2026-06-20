@@ -73,6 +73,7 @@ class FornecedoresView extends BaseElement {
 
     const tabela = document.createElement("ui-data-table");
     tabela.setAttribute("fluido", "");
+    tabela.setAttribute("clicavel", "");
     tabela.columns = [
       { chave: "nome", titulo: "Fornecedor" },
       { chave: "telefone", titulo: "Telefone", formato: (v) => v || "—" },
@@ -94,6 +95,9 @@ class FornecedoresView extends BaseElement {
       { nome: "excluir", rotulo: "Excluir", variant: "perigo" },
     ];
     tabela.rows = fornecedores;
+    tabela.addEventListener("linha", (e) => {
+      location.hash = "#/fornecedores/" + e.detail.linha.id;
+    });
     tabela.addEventListener("acao", (e) => {
       if (e.detail.acao === "editar") this.abrirForm(e.detail.linha);
       else this.remover(e.detail.linha);
