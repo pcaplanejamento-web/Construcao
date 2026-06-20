@@ -82,6 +82,25 @@ function dadosSnapshot(data, sessao) {
     categoriasPorObra[o.id] = catListaDe(dono);
   });
 
+  // Módulo Compras: coleções globais do usuário + ofertas agrupadas por cotação.
+  const cotacoes = listarCotacoesUsuario(u.id);
+  const idsCot = {};
+  cotacoes.forEach(function (c) {
+    idsCot[c.id] = true;
+  });
+  const precosPorCotacao = {};
+  cotacoes.forEach(function (c) {
+    precosPorCotacao[c.id] = [];
+  });
+  repoListar(SCHEMA.COTACAO_PRECOS).forEach(function (p) {
+    if (idsCot[p.cotacao_id]) precosPorCotacao[p.cotacao_id].push(p);
+  });
+  Object.keys(precosPorCotacao).forEach(function (id) {
+    precosPorCotacao[id].sort(function (a, b) {
+      return String(b.criado_em).localeCompare(String(a.criado_em));
+    });
+  });
+
   const snapshot = {
     usuario: usuarioPublico(u),
     config: montarConfigUsuario(u.id),
@@ -90,6 +109,10 @@ function dadosSnapshot(data, sessao) {
     despesas: despesasPorObra,
     resumos: resumos,
     categoriasPorObra: categoriasPorObra,
+    fornecedores: listarFornecedoresUsuario(u.id),
+    contatos: listarContatosUsuario(u.id),
+    cotacoes: cotacoes,
+    precosPorCotacao: precosPorCotacao,
     servidor_em: agoraIso(),
   };
 

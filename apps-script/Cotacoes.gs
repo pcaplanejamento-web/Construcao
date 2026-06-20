@@ -1,0 +1,228 @@
+/**
+ * Cotacoes.gs — Cotações (necessidades a cotar) + ofertas de contatos.
+ *
+ * Modelo: uma COTAÇÃO é uma necessidade ("Cimento CP-II, 100 sacos"); cada
+ * OFERTA (CotacaoPreco) é o preço de um CONTATO para essa necessidade. A
+ * comparação (menor total) é feita no cliente. obra_id é opcional (vazio =
+ * cotação geral); ao "registrar como despesa" o cliente reusa despesas.criar.
+ */
+
+function _statusCotacaoValido(status) {
+  return STATUS_COTACAO.indexOf(status) >= 0 ? status : "aberta";
+}
+
+/** Lista as cotações do usuário (mais recentes primeiro). */
+function listarCotacoesUsuario(usuarioId) {
+  const lista = repoFiltrar(SCHEMA.COTACOES, function (c) {
+    return String(c.usuario_id) === String(usuarioId);
+  });
+  lista.sort(function (a, b) {
+    return String(b.criado_em).localeCompare(String(a.criado_em));
+  });
+  return lista;
+}
+
+/** Ofertas de uma cotação (mais recentes primeiro). */
+function listarPrecosCotacao(cotacaoId) {
+  const lista = repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {
+    return String(p.cotacao_id) === String(cotacaoId);
+  });
+  lista.sort(function (a, b) {
+    return String(b.criado_em).localeCompare(String(a.criado_em));
+  });
+  return lista;
+}
+
+/** Garante que a cotação é do usuário; senão lança. */
+function _cotacaoDoUsuario(cotacaoId, usuarioId) {
+  const c = repoEncontrar(SCHEMA.COTACOES, function (x) {
+    return String(x.id) === String(cotacaoId);
+  });
+  if (!c || String(c.usuario_id) !== String(usuarioId)) {
+    lancar(ERRO.NAO_AUTORIZADO, "Cotação não pode ser alterada.");
+  }
+  return c;
+}
+
+/** Localiza uma oferta garantindo que a cotação é do usuário. */
+function _precoDoUsuario(precoId, usuarioId) {
+  const p = repoEncontrar(SCHEMA.COTACAO_PRECOS, function (x) {
+    return String(x.id) === String(precoId);
+  });
+  if (!p) lancar(ERRO.NAO_ENCONTRADO, "Oferta não encontrada.");
+  _cotacaoDoUsuario(p.cotacao_id, usuarioId);
+  return p;
+}
+
+/* ------------------------------ Cotações ------------------------------ */
+
+/** cotacoes.listar -> { cotacoes: [...] }. */
+function cotacoesListar(data, sessao) {
+  return { cotacoes: listarCotacoesUsuario(sessao.usuario_id) };
+}
+
+/** cotacoes.criar -> { cotacao }. */
+function cotacoesCriar(data, sessao) {
+  const descricao = String((data && data.descricao) || "").trim();
+  if (!descricao) lancar(ERRO.VALIDACAO, "Informe a descrição da cotação.");
+
+  const obraId = String((data && data.obra_id) || "");
+  if (obraId) _obraAcessivel(obraId, sessao.usuario_id);
+
+  return comLock(function () {
+    const agora = agoraIso();
+    const cotacao = {
+      id: novoId(),
+      usuario_id: sessao.usuario_id,
+      obra_id: obraId,
+      descricao: descricao,
+      quantidade: Number((data && data.quantidade) || 0) || 0,
+      unidade: String((data && data.unidade) || ""),
+      categoria_id: String((data && data.categoria_id) || ""),
+      status: _statusCotacaoValido(data && data.status),
+      criado_em: agora,
+      atualizado_em: agora,
+    };
+    repoInserir(SCHEMA.COTACOES, cotacao);
+    return { cotacao: cotacao };
+  });
+}
+
+/** cotacoes.atualizar -> { cotacao }. */
+function cotacoesAtualizar(data, sessao) {
+  const id = data && data.id;
+  _cotacaoDoUsuario(id, sessao.usuario_id);
+
+  const patch = { atualizado_em: agoraIso() };
+  if (data.descricao !== undefined) {
+    const descricao = String(data.descricao).trim();
+    if (!descricao) lancar(ERRO.VALIDACAO, "A descrição não pode ficar vazia.");
+    patch.descricao = descricao;
+  }
+  if (data.obra_id !== undefined) {
+    const obraId = String(data.obra_id || "");
+    if (obraId) _obraAcessivel(obraId, sessao.usuario_id);
+    patch.obra_id = obraId;
+  }
+  if (data.quantidade !== undefined)
+    patch.quantidade = Number(data.quantidade) || 0;
+  if (data.unidade !== undefined) patch.unidade = String(data.unidade);
+  if (data.categoria_id !== undefined)
+    patch.categoria_id = String(data.categoria_id);
+  if (data.status !== undefined) patch.status = _statusCotacaoValido(data.status);
+
+  return comLock(function () {
+    const cotacao = repoAtualizar(SCHEMA.COTACOES, "id", id, patch);
+    return { cotacao: cotacao };
+  });
+}
+
+/** cotacoes.remover -> { id } (remove a cotação e suas ofertas). */
+function cotacoesRemover(data, sessao) {
+  const id = data && data.id;
+  _cotacaoDoUsuario(id, sessao.usuario_id);
+
+  return comLock(function () {
+    repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {
+      return String(p.cotacao_id) === String(id);
+    }).forEach(function (p) {
+      repoRemover(SCHEMA.COTACAO_PRECOS, "id", p.id);
+    });
+    repoRemover(SCHEMA.COTACOES, "id", id);
+    return { id: id };
+  });
+}
+
+/* ------------------------------- Ofertas ------------------------------ */
+
+/** cotacoes.adicionarPreco -> { preco }. */
+function cotacoesAdicionarPreco(data, sessao) {
+  const cotacaoId = data && data.cotacao_id;
+  _cotacaoDoUsuario(cotacaoId, sessao.usuario_id);
+
+  const contatoId = String((data && data.contato_id) || "");
+  if (!contatoId) lancar(ERRO.VALIDACAO, "Selecione o contato da oferta.");
+  _contatoDoUsuario(contatoId, sessao.usuario_id);
+
+  const valor = Number(data && data.valor_unit);
+  if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
+
+  return comLock(function () {
+    const preco = {
+      id: novoId(),
+      cotacao_id: cotacaoId,
+      contato_id: contatoId,
+      valor_unit: valor,
+      prazo_entrega: String((data && data.prazo_entrega) || ""),
+      observacao: String((data && data.observacao) || ""),
+      escolhido: false,
+      criado_em: agoraIso(),
+    };
+    repoInserir(SCHEMA.COTACAO_PRECOS, preco);
+    return { preco: preco };
+  });
+}
+
+/** cotacoes.atualizarPreco -> { preco }. */
+function cotacoesAtualizarPreco(data, sessao) {
+  const id = data && data.id;
+  _precoDoUsuario(id, sessao.usuario_id);
+
+  const patch = {};
+  if (data.contato_id !== undefined) {
+    const contatoId = String(data.contato_id || "");
+    if (!contatoId) lancar(ERRO.VALIDACAO, "Selecione o contato da oferta.");
+    _contatoDoUsuario(contatoId, sessao.usuario_id);
+    patch.contato_id = contatoId;
+  }
+  if (data.valor_unit !== undefined) {
+    const valor = Number(data.valor_unit);
+    if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Valor inválido.");
+    patch.valor_unit = valor;
+  }
+  if (data.prazo_entrega !== undefined)
+    patch.prazo_entrega = String(data.prazo_entrega);
+  if (data.observacao !== undefined) patch.observacao = String(data.observacao);
+
+  return comLock(function () {
+    const preco = repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", id, patch);
+    return { preco: preco };
+  });
+}
+
+/** cotacoes.removerPreco -> { id, cotacao_id }. */
+function cotacoesRemoverPreco(data, sessao) {
+  const id = data && data.id;
+  const preco = _precoDoUsuario(id, sessao.usuario_id);
+
+  return comLock(function () {
+    repoRemover(SCHEMA.COTACAO_PRECOS, "id", id);
+    return { id: id, cotacao_id: preco.cotacao_id };
+  });
+}
+
+/**
+ * cotacoes.escolherPreco -> { precos } (lista atualizada da cotação).
+ * Marca a oferta como escolhida e desmarca as demais da mesma cotação.
+ */
+function cotacoesEscolherPreco(data, sessao) {
+  const id = data && data.id;
+  const preco = _precoDoUsuario(id, sessao.usuario_id);
+
+  return comLock(function () {
+    repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {
+      return String(p.cotacao_id) === String(preco.cotacao_id);
+    }).forEach(function (p) {
+      const escolhido = String(p.id) === String(id);
+      if (_boolDe(p.escolhido) !== escolhido) {
+        repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", p.id, { escolhido: escolhido });
+      }
+    });
+    return { precos: listarPrecosCotacao(preco.cotacao_id) };
+  });
+}
+
+/** Normaliza booleano vindo do Sheets (TRUE/true/boolean). */
+function _boolDe(v) {
+  return v === true || v === "TRUE" || v === "true";
+}

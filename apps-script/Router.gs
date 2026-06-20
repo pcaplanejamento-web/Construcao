@@ -46,6 +46,28 @@ const ROTAS = {
   "categorias.atualizar": { fn: categoriasAtualizar },
   "categorias.remover": { fn: categoriasRemover },
 
+  // Compras — Fornecedores
+  "fornecedores.listar": { fn: fornecedoresListar },
+  "fornecedores.criar": { fn: fornecedoresCriar },
+  "fornecedores.atualizar": { fn: fornecedoresAtualizar },
+  "fornecedores.remover": { fn: fornecedoresRemover },
+
+  // Compras — Contatos
+  "contatos.listar": { fn: contatosListar },
+  "contatos.criar": { fn: contatosCriar },
+  "contatos.atualizar": { fn: contatosAtualizar },
+  "contatos.remover": { fn: contatosRemover },
+
+  // Compras — Cotações + ofertas
+  "cotacoes.listar": { fn: cotacoesListar },
+  "cotacoes.criar": { fn: cotacoesCriar },
+  "cotacoes.atualizar": { fn: cotacoesAtualizar },
+  "cotacoes.remover": { fn: cotacoesRemover },
+  "cotacoes.adicionarPreco": { fn: cotacoesAdicionarPreco },
+  "cotacoes.atualizarPreco": { fn: cotacoesAtualizarPreco },
+  "cotacoes.removerPreco": { fn: cotacoesRemoverPreco },
+  "cotacoes.escolherPreco": { fn: cotacoesEscolherPreco },
+
   // Usuários (autenticado)
   "usuarios.listar": { fn: usuariosListar },
 

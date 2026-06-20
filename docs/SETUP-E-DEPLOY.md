@@ -53,6 +53,10 @@ pelo `bootstrapAdmin()`.
 3. Veja o **Log de execução**: se a planilha foi criada, a URL aparece ali.
    Confirme as abas (`Usuarios`, `Obras`, `Despesas`, `Categorias`,
    `Configuracoes`, `Sessoes`) e o admin em `Usuarios`.
+   > As abas do módulo Compras (`Fornecedores`, `Contatos`, `Cotacoes`,
+   > `CotacaoPrecos`) **se autocriam** no primeiro acesso (via `SheetRepo._abaDe`);
+   > nenhum escopo OAuth novo. Após atualizar o backend, basta `clasp push` +
+   > redeploy da mesma implantação (mesma `API_URL`).
 4. (Opcional) Rode **`instalarTriggerLimpeza`** uma vez para agendar a limpeza
    diária de sessões expiradas.
 

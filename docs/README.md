@@ -25,6 +25,9 @@ cadastra os demais usuários e define as configurações de cada um.
 - 💸 Registro de **despesas** com item, valor, **classificação** e data.
 - 📊 **Dashboard em tempo real**: total gasto, orçamento, saldo e gasto por categoria.
 - 🏷️ **Classificações** globais + próprias por usuário.
+- 🧾 **Compras**: agenda de **fornecedores** e **contatos**, e **cotações** que
+  comparam ofertas de contatos (destaque do menor preço); a oferta escolhida
+  vira **despesa** numa obra.
 - 👤 **Página de perfil** com os dados do usuário e **troca de senha**.
 - ⚡ **Carregamento único + cache**: tudo é carregado de uma vez (`dados.snapshot`)
   e as telas ficam disponíveis sem recarregar; refresh em 2º plano mantém fresco.

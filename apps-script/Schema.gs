@@ -80,6 +80,71 @@ const SCHEMA = {
     colunas: ["id", "obra_id", "token", "acessado_em"],
   },
 
+  // Módulo Compras --------------------------------------------------------
+  FORNECEDORES: {
+    aba: "Fornecedores",
+    colunas: [
+      "id",
+      "usuario_id",
+      "nome",
+      "telefone",
+      "email",
+      "cnpj",
+      "categoria_id",
+      "observacao",
+      "ativo",
+      "criado_em",
+      "atualizado_em",
+    ],
+  },
+
+  CONTATOS: {
+    aba: "Contatos",
+    colunas: [
+      "id",
+      "usuario_id",
+      "nome",
+      "telefone",
+      "email",
+      "cargo",
+      "fornecedor_id", // opcional: vincula a pessoa a uma empresa (fornecedor)
+      "observacao",
+      "ativo",
+      "criado_em",
+      "atualizado_em",
+    ],
+  },
+
+  COTACOES: {
+    aba: "Cotacoes",
+    colunas: [
+      "id",
+      "usuario_id",
+      "obra_id", // opcional (vazio = cotação geral)
+      "descricao",
+      "quantidade",
+      "unidade",
+      "categoria_id",
+      "status", // aberta | fechada
+      "criado_em",
+      "atualizado_em",
+    ],
+  },
+
+  COTACAO_PRECOS: {
+    aba: "CotacaoPrecos", // cada linha = uma OFERTA de um contato p/ a cotação
+    colunas: [
+      "id",
+      "cotacao_id",
+      "contato_id",
+      "valor_unit",
+      "prazo_entrega",
+      "observacao",
+      "escolhido",
+      "criado_em",
+    ],
+  },
+
   SESSOES: {
     aba: "Sessoes",
     colunas: [
@@ -98,6 +163,9 @@ const ROLES = { ADMIN: "admin", USUARIO: "usuario" };
 
 /** Status de obra válidos. */
 const STATUS_OBRA = ["ativa", "pausada", "concluida"];
+
+/** Status de cotação válidos. */
+const STATUS_COTACAO = ["aberta", "fechada"];
 
 /** Marcador de categoria global (compartilhada por todos). */
 const CATEGORIA_GLOBAL = "GLOBAL";

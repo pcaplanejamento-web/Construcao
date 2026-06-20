@@ -23,6 +23,10 @@ import "./features/auth/login-view.js";
 import "./features/obras/obras-list-view.js";
 import "./features/obras/obra-detail-view.js";
 import "./features/categorias/categorias-view.js";
+import "./features/fornecedores/fornecedores-view.js";
+import "./features/contatos/contatos-view.js";
+import "./features/cotacoes/cotacoes-view.js";
+import "./features/cotacoes/cotacao-detail-view.js";
 import "./features/perfil/perfil-view.js";
 import "./features/admin/admin-view.js";
 import "./features/publico/publico-view.js";
@@ -73,6 +77,10 @@ async function iniciar() {
     .adicionar("#/obras", "obras-list-view", { protegida: true })
     .adicionar("#/obras/:id", "obra-detail-view", { protegida: true })
     .adicionar("#/categorias", "categorias-view", { protegida: true })
+    .adicionar("#/fornecedores", "fornecedores-view", { protegida: true })
+    .adicionar("#/contatos", "contatos-view", { protegida: true })
+    .adicionar("#/cotacoes", "cotacoes-view", { protegida: true })
+    .adicionar("#/cotacoes/:id", "cotacao-detail-view", { protegida: true })
     .adicionar("#/perfil", "perfil-view", { protegida: true })
     .adicionar("#/admin", "admin-view", { protegida: true, admin: true });
 

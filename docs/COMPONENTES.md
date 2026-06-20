@@ -18,7 +18,7 @@ sobem por `CustomEvent`**.
 | `ui-toast` / `toast-host` | `tipo`, `message` | — | Notificações; host ouve o `event-bus`. |
 | `ui-card` | `title`; slots: default, `acoes` | — | Cartão de superfície. |
 | `ui-data-table` | `.columns`, `.rows`, `.acoes`; attrs `empty-text`, `fluido` (células proporcionais/quebram), `clicavel` (linha clicável) | `acao` ({acao,linha}), `linha` ({linha}) | Tabela genérica orientada a dados. |
-| `ui-icon` | `name`, `size` | — | Biblioteca de ícones padrão (SVG `currentColor`). Sem emoji. |
+| `ui-icon` | `name`, `size` | — | Biblioteca de ícones padrão (SVG `currentColor`). Sem emoji. Inclui `fornecedor`, `contato`, `cotacao` (módulo Compras). |
 | `ui-tabs` | `.abas=[{id,rotulo,icone}]`, attr `ativo`; evento `mudar` | Abas com slots nomeados (`slot="<id>"`); mostra só a aba ativa. |
 | `ui-badge` | `color` (hex ou `var(--token)`), `text` | — | Etiqueta colorida; fundo via `color-mix` (tema-seguro). |
 | `ui-spinner` | `text`, `centro` | — | Indicador de carregamento. |
@@ -33,7 +33,7 @@ sobem por `CustomEvent`**.
 |------------|---------------|-----------|
 | `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Altura de viewport fixa: o conteúdo rola no `main` → **sidebar com altura constante** em todas as telas. Esconde header/sidebar no login. |
 | `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky): marca, **botão sanduíche** (recolhe no desktop / drawer no mobile), **alternador de tema** (sol/lua), chip do usuário → `#/perfil`, Sair. Ícones via `ui-icon`. |
-| `app-sidebar` | attr `aberto` (drawer mobile), `recolhido` (régua de ícones no desktop); evento `navegou` | Menu lateral em abas (Obras, Classificações, Administração via `role-guard`, Perfil). Ao recolher, os rótulos somem e o ícone fica no mesmo lugar; altura sempre 100% do conteúdo. Preferência persistida. |
+| `app-sidebar` | attr `aberto` (drawer mobile), `recolhido` (régua de ícones no desktop); evento `navegou` | Menu lateral em abas (Obras, Fornecedores, Contatos, Cotações, Classificações, Administração via `role-guard`, Perfil). `template()` itera o array `ITENS`. Ao recolher, os rótulos somem e o ícone fica no mesmo lugar; altura sempre 100% do conteúdo. Preferência persistida. |
 | `app-loader` | attr `texto` | Tela de carregamento inicial (overlay) exibida enquanto o snapshot carrega. |
 | `role-guard` | attr `role="admin"\|"usuario"` | Mostra/oculta o slot conforme o papel (UX). |
 
@@ -90,6 +90,24 @@ sobem por `CustomEvent`**.
 > Os 3 gráficos ficam em `ui-card` de **tamanho igual** (grade 1×3, altura fixa);
 > cada um preenche o cartão e rola internamente. A view do detalhe usa `ui-tabs`
 > (**Gráficos** / **Despesas**) abaixo dos KPIs.
+
+### Compras — `features/fornecedores/`, `features/contatos/`, `features/cotacoes/`
+Módulo de cotações: agenda de **fornecedores** (empresas) e **contatos** (pessoas);
+**cotações** comparam ofertas de contatos e a melhor pode virar despesa numa obra.
+Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTACOES`.
+
+| Componente | Props/Eventos | Descrição |
+|------------|---------------|-----------|
+| `fornecedores-view` | — | Rota `#/fornecedores`. CRUD de fornecedores (nome, telefone, e-mail, classificação). Reusa `ui-data-table` + `category-badge`. |
+| `fornecedor-form` | `.fornecedor`; eventos `salvo`, `fechar` | Modal criar/editar (nome*, telefone, e-mail, cnpj, classificação, observação). |
+| `contatos-view` | — | Rota `#/contatos`. CRUD de contatos; mostra a **empresa** (fornecedor vinculado). |
+| `contato-form` | `.contato`; eventos `salvo`, `fechar` | Modal criar/editar (nome*, telefone, e-mail, cargo, **fornecedor** opcional, observação). |
+| `cotacoes-view` | — | Rota `#/cotacoes`. Lista (tabela `clicavel`): descrição, qtd, classificação, obra, nº de ofertas, **melhor preço**, situação. |
+| `cotacao-form` | `.cotacao`; eventos `salvo`, `fechar` | Modal criar/editar (descrição*, quantidade, unidade, classificação, **obra opcional**, status). |
+| `cotacao-detail-view` | attr `id` (rota `#/cotacoes/:id`) | **Comparativo**: ofertas (contato, empresa, valor unit., **total** com destaque do menor preço, prazo, obs); escolher/editar/excluir oferta; **Registrar como despesa**. |
+| `preco-form` | `.cotacaoId`, `.preco`; eventos `salvo`, `fechar` | Modal de oferta (**contato**, valor unitário*, prazo, observação). |
+| `cotacao-despesa-form` | `.cotacao`, `.preco`, `.contatoNome`; eventos `registrado`, `fechar` | Mini-modal: escolhe a **obra** + classificação e lança a oferta escolhida como despesa (reusa `dataStore.adicionarDespesa`). |
+| `cotacao-util.js` | `totalOferta`, `melhorTotal` | Funções puras (total = valor_unit × quantidade; menor total das ofertas). |
 
 ### Admin — `features/admin/`
 | Componente | Props/Eventos | Descrição |

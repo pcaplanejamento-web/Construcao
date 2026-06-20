@@ -16,6 +16,10 @@ Usuarios 1───* Configuracoes
 Usuarios 1───* Categorias (próprias)   +   Categorias GLOBAL (compartilhadas)
 Usuarios 1───* Sessoes
 Obras *───* Usuarios  (via Compartilhamentos — colaboradores convidados)
+
+Módulo Compras (tudo por usuário):
+Usuarios 1───* Fornecedores 1───* Contatos
+Usuarios 1───* Cotacoes (obra_id opcional) 1───* CotacaoPrecos *───1 Contatos
 ```
 
 ## Aba `Usuarios`
@@ -87,6 +91,67 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 
 Categorias semente (`GLOBAL`) são criadas no bootstrap. A listagem de um usuário
 = categorias `GLOBAL` + as próprias.
+
+## Módulo Compras
+
+Tudo é **por usuário** (`usuario_id` = dono). Cotações comparam ofertas de
+contatos; a melhor oferta pode virar uma despesa numa obra (reusa `despesas.criar`).
+
+### Aba `Fornecedores` (empresas/lojas)
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| usuario_id | UUID | FK → Usuarios.id (dono) |
+| nome | string | nome/empresa |
+| telefone | string | opcional |
+| email | string | opcional |
+| cnpj | string | opcional |
+| categoria_id | UUID | FK → Categorias.id (opcional) |
+| observacao | string | opcional |
+| ativo | boolean | exclusão lógica |
+| criado_em / atualizado_em | ISO datetime | |
+
+### Aba `Contatos` (pessoas)
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| usuario_id | UUID | FK → Usuarios.id (dono) |
+| nome | string | |
+| telefone | string | opcional |
+| email | string | opcional |
+| cargo | string | opcional |
+| fornecedor_id | UUID | FK → Fornecedores.id (opcional — empresa do contato) |
+| observacao | string | opcional |
+| ativo | boolean | exclusão lógica |
+| criado_em / atualizado_em | ISO datetime | |
+
+### Aba `Cotacoes` (necessidade a cotar)
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| usuario_id | UUID | FK → Usuarios.id (dono) |
+| obra_id | UUID | FK → Obras.id (**opcional**; vazio = cotação geral) |
+| descricao | string | item/necessidade |
+| quantidade | number | opcional |
+| unidade | string | texto livre (un, m², kg, saco…) |
+| categoria_id | UUID | FK → Categorias.id (opcional) |
+| status | `aberta` \| `fechada` | |
+| criado_em / atualizado_em | ISO datetime | |
+
+### Aba `CotacaoPrecos` (oferta de um contato)
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| cotacao_id | UUID | FK → Cotacoes.id |
+| contato_id | UUID | FK → Contatos.id (quem ofertou) |
+| valor_unit | number | valor unitário ofertado |
+| prazo_entrega | string | opcional |
+| observacao | string | opcional |
+| escolhido | boolean | a oferta escolhida (exclusiva por cotação) |
+| criado_em | ISO datetime | |
+
+> Total de uma oferta = `valor_unit × quantidade` (calculado no cliente; não
+> persiste). Excluir uma cotação remove suas ofertas.
 
 ## Aba `Compartilhamentos`
 Relaciona obras a usuários convidados (colaboradores). O dono permanece em

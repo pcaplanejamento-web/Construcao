@@ -13,11 +13,15 @@ import { BaseElement } from "../components/base-element.js";
 import "./role-guard.js";
 import "../components/ui-icon.js";
 
+// Itens principais (antes de Admin e Perfil).
 const ITENS = [
   { rota: "#/obras", rotulo: "Minhas obras", icone: "obra" },
+  { rota: "#/fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
+  { rota: "#/contatos", rotulo: "Contatos", icone: "contato" },
+  { rota: "#/cotacoes", rotulo: "Cotações", icone: "cotacao" },
   { rota: "#/categorias", rotulo: "Classificações", icone: "tag" },
-  { rota: "#/perfil", rotulo: "Meu perfil", icone: "usuario" },
 ];
+const ITEM_PERFIL = { rota: "#/perfil", rotulo: "Meu perfil", icone: "usuario" };
 
 class AppSidebar extends BaseElement {
   static get observedAttributes() {
@@ -76,15 +80,14 @@ class AppSidebar extends BaseElement {
     return `
       <div class="backdrop" id="backdrop"></div>
       <nav>
-        ${link(ITENS[0])}
-        ${link(ITENS[1])}
+        ${ITENS.map(link).join("")}
         <role-guard role="admin">
           <a href="#/admin" data-rota="#/admin" title="Administração">
             <ui-icon name="config" size="18"></ui-icon><span class="rotulo">Administração</span>
           </a>
         </role-guard>
         <div class="sep"></div>
-        ${link(ITENS[2])}
+        ${link(ITEM_PERFIL)}
       </nav>
     `;
   }

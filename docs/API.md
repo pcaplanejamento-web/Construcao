@@ -44,7 +44,7 @@ A API é um **único Web App** do Apps Script. Um `doPost` despacha por `action`
 ### Estado inicial (cache-first)
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
+| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cotacoes:[...], precosPorCotacao:{cotacaoId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
 
 ### Obras (próprias + compartilhadas)
 Cada obra inclui `ehDono` (bool), `dono_nome`/`dono_email` e `total_gasto`.
@@ -91,6 +91,37 @@ para dono **e** colaboradores.
 | `categorias.criar` | `{ nome, cor? }` | `{ categoria }` |
 | `categorias.atualizar` | `{ id, nome?, cor?, ativo? }` | `{ categoria }` |
 | `categorias.remover` | `{ id }` | `{ id }` (desativa) |
+
+### Compras — Fornecedores (próprios do usuário)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `fornecedores.listar` | `{}` | `{ fornecedores: [...] }` (ativos) |
+| `fornecedores.criar` | `{ nome, telefone?, email?, cnpj?, categoria_id?, observacao? }` | `{ fornecedor }` |
+| `fornecedores.atualizar` | `{ id, ...campos }` | `{ fornecedor }` |
+| `fornecedores.remover` | `{ id }` | `{ id }` (desativa) |
+
+### Compras — Contatos (próprios do usuário)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `contatos.listar` | `{}` | `{ contatos: [...] }` (ativos) |
+| `contatos.criar` | `{ nome, telefone?, email?, cargo?, fornecedor_id?, observacao? }` | `{ contato }` |
+| `contatos.atualizar` | `{ id, ...campos }` | `{ contato }` |
+| `contatos.remover` | `{ id }` | `{ id }` (desativa) |
+
+### Compras — Cotações + ofertas
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `cotacoes.listar` | `{}` | `{ cotacoes: [...] }` |
+| `cotacoes.criar` | `{ descricao, quantidade?, unidade?, categoria_id?, obra_id?, status? }` | `{ cotacao }` |
+| `cotacoes.atualizar` | `{ id, ...campos }` | `{ cotacao }` |
+| `cotacoes.remover` | `{ id }` | `{ id }` (remove a cotação e suas ofertas) |
+| `cotacoes.adicionarPreco` | `{ cotacao_id, contato_id, valor_unit, prazo_entrega?, observacao? }` | `{ preco }` |
+| `cotacoes.atualizarPreco` | `{ id, contato_id?, valor_unit?, prazo_entrega?, observacao? }` | `{ preco }` |
+| `cotacoes.removerPreco` | `{ id }` | `{ id, cotacao_id }` |
+| `cotacoes.escolherPreco` | `{ id }` | `{ precos }` (marca a escolhida e desmarca as demais da cotação) |
+
+> "Registrar como despesa" reusa `despesas.criar` (sem action nova): item =
+> descrição da cotação, valor = `valor_unit × quantidade` da oferta escolhida.
 
 ### Admin (exigem role admin)
 | Action | `data` | Retorno |

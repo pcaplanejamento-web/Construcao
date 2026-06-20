@@ -25,6 +25,10 @@ const ESTADO_VAZIO = {
   despesas: {}, // obraId -> [despesa]
   resumos: {}, // obraId -> resumo
   categoriasPorObra: {}, // obraId -> [categoria do dono]
+  fornecedores: [], // módulo Compras (empresas/lojas do usuário)
+  contatos: [], // módulo Compras (pessoas do usuário)
+  cotacoes: [], // módulo Compras (necessidades a cotar)
+  precosPorCotacao: {}, // cotacaoId -> [oferta]
   usuarios: [], // admin
 };
 
@@ -50,6 +54,10 @@ function persistir() {
       despesas: s.despesas,
       resumos: s.resumos,
       categoriasPorObra: s.categoriasPorObra,
+      fornecedores: s.fornecedores,
+      contatos: s.contatos,
+      cotacoes: s.cotacoes,
+      precosPorCotacao: s.precosPorCotacao,
       usuarios: s.usuarios,
     };
     localStorage.setItem(chave, JSON.stringify({ versao: CACHE_VERSAO, dados }));
@@ -96,6 +104,10 @@ function _aplicarSnapshot(d) {
     despesas: d.despesas || {},
     resumos: d.resumos || {},
     categoriasPorObra: d.categoriasPorObra || {},
+    fornecedores: d.fornecedores || [],
+    contatos: d.contatos || [],
+    cotacoes: d.cotacoes || [],
+    precosPorCotacao: d.precosPorCotacao || {},
     usuarios: d.usuarios || [],
   });
   persistir();
@@ -130,6 +142,14 @@ const obra = (id) => store.get().obras.find((o) => String(o.id) === String(id)) 
 const despesas = (obraId) => store.get().despesas[obraId] || [];
 const resumo = (obraId) => store.get().resumos[obraId] || { total: 0, qtd: 0, orcamento: 0, saldo: 0, por_categoria: [] };
 const categoriasDaObra = (obraId) => store.get().categoriasPorObra[obraId] || store.get().categorias;
+// Módulo Compras
+const fornecedores = () => store.get().fornecedores;
+const fornecedoresAtivos = () => store.get().fornecedores.filter((f) => f.ativo !== false);
+const contatos = () => store.get().contatos;
+const contatosAtivos = () => store.get().contatos.filter((c) => c.ativo !== false);
+const cotacoes = () => store.get().cotacoes;
+const cotacao = (id) => store.get().cotacoes.find((c) => String(c.id) === String(id)) || null;
+const precosDaCotacao = (cotacaoId) => store.get().precosPorCotacao[cotacaoId] || [];
 
 /* --------------------- Recalcular resumo local ----------------------- */
 
@@ -369,6 +389,160 @@ async function removerCategoria(id) {
   bus.emit(EVENTOS.CATEGORIAS, { tipo: "removida" });
 }
 
+/* -------------------- Mutações: fornecedores ------------------------- */
+
+async function criarFornecedor(dados) {
+  const r = await api.call("fornecedores.criar", dados);
+  const s = store.get();
+  store.set({ fornecedores: [...s.fornecedores, r.fornecedor] });
+  persistir();
+  bus.emit(EVENTOS.FORNECEDORES, { tipo: "criado" });
+  return r.fornecedor;
+}
+
+async function atualizarFornecedor(id, dados) {
+  const r = await api.call("fornecedores.atualizar", { id, ...dados });
+  const s = store.get();
+  store.set({
+    fornecedores: s.fornecedores.map((f) => (String(f.id) === String(id) ? r.fornecedor : f)),
+  });
+  persistir();
+  bus.emit(EVENTOS.FORNECEDORES, { tipo: "atualizado" });
+  return r.fornecedor;
+}
+
+async function removerFornecedor(id) {
+  await api.call("fornecedores.remover", { id });
+  const s = store.get();
+  store.set({ fornecedores: s.fornecedores.filter((f) => String(f.id) !== String(id)) });
+  persistir();
+  bus.emit(EVENTOS.FORNECEDORES, { tipo: "removido" });
+}
+
+/* ----------------------- Mutações: contatos -------------------------- */
+
+async function criarContato(dados) {
+  const r = await api.call("contatos.criar", dados);
+  const s = store.get();
+  store.set({ contatos: [...s.contatos, r.contato] });
+  persistir();
+  bus.emit(EVENTOS.CONTATOS, { tipo: "criado" });
+  return r.contato;
+}
+
+async function atualizarContato(id, dados) {
+  const r = await api.call("contatos.atualizar", { id, ...dados });
+  const s = store.get();
+  store.set({
+    contatos: s.contatos.map((c) => (String(c.id) === String(id) ? r.contato : c)),
+  });
+  persistir();
+  bus.emit(EVENTOS.CONTATOS, { tipo: "atualizado" });
+  return r.contato;
+}
+
+async function removerContato(id) {
+  await api.call("contatos.remover", { id });
+  const s = store.get();
+  store.set({ contatos: s.contatos.filter((c) => String(c.id) !== String(id)) });
+  persistir();
+  bus.emit(EVENTOS.CONTATOS, { tipo: "removido" });
+}
+
+/* ----------------------- Mutações: cotações -------------------------- */
+
+async function criarCotacao(dados) {
+  const r = await api.call("cotacoes.criar", dados);
+  const s = store.get();
+  store.set({
+    cotacoes: [r.cotacao, ...s.cotacoes],
+    precosPorCotacao: { ...s.precosPorCotacao, [r.cotacao.id]: [] },
+  });
+  persistir();
+  bus.emit(EVENTOS.COTACOES, { tipo: "criada" });
+  return r.cotacao;
+}
+
+async function atualizarCotacao(id, dados) {
+  const r = await api.call("cotacoes.atualizar", { id, ...dados });
+  const s = store.get();
+  store.set({
+    cotacoes: s.cotacoes.map((c) => (String(c.id) === String(id) ? r.cotacao : c)),
+  });
+  persistir();
+  bus.emit(EVENTOS.COTACOES, { tipo: "atualizada" });
+  return r.cotacao;
+}
+
+async function removerCotacao(id) {
+  await api.call("cotacoes.remover", { id });
+  const s = store.get();
+  const precos = { ...s.precosPorCotacao };
+  delete precos[id];
+  store.set({
+    cotacoes: s.cotacoes.filter((c) => String(c.id) !== String(id)),
+    precosPorCotacao: precos,
+  });
+  persistir();
+  bus.emit(EVENTOS.COTACOES, { tipo: "removida" });
+}
+
+/* ------------------- Mutações: ofertas (preços) ---------------------- */
+
+async function adicionarPreco(cotacaoId, dados) {
+  const r = await api.call("cotacoes.adicionarPreco", { cotacao_id: cotacaoId, ...dados });
+  const s = store.get();
+  store.set({
+    precosPorCotacao: {
+      ...s.precosPorCotacao,
+      [cotacaoId]: [r.preco, ...(s.precosPorCotacao[cotacaoId] || [])],
+    },
+  });
+  persistir();
+  bus.emit(EVENTOS.COTACOES, { tipo: "preco-adicionado", cotacao_id: cotacaoId });
+  return r.preco;
+}
+
+async function atualizarPreco(cotacaoId, id, dados) {
+  const r = await api.call("cotacoes.atualizarPreco", { id, ...dados });
+  const s = store.get();
+  store.set({
+    precosPorCotacao: {
+      ...s.precosPorCotacao,
+      [cotacaoId]: (s.precosPorCotacao[cotacaoId] || []).map((p) =>
+        String(p.id) === String(id) ? r.preco : p
+      ),
+    },
+  });
+  persistir();
+  bus.emit(EVENTOS.COTACOES, { tipo: "preco-atualizado", cotacao_id: cotacaoId });
+  return r.preco;
+}
+
+async function removerPreco(cotacaoId, id) {
+  await api.call("cotacoes.removerPreco", { id });
+  const s = store.get();
+  store.set({
+    precosPorCotacao: {
+      ...s.precosPorCotacao,
+      [cotacaoId]: (s.precosPorCotacao[cotacaoId] || []).filter((p) => String(p.id) !== String(id)),
+    },
+  });
+  persistir();
+  bus.emit(EVENTOS.COTACOES, { tipo: "preco-removido", cotacao_id: cotacaoId });
+}
+
+async function escolherPreco(cotacaoId, id) {
+  const r = await api.call("cotacoes.escolherPreco", { id });
+  const s = store.get();
+  store.set({
+    precosPorCotacao: { ...s.precosPorCotacao, [cotacaoId]: r.precos },
+  });
+  persistir();
+  bus.emit(EVENTOS.COTACOES, { tipo: "preco-escolhido", cotacao_id: cotacaoId });
+  return r.precos;
+}
+
 /* ----------------------- Mutações: admin ----------------------------- */
 
 async function adminCriarUsuario(dados) {
@@ -401,10 +575,15 @@ export const dataStore = {
   limparCache,
   // getters
   usuario, config, categorias, usuarios, obras, obra, despesas, resumo, categoriasDaObra,
+  fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cotacoes, cotacao, precosDaCotacao,
   // mutações
   criarObra, atualizarObra, removerObra,
   gerarLinkPublico, removerLinkPublico,
   adicionarDespesa, atualizarDespesa, removerDespesa,
   criarCategoria, atualizarCategoria, removerCategoria,
+  criarFornecedor, atualizarFornecedor, removerFornecedor,
+  criarContato, atualizarContato, removerContato,
+  criarCotacao, atualizarCotacao, removerCotacao,
+  adicionarPreco, atualizarPreco, removerPreco, escolherPreco,
   adminCriarUsuario, adminAtualizarUsuario,
 };
