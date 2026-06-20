@@ -253,6 +253,59 @@ function cotacoesEscolherPreco(data, sessao) {
   });
 }
 
+/**
+ * cotacoes.registrarDespesa -> { despesa, resumo, precos, cotacao }.
+ * Lança a oferta como DESPESA na obra escolhida, MARCA a oferta (despesa_id +
+ * escolhido exclusivo) e FECHA a cotação. Reusa _novaDespesa (Despesas.gs).
+ */
+function cotacoesRegistrarDespesa(data, sessao) {
+  const precoId = data && data.preco_id;
+  const preco = _precoDoUsuario(precoId, sessao.usuario_id);
+  const cotacao = _cotacaoDoUsuario(preco.cotacao_id, sessao.usuario_id);
+
+  const obraId = String((data && data.obra_id) || "");
+  if (!obraId) lancar(ERRO.VALIDACAO, "Selecione a obra.");
+  _obraAcessivel(obraId, sessao.usuario_id);
+
+  const qtd = Number(cotacao.quantidade) > 0 ? Number(cotacao.quantidade) : 1;
+  const valor = (Number(preco.valor_unit) || 0) * qtd;
+  if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Valor da oferta inválido.");
+  const item = String(cotacao.descricao || "").trim() || "Cotação";
+  const contato = repoEncontrar(SCHEMA.CONTATOS, function (x) {
+    return String(x.id) === String(preco.contato_id);
+  }) || {};
+  const categoriaId = String((data && data.categoria_id) || cotacao.categoria_id || "");
+
+  return comLock(function () {
+    const despesa = _novaDespesa(obraId, sessao.usuario_id, {
+      item: item,
+      valor: valor,
+      categoria_id: categoriaId,
+      observacao: "Cotação · " + (contato.nome || ""),
+    });
+    // Marca esta oferta como registrada/escolhida e desmarca as demais.
+    repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {
+      return String(p.cotacao_id) === String(cotacao.id);
+    }).forEach(function (p) {
+      const ehEsta = String(p.id) === String(precoId);
+      const patch = {};
+      if (_boolDe(p.escolhido) !== ehEsta) patch.escolhido = ehEsta;
+      if (ehEsta) patch.despesa_id = despesa.id;
+      if (Object.keys(patch).length) repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", p.id, patch);
+    });
+    const cotAtual = repoAtualizar(SCHEMA.COTACOES, "id", cotacao.id, {
+      status: "fechada",
+      atualizado_em: agoraIso(),
+    });
+    return {
+      despesa: despesa,
+      resumo: _calcularResumo(obraId, sessao.usuario_id),
+      precos: listarPrecosCotacao(cotacao.id),
+      cotacao: cotAtual,
+    };
+  });
+}
+
 /** Normaliza booleano vindo do Sheets (TRUE/true/boolean). */
 function _boolDe(v) {
   return v === true || v === "TRUE" || v === "true";

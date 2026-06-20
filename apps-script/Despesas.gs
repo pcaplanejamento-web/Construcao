@@ -66,6 +66,32 @@ function despesasResumo(data, sessao) {
   return _calcularResumo(data && data.obra_id, sessao.usuario_id);
 }
 
+/**
+ * Monta e insere uma despesa (SEM lock — o chamador deve estar sob comLock e já
+ * ter validado o acesso à obra). Reutilizado por despesas.criar e pelo
+ * "registrar cotação como despesa" (Cotacoes.gs).
+ */
+function _novaDespesa(obraId, usuarioId, dados) {
+  const nome = (buscarUsuarioPorId(usuarioId) || {}).nome || "";
+  const agora = agoraIso();
+  const despesa = {
+    id: novoId(),
+    obra_id: obraId,
+    usuario_id: usuarioId,
+    item: String((dados && dados.item) || "").trim(),
+    valor: Number(dados && dados.valor) || 0,
+    categoria_id: String((dados && dados.categoria_id) || ""),
+    data: String((dados && dados.data) || agora.substring(0, 10)),
+    observacao: String((dados && dados.observacao) || ""),
+    criado_em: agora,
+    autor_nome: nome,
+    atualizado_em: agora,
+    editor_nome: nome,
+  };
+  repoInserir(SCHEMA.DESPESAS, despesa);
+  return despesa;
+}
+
 /** despesas.criar -> { despesa, resumo }. */
 function despesasCriar(data, sessao) {
   const obraId = data && data.obra_id;
@@ -76,24 +102,14 @@ function despesasCriar(data, sessao) {
   if (!item) lancar(ERRO.VALIDACAO, "Informe o item da despesa.");
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
 
-  const nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
   return comLock(function () {
-    const agora = agoraIso();
-    const despesa = {
-      id: novoId(),
-      obra_id: obraId,
-      usuario_id: sessao.usuario_id,
+    const despesa = _novaDespesa(obraId, sessao.usuario_id, {
       item: item,
       valor: valor,
-      categoria_id: String((data && data.categoria_id) || ""),
-      data: String((data && data.data) || agora.substring(0, 10)),
-      observacao: String((data && data.observacao) || ""),
-      criado_em: agora,
-      autor_nome: nome,
-      atualizado_em: agora,
-      editor_nome: nome,
-    };
-    repoInserir(SCHEMA.DESPESAS, despesa);
+      categoria_id: data && data.categoria_id,
+      data: data && data.data,
+      observacao: data && data.observacao,
+    });
     return { despesa: despesa, resumo: _calcularResumo(obraId, sessao.usuario_id) };
   });
 }

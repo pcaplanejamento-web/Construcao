@@ -39,6 +39,12 @@ sobem por `CustomEvent`**.
 
 > As views leem do **data-store** ([data-store.js](../src/core/data-store.js)) — cache-first, sem recarregar. Navegação entre abas é instantânea.
 
+> **Convenção de layout:** nas telas com KPIs (detalhe da obra e da cotação), os
+> KPIs são o **primeiro componente** (logo após o header). A `.area` de toda view
+> usa `padding: var(--esp-5)` uniforme, e o `app-sidebar` usa o mesmo `--esp-5` no
+> topo — então a distância **header→conteúdo** é igual à **menu→conteúdo** e o topo
+> dos KPIs alinha com o topo do 1º item do menu.
+
 ### Autenticação — `features/auth/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
@@ -108,7 +114,7 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 | `oferta-kpis` | `.resumo={num,menor,media,maior,economia}` | KPIs das ofertas em cartões com gradiente (reusa o estilo do `dashboard-summary`). |
 | `grafico-evolucao-precos` | `.historico`, `.cotacao`, `.contatos`, `.cores` | **Gráfico de linhas (SVG), uma linha por contato** — evolução do preço no tempo a partir do histórico; legenda por contato. |
 | `preco-form` | `.cotacaoId`, `.preco`; eventos `salvo`, `fechar` | Modal de oferta (**contato**, valor unitário*, prazo, observação). |
-| `cotacao-despesa-form` | `.cotacao`, `.preco`, `.contatoNome`; eventos `registrado`, `fechar` | Mini-modal: escolhe a **obra** + classificação e lança a oferta escolhida como despesa (reusa `dataStore.adicionarDespesa`). |
+| `cotacao-despesa-form` | `.cotacao`, `.preco`, `.contatoNome`; eventos `registrado`, `fechar` | Banner flutuante: escolhe a **obra** + classificação e lança a oferta como despesa via `dataStore.registrarDespesaOferta` — que **marca a oferta** ("Registrada", `despesa_id`) e **fecha a cotação**. |
 | `cotacao-util.js` | `totalOferta`, `melhorTotal`, `resumoOfertas`, `coresPorContato`, `PALETA_CONTATOS` | Funções puras (total = valor_unit × quantidade; menor total; resumo p/ KPIs; cor estável por contato). |
 
 > As tabelas de fornecedores, contatos, cotações e ofertas mostram a coluna

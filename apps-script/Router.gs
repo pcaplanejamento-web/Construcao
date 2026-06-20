@@ -67,6 +67,7 @@ const ROTAS = {
   "cotacoes.atualizarPreco": { fn: cotacoesAtualizarPreco },
   "cotacoes.removerPreco": { fn: cotacoesRemoverPreco },
   "cotacoes.escolherPreco": { fn: cotacoesEscolherPreco },
+  "cotacoes.registrarDespesa": { fn: cotacoesRegistrarDespesa },
 
   // Usuários (autenticado)
   "usuarios.listar": { fn: usuariosListar },

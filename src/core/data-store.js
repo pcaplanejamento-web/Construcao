@@ -564,6 +564,32 @@ async function escolherPreco(cotacaoId, id) {
   return r.precos;
 }
 
+/**
+ * Lança a oferta como despesa na obra E marca a oferta (despesa_id) + fecha a
+ * cotação — tudo no servidor (atômico). Atualiza despesas/resumo, ofertas e a
+ * cotação no store.
+ */
+async function registrarDespesaOferta(cotacaoId, precoId, obraId, categoriaId) {
+  const r = await api.call("cotacoes.registrarDespesa", {
+    preco_id: precoId,
+    cotacao_id: cotacaoId,
+    obra_id: obraId,
+    categoria_id: categoriaId,
+  });
+  // Despesa criada na obra (com resumo recalculado pelo servidor).
+  _setDespesasObra(obraId, [r.despesa, ...despesas(obraId)], r.resumo);
+  // Ofertas (escolhido + despesa_id) e cotação (status fechada) atualizadas.
+  const s = store.get();
+  store.set({
+    precosPorCotacao: { ...s.precosPorCotacao, [cotacaoId]: r.precos },
+    cotacoes: s.cotacoes.map((c) => (String(c.id) === String(cotacaoId) ? r.cotacao : c)),
+  });
+  persistir();
+  bus.emit(EVENTOS.DESPESAS, { tipo: "criada", obra_id: obraId });
+  bus.emit(EVENTOS.COTACOES, { tipo: "registrada", cotacao_id: cotacaoId });
+  return r;
+}
+
 /* ----------------------- Mutações: admin ----------------------------- */
 
 async function adminCriarUsuario(dados) {
@@ -606,6 +632,6 @@ export const dataStore = {
   criarFornecedor, atualizarFornecedor, removerFornecedor,
   criarContato, atualizarContato, removerContato,
   criarCotacao, atualizarCotacao, removerCotacao,
-  adicionarPreco, atualizarPreco, removerPreco, escolherPreco,
+  adicionarPreco, atualizarPreco, removerPreco, escolherPreco, registrarDespesaOferta,
   adminCriarUsuario, adminAtualizarUsuario,
 };

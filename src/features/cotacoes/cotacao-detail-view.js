@@ -61,6 +61,8 @@ class CotacaoDetailView extends BaseElement {
         letter-spacing: .03em; color: var(--cor-texto-suave); }
       .escolhida .val { font-size: var(--fs-lg); font-weight: var(--peso-forte);
         color: var(--cor-sucesso); }
+      .registrada { display: inline-flex; align-items: center; gap: 6px;
+        color: var(--cor-sucesso); font-weight: var(--peso-semi); font-size: var(--fs-sm); }
       .dica { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
     `;
   }
@@ -82,9 +84,9 @@ class CotacaoDetailView extends BaseElement {
   montarConteudo() {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
+      <oferta-kpis id="kpis"></oferta-kpis>
       <a class="voltar" href="#/cotacoes">← Cotações</a>
       <div class="topo" id="topo"></div>
-      <oferta-kpis id="kpis"></oferta-kpis>
       <div class="graficos">
         <ui-card><grafico-evolucao-precos id="evolucao"></grafico-evolucao-precos></ui-card>
         <ui-card><category-breakdown id="comparacao"></category-breakdown></ui-card>
@@ -132,9 +134,11 @@ class CotacaoDetailView extends BaseElement {
       { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
       {
         chave: "escolhido",
-        titulo: "Escolhida",
-        formato: (v) =>
-          this._bool(v)
+        titulo: "Status",
+        formato: (v, linha) =>
+          linha.despesa_id
+            ? `<category-badge nome="Registrada" cor="var(--cor-info)"></category-badge>`
+            : this._bool(v)
             ? `<category-badge nome="Escolhida" cor="var(--cor-sucesso)"></category-badge>`
             : `<span style="color:var(--cor-texto-fraco)">—</span>`,
       },
@@ -238,6 +242,7 @@ class CotacaoDetailView extends BaseElement {
     const contato = this._mapaContato[escolhida.contato_id] || { nome: "—" };
     const empresa = contato.fornecedor_id ? this._mapaForn[contato.fornecedor_id] : "";
     const total = totalOferta(escolhida, this._cotacao);
+    const registrada = !!escolhida.despesa_id;
     el.innerHTML = `
       <div class="escolhida">
         <div class="info">
@@ -245,12 +250,15 @@ class CotacaoDetailView extends BaseElement {
           <span>${contato.nome}${empresa ? " — " + empresa : ""}</span>
           <span class="val">${moeda(total)}</span>
         </div>
-        <ui-button id="registrar">Registrar como despesa</ui-button>
+        ${
+          registrada
+            ? `<span class="registrada"><ui-icon name="sucesso" size="16"></ui-icon> Registrada como despesa</span>`
+            : `<ui-button id="registrar">Registrar como despesa</ui-button>`
+        }
       </div>
     `;
-    el.querySelector("#registrar").addEventListener("click", () =>
-      this.registrarDespesa(escolhida, contato.nome)
-    );
+    const btn = el.querySelector("#registrar");
+    if (btn) btn.addEventListener("click", () => this.registrarDespesa(escolhida, contato.nome));
   }
 
   /* ------------------------------ Ações -------------------------------- */

@@ -142,6 +142,7 @@ const SCHEMA = {
       "observacao",
       "escolhido",
       "criado_em",
+      "despesa_id", // (append) preenchido quando a oferta vira despesa (registrada)
     ],
   },
 

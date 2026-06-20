@@ -149,6 +149,7 @@ contatos; a melhor oferta pode virar uma despesa numa obra (reusa `despesas.cria
 | observacao | string | opcional |
 | escolhido | boolean | a oferta escolhida (exclusiva por cotação) |
 | criado_em | ISO datetime | |
+| despesa_id | UUID | FK → Despesas.id (preenchido quando a oferta é **registrada como despesa**) |
 
 > Total de uma oferta = `valor_unit × quantidade` (calculado no cliente; não
 > persiste). Excluir uma cotação remove suas ofertas.

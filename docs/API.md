@@ -119,9 +119,12 @@ para dono **e** colaboradores.
 | `cotacoes.atualizarPreco` | `{ id, contato_id?, valor_unit?, prazo_entrega?, observacao? }` | `{ preco, historico }` (`historico` só se o valor mudou; senão `null`) |
 | `cotacoes.removerPreco` | `{ id }` | `{ id, cotacao_id }` (mantém o histórico) |
 | `cotacoes.escolherPreco` | `{ id }` | `{ precos }` (marca a escolhida e desmarca as demais da cotação) |
+| `cotacoes.registrarDespesa` | `{ preco_id, obra_id, categoria_id? }` | `{ despesa, resumo, precos, cotacao }` |
 
-> "Registrar como despesa" reusa `despesas.criar` (sem action nova): item =
-> descrição da cotação, valor = `valor_unit × quantidade` da oferta escolhida.
+> **Registrar como despesa** (`cotacoes.registrarDespesa`): cria a despesa na obra
+> (item = descrição da cotação, valor = `valor_unit × quantidade`), **marca a
+> oferta** (`despesa_id` + `escolhido` exclusivo) e **fecha a cotação**
+> (`status="fechada"`) — tudo atômico no servidor (reusa `_novaDespesa`).
 
 ### Admin (exigem role admin)
 | Action | `data` | Retorno |

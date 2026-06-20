@@ -77,9 +77,9 @@ class ObraDetailView extends BaseElement {
   montarConteudo() {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
+      <dashboard-summary id="dash"></dashboard-summary>
       <a class="voltar" href="#/obras">← Minhas obras</a>
       <div class="topo" id="topo"></div>
-      <dashboard-summary id="dash"></dashboard-summary>
       <ui-tabs id="abas">
         <div slot="graficos" class="graficos">
           <ui-card><category-breakdown id="break"></category-breakdown></ui-card>

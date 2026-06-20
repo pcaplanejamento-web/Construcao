@@ -8,7 +8,7 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { moeda, hojeIso } from "../../core/formatters.js";
+import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta } from "./cotacao-util.js";
 import "../../components/ui-modal.js";
@@ -90,17 +90,16 @@ class CotacaoDespesaForm extends BaseElement {
       this.$("#obra").setAttribute("error", "Selecione uma obra.");
       return;
     }
-    const dados = {
-      item: this.cotacao.descricao || "",
-      valor: totalOferta(this.preco, this.cotacao),
-      categoria_id: this.$("#categoria").value,
-      data: hojeIso(),
-      observacao: "Cotação · " + (this.contatoNome || ""),
-    };
     const btn = this.$("#confirmar");
     btn.setAttribute("loading", "");
     try {
-      await dataStore.adicionarDespesa(obraId, dados);
+      // Cria a despesa E marca a oferta como registrada + fecha a cotação (servidor).
+      await dataStore.registrarDespesaOferta(
+        this.cotacao.id,
+        this.preco.id,
+        obraId,
+        this.$("#categoria").value
+      );
       const obra = dataStore.obra(obraId) || {};
       toastSucesso(`Despesa lançada em "${obra.nome || "obra"}".`);
       this.emitir("registrado", { obra_id: obraId });
