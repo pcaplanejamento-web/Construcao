@@ -19,3 +19,38 @@ export function melhorTotal(precos, cotacao) {
     lista.map((p) => totalOferta(p, cotacao))
   );
 }
+
+/** Resumo das ofertas ATUAIS (sobre os totais): nº, menor, média, maior, economia. */
+export function resumoOfertas(precos, cotacao) {
+  const lista = Array.isArray(precos) ? precos : [];
+  const totais = lista.map((p) => totalOferta(p, cotacao));
+  const num = totais.length;
+  if (!num) return { num: 0, menor: 0, media: 0, maior: 0, economia: 0 };
+  const menor = Math.min.apply(null, totais);
+  const maior = Math.max.apply(null, totais);
+  const soma = totais.reduce((s, v) => s + v, 0);
+  return { num, menor, media: soma / num, maior, economia: maior - menor };
+}
+
+/** Paleta fixa para identificar contatos em gráficos/legendas (tema-agnóstica). */
+export const PALETA_CONTATOS = [
+  "#2563eb",
+  "#16a34a",
+  "#d97706",
+  "#7c3aed",
+  "#dc2626",
+  "#0891b2",
+  "#db2777",
+  "#65a30d",
+];
+
+/** Mapa estável contato_id -> cor (mesma cor no gráfico de evolução e na comparação). */
+export function coresPorContato(ids) {
+  const mapa = {};
+  (Array.isArray(ids) ? ids : []).forEach((id, i) => {
+    if (id != null && mapa[id] === undefined) {
+      mapa[id] = PALETA_CONTATOS[i % PALETA_CONTATOS.length];
+    }
+  });
+  return mapa;
+}

@@ -101,6 +101,20 @@ function dadosSnapshot(data, sessao) {
     });
   });
 
+  // Histórico de preços (evolução no tempo) agrupado por cotação (asc por data).
+  const historicoPorCotacao = {};
+  cotacoes.forEach(function (c) {
+    historicoPorCotacao[c.id] = [];
+  });
+  repoListar(SCHEMA.COTACAO_PRECO_HISTORICO).forEach(function (h) {
+    if (idsCot[h.cotacao_id]) historicoPorCotacao[h.cotacao_id].push(h);
+  });
+  Object.keys(historicoPorCotacao).forEach(function (id) {
+    historicoPorCotacao[id].sort(function (a, b) {
+      return String(a.registrado_em).localeCompare(String(b.registrado_em));
+    });
+  });
+
   const snapshot = {
     usuario: usuarioPublico(u),
     config: montarConfigUsuario(u.id),
@@ -113,6 +127,7 @@ function dadosSnapshot(data, sessao) {
     contatos: listarContatosUsuario(u.id),
     cotacoes: cotacoes,
     precosPorCotacao: precosPorCotacao,
+    historicoPorCotacao: historicoPorCotacao,
     servidor_em: agoraIso(),
   };
 

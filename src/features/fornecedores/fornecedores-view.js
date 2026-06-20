@@ -6,6 +6,7 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
+import { data as fmtData } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
@@ -86,6 +87,7 @@ class FornecedoresView extends BaseElement {
             : `<span style="color:var(--cor-texto-fraco)">—</span>`;
         },
       },
+      { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
     ];
     tabela.acoes = [
       { nome: "editar", rotulo: "Editar" },

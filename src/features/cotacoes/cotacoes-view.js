@@ -6,7 +6,7 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { moeda, numero } from "../../core/formatters.js";
+import { moeda, numero, data as fmtData } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { melhorTotal } from "./cotacao-util.js";
 import "../../components/ui-card.js";
@@ -122,6 +122,7 @@ class CotacoesView extends BaseElement {
             ? `<span style="color:var(--cor-texto-fraco)">Fechada</span>`
             : `<span style="color:var(--cor-sucesso)">Aberta</span>`,
       },
+      { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
     ];
     tabela.acoes = [
       { nome: "editar", rotulo: "Editar" },

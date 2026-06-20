@@ -104,10 +104,15 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 | `contato-form` | `.contato`; eventos `salvo`, `fechar` | Modal criar/editar (nome*, telefone, e-mail, cargo, **fornecedor** opcional, observação). |
 | `cotacoes-view` | — | Rota `#/cotacoes`. Lista (tabela `clicavel`): descrição, qtd, classificação, obra, nº de ofertas, **melhor preço**, situação. |
 | `cotacao-form` | `.cotacao`; eventos `salvo`, `fechar` | Modal criar/editar (descrição*, quantidade, unidade, classificação, **obra opcional**, status). |
-| `cotacao-detail-view` | attr `id` (rota `#/cotacoes/:id`) | **Comparativo**: ofertas (contato, empresa, valor unit., **total** com destaque do menor preço, prazo, obs); escolher/editar/excluir oferta; **Registrar como despesa**. |
+| `cotacao-detail-view` | attr `id` (rota `#/cotacoes/:id`) | **KPIs + 2 gráficos + comparativo**: faixa `<oferta-kpis>`, `<grafico-evolucao-precos>` e `<category-breakdown>` (reusado p/ comparar ofertas por contato), e a tabela de ofertas (contato, empresa, valor unit., **total** com destaque do menor preço, prazo, obs, **Criado em**); escolher/editar/excluir oferta; **Registrar como despesa**. |
+| `oferta-kpis` | `.resumo={num,menor,media,maior,economia}` | KPIs das ofertas em cartões com gradiente (reusa o estilo do `dashboard-summary`). |
+| `grafico-evolucao-precos` | `.historico`, `.cotacao`, `.contatos`, `.cores` | **Gráfico de linhas (SVG), uma linha por contato** — evolução do preço no tempo a partir do histórico; legenda por contato. |
 | `preco-form` | `.cotacaoId`, `.preco`; eventos `salvo`, `fechar` | Modal de oferta (**contato**, valor unitário*, prazo, observação). |
 | `cotacao-despesa-form` | `.cotacao`, `.preco`, `.contatoNome`; eventos `registrado`, `fechar` | Mini-modal: escolhe a **obra** + classificação e lança a oferta escolhida como despesa (reusa `dataStore.adicionarDespesa`). |
-| `cotacao-util.js` | `totalOferta`, `melhorTotal` | Funções puras (total = valor_unit × quantidade; menor total das ofertas). |
+| `cotacao-util.js` | `totalOferta`, `melhorTotal`, `resumoOfertas`, `coresPorContato`, `PALETA_CONTATOS` | Funções puras (total = valor_unit × quantidade; menor total; resumo p/ KPIs; cor estável por contato). |
+
+> As tabelas de fornecedores, contatos, cotações e ofertas mostram a coluna
+> **"Criado em"** (campo `criado_em`); o detalhe da cotação mostra "Criada em …".
 
 ### Admin — `features/admin/`
 | Componente | Props/Eventos | Descrição |

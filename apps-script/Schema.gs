@@ -145,6 +145,18 @@ const SCHEMA = {
     ],
   },
 
+  COTACAO_PRECO_HISTORICO: {
+    aba: "CotacaoPrecoHistorico", // log: 1 ponto por criação/edição de preço
+    colunas: [
+      "id",
+      "cotacao_id",
+      "preco_id",
+      "contato_id",
+      "valor_unit",
+      "registrado_em",
+    ],
+  },
+
   SESSOES: {
     aba: "Sessoes",
     colunas: [

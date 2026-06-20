@@ -153,6 +153,23 @@ contatos; a melhor oferta pode virar uma despesa numa obra (reusa `despesas.cria
 > Total de uma oferta = `valor_unit × quantidade` (calculado no cliente; não
 > persiste). Excluir uma cotação remove suas ofertas.
 
+### Aba `CotacaoPrecoHistorico` (evolução de preço no tempo)
+Log append-only: grava 1 ponto quando uma oferta é **criada** e a cada **edição do
+valor**. Alimenta o gráfico de evolução (uma linha por contato).
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| cotacao_id | UUID | FK → Cotacoes.id |
+| preco_id | UUID | FK → CotacaoPrecos.id (a oferta de origem) |
+| contato_id | UUID | FK → Contatos.id |
+| valor_unit | number | valor unitário registrado naquele instante |
+| registrado_em | ISO datetime | quando o ponto foi gravado |
+
+> O histórico é **preservado** mesmo quando a oferta é editada ou **excluída**
+> (o objetivo é acompanhar a evolução). Só é removido em cascade ao excluir a
+> **cotação** inteira.
+
 ## Aba `Compartilhamentos`
 Relaciona obras a usuários convidados (colaboradores). O dono permanece em
 `Obras.usuario_id`; cada linha aqui dá acesso de colaboração a outro usuário.

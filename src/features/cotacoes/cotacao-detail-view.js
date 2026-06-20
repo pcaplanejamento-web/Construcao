@@ -8,15 +8,18 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { moeda, numero } from "../../core/formatters.js";
+import { moeda, numero, data as fmtData } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { totalOferta, melhorTotal } from "./cotacao-util.js";
+import { totalOferta, melhorTotal, resumoOfertas, coresPorContato } from "./cotacao-util.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-icon.js";
 import "../../components/ui-data-table.js";
 import "../despesas/category-badge.js";
+import "../dashboard/category-breakdown.js";
+import "./oferta-kpis.js";
+import "./grafico-evolucao-precos.js";
 import "./cotacao-form.js";
 import "./preco-form.js";
 import "./cotacao-despesa-form.js";
@@ -43,6 +46,13 @@ class CotacaoDetailView extends BaseElement {
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm);
         display: flex; gap: var(--esp-2); flex-wrap: wrap; align-items: center; }
+      /* Gráficos lado a lado, mesmo tamanho (empilham no mobile). */
+      .graficos { display: grid; gap: var(--esp-5); grid-template-columns: repeat(2, 1fr); }
+      .graficos > * { min-width: 0; height: 320px; }
+      @media (max-width: 900px) {
+        .graficos { grid-template-columns: 1fr; }
+        .graficos > * { height: auto; min-height: 300px; }
+      }
       .escolhida { background: var(--cor-superficie-2); border-radius: var(--raio-md);
         padding: var(--esp-4); display: flex; align-items: center; justify-content: space-between;
         gap: var(--esp-3); flex-wrap: wrap; }
@@ -74,12 +84,20 @@ class CotacaoDetailView extends BaseElement {
     alvo.innerHTML = `
       <a class="voltar" href="#/cotacoes">← Cotações</a>
       <div class="topo" id="topo"></div>
+      <oferta-kpis id="kpis"></oferta-kpis>
+      <div class="graficos">
+        <ui-card><grafico-evolucao-precos id="evolucao"></grafico-evolucao-precos></ui-card>
+        <ui-card><category-breakdown id="comparacao"></category-breakdown></ui-card>
+      </div>
       <ui-card title="Ofertas">
         <ui-data-table id="tabela" fluido
           empty-text="Nenhuma oferta ainda. Adicione ofertas de contatos para comparar."></ui-data-table>
       </ui-card>
       <div id="escolhida"></div>
     `;
+    this._kpis = alvo.querySelector("#kpis");
+    this._evolucao = alvo.querySelector("#evolucao");
+    this._comparacao = alvo.querySelector("#comparacao");
     this._tabela = alvo.querySelector("#tabela");
     this._tabela.columns = [
       {
@@ -111,6 +129,7 @@ class CotacaoDetailView extends BaseElement {
       },
       { chave: "prazo_entrega", titulo: "Prazo", formato: (v) => v || "—" },
       { chave: "observacao", titulo: "Obs.", formato: (v) => v || "—" },
+      { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
       {
         chave: "escolhido",
         titulo: "Escolhida",
@@ -152,6 +171,31 @@ class CotacaoDetailView extends BaseElement {
     this._min = melhorTotal(precos, c);
     this._tabela.rows = precos; // formato lê this._min/_mapas (já definidos)
 
+    // Cores estáveis por contato (mesma cor no gráfico, na comparação e legenda).
+    // Inclui contatos do histórico (mesmo os de ofertas já excluídas).
+    const historico = dataStore.historicoDaCotacao(this.cotacaoId);
+    const idsContato = [];
+    precos.forEach((p) => idsContato.indexOf(p.contato_id) < 0 && idsContato.push(p.contato_id));
+    historico.forEach((h) => idsContato.indexOf(h.contato_id) < 0 && idsContato.push(h.contato_id));
+    this._cores = coresPorContato(idsContato);
+
+    // KPIs (sobre as ofertas atuais).
+    this._kpis.resumo = resumoOfertas(precos, c);
+
+    // Gráfico de evolução (uma linha por contato, a partir do histórico).
+    this._evolucao.cotacao = c;
+    this._evolucao.contatos = this._mapaContato;
+    this._evolucao.cores = this._cores;
+    this._evolucao.historico = historico;
+
+    // Comparação das ofertas ATUAIS por contato (reusa category-breakdown).
+    this._comparacao.porCategoria = precos.map((p) => ({
+      categoria_id: p.id,
+      nome: (this._mapaContato[p.contato_id] || { nome: "—" }).nome,
+      cor: this._cores[p.contato_id] || "var(--cor-primaria)",
+      total: totalOferta(p, c),
+    }));
+
     this.pintarTopo();
     this.pintarEscolhida(precos);
   }
@@ -171,6 +215,7 @@ class CotacaoDetailView extends BaseElement {
           ${cat ? `<category-badge nome="${cat.nome}" cor="${cat.cor}"></category-badge>` : ""}
           ${obra ? `· <a href="#/obras/${obra.id}"><ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</a>` : ""}
           <span>· ${c.status === "fechada" ? "Fechada" : "Aberta"}</span>
+          ${c.criado_em ? `<span>· <ui-icon name="relogio" size="13"></ui-icon> Criada em ${fmtData(c.criado_em)}</span>` : ""}
         </div>
       </div>
       <div class="acoes-topo">

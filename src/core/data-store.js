@@ -29,6 +29,7 @@ const ESTADO_VAZIO = {
   contatos: [], // módulo Compras (pessoas do usuário)
   cotacoes: [], // módulo Compras (necessidades a cotar)
   precosPorCotacao: {}, // cotacaoId -> [oferta]
+  historicoPorCotacao: {}, // cotacaoId -> [ponto de histórico de preço]
   usuarios: [], // admin
 };
 
@@ -58,6 +59,7 @@ function persistir() {
       contatos: s.contatos,
       cotacoes: s.cotacoes,
       precosPorCotacao: s.precosPorCotacao,
+      historicoPorCotacao: s.historicoPorCotacao,
       usuarios: s.usuarios,
     };
     localStorage.setItem(chave, JSON.stringify({ versao: CACHE_VERSAO, dados }));
@@ -108,6 +110,7 @@ function _aplicarSnapshot(d) {
     contatos: d.contatos || [],
     cotacoes: d.cotacoes || [],
     precosPorCotacao: d.precosPorCotacao || {},
+    historicoPorCotacao: d.historicoPorCotacao || {},
     usuarios: d.usuarios || [],
   });
   persistir();
@@ -150,6 +153,7 @@ const contatosAtivos = () => store.get().contatos.filter((c) => c.ativo !== fals
 const cotacoes = () => store.get().cotacoes;
 const cotacao = (id) => store.get().cotacoes.find((c) => String(c.id) === String(id)) || null;
 const precosDaCotacao = (cotacaoId) => store.get().precosPorCotacao[cotacaoId] || [];
+const historicoDaCotacao = (cotacaoId) => store.get().historicoPorCotacao[cotacaoId] || [];
 
 /* --------------------- Recalcular resumo local ----------------------- */
 
@@ -479,12 +483,27 @@ async function removerCotacao(id) {
   const s = store.get();
   const precos = { ...s.precosPorCotacao };
   delete precos[id];
+  const historico = { ...s.historicoPorCotacao };
+  delete historico[id];
   store.set({
     cotacoes: s.cotacoes.filter((c) => String(c.id) !== String(id)),
     precosPorCotacao: precos,
+    historicoPorCotacao: historico,
   });
   persistir();
   bus.emit(EVENTOS.COTACOES, { tipo: "removida" });
+}
+
+/** Acrescenta um ponto ao histórico de uma cotação (write-through local). */
+function _appendHistorico(cotacaoId, ponto) {
+  if (!ponto) return;
+  const s = store.get();
+  store.set({
+    historicoPorCotacao: {
+      ...s.historicoPorCotacao,
+      [cotacaoId]: [...(s.historicoPorCotacao[cotacaoId] || []), ponto],
+    },
+  });
 }
 
 /* ------------------- Mutações: ofertas (preços) ---------------------- */
@@ -498,6 +517,7 @@ async function adicionarPreco(cotacaoId, dados) {
       [cotacaoId]: [r.preco, ...(s.precosPorCotacao[cotacaoId] || [])],
     },
   });
+  _appendHistorico(cotacaoId, r.historico);
   persistir();
   bus.emit(EVENTOS.COTACOES, { tipo: "preco-adicionado", cotacao_id: cotacaoId });
   return r.preco;
@@ -514,6 +534,7 @@ async function atualizarPreco(cotacaoId, id, dados) {
       ),
     },
   });
+  _appendHistorico(cotacaoId, r.historico); // ponto novo só se o valor mudou
   persistir();
   bus.emit(EVENTOS.COTACOES, { tipo: "preco-atualizado", cotacao_id: cotacaoId });
   return r.preco;
@@ -576,6 +597,7 @@ export const dataStore = {
   // getters
   usuario, config, categorias, usuarios, obras, obra, despesas, resumo, categoriasDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cotacoes, cotacao, precosDaCotacao,
+  historicoDaCotacao,
   // mutações
   criarObra, atualizarObra, removerObra,
   gerarLinkPublico, removerLinkPublico,

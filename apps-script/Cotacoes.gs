@@ -33,6 +33,31 @@ function listarPrecosCotacao(cotacaoId) {
   return lista;
 }
 
+/** Histórico de preços de uma cotação (mais antigo primeiro = evolução no tempo). */
+function listarHistoricoCotacao(cotacaoId) {
+  const lista = repoFiltrar(SCHEMA.COTACAO_PRECO_HISTORICO, function (h) {
+    return String(h.cotacao_id) === String(cotacaoId);
+  });
+  lista.sort(function (a, b) {
+    return String(a.registrado_em).localeCompare(String(b.registrado_em));
+  });
+  return lista;
+}
+
+/** Registra um ponto no histórico de preços (deve rodar sob comLock). */
+function _logPreco(preco) {
+  const ponto = {
+    id: novoId(),
+    cotacao_id: preco.cotacao_id,
+    preco_id: preco.id,
+    contato_id: preco.contato_id,
+    valor_unit: preco.valor_unit,
+    registrado_em: agoraIso(),
+  };
+  repoInserir(SCHEMA.COTACAO_PRECO_HISTORICO, ponto);
+  return ponto;
+}
+
 /** Garante que a cotação é do usuário; senão lança. */
 function _cotacaoDoUsuario(cotacaoId, usuarioId) {
   const c = repoEncontrar(SCHEMA.COTACOES, function (x) {
@@ -135,7 +160,7 @@ function cotacoesRemover(data, sessao) {
 
 /* ------------------------------- Ofertas ------------------------------ */
 
-/** cotacoes.adicionarPreco -> { preco }. */
+/** cotacoes.adicionarPreco -> { preco, historico }. */
 function cotacoesAdicionarPreco(data, sessao) {
   const cotacaoId = data && data.cotacao_id;
   _cotacaoDoUsuario(cotacaoId, sessao.usuario_id);
@@ -159,14 +184,15 @@ function cotacoesAdicionarPreco(data, sessao) {
       criado_em: agoraIso(),
     };
     repoInserir(SCHEMA.COTACAO_PRECOS, preco);
-    return { preco: preco };
+    const historico = _logPreco(preco); // ponto inicial da evolução
+    return { preco: preco, historico: historico };
   });
 }
 
-/** cotacoes.atualizarPreco -> { preco }. */
+/** cotacoes.atualizarPreco -> { preco, historico } (historico só se o valor mudou). */
 function cotacoesAtualizarPreco(data, sessao) {
   const id = data && data.id;
-  _precoDoUsuario(id, sessao.usuario_id);
+  const atual = _precoDoUsuario(id, sessao.usuario_id);
 
   const patch = {};
   if (data.contato_id !== undefined) {
@@ -175,10 +201,12 @@ function cotacoesAtualizarPreco(data, sessao) {
     _contatoDoUsuario(contatoId, sessao.usuario_id);
     patch.contato_id = contatoId;
   }
+  let valorMudou = false;
   if (data.valor_unit !== undefined) {
     const valor = Number(data.valor_unit);
     if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Valor inválido.");
     patch.valor_unit = valor;
+    valorMudou = valor !== Number(atual.valor_unit);
   }
   if (data.prazo_entrega !== undefined)
     patch.prazo_entrega = String(data.prazo_entrega);
@@ -186,17 +214,20 @@ function cotacoesAtualizarPreco(data, sessao) {
 
   return comLock(function () {
     const preco = repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", id, patch);
-    return { preco: preco };
+    // Loga um novo ponto na evolução apenas quando o preço de fato mudou.
+    const historico = valorMudou ? _logPreco(preco) : null;
+    return { preco: preco, historico: historico };
   });
 }
 
-/** cotacoes.removerPreco -> { id, cotacao_id }. */
+/** cotacoes.removerPreco -> { id, cotacao_id } (mantém o histórico). */
 function cotacoesRemoverPreco(data, sessao) {
   const id = data && data.id;
   const preco = _precoDoUsuario(id, sessao.usuario_id);
 
   return comLock(function () {
     repoRemover(SCHEMA.COTACAO_PRECOS, "id", id);
+    // O histórico de preços é PRESERVADO (acompanhar a evolução no tempo).
     return { id: id, cotacao_id: preco.cotacao_id };
   });
 }

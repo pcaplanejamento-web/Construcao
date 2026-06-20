@@ -44,7 +44,7 @@ A API é um **único Web App** do Apps Script. Um `doPost` despacha por `action`
 ### Estado inicial (cache-first)
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cotacoes:[...], precosPorCotacao:{cotacaoId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
+| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cotacoes:[...], precosPorCotacao:{cotacaoId:[...]}, historicoPorCotacao:{cotacaoId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
 
 ### Obras (próprias + compartilhadas)
 Cada obra inclui `ehDono` (bool), `dono_nome`/`dono_email` e `total_gasto`.
@@ -115,9 +115,9 @@ para dono **e** colaboradores.
 | `cotacoes.criar` | `{ descricao, quantidade?, unidade?, categoria_id?, obra_id?, status? }` | `{ cotacao }` |
 | `cotacoes.atualizar` | `{ id, ...campos }` | `{ cotacao }` |
 | `cotacoes.remover` | `{ id }` | `{ id }` (remove a cotação e suas ofertas) |
-| `cotacoes.adicionarPreco` | `{ cotacao_id, contato_id, valor_unit, prazo_entrega?, observacao? }` | `{ preco }` |
-| `cotacoes.atualizarPreco` | `{ id, contato_id?, valor_unit?, prazo_entrega?, observacao? }` | `{ preco }` |
-| `cotacoes.removerPreco` | `{ id }` | `{ id, cotacao_id }` |
+| `cotacoes.adicionarPreco` | `{ cotacao_id, contato_id, valor_unit, prazo_entrega?, observacao? }` | `{ preco, historico }` (ponto inicial logado) |
+| `cotacoes.atualizarPreco` | `{ id, contato_id?, valor_unit?, prazo_entrega?, observacao? }` | `{ preco, historico }` (`historico` só se o valor mudou; senão `null`) |
+| `cotacoes.removerPreco` | `{ id }` | `{ id, cotacao_id }` (mantém o histórico) |
 | `cotacoes.escolherPreco` | `{ id }` | `{ precos }` (marca a escolhida e desmarca as demais da cotação) |
 
 > "Registrar como despesa" reusa `despesas.criar` (sem action nova): item =
