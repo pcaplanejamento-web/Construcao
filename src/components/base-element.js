@@ -12,6 +12,10 @@
 const RESET = `
   *,*::before,*::after { box-sizing: border-box; }
   * { margin: 0; } /* espelha o reset do documento (Shadow DOM não herda) */
+  /* Títulos com line-height justo: o topo visível do texto fica colado na borda
+     do box, então o vão header→título == a distância padrão (--esp-tela), sem
+     o "leading" alto herdado (1.5) empurrar o texto para baixo. */
+  h1, h2, h3, h4, h5, h6 { line-height: 1.2; }
   :host { font-family: var(--fonte-base); }
   [hidden] { display: none !important; }
 `;
