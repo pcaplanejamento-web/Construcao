@@ -39,11 +39,15 @@ sobem por `CustomEvent`**.
 
 > As views leem do **data-store** ([data-store.js](../src/core/data-store.js)) — cache-first, sem recarregar. Navegação entre abas é instantânea.
 
-> **Convenção de layout:** nas telas com KPIs (detalhe da obra e da cotação), os
-> KPIs são o **primeiro componente** (logo após o header). A `.area` de toda view
-> usa `padding: var(--esp-5)` uniforme, e o `app-sidebar` usa o mesmo `--esp-5` no
-> topo — então a distância **header→conteúdo** é igual à **menu→conteúdo** e o topo
-> dos KPIs alinha com o topo do 1º item do menu.
+> **Convenção de layout (distância padrão `--esp-tela`):** toda tela usa
+> `.area { max-width: …; padding: var(--esp-tela); }` **sem `margin: 0 auto`**
+> (conteúdo alinhado à esquerda). Assim a distância **header→conteúdo** é sempre
+> igual à **menu→conteúdo** (= `--esp-tela`, hoje 24px), em qualquer largura. O
+> `app-sidebar` usa `--esp-tela` no topo → o 1º item do menu alinha com o topo do
+> conteúdo. Nas telas com KPIs (detalhe da obra e da cotação) os KPIs são o
+> **primeiro componente**. **Toda tela/aba nova deve seguir esse padrão**
+> (`padding: var(--esp-tela)`, sem centralizar). Exceção: `publico-view` (página
+> pública sem menu) permanece centralizada.
 
 ### Autenticação — `features/auth/`
 | Componente | Props/Eventos | Descrição |

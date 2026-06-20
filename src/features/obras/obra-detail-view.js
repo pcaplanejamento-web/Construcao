@@ -39,7 +39,7 @@ class ObraDetailView extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
-      .area { max-width: 1100px; margin: 0 auto; padding: var(--esp-5);
+      .area { max-width: 1100px; padding: var(--esp-tela);
         display: flex; flex-direction: column; gap: var(--esp-5); }
       .voltar { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
       .topo { display: flex; align-items: center; justify-content: space-between;

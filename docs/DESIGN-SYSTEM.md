@@ -54,6 +54,12 @@ Escala base 4px: `--esp-1`(4) `--esp-2`(8) `--esp-3`(12) `--esp-4`(16)
 `--esp-5`(24) `--esp-6`(32) `--esp-8`(48). Usar para padding/gap/margin —
 nada de valor avulso.
 
+**Distância padrão de tela — `--esp-tela`** (= `--esp-5`): gap do header e do
+menu lateral até o conteúdo. Toda tela usa `.area { padding: var(--esp-tela) }`
+**sem `margin: 0 auto`** (conteúdo à esquerda) → header→conteúdo == menu→conteúdo,
+em qualquer largura; o `app-sidebar` usa o mesmo token no topo. Usar sempre em
+telas/abas novas.
+
 ## Raio, sombra, camadas
 `--raio-sm/md/lg/completo`; `--sombra-sm/md/lg` (tonalizadas no escuro);
 `--z-nav/modal/toast`; transição padrão `--transicao`.

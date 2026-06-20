@@ -73,6 +73,10 @@
   --esp-6: 2rem;
   --esp-8: 3rem;
 
+  /* Distância PADRÃO de tela: gap header→conteúdo == menu→conteúdo. Use SEMPRE
+     este token no padding da .area de qualquer tela/aba nova (sem margin auto). */
+  --esp-tela: var(--esp-5);
+
   /* Bordas e raios */
   --raio-sm: 6px;
   --raio-md: 10px;
