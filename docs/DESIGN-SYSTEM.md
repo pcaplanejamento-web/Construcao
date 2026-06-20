@@ -56,9 +56,12 @@ nada de valor avulso.
 
 **Distância padrão de tela — `--esp-tela`** (= `--esp-5`): gap do header e do
 menu lateral até o conteúdo. Toda tela usa `.area { padding: var(--esp-tela) }`
-**sem `margin: 0 auto`** (conteúdo à esquerda) → header→conteúdo == menu→conteúdo,
-em qualquer largura; o `app-sidebar` usa o mesmo token no topo. Usar sempre em
-telas/abas novas.
+**sem `max-width` e sem `margin: 0 auto`** → o conteúdo **preenche a largura** e a
+distância em volta é a mesma: header→conteúdo == menu→conteúdo == borda
+direita→conteúdo, em qualquer largura (e acompanha quando a sidebar recolhe). O
+`app-sidebar` usa o mesmo token no topo. O reset do Shadow DOM zera margens
+(`* { margin: 0 }`) p/ o 1º componente ficar exatamente a `--esp-tela` do header.
+Usar sempre em telas/abas novas.
 
 ## Raio, sombra, camadas
 `--raio-sm/md/lg/completo`; `--sombra-sm/md/lg` (tonalizadas no escuro);

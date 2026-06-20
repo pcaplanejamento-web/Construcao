@@ -20,7 +20,7 @@ class LoginView extends BaseElement {
       .marca { text-align: center; margin-bottom: var(--esp-5); }
       .logo { color: var(--cor-primaria); }
       h1 { font-size: var(--fs-xl); font-weight: var(--peso-forte); margin-top: var(--esp-2); }
-      p.sub { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
+      p.sub { color: var(--cor-texto-suave); font-size: var(--fs-sm); margin-top: var(--esp-1); }
       .aviso { margin-top: var(--esp-4); font-size: var(--fs-xs);
         background: var(--cor-aviso-suave); color: var(--cor-aviso);
         padding: var(--esp-3); border-radius: var(--raio-sm); }

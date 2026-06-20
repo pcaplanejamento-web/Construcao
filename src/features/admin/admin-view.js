@@ -18,11 +18,11 @@ class AdminView extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
-      .area { max-width: 1100px; padding: var(--esp-tela); }
+      .area { padding: var(--esp-tela); }
       .cabecalho { display: flex; align-items: center; justify-content: space-between;
         gap: var(--esp-3); margin-bottom: var(--esp-5); flex-wrap: wrap; }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
-      p.sub { color: var(--cor-texto-suave); }
+      p.sub { color: var(--cor-texto-suave); margin-top: var(--esp-2); }
     `;
   }
 

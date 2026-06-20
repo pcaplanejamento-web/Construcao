@@ -11,6 +11,7 @@
 
 const RESET = `
   *,*::before,*::after { box-sizing: border-box; }
+  * { margin: 0; } /* espelha o reset do documento (Shadow DOM não herda) */
   :host { font-family: var(--fonte-base); }
   [hidden] { display: none !important; }
 `;

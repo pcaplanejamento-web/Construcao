@@ -40,13 +40,17 @@ sobem por `CustomEvent`**.
 > As views leem do **data-store** ([data-store.js](../src/core/data-store.js)) — cache-first, sem recarregar. Navegação entre abas é instantânea.
 
 > **Convenção de layout (distância padrão `--esp-tela`):** toda tela usa
-> `.area { max-width: …; padding: var(--esp-tela); }` **sem `margin: 0 auto`**
-> (conteúdo alinhado à esquerda). Assim a distância **header→conteúdo** é sempre
-> igual à **menu→conteúdo** (= `--esp-tela`, hoje 24px), em qualquer largura. O
-> `app-sidebar` usa `--esp-tela` no topo → o 1º item do menu alinha com o topo do
-> conteúdo. Nas telas com KPIs (detalhe da obra e da cotação) os KPIs são o
-> **primeiro componente**. **Toda tela/aba nova deve seguir esse padrão**
-> (`padding: var(--esp-tela)`, sem centralizar). Exceção: `publico-view` (página
+> `.area { padding: var(--esp-tela); }` — **sem `max-width` e sem `margin: 0 auto`**.
+> O conteúdo **preenche toda a largura** disponível e a distância é a MESMA em volta:
+> **header→conteúdo == menu→conteúdo == borda direita→conteúdo** (= `--esp-tela`,
+> hoje 24px), em qualquer largura. Quando a sidebar recolhe, o `main` alarga e o
+> conteúdo acompanha automaticamente (largura fluida). O `app-sidebar` usa
+> `--esp-tela` no topo → o 1º item do menu alinha com o topo do conteúdo. Nas telas
+> com KPIs (detalhe da obra e da cotação) os KPIs são o **primeiro componente**.
+> O reset do Shadow DOM ([base-element.js](../src/components/base-element.js)) zera
+> margens (`* { margin: 0 }`, espelhando `reset.css`), então o 1º componente fica
+> exatamente a `--esp-tela` do header em TODA tela (com ou sem KPIs).
+> **Toda tela/aba nova deve seguir esse padrão.** Exceção: `publico-view` (página
 > pública sem menu) permanece centralizada.
 
 ### Autenticação — `features/auth/`
