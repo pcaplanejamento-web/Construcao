@@ -34,9 +34,9 @@ class AdminView extends BaseElement {
             <h1>Administração</h1>
             <p class="sub">Cadastre usuários e defina as configurações de cada um.</p>
           </div>
-          <ui-button id="novo">+ Novo usuário</ui-button>
         </div>
         <ui-card title="Usuários">
+          <ui-button slot="acoes" id="novo">+ Novo usuário</ui-button>
           <div id="conteudo"></div>
         </ui-card>
       </div>

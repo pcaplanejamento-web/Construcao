@@ -38,9 +38,11 @@ class CategoriasView extends BaseElement {
             <h1>Classificações</h1>
             <p class="sub">Crie e gerencie suas próprias classificações de itens.</p>
           </div>
-          <ui-button id="nova">+ Nova classificação</ui-button>
         </div>
-        <ui-card title="Minhas classificações"><div id="minhas"></div></ui-card>
+        <ui-card title="Minhas classificações">
+          <ui-button slot="acoes" id="nova">+ Nova classificação</ui-button>
+          <div id="minhas"></div>
+        </ui-card>
         <ui-card title="Classificações padrão (todos)"><div id="globais"></div></ui-card>
       </div>
     `;

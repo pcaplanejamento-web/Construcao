@@ -88,8 +88,8 @@ class ObraDetailView extends BaseElement {
           <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
         </div>
         <div slot="despesas" class="despesas-aba">
-          <ui-card title="Registrar despesa"><despesa-form id="form"></despesa-form></ui-card>
           <ui-card title="Despesas">
+            <ui-button slot="acoes" id="addDespesa">+ Adicionar despesa</ui-button>
             <despesa-filtros id="filtros"></despesa-filtros>
             <despesa-table id="tabela"></despesa-table>
           </ui-card>
@@ -113,11 +113,10 @@ class ObraDetailView extends BaseElement {
     this._rosca = alvo.querySelector("#rosca");
     this._mensal = alvo.querySelector("#mensal");
     this._tabela = alvo.querySelector("#tabela");
-    this._form = alvo.querySelector("#form");
     this._filtros = alvo.querySelector("#filtros");
     this._filtro = { texto: "", categoria: "" };
 
-    this._form.addEventListener("adicionar", (e) => this.adicionar(e.detail));
+    alvo.querySelector("#addDespesa").addEventListener("click", () => this.abrirDespesaForm());
     this._filtros.addEventListener("filtrar", (e) => {
       this._filtro = e.detail;
       this.aplicarFiltro();
@@ -153,7 +152,6 @@ class ObraDetailView extends BaseElement {
     const sig = categorias.map((c) => c.id).join(",");
     if (sig !== this._catSig) {
       this._catSig = sig;
-      this._form.categorias = categorias;
       this._filtros.categorias = categorias;
     }
     this.pintarTopo();
@@ -206,12 +204,15 @@ class ObraDetailView extends BaseElement {
 
   /* --------------------------- Ações --------------------------------- */
 
-  async adicionar(dados) {
-    try {
-      await dataStore.adicionarDespesa(this.obraId, dados);
-    } catch (e) {
-      notificarErro(e);
-    }
+  /** Abre o banner de ADIÇÃO de despesa (autossuficiente; chama o data-store). */
+  abrirDespesaForm() {
+    const form = document.createElement("despesa-form");
+    form.obraId = this.obraId;
+    form.categorias = dataStore.categoriasDaObra(this.obraId);
+    const fechar = () => form.remove();
+    form.addEventListener("fechar", fechar);
+    form.addEventListener("salvo", fechar);
+    document.body.appendChild(form);
   }
 
   /** Abre o banner com a despesa (ver/editar/excluir). O banner é autossuficiente. */

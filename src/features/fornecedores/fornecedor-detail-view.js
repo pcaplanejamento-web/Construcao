@@ -74,8 +74,8 @@ class FornecedorDetailView extends BaseElement {
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="contatos" class="aba">
-          <div class="barra"><ui-button id="novoContato">+ Novo contato</ui-button></div>
           <ui-card title="Contatos do fornecedor">
+            <ui-button slot="acoes" id="novoContato">+ Novo contato</ui-button>
             <ui-data-table id="tabContatos" fluido
               empty-text="Nenhum contato deste fornecedor ainda."></ui-data-table>
           </ui-card>

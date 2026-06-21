@@ -36,9 +36,11 @@ class ContatosView extends BaseElement {
             <h1>Contatos</h1>
             <p class="sub">Cadastre pessoas e vincule-as às cotações por oferta.</p>
           </div>
-          <ui-button id="novo">+ Novo contato</ui-button>
         </div>
-        <ui-card title="Meus contatos"><div id="lista"></div></ui-card>
+        <ui-card title="Meus contatos">
+          <ui-button slot="acoes" id="novo">+ Novo contato</ui-button>
+          <div id="lista"></div>
+        </ui-card>
       </div>
     `;
   }

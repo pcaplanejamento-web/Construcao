@@ -16,7 +16,7 @@ sobem por `CustomEvent`**.
 | `ui-select` | `label`, `name`, `value`, `placeholder`, `error`; prop `.options=[{value,label}]`, `.value` | `change` | Lista suspensa. |
 | `ui-modal` | `open`, `title`; slots: default, `rodape` | `fechar` | Diálogo overlay (X, backdrop, Esc). |
 | `ui-toast` / `toast-host` | `tipo`, `message` | — | Notificações; host ouve o `event-bus`. |
-| `ui-card` | `title`; slots: default, `acoes` | — | Cartão de superfície. |
+| `ui-card` | `title`; slots: default, `acoes` | — | Cartão de superfície. **Padrão:** o botão de adicionar da tabela vai no `slot="acoes"` (cabeçalho, colado à direita); título longo **quebra** mantendo o botão à direita. |
 | `ui-data-table` | `.columns`, `.rows`, `.acoes`; attrs `empty-text`, `fluido` (células proporcionais/quebram), `clicavel` (linha clicável) | `acao` ({acao,linha}), `linha` ({linha}) | Tabela genérica orientada a dados. |
 | `ui-icon` | `name`, `size` | — | Biblioteca de ícones padrão (SVG `currentColor`). Sem emoji. Inclui `fornecedor`, `contato`, `cotacao` (módulo Compras). |
 | `ui-alert` | `tipo` (erro\|aviso\|info\|sucesso), `message`; prop `.mensagem` | — | **Componente PADRÃO de mensagem de erro/alerta inline.** Some quando sem `message`. Usar sempre que houver mensagem de erro de validação numa tela/form. |
@@ -82,7 +82,7 @@ sobem por `CustomEvent`**.
 ### Despesas — `features/despesas/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `despesa-form` | `.categorias`; evento `adicionar` | Formulário **só de adição** (edição é no banner). Não chama API. |
+| `despesa-form` | `.obraId`, `.categorias`; eventos `salvo`, `fechar` | **Banner (modal)** de adição de despesa (item/valor/classificação/data); chama `dataStore.adicionarDespesa`. Aberto pelo botão "+ Adicionar despesa" no cabeçalho do card "Despesas". |
 | `despesa-table` | `.despesas`, `.categorias`, `.participantes`; eventos `abrir` (clique na linha), `editar`, `remover` | Tabela **full-width** e fluida; colunas Adicionado/Editado por + **Pago**, **Pagamento** (total), **Distribuição** (Único/Distribuído) e **Responsabilidade** (chips nome·%). Reusa `ui-data-table` + `category-badge`. |
 | `despesa-detail` | `.despesa`, `.categorias`; evento `fechar` | **Banner (modal)**: item/valor/classificação/data/observação + **Pago** (checkbox), **Pagamento** e **Responsabilidade** (via `split-editor`). **Regras** (via `ui-alert`): soma dos pagamentos ≤ valor da despesa; soma das % ≤ 100. Salva via data-store (otimista). |
 | `split-editor` | `.participantes`, `.itens=[{chave,valor}]`, `.modo("valor"\|"pct")`, `.limite`; evento `mudar` | Editor reutilizável de **distribuição entre participantes** (linhas `ui-select`+`ui-input`, total/soma com `.limite` = valor ou 100%; destaca quando excede). Usado p/ pagamento (R$) e responsabilidade (%). |

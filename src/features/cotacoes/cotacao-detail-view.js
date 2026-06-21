@@ -92,11 +92,13 @@ class CotacaoDetailView extends BaseElement {
         <ui-card><category-breakdown id="comparacao"></category-breakdown></ui-card>
       </div>
       <ui-card title="Ofertas">
+        <ui-button slot="acoes" id="addOferta">+ Adicionar oferta</ui-button>
         <ui-data-table id="tabela" fluido
           empty-text="Nenhuma oferta ainda. Adicione ofertas de contatos para comparar."></ui-data-table>
       </ui-card>
       <div id="escolhida"></div>
     `;
+    alvo.querySelector("#addOferta").addEventListener("click", () => this.abrirPrecoForm(null));
     this._kpis = alvo.querySelector("#kpis");
     this._evolucao = alvo.querySelector("#evolucao");
     this._comparacao = alvo.querySelector("#comparacao");
@@ -223,11 +225,9 @@ class CotacaoDetailView extends BaseElement {
         </div>
       </div>
       <div class="acoes-topo">
-        <ui-button id="addOferta">+ Adicionar oferta</ui-button>
         <ui-button id="editarCotacao" variant="secundario">Editar cotação</ui-button>
       </div>
     `;
-    topo.querySelector("#addOferta").addEventListener("click", () => this.abrirPrecoForm(null));
     topo.querySelector("#editarCotacao").addEventListener("click", () => this.editarCotacao());
   }
 

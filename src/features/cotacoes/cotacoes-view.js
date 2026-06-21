@@ -38,9 +38,11 @@ class CotacoesView extends BaseElement {
             <h1>Cotações</h1>
             <p class="sub">Compare preços de contatos para cada necessidade.</p>
           </div>
-          <ui-button id="nova">+ Nova cotação</ui-button>
         </div>
-        <ui-card title="Minhas cotações"><div id="lista"></div></ui-card>
+        <ui-card title="Minhas cotações">
+          <ui-button slot="acoes" id="nova">+ Nova cotação</ui-button>
+          <div id="lista"></div>
+        </ui-card>
       </div>
     `;
   }

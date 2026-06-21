@@ -40,9 +40,6 @@ class ObraParticipantes extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
-      .barra { display: flex; justify-content: space-between; align-items: center;
-        gap: var(--esp-3); margin-bottom: var(--esp-4); flex-wrap: wrap; }
-      .barra .dica { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
       .grupos { display: flex; flex-direction: column; gap: var(--esp-5); }
       .acertos { display: flex; flex-direction: column; gap: var(--esp-2); }
       .acerto-item { display: flex; align-items: center; gap: var(--esp-2);
@@ -58,19 +55,10 @@ class ObraParticipantes extends BaseElement {
     const resp = this.modo === "responsaveis";
     return `
       <div class="grupos">
-        <div>
-          <div class="barra">
-            <span class="dica">${
-              resp
-                ? "Responsáveis da obra (subconjunto dos participantes)."
-                : "Dono, usuários compartilhados e contatos da obra."
-            }</span>
-            <ui-button id="acao">${resp ? "Definir responsáveis" : "+ Adicionar contato"}</ui-button>
-          </div>
-          <ui-card title="${resp ? "Responsáveis" : "Participantes"} — acerto de contas">
-            <div id="lista"></div>
-          </ui-card>
-        </div>
+        <ui-card title="${resp ? "Responsáveis" : "Participantes"} — acerto de contas">
+          <ui-button slot="acoes" id="acao">${resp ? "Definir responsáveis" : "+ Adicionar contato"}</ui-button>
+          <div id="lista"></div>
+        </ui-card>
         <ui-card title="Quem deve a quem"><div id="acertos"></div></ui-card>
       </div>
     `;

@@ -37,9 +37,11 @@ class FornecedoresView extends BaseElement {
             <h1>Fornecedores</h1>
             <p class="sub">Cadastre as empresas/lojas de onde você compra.</p>
           </div>
-          <ui-button id="novo">+ Novo fornecedor</ui-button>
         </div>
-        <ui-card title="Meus fornecedores"><div id="lista"></div></ui-card>
+        <ui-card title="Meus fornecedores">
+          <ui-button slot="acoes" id="novo">+ Novo fornecedor</ui-button>
+          <div id="lista"></div>
+        </ui-card>
       </div>
     `;
   }

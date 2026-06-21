@@ -1,20 +1,29 @@
 /**
- * <despesa-form> — Formulário inline para ADICIONAR despesa.
+ * <despesa-form> — Banner (modal) para ADICIONAR despesa. Auto-contido: chama
+ * dataStore.adicionarDespesa e emite "salvo"/"fechar". Reusa ui-modal/ui-input/
+ * ui-select/ui-button. (pago/pagamento/responsabilidade são definidos depois, no
+ * banner de edição <despesa-detail>.)
  *
- * Propriedade: .categorias = [{ id, nome, cor }]   (popula o select)
- * Evento: "adicionar" ({ item, valor, categoria_id, data })
- *
- * A edição NÃO é feita aqui — é feita no banner <despesa-detail> (ao clicar na
- * linha ou em Editar). Não chama a API: a orquestração fica em obra-detail-view.
+ * Propriedades: .obraId, .categorias = [{ id, nome, cor }]
+ * Eventos: "salvo", "fechar".
  */
 import { BaseElement } from "../../components/base-element.js";
+import { dataStore } from "../../core/data-store.js";
 import { hojeIso } from "../../core/formatters.js";
+import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { primeiroErro, obrigatorio, valorPositivo } from "../../core/validators.js";
+import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
 
 class DespesaForm extends BaseElement {
+  set obraId(v) {
+    this._obraId = v || "";
+  }
+  get obraId() {
+    return this._obraId || "";
+  }
   set categorias(v) {
     this._categorias = Array.isArray(v) ? v : [];
     if (this.shadowRoot.childElementCount) this.preencherCategorias();
@@ -25,32 +34,38 @@ class DespesaForm extends BaseElement {
 
   estilos() {
     return `
-      :host { display: block; }
-      .form { display: grid; gap: var(--esp-3);
-        grid-template-columns: 2fr 1fr 1.2fr 1fr auto; align-items: end; }
-      @media (max-width: 760px) { .form { grid-template-columns: 1fr 1fr; } }
+      .campos { display: flex; flex-direction: column; gap: var(--esp-4); }
+      .linha { display: flex; gap: var(--esp-3); }
+      .linha > * { flex: 1; }
     `;
   }
 
   template() {
     return `
-      <div class="form">
-        <ui-input id="item" label="Item" placeholder="Ex.: Cimento CP-II"></ui-input>
-        <ui-input id="valor" label="Valor (R$)" type="number" step="0.01" min="0"
-                  placeholder="0,00"></ui-input>
-        <ui-select id="categoria" label="Classificação"></ui-select>
-        <ui-input id="data" label="Data" type="date" value="${hojeIso()}"></ui-input>
-        <ui-button id="salvar">+ Adicionar</ui-button>
-      </div>
+      <ui-modal open title="Registrar despesa">
+        <div class="campos">
+          <ui-input id="item" label="Item" placeholder="Ex.: Cimento CP-II"></ui-input>
+          <div class="linha">
+            <ui-input id="valor" label="Valor (R$)" type="number" step="0.01" min="0"
+                      placeholder="0,00"></ui-input>
+            <ui-input id="data" label="Data" type="date" value="${hojeIso()}"></ui-input>
+          </div>
+          <ui-select id="categoria" label="Classificação"></ui-select>
+        </div>
+        <div slot="rodape">
+          <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
+          <ui-button id="salvar">Adicionar</ui-button>
+        </div>
+      </ui-modal>
     `;
   }
 
   aposRender() {
     this.preencherCategorias();
-    this.$("#salvar").addEventListener("click", () => this.enviar());
-    this.$$("ui-input").forEach((i) =>
-      i.addEventListener("enter", () => this.enviar())
-    );
+    this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
+    this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
+    this.$("#salvar").addEventListener("click", () => this.salvar());
+    this.$$("ui-input").forEach((i) => i.addEventListener("enter", () => this.salvar()));
   }
 
   preencherCategorias() {
@@ -60,7 +75,7 @@ class DespesaForm extends BaseElement {
     if (this.categorias[0]) sel.value = this.categorias[0].id;
   }
 
-  enviar() {
+  async salvar() {
     const item = this.$("#item").value.trim();
     const valor = Number(this.$("#valor").value);
     const erro = primeiroErro(obrigatorio(item, "O item"), valorPositivo(valor));
@@ -69,23 +84,23 @@ class DespesaForm extends BaseElement {
       this.$("#valor").setAttribute("error", valorPositivo(valor));
       return;
     }
-    this.$("#item").removeAttribute("error");
-    this.$("#valor").removeAttribute("error");
-
-    this.emitir("adicionar", {
+    const dados = {
       item,
       valor,
       categoria_id: this.$("#categoria").value,
       data: this.$("#data").value || hojeIso(),
-    });
-    this.limpar();
-  }
-
-  /** Limpa item/valor mantendo categoria e data (inclusão rápida). */
-  limpar() {
-    this.$("#item").value = "";
-    this.$("#valor").value = "";
-    this.$("#item").focus && this.$("#item").focus();
+    };
+    const btn = this.$("#salvar");
+    btn.setAttribute("loading", "");
+    try {
+      await dataStore.adicionarDespesa(this.obraId, dados);
+      toastSucesso("Despesa adicionada.");
+      this.emitir("salvo");
+      this.emitir("fechar");
+    } catch (e) {
+      notificarErro(e);
+      btn.removeAttribute("loading");
+    }
   }
 }
 
