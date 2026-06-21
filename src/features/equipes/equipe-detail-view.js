@@ -1,9 +1,11 @@
 /**
  * <equipe-detail-view> — Página de uma equipe (rota #/equipes/:id).
  *
- * Cabeçalho (nome + líder) + duas seções: Obras vinculadas (N:N) e Membros, com
- * adicionar/remover. Lê do data-store (cache-first) e assina mudanças. Espelha
- * orcamento-detail-view. Reusa ui-card, ui-data-table, ui-select, ui-button.
+ * Cabeçalho (nome + líder) + `ui-tabs` **Obras / Membros / Dados**. Cada aba é um
+ * `ui-card` + `ui-data-table` (padrão do sistema): o botão "+" fica no `slot="acoes"`
+ * do card e abre um **banner flutuante** (`ui-modal` + `ui-select`, composto inline —
+ * sem componente novo) para vincular obra / adicionar membro. Lê do data-store
+ * (cache-first) e assina mudanças. Reusa ui-tabs/ui-card/ui-data-table/ui-modal/ui-select/ui-button.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -14,6 +16,8 @@ import { liderNome, integrantesDaEquipe } from "./equipe-util.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-select.js";
+import "../../components/ui-modal.js";
+import "../../components/ui-tabs.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-icon.js";
 import "../../components/ui-data-table.js";
@@ -40,8 +44,7 @@ class EquipeDetailView extends BaseElement {
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm);
         display: flex; gap: var(--esp-2); flex-wrap: wrap; align-items: center; margin-top: var(--esp-1); }
-      .add { display: flex; gap: var(--esp-3); align-items: end; margin-bottom: var(--esp-4); }
-      .add ui-select { flex: 1; }
+      #resumoEq { margin-bottom: var(--esp-4); }
     `;
   }
 
@@ -68,28 +71,35 @@ class EquipeDetailView extends BaseElement {
     alvo.innerHTML = `
       <a class="voltar" href="#/contatos">← Contatos</a>
       <div class="topo" id="topo"></div>
-      <ui-card title="Obras vinculadas">
-        <div class="add">
-          <ui-select id="selObra" label="Obra"></ui-select>
-          <ui-button id="addObra">Vincular</ui-button>
+      <ui-tabs id="abas">
+        <div slot="obras">
+          <ui-card title="Obras vinculadas">
+            <ui-button slot="acoes" id="addObra">+ Vincular obra</ui-button>
+            <ui-data-table id="tabObras" fluido clicavel
+              empty-text="Nenhuma obra vinculada ainda."></ui-data-table>
+          </ui-card>
         </div>
-        <ui-data-table id="tabObras" fluido clicavel
-          empty-text="Nenhuma obra vinculada ainda."></ui-data-table>
-      </ui-card>
-      <ui-card title="Membros">
-        <div class="add">
-          <ui-select id="selMembro" label="Contato"></ui-select>
-          <ui-button id="addMembro">Adicionar</ui-button>
+        <div slot="membros">
+          <ui-card title="Membros">
+            <ui-button slot="acoes" id="addMembro">+ Adicionar membro</ui-button>
+            <ui-data-table id="tabMembros" fluido clicavel
+              empty-text="Nenhum membro ainda."></ui-data-table>
+          </ui-card>
         </div>
-        <ui-data-table id="tabMembros" fluido clicavel
-          empty-text="Nenhum membro ainda."></ui-data-table>
-      </ui-card>
-      <ui-card title="Dados — recebimentos da equipe">
-        <div class="meta" id="resumoEq"></div>
-        <ui-data-table id="tabDados" fluido
-          empty-text="Nenhum recebimento por integrante ainda."></ui-data-table>
-      </ui-card>
+        <div slot="dados">
+          <ui-card title="Dados — recebimentos da equipe">
+            <div class="meta" id="resumoEq"></div>
+            <ui-data-table id="tabDados" fluido
+              empty-text="Nenhum recebimento por integrante ainda."></ui-data-table>
+          </ui-card>
+        </div>
+      </ui-tabs>
     `;
+    alvo.querySelector("#abas").abas = [
+      { id: "obras", rotulo: "Obras", icone: "obra" },
+      { id: "membros", rotulo: "Membros", icone: "usuario" },
+      { id: "dados", rotulo: "Dados", icone: "grafico" },
+    ];
 
     this._tabObras = alvo.querySelector("#tabObras");
     this._tabObras.columns = [{ chave: "_nome", titulo: "Obra" }];
@@ -165,23 +175,6 @@ class EquipeDetailView extends BaseElement {
       return { id, _nome: c.nome || "—", _cargo: c.cargo || "—" };
     });
 
-    // Selects de adição (só o que ainda não está vinculado).
-    const usadasObra = new Set((e.obras || []).map(String));
-    const selObra = this.shadowRoot.querySelector("#selObra");
-    const dispObra = dataStore.obras().filter((o) => !usadasObra.has(String(o.id)));
-    selObra.setAttribute("placeholder", dispObra.length ? "Selecione a obra" : "Todas já vinculadas");
-    selObra.options = dispObra.map((o) => ({ value: o.id, label: o.nome }));
-    selObra.value = "";
-
-    const usadosMembro = new Set((e.membros || []).map(String));
-    const selMembro = this.shadowRoot.querySelector("#selMembro");
-    const dispMembro = dataStore
-      .contatosAtivos()
-      .filter((c) => !usadosMembro.has(String(c.id)) && String(c.id) !== String(e.lider_id));
-    selMembro.setAttribute("placeholder", dispMembro.length ? "Selecione o contato" : "Nenhum contato disponível");
-    selMembro.options = dispMembro.map((c) => ({ value: c.id, label: c.cargo ? `${c.nome} — ${c.cargo}` : c.nome }));
-    selMembro.value = "";
-
     this.montarDados(e);
     this.pintarTopo();
   }
@@ -212,10 +205,60 @@ class EquipeDetailView extends BaseElement {
     }
   }
 
+  /**
+   * Banner flutuante (ui-modal + ui-select, composto inline — sem componente novo)
+   * para escolher 1 item de uma lista e confirmar. Mesmo padrão dos demais "+".
+   */
+  _abrirSelecao({ titulo, label, placeholder, vazio, opcoes, rotuloOk, aoConfirmar }) {
+    const modal = document.createElement("ui-modal");
+    modal.setAttribute("open", "");
+    modal.setAttribute("title", titulo);
+    modal.innerHTML = `
+      <ui-select id="sel" label="${label}"></ui-select>
+      <div slot="rodape">
+        <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
+        <ui-button id="ok">${rotuloOk}</ui-button>
+      </div>`;
+    document.body.appendChild(modal);
+    const sel = modal.querySelector("#sel");
+    sel.setAttribute("placeholder", opcoes.length ? placeholder : vazio);
+    sel.options = opcoes;
+    const fechar = () => modal.remove();
+    modal.addEventListener("fechar", fechar);
+    modal.querySelector("#cancelar").addEventListener("click", fechar);
+    modal.querySelector("#ok").addEventListener("click", async () => {
+      const v = sel.value;
+      if (!v) {
+        sel.setAttribute("error", "Selecione uma opção.");
+        return;
+      }
+      const btn = modal.querySelector("#ok");
+      btn.setAttribute("loading", "");
+      try {
+        await aoConfirmar(v);
+        fechar();
+      } catch (e) {
+        notificarErro(e);
+        btn.removeAttribute("loading");
+      }
+    });
+  }
+
   adicionarObra() {
-    const id = this.shadowRoot.querySelector("#selObra").value;
-    if (!id) return;
-    this._salvarListas({ obras: [...(this._equipe.obras || []), id] });
+    const usadas = new Set((this._equipe.obras || []).map(String));
+    const disp = dataStore.obras().filter((o) => !usadas.has(String(o.id)));
+    this._abrirSelecao({
+      titulo: "Vincular obra",
+      label: "Obra",
+      placeholder: "Selecione a obra",
+      vazio: "Todas as obras já vinculadas",
+      opcoes: disp.map((o) => ({ value: o.id, label: o.nome })),
+      rotuloOk: "Vincular",
+      aoConfirmar: async (id) => {
+        await dataStore.atualizarEquipe(this._equipe.id, { obras: [...(this._equipe.obras || []), id] });
+        toastSucesso("Obra vinculada.");
+      },
+    });
   }
 
   removerObra(id) {
@@ -223,9 +266,22 @@ class EquipeDetailView extends BaseElement {
   }
 
   adicionarMembro() {
-    const id = this.shadowRoot.querySelector("#selMembro").value;
-    if (!id) return;
-    this._salvarListas({ membros: [...(this._equipe.membros || []), id] });
+    const usados = new Set((this._equipe.membros || []).map(String));
+    const disp = dataStore
+      .contatosAtivos()
+      .filter((c) => !usados.has(String(c.id)) && String(c.id) !== String(this._equipe.lider_id));
+    this._abrirSelecao({
+      titulo: "Adicionar membro",
+      label: "Contato",
+      placeholder: "Selecione o contato",
+      vazio: "Nenhum contato disponível",
+      opcoes: disp.map((c) => ({ value: c.id, label: c.cargo ? `${c.nome} — ${c.cargo}` : c.nome })),
+      rotuloOk: "Adicionar",
+      aoConfirmar: async (id) => {
+        await dataStore.atualizarEquipe(this._equipe.id, { membros: [...(this._equipe.membros || []), id] });
+        toastSucesso("Membro adicionado.");
+      },
+    });
   }
 
   removerMembro(id) {
