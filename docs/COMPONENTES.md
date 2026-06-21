@@ -156,7 +156,7 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 |------------|---------------|-----------|
 | `equipe-card` | `.equipe`; eventos `abrir`/`editar`/`remover` | Card quadrado: nome, líder, nº membros, nº obras, log. |
 | `equipe-form` | `.equipe`; eventos `salvo`, `fechar` | Modal: **nome** + **líder** (`ui-select` filtrado a Mestre de Obra/Engenheiro/Gestor). |
-| `equipe-detail-view` | attr `id` (rota `#/equipes/:id`) | Cabeçalho + `ui-tabs` **Obras / Membros / Dados** (cada aba = `ui-card` + `ui-data-table`). Vincular obra / adicionar membro pelo botão "+" no `slot="acoes"` do card → **banner flutuante** (`ui-modal` + `ui-select` composto inline, sem componente novo). Dados: recebimentos (Total / **Recebido** / **Saldo a receber** da equipe + **Recebido** por integrante). Salva via `dataStore.atualizarEquipe`. |
+| `equipe-detail-view` | attr `id` (rota `#/equipes/:id`) | Cabeçalho + `ui-tabs` **Obras / Membros / Dados** (cada aba = `ui-card` + `ui-data-table`). Vincular obra / adicionar membro pelo botão "+" no `slot="acoes"` do card → **banner flutuante** (`ui-modal` + `ui-select` composto inline, sem componente novo). Dados: **tabela** (1 linha por despesa da equipe) com **Data · Obra · Item · Quem pagou · Data do pagamento · Pago · Saldo a receber** (clique → obra). Salva via `dataStore.atualizarEquipe`. |
 | `equipe-util.js` | `CARGOS_LIDER`, `liderNome` | Cargos elegíveis a líder; nome do líder ao vivo. |
 | `equipe-grade.js` | `montarGradeEquipes(el, lista)` | Grade de `equipe-card` (mesmo layout de Orçamento) — reusada nas abas Equipes de contatos/contato-detail/obra. |
 

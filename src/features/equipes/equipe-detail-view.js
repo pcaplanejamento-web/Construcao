@@ -9,10 +9,10 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { moeda } from "../../core/formatters.js";
+import { moeda, data as fmtData } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { parseLista, totalRealizado, restoDespesa } from "../despesas/despesa-split.js";
-import { liderNome, integrantesDaEquipe } from "./equipe-util.js";
+import { liderNome } from "./equipe-util.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-select.js";
@@ -44,7 +44,6 @@ class EquipeDetailView extends BaseElement {
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm);
         display: flex; gap: var(--esp-2); flex-wrap: wrap; align-items: center; margin-top: var(--esp-1); }
-      #resumoEq { margin-bottom: var(--esp-4); }
     `;
   }
 
@@ -88,9 +87,8 @@ class EquipeDetailView extends BaseElement {
         </div>
         <div slot="dados">
           <ui-card title="Dados — recebimentos da equipe">
-            <div class="meta" id="resumoEq"></div>
-            <ui-data-table id="tabDados" fluido
-              empty-text="Nenhum recebimento por integrante ainda."></ui-data-table>
+            <ui-data-table id="tabDados" fluido clicavel
+              empty-text="Nenhuma despesa vinculada a esta equipe ainda."></ui-data-table>
           </ui-card>
         </div>
       </ui-tabs>
@@ -122,9 +120,29 @@ class EquipeDetailView extends BaseElement {
 
     this._tabDados = alvo.querySelector("#tabDados");
     this._tabDados.columns = [
-      { chave: "_nome", titulo: "Integrante" },
-      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "_data", titulo: "Data", formato: (v) => fmtData(v) },
+      { chave: "_obra", titulo: "Obra" },
+      { chave: "_item", titulo: "Item", largura: "180px" },
+      { chave: "_pagou", titulo: "Quem pagou" },
+      {
+        chave: "_dataPgto",
+        titulo: "Data do pagamento",
+        formato: (v) => (v && v.length ? v.map((d) => fmtData(d)).join(" · ") : `<span style="color:var(--cor-texto-fraco)">—</span>`),
+      },
+      { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
+      {
+        chave: "_resto",
+        titulo: "Saldo a receber",
+        alinhar: "dir",
+        formato: (v) =>
+          v > 0.01
+            ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+      },
     ];
+    this._tabDados.addEventListener("linha", (e) => {
+      if (e.detail.linha.id) location.hash = "#/obras/" + e.detail.linha.id;
+    });
 
     alvo.querySelector("#addObra").addEventListener("click", () => this.adicionarObra());
     alvo.querySelector("#addMembro").addEventListener("click", () => this.adicionarMembro());
@@ -132,32 +150,32 @@ class EquipeDetailView extends BaseElement {
     this._montado = true;
   }
 
-  /** Dados financeiros da equipe: total/pago/resto + recebido por integrante (das levas). */
+  /**
+   * Dados da equipe: uma linha por despesa vinculada à equipe (ofertante = equipe),
+   * com obra, item, quem pagou + datas dos pagamentos (levas), pago e saldo a receber.
+   */
   montarDados(eq) {
     const despesasEq = dataStore
       .todasDespesas()
       .filter((d) => String(d.ofertante_equipe_id) === String(eq.id));
-    let total = 0;
-    let pago = 0;
-    let resto = 0;
-    const recebido = {};
-    despesasEq.forEach((d) => {
-      total += Number(d.valor) || 0;
-      pago += totalRealizado(d);
-      resto += restoDespesa(d);
-      parseLista(d.pagamentos_realizados).forEach((p) => {
-        parseLista(p.distribuicao).forEach((x) => {
-          if (x && x.chave) recebido[x.chave] = (recebido[x.chave] || 0) + (Number(x.valor) || 0);
-        });
-      });
-    });
-    this._tabDados.rows = integrantesDaEquipe(eq.id)
-      .map((p) => ({ _nome: p.nome, _recebido: recebido[p.chave] || 0 }))
-      .filter((r) => r._recebido > 0.01);
-    const resumo = this.shadowRoot.querySelector("#resumoEq");
-    if (resumo) {
-      resumo.innerHTML = `<span>Total ${moeda(total)}</span><span>· Recebido ${moeda(pago)}</span><span>· Saldo a receber ${moeda(resto)}</span>`;
-    }
+    this._tabDados.rows = despesasEq
+      .map((d) => {
+        const levas = parseLista(d.pagamentos_realizados);
+        const nomePart = {};
+        dataStore.participantesDaObra(d.obra_id).forEach((p) => (nomePart[p.chave] = p.nome));
+        const pagadores = [...new Set(levas.map((l) => nomePart[l.pagador]).filter(Boolean))];
+        return {
+          id: d.obra_id, // clique → abre a obra
+          _data: d.data,
+          _obra: (dataStore.obra(d.obra_id) || {}).nome || "—",
+          _item: (d.item_id && (dataStore.item(d.item_id) || {}).nome) || d.item || "—",
+          _pagou: pagadores.length ? pagadores.join(" · ") : "—",
+          _dataPgto: levas.map((l) => l.data).filter(Boolean),
+          _pago: totalRealizado(d),
+          _resto: restoDespesa(d),
+        };
+      })
+      .sort((a, b) => String(b._data).localeCompare(String(a._data)));
   }
 
   sincronizar() {
