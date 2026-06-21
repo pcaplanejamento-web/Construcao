@@ -27,6 +27,9 @@ class ContatosView extends BaseElement {
         gap: var(--esp-3); flex-wrap: wrap; }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       p.sub { color: var(--cor-texto-suave); margin-top: var(--esp-2); }
+      .pilha { display: flex; flex-direction: column; gap: var(--esp-5); }
+      .badges { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
+      .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
     `;
   }
 
@@ -46,11 +49,12 @@ class ContatosView extends BaseElement {
               <div id="lista"></div>
             </ui-card>
           </div>
-          <div slot="cargos">
-            <ui-card title="Cargos">
+          <div slot="cargos" class="pilha">
+            <ui-card title="Meus cargos">
               <ui-button slot="acoes" id="novoCargo">+ Novo cargo</ui-button>
               <div id="listaCargos"></div>
             </ui-card>
+            <ui-card title="Cargos padrão (fixos)"><div id="cargosFixos"></div></ui-card>
           </div>
         </ui-tabs>
       </div>
@@ -124,36 +128,41 @@ class ContatosView extends BaseElement {
 
   pintarCargos() {
     const el = this.$("#listaCargos");
+    const fixosEl = this.$("#cargosFixos");
     if (!el || !dataStore.carregado()) return;
-    const tabela = document.createElement("ui-data-table");
-    tabela.setAttribute("fluido", "");
-    tabela.columns = [
-      { chave: "nome", titulo: "Cargo" },
-      {
-        chave: "fixo",
-        titulo: "Tipo",
-        formato: (fixo) =>
-          fixo
-            ? `<category-badge nome="Fixo" cor="var(--cor-neutro)"></category-badge>`
-            : `<category-badge nome="Personalizado" cor="var(--cor-info)"></category-badge>`,
-      },
-      { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
-    ];
-    tabela.acoes = [
-      { nome: "editar", rotulo: "Editar" },
-      { nome: "excluir", rotulo: "Excluir", variant: "perigo" },
-    ];
-    tabela.rows = dataStore.cargos();
-    tabela.addEventListener("acao", (e) => {
-      const cargo = e.detail.linha;
-      if (cargo.fixo) {
-        toastSucesso("Cargos obrigatórios são fixos e não podem ser alterados.");
-        return;
-      }
-      if (e.detail.acao === "editar") this.abrirCargoForm(cargo);
-      else this.removerCargo(cargo);
-    });
-    el.replaceChildren(tabela);
+
+    const cargos = dataStore.cargos();
+    const extras = cargos.filter((c) => !c.fixo);
+    const fixos = cargos.filter((c) => c.fixo);
+
+    // Meus cargos (extras) — só estes têm Editar/Excluir.
+    if (!extras.length) {
+      el.innerHTML = `<p class="vazio">Nenhum cargo personalizado. Use "+ Novo cargo" para criar.</p>`;
+    } else {
+      const tabela = document.createElement("ui-data-table");
+      tabela.setAttribute("fluido", "");
+      tabela.columns = [
+        { chave: "nome", titulo: "Cargo" },
+        { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
+      ];
+      tabela.acoes = [
+        { nome: "editar", rotulo: "Editar" },
+        { nome: "excluir", rotulo: "Excluir", variant: "perigo" },
+      ];
+      tabela.rows = extras;
+      tabela.addEventListener("acao", (e) => {
+        if (e.detail.acao === "editar") this.abrirCargoForm(e.detail.linha);
+        else this.removerCargo(e.detail.linha);
+      });
+      el.replaceChildren(tabela);
+    }
+
+    // Cargos padrão (fixos) — apenas referência, sem ações.
+    if (fixosEl) {
+      fixosEl.innerHTML = `<div class="badges">${fixos
+        .map((c) => `<category-badge nome="${c.nome}" cor="var(--cor-neutro)"></category-badge>`)
+        .join("")}</div>`;
+    }
   }
 
   abrirForm(contato) {
