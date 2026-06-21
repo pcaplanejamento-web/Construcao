@@ -16,6 +16,7 @@ import "../components/ui-icon.js";
 // Itens principais (antes de Admin e Perfil).
 const ITENS = [
   { rota: "#/obras", rotulo: "Minhas obras", icone: "obra" },
+  { rota: "#/financeiro", rotulo: "Financeiro", icone: "carteira" },
   { rota: "#/fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
   { rota: "#/contatos", rotulo: "Contatos", icone: "contato" },
   { rota: "#/cotacoes", rotulo: "Cotações", icone: "cotacao" },
