@@ -98,9 +98,15 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > mantido só por compat). O **`pagamentos`** (quem pagou quanto → **acerto**) é
 > **derivado** das levas (soma por `pagador`) — fonte única, sem editor manual. Equipe
 > → cada leva desmembra entre integrantes (`distribuicao`, o que cada um recebeu); o
-> recebedor é o líder (mestre). O valor ainda **não pago** vira **restos a pagar**
-> (responsáveis, proporcional à %) e **saldo a receber** (do ofertante: contato `c:` ou
-> equipe `e:`). O "recebido por integrante" é o somatório das `distribuicao` das levas.
+> recebedor é o líder (mestre).
+
+> **Balanços (modelo paga ↔ recebe)** — `despesa-split.balancos`, tudo derivado:
+> cada leva tem um **pagador** (deduz **Saldo a pagar** → vira **Pago**) e um **recebedor**
+> — ofertante contato `c:` / grupo `e:` / empresa (deduz **Saldo a receber** → vira
+> **Recebido**). Por chave: `pago` = Σ levas que pagou; `saldoApagar` = max(0, devido−pago)
+> (devido = Σ valor×pct); `recebido` = Σ realizado (ofertante/grupo) ou Σ `distribuicao`
+> (integrante); `saldoReceber` = Σ resto do ofertante (grupo no nível `e:`). Não há mais
+> "Devido"/"Restos a pagar" como colunas.
 
 > **Item × Classificação × Subclassificação:** a despesa referencia um **item**
 > (`item_id`, obrigatório); o item carrega sua **classificação** (`classificacao`,

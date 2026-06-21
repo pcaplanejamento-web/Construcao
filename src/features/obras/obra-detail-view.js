@@ -10,7 +10,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { restosESaldos } from "../despesas/despesa-split.js";
+import { balancos } from "../despesas/despesa-split.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
 import "../../components/ui-card.js";
@@ -258,7 +258,7 @@ class ObraDetailView extends BaseElement {
   montarFornecedores(despesas) {
     const tab = this._tabForn;
     if (!tab) return;
-    const { porFornecedor } = restosESaldos(despesas);
+    const { porFornecedor } = balancos(despesas);
     const qtd = {};
     despesas.forEach((d) => {
       if (d.fornecedor_id) qtd[d.fornecedor_id] = (qtd[d.fornecedor_id] || 0) + 1;
@@ -267,7 +267,7 @@ class ObraDetailView extends BaseElement {
       { chave: "_nome", titulo: "Fornecedor" },
       { chave: "_qtd", titulo: "Despesas", alinhar: "dir" },
       { chave: "_total", titulo: "Total", alinhar: "dir", formato: (v) => moeda(v) },
-      { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
       {
         chave: "_resto",
         titulo: "Saldo a receber",
@@ -282,7 +282,7 @@ class ObraDetailView extends BaseElement {
       .map((fid) => {
         const f = dataStore.fornecedores().find((x) => String(x.id) === String(fid)) || {};
         const v = porFornecedor[fid];
-        return { id: fid, _nome: f.nome || "—", _qtd: qtd[fid] || 0, _total: v.total, _pago: v.pago, _resto: v.resto };
+        return { id: fid, _nome: f.nome || "—", _qtd: qtd[fid] || 0, _total: v.total, _recebido: v.recebido, _resto: v.saldoReceber };
       })
       .sort((a, b) => b._resto - a._resto);
   }

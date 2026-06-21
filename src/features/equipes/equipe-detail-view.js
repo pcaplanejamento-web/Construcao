@@ -146,7 +146,7 @@ class EquipeDetailView extends BaseElement {
       .filter((r) => r._recebido > 0.01);
     const resumo = this.shadowRoot.querySelector("#resumoEq");
     if (resumo) {
-      resumo.innerHTML = `<span>Total ${moeda(total)}</span><span>· Pago ${moeda(pago)}</span><span>· Saldo a receber ${moeda(resto)}</span>`;
+      resumo.innerHTML = `<span>Total ${moeda(total)}</span><span>· Recebido ${moeda(pago)}</span><span>· Saldo a receber ${moeda(resto)}</span>`;
     }
   }
 

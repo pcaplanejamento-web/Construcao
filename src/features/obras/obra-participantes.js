@@ -13,7 +13,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { acerto, rotuloOrigem, restosESaldos } from "../despesas/despesa-split.js";
+import { acerto, rotuloOrigem, balancos } from "../despesas/despesa-split.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-button.js";
@@ -76,11 +76,10 @@ class ObraParticipantes extends BaseElement {
 
     const todos = dataStore.participantesDaObra(this.obraId);
     const despesas = dataStore.despesas(this.obraId);
-    const { saldos, acertos } = acerto(despesas, todos);
-    const mapaSaldo = {};
-    saldos.forEach((s) => (mapaSaldo[s.chave] = s));
-    // Restos a pagar (responsáveis) / Saldo a receber (recebedores) — pagamentos parciais.
-    const { porChave } = restosESaldos(despesas);
+    // Saldos do modelo paga ↔ recebe (Pago/Recebido/Saldo a pagar/Saldo a receber).
+    const { porChave } = balancos(despesas);
+    // Acerto entre participantes — só p/ o painel "quem deve a quem".
+    const { acertos } = acerto(despesas, todos);
 
     const visiveis =
       this.modo === "responsaveis" ? todos.filter((p) => p.eh_responsavel) : todos;
@@ -95,15 +94,13 @@ class ObraParticipantes extends BaseElement {
         }"></ui-empty-state>`;
     } else {
       const rows = visiveis.map((p) => {
-        const s = mapaSaldo[p.chave] || { pago: 0, devido: 0, saldo: 0 };
-        const rs = porChave[p.chave] || { restoApagar: 0, saldoReceber: 0 };
+        const b = porChave[p.chave] || { pago: 0, recebido: 0, saldoApagar: 0, saldoReceber: 0 };
         return {
           ...p,
-          _pago: s.pago,
-          _devido: s.devido,
-          _saldo: s.saldo,
-          _restoApagar: rs.restoApagar,
-          _saldoReceber: rs.saldoReceber,
+          _pago: b.pago,
+          _recebido: b.recebido,
+          _saldoApagar: b.saldoApagar,
+          _saldoReceber: b.saldoReceber,
         };
       });
       const tabela = document.createElement("ui-data-table");
@@ -117,16 +114,10 @@ class ObraParticipantes extends BaseElement {
             `<category-badge nome="${rotuloOrigem(o)}" cor="${COR_ORIGEM[o] || "var(--cor-neutro)"}"></category-badge>`,
         },
         { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
-        { chave: "_devido", titulo: "Devido", alinhar: "dir", formato: (v) => moeda(v) },
+        { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
         {
-          chave: "_saldo",
-          titulo: "Saldo",
-          alinhar: "dir",
-          formato: (v) => this._saldoCelula(v),
-        },
-        {
-          chave: "_restoApagar",
-          titulo: "Restos a pagar",
+          chave: "_saldoApagar",
+          titulo: "Saldo a pagar",
           alinhar: "dir",
           formato: (v) =>
             v > 0.01
@@ -166,14 +157,6 @@ class ObraParticipantes extends BaseElement {
         )
         .join("")}</div>`;
     }
-  }
-
-  _saldoCelula(v) {
-    if (Math.abs(v) < 0.01) return `<span style="color:var(--cor-texto-fraco)">—</span>`;
-    const cor = v > 0 ? "var(--cor-sucesso)" : "var(--cor-erro)";
-    const rot = v > 0 ? "a receber" : "a pagar";
-    return `<strong style="color:${cor}">${moeda(Math.abs(v))}</strong>
-      <small style="color:var(--cor-texto-fraco)"> ${rot}</small>`;
   }
 
   /* ------------------------------ Ações -------------------------------- */

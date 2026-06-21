@@ -13,7 +13,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { restosESaldos } from "../despesas/despesa-split.js";
+import { balancos } from "../despesas/despesa-split.js";
 import { colunasOferta } from "../orcamentos/orcamento-util.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import "../../components/ui-card.js";
@@ -133,12 +133,11 @@ class FornecedorDetailView extends BaseElement {
 
     this._gradeOrc = alvo.querySelector("#gradeOrc");
 
-    // Dados: Total / Pago / Saldo a receber por obra.
+    // Dados: Recebido / Saldo a receber por obra (a empresa recebe).
     this._tabDados = alvo.querySelector("#tabDados");
     this._tabDados.columns = [
       { chave: "_obra", titulo: "Obra" },
-      { chave: "_total", titulo: "Total", alinhar: "dir", formato: (v) => moeda(v) },
-      { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
       {
         chave: "_resto",
         titulo: "Saldo a receber",
@@ -189,11 +188,11 @@ class FornecedorDetailView extends BaseElement {
       dataStore.orcamentos().filter((o) => String(o.fornecedor_id) === String(f.id))
     );
 
-    // Dados: por obra, total/pago/saldo a receber das despesas desta empresa.
+    // Dados: por obra, recebido/saldo a receber das despesas desta empresa.
     const dados = [];
     dataStore.obras().forEach((o) => {
-      const v = restosESaldos(dataStore.despesas(o.id)).porFornecedor[f.id];
-      if (v) dados.push({ id: o.id, _obra: o.nome, _total: v.total, _pago: v.pago, _resto: v.resto });
+      const v = balancos(dataStore.despesas(o.id)).porFornecedor[f.id];
+      if (v) dados.push({ id: o.id, _obra: o.nome, _recebido: v.recebido, _resto: v.saldoReceber });
     });
     this._tabDados.rows = dados.sort((a, b) => b._resto - a._resto);
 

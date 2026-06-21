@@ -50,15 +50,20 @@ export function statusPagamento(despesa) {
 }
 
 /**
- * Restos a pagar (responsáveis) e saldo a receber (ofertantes/empresas) de um
- * conjunto de despesas, a partir do valor AINDA NÃO PAGO (proporcional).
- *  - restoApagar[chave]  = Σ restoDespesa × (pct/100)   (por responsável)
- *  - saldoReceber[chave] = ofertante contato (`c:`) ou equipe (`e:`) → +resto
- *  - porFornecedor[fid]  = { total, pago, resto }        (empresas)
- * Retorna { porChave:{chave:{restoApagar,saldoReceber}}, porFornecedor }.
+ * Balanços financeiros (modelo paga ↔ recebe) de um conjunto de despesas. Tudo
+ * derivado: por despesa `realizado = Σ levas.valor`, `resto = valor − realizado`.
+ *  - **pago**[chave]        = Σ levas onde `pagador = chave` (quem pagou)
+ *  - **recebido**[chave]    = ofertante contato/grupo (`c:`/`e:`) → Σ realizado;
+ *                             integrante → Σ `distribuicao`
+ *  - **saldoApagar**[chave] = max(0, devido − pago); devido = Σ valor×(pct/100)
+ *  - **saldoReceber**[chave]= ofertante (`c:`/`e:`) → Σ resto (grupo no nível `e:`)
+ *  - **porFornecedor**[fid] = { total, recebido(=Σrealizado), saldoReceber(=Σresto) }
+ * Retorna { porChave:{chave:{pago,recebido,saldoApagar,saldoReceber}}, porFornecedor }.
  */
-export function restosESaldos(despesas) {
-  const restoApagar = {};
+export function balancos(despesas) {
+  const pago = {};
+  const devido = {};
+  const recebido = {};
   const saldoReceber = {};
   const porFornecedor = {};
   (despesas || []).forEach((d) => {
@@ -66,33 +71,43 @@ export function restosESaldos(despesas) {
     const realizado = totalRealizado(d);
     const resto = Math.max(0, valor - realizado);
 
-    // Restos a pagar: % de cada responsável sobre o que falta pagar.
+    // Devido (responsabilidade) — base interna do saldo a pagar.
     parseLista(d.responsaveis).forEach((r) => {
-      if (r && r.chave) restoApagar[r.chave] = (restoApagar[r.chave] || 0) + (resto * (Number(r.pct) || 0)) / 100;
+      if (r && r.chave) devido[r.chave] = (devido[r.chave] || 0) + (valor * (Number(r.pct) || 0)) / 100;
     });
 
-    // Saldo a receber por fornecedor (empresa).
-    if (d.fornecedor_id) {
-      const f = (porFornecedor[d.fornecedor_id] = porFornecedor[d.fornecedor_id] || { total: 0, pago: 0, resto: 0 });
-      f.total += valor;
-      f.pago += realizado;
-      f.resto += resto;
-    }
-    if (resto <= 0.01) return;
-    // Saldo a receber do ofertante: equipe (nível da equipe) ou contato.
+    // Levas: pago (por quem pagou) + recebido por integrante (distribuição).
+    parseLista(d.pagamentos_realizados).forEach((lv) => {
+      if (lv && lv.pagador) pago[lv.pagador] = (pago[lv.pagador] || 0) + (Number(lv.valor) || 0);
+      parseLista(lv.distribuicao).forEach((x) => {
+        if (x && x.chave) recebido[x.chave] = (recebido[x.chave] || 0) + (Number(x.valor) || 0);
+      });
+    });
+
+    // Recebido + saldo a receber do ofertante (contato/grupo) e do fornecedor.
     if (d.ofertante_equipe_id) {
       const ch = "e:" + d.ofertante_equipe_id;
-      saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
+      recebido[ch] = (recebido[ch] || 0) + realizado;
+      if (resto > 0.01) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
     } else if (d.ofertante_contato_id) {
       const ch = "c:" + d.ofertante_contato_id;
-      saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
+      recebido[ch] = (recebido[ch] || 0) + realizado;
+      if (resto > 0.01) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
+    }
+    if (d.fornecedor_id) {
+      const f = (porFornecedor[d.fornecedor_id] = porFornecedor[d.fornecedor_id] || { total: 0, recebido: 0, saldoReceber: 0 });
+      f.total += valor;
+      f.recebido += realizado;
+      f.saldoReceber += resto;
     }
   });
 
   const porChave = {};
-  const garante = (k) => (porChave[k] = porChave[k] || { restoApagar: 0, saldoReceber: 0 });
-  Object.keys(restoApagar).forEach((k) => (garante(k).restoApagar = restoApagar[k]));
-  Object.keys(saldoReceber).forEach((k) => (garante(k).saldoReceber = saldoReceber[k]));
+  const g = (k) => (porChave[k] = porChave[k] || { pago: 0, recebido: 0, saldoApagar: 0, saldoReceber: 0 });
+  Object.keys(pago).forEach((k) => (g(k).pago = pago[k]));
+  Object.keys(recebido).forEach((k) => (g(k).recebido = recebido[k]));
+  Object.keys(saldoReceber).forEach((k) => (g(k).saldoReceber = saldoReceber[k]));
+  Object.keys(devido).forEach((k) => (g(k).saldoApagar = Math.max(0, (devido[k] || 0) - (pago[k] || 0))));
   return { porChave, porFornecedor };
 }
 

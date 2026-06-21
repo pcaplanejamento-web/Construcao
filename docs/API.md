@@ -111,11 +111,13 @@ para dono **e** colaboradores.
 > pagamentos, `devido` = Σ valor×(pct/100), `saldo` = pago − devido; e `acertos`
 > pareados (quem deve a quem). Não há action de servidor — é derivado das despesas.
 
-> **Pagamentos parciais / restos / saldo** (cliente, `despesa-split`): `statusPagamento`
-> (A pagar/Em pagamento/Pago) + `totalRealizado`/`restoDespesa`; `restosESaldos(despesas)`
-> → `porChave` (restoApagar dos responsáveis + saldoReceber dos recebedores) e
-> `porFornecedor` (total/pago/resto por empresa). Alimenta as colunas em Participantes,
-> a aba Fornecedores da obra e as abas **Dados** de contato/fornecedor/equipe. Derivado.
+> **Pagamentos parciais / balanços** (cliente, `despesa-split`): `statusPagamento`
+> (A pagar/Em pagamento/Pago) + `totalRealizado`/`restoDespesa`; **`balancos(despesas)`**
+> → `porChave` `{pago, recebido, saldoApagar, saldoReceber}` e `porFornecedor`
+> `{total, recebido, saldoReceber}`. Modelo **paga ↔ recebe**: cada leva tem `pagador`
+> (deduz saldoApagar → vira pago) e um recebedor — ofertante contato `c:`/grupo `e:`/
+> empresa (deduz saldoReceber → vira recebido). Alimenta Participantes, a aba Fornecedores
+> da obra e as abas **Dados** de contato/fornecedor/equipe. Derivado (sem action).
 
 ### Categorias (= Subclassificações na UI)
 | Action | `data` | Retorno |

@@ -11,7 +11,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
-import { restosESaldos } from "../despesas/despesa-split.js";
+import { balancos } from "../despesas/despesa-split.js";
 import { colunasOferta } from "../orcamentos/orcamento-util.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
@@ -141,21 +141,23 @@ class ContatoDetailView extends BaseElement {
     this._tabOfertas.columns = colunasOferta();
     this._gradeOrc = alvo.querySelector("#gradeOrc");
 
-    // Dados: saldo a receber (recebedor) / restos a pagar (responsável), por obra.
+    // Dados: Pago/Recebido + Saldo a pagar/Saldo a receber, por obra.
     this._tabDados = alvo.querySelector("#tabDados");
     this._tabDados.columns = [
       { chave: "_obra", titulo: "Obra" },
+      { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
+      {
+        chave: "_pagar",
+        titulo: "Saldo a pagar",
+        alinhar: "dir",
+        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-erro)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
+      },
       {
         chave: "_receber",
         titulo: "Saldo a receber",
         alinhar: "dir",
         formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
-      },
-      {
-        chave: "_pagar",
-        titulo: "Restos a pagar",
-        alinhar: "dir",
-        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-erro)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
       },
     ];
     this._tabDados.addEventListener("linha", (e) => {
@@ -204,12 +206,12 @@ class ContatoDetailView extends BaseElement {
       dataStore.orcamentos().filter((o) => String(o.contato_id) === String(c.id))
     );
 
-    // Dados: por obra, saldo a receber (como ofertante/integrante) + restos a pagar (responsável).
+    // Dados: por obra, Pago/Recebido + Saldo a pagar/receber (modelo paga ↔ recebe).
     const dados = [];
     dataStore.obras().forEach((o) => {
-      const v = restosESaldos(dataStore.despesas(o.id)).porChave[chave];
-      if (v && (v.saldoReceber > 0.01 || v.restoApagar > 0.01)) {
-        dados.push({ id: o.id, _obra: o.nome, _receber: v.saldoReceber, _pagar: v.restoApagar });
+      const v = balancos(dataStore.despesas(o.id)).porChave[chave];
+      if (v && (v.pago > 0.01 || v.recebido > 0.01 || v.saldoApagar > 0.01 || v.saldoReceber > 0.01)) {
+        dados.push({ id: o.id, _obra: o.nome, _pago: v.pago, _recebido: v.recebido, _pagar: v.saldoApagar, _receber: v.saldoReceber });
       }
     });
     this._tabDados.rows = dados;
