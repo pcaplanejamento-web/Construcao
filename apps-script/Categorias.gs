@@ -110,11 +110,32 @@ function categoriasAtualizar(data, sessao) {
   });
 }
 
-/** categorias.remover -> { id } (desativa logicamente). */
+/** Verdadeiro se a subclassificação está vinculada a despesa/cotação/fornecedor. */
+function _categoriaEmUso(catId) {
+  const naDespesa = repoEncontrar(SCHEMA.DESPESAS, function (d) {
+    return String(d.categoria_id) === String(catId);
+  });
+  if (naDespesa) return true;
+  const naCotacao = repoEncontrar(SCHEMA.COTACOES, function (c) {
+    return String(c.categoria_id) === String(catId);
+  });
+  if (naCotacao) return true;
+  return !!repoEncontrar(SCHEMA.FORNECEDORES, function (f) {
+    return (
+      String(f.categoria_id) === String(catId) &&
+      (f.ativo === true || f.ativo === "TRUE" || f.ativo === "true")
+    );
+  });
+}
+
+/** categorias.remover -> { id } (desativa logicamente). Bloqueia se vinculada. */
 function categoriasRemover(data, sessao) {
   const id = data && data.id;
   const atual = _categoriaEditavel(id, sessao.usuario_id);
   const ehGlobal = String(atual.usuario_id) === CATEGORIA_GLOBAL;
+  if (_categoriaEmUso(id)) {
+    lancar(ERRO.VALIDACAO, "Subclassificação vinculada a despesas/cotações/fornecedores; remova os vínculos primeiro.");
+  }
 
   return comLock(function () {
     repoAtualizar(SCHEMA.CATEGORIAS, "id", id, { ativo: false });

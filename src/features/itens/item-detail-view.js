@@ -13,6 +13,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda, numero, data as fmtData } from "../../core/formatters.js";
+import { colunasLog } from "../../core/audit-columns.js";
 import { melhorTotal } from "../cotacoes/cotacao-util.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
@@ -167,6 +168,7 @@ class ItemDetailView extends BaseElement {
             ? `<category-badge nome="Pago" cor="var(--cor-sucesso)"></category-badge>`
             : `<span style="color:var(--cor-texto-fraco)">—</span>`,
       },
+      ...colunasLog(),
     ];
     this._tabDespesas.addEventListener("linha", (e) => {
       if (e.detail.linha.obra_id) location.hash = "#/obras/" + e.detail.linha.obra_id;
@@ -174,7 +176,8 @@ class ItemDetailView extends BaseElement {
 
     this._tabCotacoes = alvo.querySelector("#tabCotacoes");
     this._tabCotacoes.columns = [
-      { chave: "descricao", titulo: "Cotação" },
+      // Nome ao vivo (é sempre este item); `descricao` denormalizado é fallback.
+      { chave: "descricao", titulo: "Cotação", formato: (v) => (this._item || {}).nome || v || "—" },
       {
         chave: "obra_id",
         titulo: "Obra",
@@ -202,7 +205,7 @@ class ItemDetailView extends BaseElement {
             ? `<span style="color:var(--cor-texto-fraco)">Fechada</span>`
             : `<span style="color:var(--cor-sucesso)">Aberta</span>`,
       },
-      { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
+      ...colunasLog(),
     ];
     this._tabCotacoes.addEventListener("linha", (e) => {
       location.hash = "#/cotacoes/" + e.detail.linha.id;

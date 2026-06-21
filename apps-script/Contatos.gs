@@ -71,6 +71,7 @@ function contatosCriar(data, sessao) {
 
   return comLock(function () {
     const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const contato = {
       id: novoId(),
       usuario_id: sessao.usuario_id,
@@ -84,6 +85,8 @@ function contatosCriar(data, sessao) {
       criado_em: agora,
       atualizado_em: agora,
       superior_id: superiorId,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
     };
     repoInserir(SCHEMA.CONTATOS, contato);
     return { contato: contato };
@@ -113,6 +116,7 @@ function contatosAtualizar(data, sessao) {
   const fornEf = patch.fornecedor_id !== undefined ? patch.fornecedor_id : atual.fornecedor_id;
   const supEf = patch.superior_id !== undefined ? patch.superior_id : atual.superior_id;
   _validarVinculosContato(cargoEf, String(fornEf || ""), String(supEf || ""), sessao.usuario_id);
+  patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
   return comLock(function () {
     const contato = repoAtualizar(SCHEMA.CONTATOS, "id", id, patch);
@@ -120,10 +124,31 @@ function contatosAtualizar(data, sessao) {
   });
 }
 
-/** contatos.remover -> { id } (desativa logicamente). */
+/** Verdadeiro se o contato está vinculado (oferta, participação ou como superior). */
+function _contatoEmUso(contatoId) {
+  const ehBool = function (v) {
+    return v === true || v === "TRUE" || v === "true";
+  };
+  const naOferta = repoEncontrar(SCHEMA.COTACAO_PRECOS, function (p) {
+    return String(p.contato_id) === String(contatoId);
+  });
+  if (naOferta) return true;
+  const naObra = repoEncontrar(SCHEMA.OBRA_PARTICIPANTES, function (p) {
+    return p.tipo === "contato" && String(p.ref_id) === String(contatoId);
+  });
+  if (naObra) return true;
+  return !!repoEncontrar(SCHEMA.CONTATOS, function (c) {
+    return String(c.superior_id) === String(contatoId) && ehBool(c.ativo);
+  });
+}
+
+/** contatos.remover -> { id } (desativa logicamente). Bloqueia se vinculado. */
 function contatosRemover(data, sessao) {
   const id = data && data.id;
   _contatoDoUsuario(id, sessao.usuario_id);
+  if (_contatoEmUso(id)) {
+    lancar(ERRO.VALIDACAO, "Contato vinculado (ofertas/obras/equipe); remova os vínculos primeiro.");
+  }
 
   return comLock(function () {
     repoAtualizar(SCHEMA.CONTATOS, "id", id, {

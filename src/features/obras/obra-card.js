@@ -5,7 +5,7 @@
  * Eventos: "abrir", "editar", "remover" ({ obra }).
  */
 import { BaseElement } from "../../components/base-element.js";
-import { moeda, percentual } from "../../core/formatters.js";
+import { moeda, percentual, data as fmtData } from "../../core/formatters.js";
 import "../../components/ui-badge.js";
 import "../../components/ui-icon.js";
 
@@ -53,6 +53,9 @@ class ObraCard extends BaseElement {
       .acoes button.perigo { color: var(--cor-erro); }
       .dono { font-size: var(--fs-xs); color: var(--cor-texto-fraco);
         display: flex; align-items: center; gap: var(--esp-1); }
+      .log { font-size: var(--fs-xs); color: var(--cor-texto-fraco);
+        border-top: 1px solid var(--cor-borda); padding-top: var(--esp-2); }
+      .log span { display: block; }
       .end { display: flex; align-items: center; gap: var(--esp-1); }
       .badges { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
     `;
@@ -66,6 +69,13 @@ class ObraCard extends BaseElement {
     const pct = orcamento ? percentual(gasto, orcamento) : 0;
     const estouro = orcamento && gasto > orcamento;
     const ehDono = o.ehDono !== false; // default dono se não informado
+    const editada = o.editor_nome && o.atualizado_em && String(o.atualizado_em) !== String(o.criado_em);
+    const log = o.criado_em
+      ? `<div class="log">
+           <span>Criada em ${fmtData(o.criado_em)}${o.autor_nome ? ` por ${o.autor_nome}` : ""}</span>
+           ${editada ? `<span>Editada em ${fmtData(o.atualizado_em)} por ${o.editor_nome}</span>` : ""}
+         </div>`
+      : "";
     return `
       <div class="card" id="card">
         <div class="topo">
@@ -92,6 +102,7 @@ class ObraCard extends BaseElement {
                )} · ${pct}%</span></div>`
             : `<div class="valores"><span class="rotulo">Orçamento</span><span>não definido</span></div>`
         }
+        ${log}
         ${
           ehDono
             ? `<div class="acoes">

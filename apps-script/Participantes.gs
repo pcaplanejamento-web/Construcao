@@ -19,6 +19,12 @@ function listarParticipantesObra(obraId) {
     return String(o.id) === String(obraId);
   });
   const usuarios = _mapaUsuarios();
+  // Nome do contato é RE-DERIVADO ao vivo (reflete renome); o `nome` gravado na
+  // linha é só fallback (contato excluído/legado).
+  const contatos = {};
+  repoListar(SCHEMA.CONTATOS).forEach(function (c) {
+    contatos[c.id] = c;
+  });
   const lista = [];
   const indice = {}; // chave -> item
 
@@ -58,7 +64,7 @@ function listarParticipantesObra(obraId) {
           chave: chave,
           tipo: "contato",
           ref_id: p.ref_id,
-          nome: p.nome || "(contato)",
+          nome: (contatos[p.ref_id] || {}).nome || p.nome || "(contato)",
           email: "",
           origem: "contato",
           eh_responsavel: _boolDe(p.eh_responsavel),
@@ -108,6 +114,7 @@ function participantesAdicionarContato(data, sessao) {
       nome: contato.nome || "",
       eh_responsavel: false,
       criado_em: agoraIso(),
+      autor_nome: (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "",
     };
     repoInserir(SCHEMA.OBRA_PARTICIPANTES, part);
     return { participante: part };
@@ -156,6 +163,7 @@ function participantesDefinirResponsavel(data, sessao) {
         nome: nome,
         eh_responsavel: true,
         criado_em: agoraIso(),
+        autor_nome: (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "",
       });
     }
     return { participantes: listarParticipantesObra(obraId) };

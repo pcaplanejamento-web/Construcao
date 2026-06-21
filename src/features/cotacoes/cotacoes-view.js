@@ -6,7 +6,8 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { moeda, numero, data as fmtData } from "../../core/formatters.js";
+import { moeda, numero } from "../../core/formatters.js";
+import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { melhorTotal } from "./cotacao-util.js";
 import "../../components/ui-card.js";
@@ -83,7 +84,12 @@ class CotacoesView extends BaseElement {
     tabela.setAttribute("fluido", "");
     tabela.setAttribute("clicavel", "");
     tabela.columns = [
-      { chave: "descricao", titulo: "Item" },
+      {
+        chave: "descricao",
+        titulo: "Item",
+        // Nome ao vivo do catálogo; `descricao` denormalizado é fallback.
+        formato: (v, l) => (l.item_id && (dataStore.item(l.item_id) || {}).nome) || v || "—",
+      },
       {
         chave: "classificacao",
         titulo: "Classificação",
@@ -135,7 +141,7 @@ class CotacoesView extends BaseElement {
             ? `<span style="color:var(--cor-texto-fraco)">Fechada</span>`
             : `<span style="color:var(--cor-sucesso)">Aberta</span>`,
       },
-      { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
+      ...colunasLog(),
     ];
     tabela.acoes = [
       { nome: "editar", rotulo: "Editar" },

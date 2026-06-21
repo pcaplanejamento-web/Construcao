@@ -134,6 +134,8 @@ function obrasCriar(data, sessao) {
   if (!nome) lancar(ERRO.VALIDACAO, "Informe o nome da obra.");
 
   return comLock(function () {
+    const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const obra = {
       id: novoId(),
       usuario_id: sessao.usuario_id,
@@ -142,8 +144,10 @@ function obrasCriar(data, sessao) {
       descricao: String((data && data.descricao) || ""),
       orcamento: Number((data && data.orcamento) || 0) || 0,
       status: _statusValido(data && data.status),
-      criado_em: agoraIso(),
-      atualizado_em: agoraIso(),
+      criado_em: agora,
+      atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
     };
     repoInserir(SCHEMA.OBRAS, obra);
     return { obra: obra };
@@ -166,6 +170,7 @@ function obrasAtualizar(data, sessao) {
   if (data.orcamento !== undefined)
     patch.orcamento = Number(data.orcamento) || 0;
   if (data.status !== undefined) patch.status = _statusValido(data.status);
+  patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
   return comLock(function () {
     const obra = repoAtualizar(SCHEMA.OBRAS, "id", id, patch);
@@ -324,11 +329,17 @@ function publicoObra(data) {
   const catMap = mapaCategorias(obra.usuario_id);
   const resumo = _resumoEmMemoria(obra, despesas, catMap); // reusa Snapshot.gs
 
+  // Nome do item RE-DERIVADO ao vivo (reflete renome); `d.item` é só fallback.
+  const itens = {};
+  repoListar(SCHEMA.ITENS).forEach(function (i) {
+    itens[i.id] = i;
+  });
+
   const lista = despesas
     .map(function (d) {
       const c = catMap[d.categoria_id] || { nome: "Sem subclassificação", cor: "#94a3b8" };
       return {
-        item: d.item,
+        item: (itens[d.item_id] || {}).nome || d.item,
         valor: Number(d.valor) || 0,
         data: d.data,
         classificacao: d.classificacao || "", // Material | Serviço

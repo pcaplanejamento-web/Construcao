@@ -6,7 +6,8 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { data as fmtData } from "../../core/formatters.js";
+import { colunasLog } from "../../core/audit-columns.js";
+import { abrirBannerVinculos, vinculosDoContato, vinculosDoCargo } from "../shared/vinculos.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -109,7 +110,7 @@ class ContatosView extends BaseElement {
       },
       { chave: "telefone", titulo: "Telefone", formato: (v) => v || "—" },
       { chave: "email", titulo: "E-mail", formato: (v) => v || "—" },
-      { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
+      ...colunasLog(),
     ];
     tabela.acoes = [
       { nome: "editar", rotulo: "Editar" },
@@ -143,7 +144,7 @@ class ContatosView extends BaseElement {
       tabela.setAttribute("fluido", "");
       tabela.columns = [
         { chave: "nome", titulo: "Cargo" },
-        { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
+        ...colunasLog(),
       ];
       tabela.acoes = [
         { nome: "editar", rotulo: "Editar" },
@@ -183,24 +184,36 @@ class ContatosView extends BaseElement {
     document.body.appendChild(form);
   }
 
-  async remover(contato) {
-    if (!confirm(`Excluir o contato "${contato.nome}"?`)) return;
-    try {
-      await dataStore.removerContato(contato.id);
-      toastSucesso("Contato removido.");
-    } catch (e) {
-      notificarErro(e);
-    }
+  remover(contato) {
+    abrirBannerVinculos({
+      titulo: `O contato "${contato.nome}"`,
+      grupos: vinculosDoContato(contato.id),
+      aoExcluir: async () => {
+        if (!confirm(`Excluir o contato "${contato.nome}"?`)) return;
+        try {
+          await dataStore.removerContato(contato.id);
+          toastSucesso("Contato removido.");
+        } catch (e) {
+          notificarErro(e);
+        }
+      },
+    });
   }
 
-  async removerCargo(cargo) {
-    if (!confirm(`Excluir o cargo "${cargo.nome}"?`)) return;
-    try {
-      await dataStore.removerCargo(cargo.id);
-      toastSucesso("Cargo removido.");
-    } catch (e) {
-      notificarErro(e);
-    }
+  removerCargo(cargo) {
+    abrirBannerVinculos({
+      titulo: `O cargo "${cargo.nome}"`,
+      grupos: vinculosDoCargo(cargo.nome),
+      aoExcluir: async () => {
+        if (!confirm(`Excluir o cargo "${cargo.nome}"?`)) return;
+        try {
+          await dataStore.removerCargo(cargo.id);
+          toastSucesso("Cargo removido.");
+        } catch (e) {
+          notificarErro(e);
+        }
+      },
+    });
   }
 }
 

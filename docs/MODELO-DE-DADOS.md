@@ -95,6 +95,23 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > `editor_nome` a última edição. Nomes são desnormalizados para exibir sem
 > lookup no cliente (definidos no servidor a cada criar/atualizar).
 
+> **Auditoria universal:** TODAS as entidades têm `criado_em`/`autor_nome` +
+> `atualizado_em`/`editor_nome` — OBRAS, FORNECEDORES, CONTATOS, CARGOS, COTACOES,
+> COTACAO_PRECOS, ITENS, CATEGORIAS, DESPESAS (OBRA_PARTICIPANTES tem
+> `criado_em`/`autor_nome`). O front exibe via `colunasLog()` (`core/audit-columns.js`).
+
+> **Valores ao vivo (fonte única):** colunas denormalizadas de nome
+> (`despesa.item`, `cotacao.descricao`, `obra_participante.nome`) são só **fallback**.
+> A exibição resolve o nome ATUAL pelo `id` na fonte — front via `dataStore.item(id)`;
+> backend re-deriva em `listarParticipantesObra` e `publicoObra`. Renomear a entidade
+> reflete em todos os lugares.
+
+> **Bloqueio de exclusão:** `*.remover` recusa (`ERRO.VALIDACAO`) se a entidade
+> está vinculada (item→despesas/cotações; fornecedor→contatos; contato→ofertas/
+> participações/equipe; subclassificação→despesas/cotações/fornecedores;
+> cargo→contatos; oferta→despesa registrada). O front mostra um **banner** com os
+> vínculos (`features/shared/vinculos.js`) antes de chamar o servidor.
+
 ## Aba `Categorias`
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|

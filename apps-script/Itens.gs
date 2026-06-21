@@ -94,10 +94,24 @@ function itensAtualizar(data, sessao) {
   });
 }
 
-/** itens.remover -> { id } (desativa logicamente). */
+/** Verdadeiro se o item está vinculado a alguma despesa ou cotação. */
+function _itemEmUso(itemId) {
+  const naDespesa = repoEncontrar(SCHEMA.DESPESAS, function (d) {
+    return String(d.item_id) === String(itemId);
+  });
+  if (naDespesa) return true;
+  return !!repoEncontrar(SCHEMA.COTACOES, function (c) {
+    return String(c.item_id) === String(itemId);
+  });
+}
+
+/** itens.remover -> { id } (desativa logicamente). Bloqueia se vinculado. */
 function itensRemover(data, sessao) {
   const id = data && data.id;
   _itemDoUsuario(id, sessao.usuario_id);
+  if (_itemEmUso(id)) {
+    lancar(ERRO.VALIDACAO, "Item vinculado a despesas/cotações; remova os vínculos primeiro.");
+  }
 
   return comLock(function () {
     repoAtualizar(SCHEMA.ITENS, "id", id, { ativo: false, atualizado_em: agoraIso() });

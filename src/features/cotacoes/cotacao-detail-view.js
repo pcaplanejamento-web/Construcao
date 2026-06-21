@@ -9,6 +9,8 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda, numero, data as fmtData } from "../../core/formatters.js";
+import { colunasLog } from "../../core/audit-columns.js";
+import { abrirBannerVinculos, vinculosDaOferta } from "../shared/vinculos.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta, melhorTotal, resumoOfertas, coresPorContato } from "./cotacao-util.js";
 import "../../components/ui-card.js";
@@ -136,7 +138,7 @@ class CotacaoDetailView extends BaseElement {
       },
       { chave: "prazo_entrega", titulo: "Prazo", formato: (v) => v || "—" },
       { chave: "observacao", titulo: "Obs.", formato: (v) => v || "—" },
-      { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
+      ...colunasLog(),
       {
         chave: "escolhido",
         titulo: "Status",
@@ -216,9 +218,11 @@ class CotacaoDetailView extends BaseElement {
     const cat = (dataStore.categorias().find((x) => String(x.id) === String(c.categoria_id)) || null);
     const obra = c.obra_id ? dataStore.obra(c.obra_id) : null;
     const qtd = Number(c.quantidade) > 0 ? `${numero(c.quantidade)} ${c.unidade || ""}`.trim() : "";
+    // Nome ao vivo do item (reflete renome); `descricao` é fallback.
+    const nomeItem = (c.item_id && (dataStore.item(c.item_id) || {}).nome) || c.descricao || "";
     topo.innerHTML = `
       <div>
-        <h1>${c.descricao || ""}</h1>
+        <h1>${nomeItem}</h1>
         <div class="meta">
           ${qtd ? `<span>${qtd}</span>` : ""}
           ${c.classificacao ? `<category-badge nome="${c.classificacao}" cor="${COR_CLASSIFICACAO[c.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
@@ -294,14 +298,20 @@ class CotacaoDetailView extends BaseElement {
     }
   }
 
-  async removerPreco(preco) {
-    if (!confirm("Excluir esta oferta?")) return;
-    try {
-      await dataStore.removerPreco(this.cotacaoId, preco.id);
-      toastSucesso("Oferta removida.");
-    } catch (e) {
-      notificarErro(e);
-    }
+  removerPreco(preco) {
+    abrirBannerVinculos({
+      titulo: "Esta oferta",
+      grupos: vinculosDaOferta(preco),
+      aoExcluir: async () => {
+        if (!confirm("Excluir esta oferta?")) return;
+        try {
+          await dataStore.removerPreco(this.cotacaoId, preco.id);
+          toastSucesso("Oferta removida.");
+        } catch (e) {
+          notificarErro(e);
+        }
+      },
+    });
   }
 
   registrarDespesa(preco, contatoNome) {

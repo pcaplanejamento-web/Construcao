@@ -57,7 +57,7 @@ class CotacaoDespesaForm extends BaseElement {
       <ui-modal open title="Registrar como despesa">
         <div class="campos">
           <div class="resumo">
-            <span class="item">${this.cotacao.descricao || ""}</span>
+            <span class="item">${(this.cotacao.item_id && (dataStore.item(this.cotacao.item_id) || {}).nome) || this.cotacao.descricao || ""}</span>
             ${this.cotacao.classificacao ? `<category-badge nome="${this.cotacao.classificacao}" cor="${COR_CLASSIFICACAO[this.cotacao.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
             <span class="val">${moeda(total)}</span>
             <small>Oferta de ${this.contatoNome || "—"}</small>

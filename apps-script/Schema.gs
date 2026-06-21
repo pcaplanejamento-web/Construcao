@@ -43,6 +43,8 @@ const SCHEMA = {
       "criado_em",
       "atualizado_em",
       "link_token", // token do link público de visualização (vazio = desativado)
+      "autor_nome", // (append) quem criou (desnormalizado)
+      "editor_nome", // (append) quem editou por último
     ],
   },
 
@@ -100,9 +102,10 @@ const SCHEMA = {
       "obra_id",
       "tipo", // usuario | contato
       "ref_id", // usuario_id ou contato_id
-      "nome", // desnormalizado p/ exibir sem lookup
+      "nome", // desnormalizado p/ exibir sem lookup (fallback; re-derivado ao vivo no snapshot)
       "eh_responsavel", // boolean (Fase 2)
       "criado_em",
+      "autor_nome", // (append) quem adicionou
     ],
   },
 
@@ -126,6 +129,8 @@ const SCHEMA = {
       "ativo",
       "criado_em",
       "atualizado_em",
+      "autor_nome", // (append) quem criou
+      "editor_nome", // (append) quem editou por último
     ],
   },
 
@@ -144,12 +149,22 @@ const SCHEMA = {
       "criado_em",
       "atualizado_em",
       "superior_id", // (append) p/ Pedreiro: contato Mestre de Obra/Engenheiro
+      "autor_nome", // (append) quem criou
+      "editor_nome", // (append) quem editou por último
     ],
   },
 
   CARGOS: {
     aba: "Cargos", // cargos EXTRAS do usuário (os obrigatórios são constantes)
-    colunas: ["id", "usuario_id", "nome", "criado_em", "atualizado_em"],
+    colunas: [
+      "id",
+      "usuario_id",
+      "nome",
+      "criado_em",
+      "atualizado_em",
+      "autor_nome", // (append) quem criou
+      "editor_nome", // (append) quem editou por último
+    ],
   },
 
   ITENS: {
@@ -184,6 +199,8 @@ const SCHEMA = {
       // Itens (append): vínculo ao catálogo.
       "item_id", // FK → Itens.id (obrigatório p/ novas cotações)
       "classificacao", // Material | Serviço (desnormalizado do item)
+      "autor_nome", // (append) quem criou
+      "editor_nome", // (append) quem editou por último
     ],
   },
 
@@ -199,6 +216,9 @@ const SCHEMA = {
       "escolhido",
       "criado_em",
       "despesa_id", // (append) preenchido quando a oferta vira despesa (registrada)
+      "atualizado_em", // (append) data da última edição da oferta
+      "autor_nome", // (append) quem criou a oferta
+      "editor_nome", // (append) quem editou por último
     ],
   },
 

@@ -163,6 +163,7 @@ const contatosAtivos = () => store.get().contatos.filter((c) => c.ativo !== fals
 const cargos = () => store.get().cargos;
 const itens = () => store.get().itens;
 const itensAtivos = () => store.get().itens.filter((i) => i.ativo !== false);
+const item = (id) => store.get().itens.find((i) => String(i.id) === String(id)) || null;
 const cotacoes = () => store.get().cotacoes;
 const cotacao = (id) => store.get().cotacoes.find((c) => String(c.id) === String(id)) || null;
 const precosDaCotacao = (cotacaoId) => store.get().precosPorCotacao[cotacaoId] || [];
@@ -743,7 +744,7 @@ export const dataStore = {
   // getters
   usuario, config, categorias, usuarios, obras, obra, despesas, resumo, categoriasDaObra,
   participantesDaObra,
-  fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, itens, itensAtivos,
+  fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, itens, itensAtivos, item,
   cotacoes, cotacao, precosDaCotacao,
   historicoDaCotacao,
   // mutações

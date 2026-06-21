@@ -5,6 +5,7 @@
  * Eventos: "editar" ({ usuario }), "config" ({ usuario }).
  */
 import { BaseElement } from "../../components/base-element.js";
+import { data as fmtData } from "../../core/formatters.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-badge.js";
 
@@ -45,6 +46,15 @@ class UsersTable extends BaseElement {
             a ? "Ativo" : "Inativo"
           }"></ui-badge>`,
       },
+      {
+        chave: "criado_em",
+        titulo: "Criado em",
+        formato: (v, linha) => {
+          if (!v) return `<span style="color:var(--cor-texto-fraco)">—</span>`;
+          const por = this._nomePor(linha.criado_por);
+          return `<div>${fmtData(v)}</div><small style="color:var(--cor-texto-fraco)">por ${por}</small>`;
+        },
+      },
     ];
     t.acoes = [
       { nome: "editar", rotulo: "Editar" },
@@ -54,6 +64,14 @@ class UsersTable extends BaseElement {
       this.emitir(e.detail.acao, { usuario: e.detail.linha })
     );
     this.atualizar();
+  }
+
+  /** Resolve o nome de quem criou (UUID → nome; "BOOTSTRAP" → Sistema). */
+  _nomePor(id) {
+    if (!id) return "—";
+    if (String(id) === "BOOTSTRAP") return "Sistema";
+    const u = this.usuarios.find((x) => String(x.id) === String(id));
+    return u ? u.nome : "—";
   }
 
   atualizar() {

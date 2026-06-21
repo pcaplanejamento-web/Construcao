@@ -97,6 +97,7 @@ function cotacoesCriar(data, sessao) {
 
   return comLock(function () {
     const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const cotacao = {
       id: novoId(),
       usuario_id: sessao.usuario_id,
@@ -110,6 +111,8 @@ function cotacoesCriar(data, sessao) {
       atualizado_em: agora,
       item_id: itemId,
       classificacao: item.classificacao,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
     };
     repoInserir(SCHEMA.COTACOES, cotacao);
     return { cotacao: cotacao };
@@ -144,6 +147,7 @@ function cotacoesAtualizar(data, sessao) {
   if (data.categoria_id !== undefined)
     patch.categoria_id = String(data.categoria_id);
   if (data.status !== undefined) patch.status = _statusCotacaoValido(data.status);
+  patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
   return comLock(function () {
     const cotacao = repoAtualizar(SCHEMA.COTACOES, "id", id, patch);
@@ -182,6 +186,8 @@ function cotacoesAdicionarPreco(data, sessao) {
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
 
   return comLock(function () {
+    const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const preco = {
       id: novoId(),
       cotacao_id: cotacaoId,
@@ -190,7 +196,10 @@ function cotacoesAdicionarPreco(data, sessao) {
       prazo_entrega: String((data && data.prazo_entrega) || ""),
       observacao: String((data && data.observacao) || ""),
       escolhido: false,
-      criado_em: agoraIso(),
+      criado_em: agora,
+      atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
     };
     repoInserir(SCHEMA.COTACAO_PRECOS, preco);
     const historico = _logPreco(preco); // ponto inicial da evolução
@@ -220,6 +229,8 @@ function cotacoesAtualizarPreco(data, sessao) {
   if (data.prazo_entrega !== undefined)
     patch.prazo_entrega = String(data.prazo_entrega);
   if (data.observacao !== undefined) patch.observacao = String(data.observacao);
+  patch.atualizado_em = agoraIso();
+  patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
   return comLock(function () {
     const preco = repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", id, patch);
@@ -229,10 +240,13 @@ function cotacoesAtualizarPreco(data, sessao) {
   });
 }
 
-/** cotacoes.removerPreco -> { id, cotacao_id } (mantém o histórico). */
+/** cotacoes.removerPreco -> { id, cotacao_id } (mantém o histórico). Bloqueia se registrada. */
 function cotacoesRemoverPreco(data, sessao) {
   const id = data && data.id;
   const preco = _precoDoUsuario(id, sessao.usuario_id);
+  if (String(preco.despesa_id || "")) {
+    lancar(ERRO.VALIDACAO, "Oferta já registrada como despesa; exclua a despesa primeiro.");
+  }
 
   return comLock(function () {
     repoRemover(SCHEMA.COTACAO_PRECOS, "id", id);

@@ -6,6 +6,7 @@
  * Eventos: "abrir" ({despesa}) ao clicar na linha; "editar"/"remover" ({despesa}).
  */
 import { BaseElement } from "../../components/base-element.js";
+import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
 import { totalPago, distribuicao, parseLista } from "./despesa-split.js";
 import "../../components/ui-data-table.js";
@@ -55,7 +56,12 @@ class DespesaTable extends BaseElement {
     const tabela = this.$("#tabela");
     tabela.columns = [
       { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
-      { chave: "item", titulo: "Item" },
+      {
+        chave: "item",
+        titulo: "Item",
+        // Nome ao vivo do catálogo (reflete renome); `item` denormalizado é fallback.
+        formato: (v, linha) => (linha.item_id && (dataStore.item(linha.item_id) || {}).nome) || v || "—",
+      },
       {
         chave: "classificacao",
         titulo: "Classificação",

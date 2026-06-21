@@ -149,6 +149,16 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 
 ---
 
+### Helpers compartilhados (não são componentes)
+| Helper | Onde | O que faz |
+|--------|------|-----------|
+| `colunasLog()` | [core/audit-columns.js](../src/core/audit-columns.js) | Devolve as 2 colunas padrão de **log** (Criado em + autor / Atualizado em + editor) para qualquer `ui-data-table`. Usado por itens/fornecedores/contatos/cotações + detalhes; `obra-card` mostra o log no rodapé; `users-table` mostra Criado em/por. |
+| `vinculos.js` | [features/shared/vinculos.js](../src/features/shared/vinculos.js) | `vinculosDoItem/Fornecedor/Contato/Subclassificacao/Cargo/Oferta(...)` calculam os vínculos pelo store; `abrirBannerVinculos({titulo,grupos,aoExcluir})` abre um **banner** (compõe `ui-modal`+`ui-alert`+`ui-data-table`+`ui-button`) listando onde está vinculado (linhas clicáveis → navegam) e **bloqueia a exclusão**; sem vínculos, executa `aoExcluir` (com confirmação). |
+
+> **Valores ao vivo:** as tabelas resolvem o nome ATUAL da entidade vinculada pelo
+> `id` (`dataStore.item(id)` etc.) — o campo denormalizado é só fallback. Renomear
+> reflete em todas as telas. (Participantes e visão pública re-derivam no backend.)
+
 ## Como reutilizar / criar um componente
 
 1. Estenda `BaseElement` e implemente `estilos()` e `template()`.

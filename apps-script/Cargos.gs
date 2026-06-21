@@ -68,12 +68,15 @@ function cargosCriar(data, sessao) {
   }
   return comLock(function () {
     const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const cargo = {
       id: novoId(),
       usuario_id: sessao.usuario_id,
       nome: nome,
       criado_em: agora,
       atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
     };
     repoInserir(SCHEMA.CARGOS, cargo);
     return { cargo: cargo };
@@ -93,15 +96,30 @@ function cargosAtualizar(data, sessao) {
     const cargo = repoAtualizar(SCHEMA.CARGOS, "id", id, {
       nome: nome,
       atualizado_em: agoraIso(),
+      editor_nome: (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "",
     });
     return { cargo: cargo };
   });
 }
 
-/** cargos.remover -> { id }. */
+/** Verdadeiro se algum contato ATIVO usa esse cargo (vínculo por nome). */
+function _cargoEmUso(nome, usuarioId) {
+  return !!repoEncontrar(SCHEMA.CONTATOS, function (c) {
+    return (
+      String(c.usuario_id) === String(usuarioId) &&
+      String(c.cargo) === String(nome) &&
+      (c.ativo === true || c.ativo === "TRUE" || c.ativo === "true")
+    );
+  });
+}
+
+/** cargos.remover -> { id }. Bloqueia se algum contato usa o cargo. */
 function cargosRemover(data, sessao) {
   const id = data && data.id;
-  _cargoDoUsuario(id, sessao.usuario_id);
+  const cargo = _cargoDoUsuario(id, sessao.usuario_id);
+  if (_cargoEmUso(cargo.nome, sessao.usuario_id)) {
+    lancar(ERRO.VALIDACAO, "Cargo vinculado a contatos; altere o cargo desses contatos primeiro.");
+  }
   return comLock(function () {
     repoRemover(SCHEMA.CARGOS, "id", id);
     return { id: id };

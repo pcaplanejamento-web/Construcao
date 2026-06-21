@@ -6,7 +6,8 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { data as fmtData } from "../../core/formatters.js";
+import { colunasLog } from "../../core/audit-columns.js";
+import { abrirBannerVinculos, vinculosDoFornecedor } from "../shared/vinculos.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
@@ -90,7 +91,7 @@ class FornecedoresView extends BaseElement {
             : `<span style="color:var(--cor-texto-fraco)">—</span>`;
         },
       },
-      { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
+      ...colunasLog(),
     ];
     tabela.acoes = [
       { nome: "editar", rotulo: "Editar" },
@@ -116,14 +117,20 @@ class FornecedoresView extends BaseElement {
     document.body.appendChild(form);
   }
 
-  async remover(fornecedor) {
-    if (!confirm(`Excluir o fornecedor "${fornecedor.nome}"?`)) return;
-    try {
-      await dataStore.removerFornecedor(fornecedor.id);
-      toastSucesso("Fornecedor removido.");
-    } catch (e) {
-      notificarErro(e);
-    }
+  remover(fornecedor) {
+    abrirBannerVinculos({
+      titulo: `O fornecedor "${fornecedor.nome}"`,
+      grupos: vinculosDoFornecedor(fornecedor.id),
+      aoExcluir: async () => {
+        if (!confirm(`Excluir o fornecedor "${fornecedor.nome}"?`)) return;
+        try {
+          await dataStore.removerFornecedor(fornecedor.id);
+          toastSucesso("Fornecedor removido.");
+        } catch (e) {
+          notificarErro(e);
+        }
+      },
+    });
   }
 }
 

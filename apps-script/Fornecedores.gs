@@ -45,6 +45,7 @@ function fornecedoresCriar(data, sessao) {
 
   return comLock(function () {
     const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const fornecedor = {
       id: novoId(),
       usuario_id: sessao.usuario_id,
@@ -57,6 +58,8 @@ function fornecedoresCriar(data, sessao) {
       ativo: true,
       criado_em: agora,
       atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
     };
     repoInserir(SCHEMA.FORNECEDORES, fornecedor);
     return { fornecedor: fornecedor };
@@ -81,6 +84,7 @@ function fornecedoresAtualizar(data, sessao) {
     patch.categoria_id = String(data.categoria_id);
   if (data.observacao !== undefined) patch.observacao = String(data.observacao);
   if (data.ativo !== undefined) patch.ativo = data.ativo === true;
+  patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
   return comLock(function () {
     const fornecedor = repoAtualizar(SCHEMA.FORNECEDORES, "id", id, patch);
@@ -88,10 +92,23 @@ function fornecedoresAtualizar(data, sessao) {
   });
 }
 
-/** fornecedores.remover -> { id } (desativa logicamente). */
+/** Verdadeiro se há contato ATIVO vinculado ao fornecedor. */
+function _fornecedorEmUso(fornecedorId) {
+  return !!repoEncontrar(SCHEMA.CONTATOS, function (c) {
+    return (
+      String(c.fornecedor_id) === String(fornecedorId) &&
+      (c.ativo === true || c.ativo === "TRUE" || c.ativo === "true")
+    );
+  });
+}
+
+/** fornecedores.remover -> { id } (desativa logicamente). Bloqueia se vinculado. */
 function fornecedoresRemover(data, sessao) {
   const id = data && data.id;
   _fornecedorDoUsuario(id, sessao.usuario_id);
+  if (_fornecedorEmUso(id)) {
+    lancar(ERRO.VALIDACAO, "Fornecedor vinculado a contatos; remova os vínculos primeiro.");
+  }
 
   return comLock(function () {
     repoAtualizar(SCHEMA.FORNECEDORES, "id", id, {

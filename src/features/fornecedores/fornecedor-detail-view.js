@@ -10,7 +10,8 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { moeda, data as fmtData } from "../../core/formatters.js";
+import { moeda } from "../../core/formatters.js";
+import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta } from "../cotacoes/cotacao-util.js";
 import "../../components/ui-card.js";
@@ -99,7 +100,7 @@ class FornecedorDetailView extends BaseElement {
       { chave: "cargo", titulo: "Cargo", formato: (v) => v || "—" },
       { chave: "telefone", titulo: "Telefone", formato: (v) => v || "—" },
       { chave: "email", titulo: "E-mail", formato: (v) => v || "—" },
-      { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
+      ...colunasLog(),
     ];
     this._tabContatos.acoes = [
       { nome: "editar", rotulo: "Editar" },
@@ -116,7 +117,7 @@ class FornecedorDetailView extends BaseElement {
       { chave: "_contatoNome", titulo: "Contato" },
       { chave: "valor_unit", titulo: "Valor unit.", alinhar: "dir", formato: (v) => moeda(v) },
       { chave: "_total", titulo: "Total", alinhar: "dir", formato: (v) => moeda(v) },
-      { chave: "criado_em", titulo: "Criado em", formato: (v) => (v ? fmtData(v) : "—") },
+      ...colunasLog(),
       {
         chave: "despesa_id",
         titulo: "Status",
@@ -165,7 +166,7 @@ class FornecedorDetailView extends BaseElement {
           ofertas.push({
             ...p,
             _cotacaoId: cot.id,
-            _cotacaoDesc: cot.descricao || "—",
+            _cotacaoDesc: (cot.item_id && (dataStore.item(cot.item_id) || {}).nome) || cot.descricao || "—",
             _contatoNome: mapaContato[p.contato_id] || "—",
             _total: totalOferta(p, cot),
           });

@@ -41,6 +41,15 @@ A API é um **único Web App** do Apps Script. Um `doPost` despacha por `action`
 | `auth.me` | `{}` | `{ usuario, config }` |
 | `auth.alterarSenha` | `{ senhaAtual, novaSenha }` | `{ alterada: true }` (o próprio usuário) |
 
+> **Auditoria universal:** toda entidade grava `criado_em`/`autor_nome` (criação) e
+> `atualizado_em`/`editor_nome` (edição), com o nome resolvido no servidor
+> (`buscarUsuarioPorId(...).nome`). Esses campos vêm em todos os retornos.
+
+> **Bloqueio de exclusão:** `itens.remover`, `fornecedores.remover`, `contatos.remover`,
+> `categorias.remover`, `cargos.remover` e `cotacoes.removerPreco` lançam
+> `ERRO.VALIDACAO` ("… vinculado; remova os vínculos primeiro") quando a entidade
+> ainda tem vínculos. O cliente também antecipa via banner (`features/shared/vinculos.js`).
+
 ### Estado inicial (cache-first)
 | Action | `data` | Retorno |
 |--------|--------|---------|

@@ -8,7 +8,8 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { data as fmtData } from "../../core/formatters.js";
+import { colunasLog } from "../../core/audit-columns.js";
+import { abrirBannerVinculos, vinculosDoItem, vinculosDaSubclassificacao } from "../shared/vinculos.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -77,30 +78,6 @@ class ItensView extends BaseElement {
     this.pintarSub();
   }
 
-  /** Colunas de auditoria (criação/modificação + usuário) reusadas nas 2 abas. */
-  colunasLog() {
-    return [
-      {
-        chave: "criado_em",
-        titulo: "Criado em",
-        formato: (v, linha) =>
-          v
-            ? `<div>${fmtData(v)}</div><small style="color:var(--cor-texto-fraco)">por ${linha.autor_nome || "—"}</small>`
-            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
-      },
-      {
-        chave: "atualizado_em",
-        titulo: "Atualizado em",
-        formato: (v, linha) => {
-          const editou = linha.editor_nome && v && String(v) !== String(linha.criado_em);
-          return editou
-            ? `<div>${fmtData(v)}</div><small style="color:var(--cor-texto-fraco)">por ${linha.editor_nome}</small>`
-            : `<span style="color:var(--cor-texto-fraco)">—</span>`;
-        },
-      },
-    ];
-  }
-
   /* ------------------------------ Itens ------------------------------- */
 
   pintarItens() {
@@ -131,7 +108,7 @@ class ItensView extends BaseElement {
         formato: (v) =>
           `<category-badge nome="${v || "—"}" cor="${COR_CLASSIFICACAO[v] || "var(--cor-neutro)"}"></category-badge>`,
       },
-      ...this.colunasLog(),
+      ...colunasLog(),
     ];
     tabela.acoes = [
       { nome: "editar", rotulo: "Editar" },
@@ -157,14 +134,20 @@ class ItensView extends BaseElement {
     document.body.appendChild(form);
   }
 
-  async removerItem(item) {
-    if (!confirm(`Excluir o item "${item.nome}"?`)) return;
-    try {
-      await dataStore.removerItem(item.id);
-      toastSucesso("Item removido.");
-    } catch (e) {
-      notificarErro(e);
-    }
+  removerItem(item) {
+    abrirBannerVinculos({
+      titulo: `O item "${item.nome}"`,
+      grupos: vinculosDoItem(item.id),
+      aoExcluir: async () => {
+        if (!confirm(`Excluir o item "${item.nome}"?`)) return;
+        try {
+          await dataStore.removerItem(item.id);
+          toastSucesso("Item removido.");
+        } catch (e) {
+          notificarErro(e);
+        }
+      },
+    });
   }
 
   /* ------------------------ Subclassificações ------------------------- */
@@ -197,7 +180,7 @@ class ItensView extends BaseElement {
         formato: (nome, linha) =>
           `<category-badge nome="${nome}" cor="${linha.cor}"></category-badge>`,
       },
-      ...this.colunasLog(),
+      ...colunasLog(),
     ];
     tabela.acoes = [
       { nome: "editar", rotulo: "Editar" },
@@ -220,14 +203,20 @@ class ItensView extends BaseElement {
     document.body.appendChild(form);
   }
 
-  async removerSub(categoria) {
-    if (!confirm(`Excluir a subclassificação "${categoria.nome}"?`)) return;
-    try {
-      await dataStore.removerCategoria(categoria.id);
-      toastSucesso("Subclassificação removida.");
-    } catch (e) {
-      notificarErro(e);
-    }
+  removerSub(categoria) {
+    abrirBannerVinculos({
+      titulo: `A subclassificação "${categoria.nome}"`,
+      grupos: vinculosDaSubclassificacao(categoria.id),
+      aoExcluir: async () => {
+        if (!confirm(`Excluir a subclassificação "${categoria.nome}"?`)) return;
+        try {
+          await dataStore.removerCategoria(categoria.id);
+          toastSucesso("Subclassificação removida.");
+        } catch (e) {
+          notificarErro(e);
+        }
+      },
+    });
   }
 }
 
