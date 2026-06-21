@@ -1,7 +1,9 @@
 /**
  * <app-header> — Cabeçalho persistente (sticky) no topo.
  *
- * Esquerda: botão menu (mobile, emite "toggle-sidebar"), marca.
+ * Esquerda: logo + marca "Dattaobra" + botão menu (emite "toggle-sidebar"),
+ *   agrupados num bloco da largura da sidebar aberta (230px) — o menu encosta
+ *   no limite direito da sidebar; o logo alinha com a coluna de ícones dela.
  * Direita: alternador de tema (sol/lua), chip do usuário → #/perfil, Sair.
  * Reage a EVENTOS.AUTH (usuário) e EVENTOS.TEMA (ícone do alternador).
  */
@@ -27,14 +29,20 @@ class AppHeader extends BaseElement {
         border-bottom: 1px solid var(--cor-borda);
       }
       .barra { display: flex; align-items: center; gap: var(--esp-3);
-        padding: var(--esp-3) var(--esp-5); } /* gutter padrão (24px) = conteúdo/sidebar */
+        padding: var(--esp-3) var(--esp-5) var(--esp-3) 0; } /* esq.=0: o marca-bloco controla o gutter (alinha com a sidebar) */
+      /* Cluster logo+marca+menu na largura da sidebar aberta (230px, border-box):
+         padding-left = --esp-5 alinha o logo com a coluna de ícones da sidebar;
+         o menu (margin-left:auto) encosta no limite direito da sidebar (x=230). */
+      .marca-bloco { display: flex; align-items: center; gap: var(--esp-2);
+        width: 230px; flex: none; padding-left: var(--esp-5); }
       .menu-btn { display: inline-flex; align-items: center; justify-content: center;
-        background: none; border: none; color: var(--cor-texto-suave);
+        margin-left: auto; background: none; border: none; color: var(--cor-texto-suave);
         padding: 8px; border-radius: var(--raio-sm); }
       .menu-btn:hover { background: var(--cor-superficie-2); }
       .marca { display: flex; align-items: center; gap: var(--esp-2);
         font-weight: var(--peso-forte); color: var(--cor-primaria); font-size: var(--fs-lg);
         text-decoration: none; }
+      .marca img { height: 32px; width: auto; display: block; }
       .cresce { flex: 1; }
       .icone-btn { display: inline-flex; align-items: center; justify-content: center;
         width: 38px; height: 38px; border: 1px solid var(--cor-borda-forte);
@@ -58,6 +66,8 @@ class AppHeader extends BaseElement {
       .sair:hover { background: var(--cor-superficie-2); }
       @media (max-width: 820px) {
         .papel { display: none; }
+        /* no mobile a sidebar é drawer: o cluster vira compacto (sem trancar 230px). */
+        .marca-bloco { width: auto; padding-left: var(--esp-3); }
       }
     `;
   }
@@ -67,8 +77,10 @@ class AppHeader extends BaseElement {
     const iconeTema = tema.efetivo() === "escuro" ? "sol" : "lua";
     return `
       <div class="barra">
-        <button class="menu-btn" id="menu" aria-label="Abrir menu"><ui-icon name="menu"></ui-icon></button>
-        <a class="marca" href="#/obras"><ui-icon name="obra" size="22"></ui-icon> Gestão de Obras</a>
+        <div class="marca-bloco">
+          <a class="marca" href="#/obras"><img src="src/assets/dattaobra.png" alt="Dattaobra" /> Dattaobra</a>
+          <button class="menu-btn" id="menu" aria-label="Abrir menu"><ui-icon name="menu"></ui-icon></button>
+        </div>
         <span class="cresce"></span>
         <button class="icone-btn" id="tema" aria-label="Alternar tema claro/escuro"><ui-icon name="${iconeTema}"></ui-icon></button>
         <a class="chip" href="#/perfil" title="Meu perfil">
