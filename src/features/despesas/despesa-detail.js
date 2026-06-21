@@ -10,14 +10,17 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { data as fmtData, moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { primeiroErro, obrigatorio, valorPositivo } from "../../core/validators.js";
+import { valorPositivo } from "../../core/validators.js";
 import { parseLista } from "./despesa-split.js";
 import "../../components/ui-modal.js";
+import "../../components/ui-tabs.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
 import "./split-editor.js";
+
+const CLASSIFICACOES = ["Material", "Serviço"];
 
 class DespesaDetail extends BaseElement {
   set despesa(v) {
@@ -68,12 +71,13 @@ class DespesaDetail extends BaseElement {
       <ui-modal open title="Despesa">
         <div class="campos">
           <ui-alert id="erro" tipo="erro"></ui-alert>
-          <ui-input id="item" label="Item" value="${(d.item || "").replace(/"/g, "&quot;")}"></ui-input>
+          <ui-tabs id="abas"></ui-tabs>
+          <ui-select id="item" label="Item"></ui-select>
           <div class="linha">
             <ui-input id="valor" label="Valor (R$)" type="number" step="0.01" min="0" value="${d.valor || ""}"></ui-input>
             <ui-input id="data" label="Data" type="date" value="${d.data ? String(d.data).substring(0, 10) : ""}"></ui-input>
           </div>
-          <ui-select id="categoria" label="Classificação"></ui-select>
+          <ui-select id="categoria" label="Subclassificação"></ui-select>
           <div>
             <label class="tx">Observação</label>
             <textarea id="observacao" placeholder="Detalhes (opcional)">${d.observacao || ""}</textarea>
@@ -105,12 +109,34 @@ class DespesaDetail extends BaseElement {
   }
 
   aposRender() {
+    const d = this.despesa;
+    const inicial = CLASSIFICACOES.indexOf(d.classificacao) >= 0 ? d.classificacao : CLASSIFICACOES[0];
+    this.$("#abas").abas = CLASSIFICACOES.map((c) => ({ id: c, rotulo: c, icone: "tag" }));
+    this.$("#abas").setAttribute("ativo", inicial);
+    this.$("#abas").addEventListener("mudar", () => this.preencherItens());
+    this.preencherItens();
     this.preencherCategorias();
     this.preencherSplits();
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
     this.$("#excluir").addEventListener("click", () => this.excluir());
+  }
+
+  get classificacao() {
+    return this.$("#abas").ativo || CLASSIFICACOES[0];
+  }
+
+  preencherItens() {
+    const sel = this.$("#item");
+    if (!sel) return;
+    const itens = dataStore.itensAtivos().filter((i) => i.classificacao === this.classificacao);
+    sel.setAttribute("placeholder", itens.length ? "Selecione um item" : "Nenhum item desta classificação");
+    sel.options = itens.map((i) => ({ value: i.id, label: i.nome }));
+    // Pré-seleciona o item da despesa quando bate com a classificação ativa.
+    const id = this.despesa.item_id || "";
+    sel.value = itens.some((i) => String(i.id) === String(id)) ? id : "";
+    sel.removeAttribute("error");
   }
 
   /** Popula os editores de pagamento (R$) e responsabilidade (%). */
@@ -147,21 +173,24 @@ class DespesaDetail extends BaseElement {
   preencherCategorias() {
     const sel = this.$("#categoria");
     if (!sel) return;
-    sel.options = this.categorias.map((c) => ({ value: c.id, label: c.nome }));
-    sel.value = this.despesa.categoria_id || (this.categorias[0] || {}).id || "";
+    // Subclassificação é opcional → 1ª opção vazia.
+    sel.options = [{ value: "", label: "Sem subclassificação" }].concat(
+      this.categorias.map((c) => ({ value: c.id, label: c.nome }))
+    );
+    sel.value = this.despesa.categoria_id || "";
   }
 
   async salvar() {
     const alerta = this.$("#erro");
     if (alerta) alerta.mensagem = "";
-    const item = this.$("#item").value.trim();
+    const itemId = this.$("#item").value;
     const valor = Number(this.$("#valor").value);
-    const erro = primeiroErro(obrigatorio(item, "O item"), valorPositivo(valor));
-    if (erro) {
-      this.$("#item").setAttribute("error", obrigatorio(item, "O item"));
-      this.$("#valor").setAttribute("error", valorPositivo(valor));
-      return;
-    }
+    const erroValor = valorPositivo(valor);
+    if (!itemId) this.$("#item").setAttribute("error", "Selecione um item.");
+    if (erroValor) this.$("#valor").setAttribute("error", erroValor);
+    if (!itemId || erroValor) return;
+    this.$("#item").removeAttribute("error");
+
     const pagamentos = this.$("#pagamentos").itens
       .filter((x) => x.chave && Number(x.valor) > 0)
       .map((x) => ({ chave: x.chave, valor: Number(x.valor) || 0 }));
@@ -183,8 +212,11 @@ class DespesaDetail extends BaseElement {
       return;
     }
 
+    const item = dataStore.itensAtivos().find((i) => String(i.id) === String(itemId)) || {};
     const dados = {
-      item,
+      item_id: itemId,
+      classificacao: this.classificacao,
+      item: item.nome || "", // nome denormalizado p/ exibição otimista
       valor,
       categoria_id: this.$("#categoria").value,
       data: this.$("#data").value || String(this.despesa.data || "").substring(0, 10),

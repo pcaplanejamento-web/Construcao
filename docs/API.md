@@ -79,9 +79,9 @@ para dono **e** colaboradores.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `despesas.listar` | `{ obra_id }` | `{ despesas: [...] }` (cada despesa inclui `criado_em`/`autor_nome` e `atualizado_em`/`editor_nome` — auditoria) |
-| `despesas.resumo` | `{ obra_id }` | `{ total, qtd, orcamento, saldo, por_categoria:[{categoria_id,nome,cor,total}] }` |
-| `despesas.criar` | `{ obra_id, item, valor, categoria_id, data, observacao?, pago?, pagamentos?, responsaveis? }` | `{ despesa, resumo }` |
-| `despesas.atualizar` | `{ id, ...campos }` (inclui `pago`/`pagamentos`/`responsaveis`) | `{ despesa, resumo }` |
+| `despesas.resumo` | `{ obra_id }` | `{ total, qtd, orcamento, saldo, por_subclassificacao:[{categoria_id,nome,cor,total}], por_classificacao:[{nome,cor,total}], por_categoria (alias de por_subclassificacao) }` |
+| `despesas.criar` | `{ obra_id, item_id, valor, categoria_id?, data, observacao?, pago?, pagamentos?, responsaveis? }` | `{ despesa, resumo }` — **`item_id` obrigatório**; servidor deriva `item`(nome)+`classificacao` do item; `categoria_id` = subclassificação (opcional) |
+| `despesas.atualizar` | `{ id, ...campos }` (`item_id` re-deriva nome+classificação; inclui `pago`/`pagamentos`/`responsaveis`) | `{ despesa, resumo }` |
 | `despesas.remover` | `{ id }` | `{ id, resumo }` |
 
 > `pagamentos` = `[{chave, valor}]`, `responsaveis` = `[{chave, pct}]`
@@ -104,8 +104,8 @@ para dono **e** colaboradores.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `categorias.listar` | `{}` | `{ categorias: [...] }` (GLOBAL + do usuário) |
-| `categorias.criar` | `{ nome, cor? }` | `{ categoria }` (própria do usuário) |
-| `categorias.atualizar` | `{ id, nome?, cor?, ativo? }` | `{ categoria }` |
+| `categorias.criar` | `{ nome, cor? }` | `{ categoria }` (própria do usuário; grava `criado_em`/`autor_nome`) |
+| `categorias.atualizar` | `{ id, nome?, cor?, ativo? }` | `{ categoria }` (grava `atualizado_em`/`editor_nome`) |
 | `categorias.remover` | `{ id }` | `{ id }` (desativa) |
 
 > **Lista livre, todas editáveis:** não há mais subclassificação “só leitura”. As
@@ -145,8 +145,8 @@ para dono **e** colaboradores.
 ### Itens (catálogo Material/Serviço)
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `itens.listar` | `{}` | `{ itens:[{id,nome,classificacao,ativo,criado_em,atualizado_em}] }` (ativos, por nome) |
-| `itens.criar` | `{ nome, classificacao }` | `{ item }` (`classificacao` ∈ `Material`/`Serviço`; default `Material`) |
+| `itens.listar` | `{}` | `{ itens:[{id,nome,classificacao,ativo,criado_em,atualizado_em,autor_nome,editor_nome}] }` (ativos, por nome) |
+| `itens.criar` | `{ nome, classificacao }` | `{ item }` (`classificacao` ∈ `Material`/`Serviço`; default `Material`; grava `autor_nome`) |
 | `itens.atualizar` | `{ id, nome?, classificacao? }` | `{ item }` |
 | `itens.remover` | `{ id }` | `{ id }` (remoção lógica, `ativo=false`) |
 
@@ -154,8 +154,8 @@ para dono **e** colaboradores.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `cotacoes.listar` | `{}` | `{ cotacoes: [...] }` |
-| `cotacoes.criar` | `{ descricao, quantidade?, unidade?, categoria_id?, obra_id?, status? }` | `{ cotacao }` |
-| `cotacoes.atualizar` | `{ id, ...campos }` | `{ cotacao }` |
+| `cotacoes.criar` | `{ item_id, quantidade?, unidade?, categoria_id?, obra_id?, status? }` | `{ cotacao }` — **`item_id` obrigatório**; servidor deriva `descricao`(nome)+`classificacao`; `categoria_id` = subclassificação |
+| `cotacoes.atualizar` | `{ id, ...campos }` (`item_id` re-deriva descrição+classificação) | `{ cotacao }` |
 | `cotacoes.remover` | `{ id }` | `{ id }` (remove a cotação e suas ofertas) |
 | `cotacoes.adicionarPreco` | `{ cotacao_id, contato_id, valor_unit, prazo_entrega?, observacao? }` | `{ preco, historico }` (ponto inicial logado) |
 | `cotacoes.atualizarPreco` | `{ id, contato_id?, valor_unit?, prazo_entrega?, observacao? }` | `{ preco, historico }` (`historico` só se o valor mudou; senão `null`) |

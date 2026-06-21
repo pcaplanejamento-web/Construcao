@@ -83,8 +83,8 @@ class ObraDetailView extends BaseElement {
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="graficos" class="graficos">
-          <ui-card><category-breakdown id="break"></category-breakdown></ui-card>
-          <ui-card><grafico-rosca id="rosca"></grafico-rosca></ui-card>
+          <ui-card><category-breakdown id="break" titulo="Gastos por subclassificação"></category-breakdown></ui-card>
+          <ui-card><grafico-rosca id="rosca" titulo="Distribuição por classificação"></grafico-rosca></ui-card>
           <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
         </div>
         <div slot="despesas" class="despesas-aba">
@@ -142,8 +142,9 @@ class ObraDetailView extends BaseElement {
 
     this._despesas = despesas; // todas (KPIs/gráficos usam o total; tabela é filtrada)
     this._dash.resumo = resumo;
-    this._break.porCategoria = resumo.por_categoria || [];
-    this._rosca.porCategoria = resumo.por_categoria || [];
+    // Barras = Subclassificação; Rosca = Classificação (Material/Serviço).
+    this._break.porCategoria = resumo.por_subclassificacao || resumo.por_categoria || [];
+    this._rosca.porCategoria = resumo.por_classificacao || [];
     this._mensal.despesas = despesas;
     this._tabela.categorias = categorias;
     this._tabela.participantes = dataStore.participantesDaObra(this.obraId);

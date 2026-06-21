@@ -88,8 +88,9 @@ function cotacoesListar(data, sessao) {
 
 /** cotacoes.criar -> { cotacao }. */
 function cotacoesCriar(data, sessao) {
-  const descricao = String((data && data.descricao) || "").trim();
-  if (!descricao) lancar(ERRO.VALIDACAO, "Informe a descrição da cotação.");
+  const itemId = String((data && data.item_id) || "");
+  if (!itemId) lancar(ERRO.VALIDACAO, "Selecione um item para a cotação.");
+  const item = _itemPorId(itemId, sessao.usuario_id); // deriva nome+classificacao
 
   const obraId = String((data && data.obra_id) || "");
   if (obraId) _obraAcessivel(obraId, sessao.usuario_id);
@@ -100,13 +101,15 @@ function cotacoesCriar(data, sessao) {
       id: novoId(),
       usuario_id: sessao.usuario_id,
       obra_id: obraId,
-      descricao: descricao,
+      descricao: item.nome, // = nome do item (desnormalizado)
       quantidade: Number((data && data.quantidade) || 0) || 0,
       unidade: String((data && data.unidade) || ""),
-      categoria_id: String((data && data.categoria_id) || ""),
+      categoria_id: String((data && data.categoria_id) || ""), // subclassificação
       status: _statusCotacaoValido(data && data.status),
       criado_em: agora,
       atualizado_em: agora,
+      item_id: itemId,
+      classificacao: item.classificacao,
     };
     repoInserir(SCHEMA.COTACOES, cotacao);
     return { cotacao: cotacao };
@@ -119,7 +122,13 @@ function cotacoesAtualizar(data, sessao) {
   _cotacaoDoUsuario(id, sessao.usuario_id);
 
   const patch = { atualizado_em: agoraIso() };
-  if (data.descricao !== undefined) {
+  // Item: se vier item_id, re-deriva descricao+classificacao do catálogo.
+  if (data.item_id !== undefined && String(data.item_id || "")) {
+    const it = _itemPorId(String(data.item_id), sessao.usuario_id);
+    patch.item_id = String(data.item_id);
+    patch.descricao = it.nome;
+    patch.classificacao = it.classificacao;
+  } else if (data.descricao !== undefined) {
     const descricao = String(data.descricao).trim();
     if (!descricao) lancar(ERRO.VALIDACAO, "A descrição não pode ficar vazia.");
     patch.descricao = descricao;
@@ -278,7 +287,9 @@ function cotacoesRegistrarDespesa(data, sessao) {
 
   return comLock(function () {
     const despesa = _novaDespesa(obraId, sessao.usuario_id, {
-      item: item,
+      item_id: String(cotacao.item_id || ""), // herda item+classificação (se houver)
+      item: item, // fallback p/ cotações legadas sem item_id
+      classificacao: cotacao.classificacao,
       valor: valor,
       categoria_id: categoriaId,
       observacao: "Cotação · " + (contato.nome || ""),

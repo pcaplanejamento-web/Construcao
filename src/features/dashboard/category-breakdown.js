@@ -1,19 +1,30 @@
 /**
- * <category-breakdown> — Gastos por categoria em barras (CSS puro).
- * Preenche a altura do cartão; com muitas categorias, rola verticalmente.
+ * <category-breakdown> — Valores em barras (CSS puro). Preenche a altura do
+ * cartão; com muitos itens, rola verticalmente. O título é configurável via o
+ * atributo `titulo` (padrão "Gastos por categoria") p/ reuso em outros contextos.
  *
- * Propriedade: .porCategoria = [{ categoria_id, nome, cor, total }]
+ * Propriedade: .porCategoria = [{ nome, cor, total }]
+ * Atributo: titulo
  */
 import { BaseElement } from "../../components/base-element.js";
 import { moeda, percentual } from "../../core/formatters.js";
 
 class CategoryBreakdown extends BaseElement {
+  static get observedAttributes() {
+    return ["titulo"];
+  }
+  attributeChangedCallback() {
+    if (this.shadowRoot.childElementCount) this.renderizar();
+  }
   set porCategoria(v) {
     this._lista = Array.isArray(v) ? v : [];
     if (this.shadowRoot.childElementCount) this.renderizar();
   }
   get porCategoria() {
     return this._lista || [];
+  }
+  get titulo() {
+    return this.getAttribute("titulo") || "Gastos por categoria";
   }
 
   estilos() {
@@ -37,7 +48,7 @@ class CategoryBreakdown extends BaseElement {
   template() {
     const lista = this.porCategoria;
     if (!lista.length) {
-      return `<div class="titulo">Gastos por categoria</div><div class="vazio">Sem despesas ainda.</div>`;
+      return `<div class="titulo">${this.titulo}</div><div class="vazio">Sem despesas ainda.</div>`;
     }
     const total = lista.reduce((s, c) => s + (Number(c.total) || 0), 0);
     const linhas = lista
@@ -53,7 +64,7 @@ class CategoryBreakdown extends BaseElement {
         </div>`;
       })
       .join("");
-    return `<div class="titulo">Gastos por categoria</div><div class="lista">${linhas}</div>`;
+    return `<div class="titulo">${this.titulo}</div><div class="lista">${linhas}</div>`;
   }
 }
 

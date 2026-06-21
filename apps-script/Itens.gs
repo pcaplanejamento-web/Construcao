@@ -37,6 +37,13 @@ function _itemDoUsuario(itemId, usuarioId) {
   return i;
 }
 
+/** Item ATIVO do usuário por id (ou lança). Usado por despesas/cotações. */
+function _itemPorId(itemId, usuarioId) {
+  const i = _itemDoUsuario(itemId, usuarioId);
+  if (!_itemAtivo(i)) lancar(ERRO.VALIDACAO, "Item inválido.");
+  return i;
+}
+
 /** itens.listar -> { itens: [...] }. */
 function itensListar(data, sessao) {
   return { itens: listarItensUsuario(sessao.usuario_id) };
@@ -49,6 +56,7 @@ function itensCriar(data, sessao) {
 
   return comLock(function () {
     const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const item = {
       id: novoId(),
       usuario_id: sessao.usuario_id,
@@ -57,6 +65,8 @@ function itensCriar(data, sessao) {
       ativo: true,
       criado_em: agora,
       atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
     };
     repoInserir(SCHEMA.ITENS, item);
     return { item: item };
@@ -76,6 +86,7 @@ function itensAtualizar(data, sessao) {
   }
   if (data.classificacao !== undefined) patch.classificacao = _classificacaoValida(data.classificacao);
   if (data.ativo !== undefined) patch.ativo = data.ativo === true;
+  patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
   return comLock(function () {
     const item = repoAtualizar(SCHEMA.ITENS, "id", id, patch);

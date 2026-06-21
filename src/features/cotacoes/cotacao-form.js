@@ -8,11 +8,14 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { obrigatorio } from "../../core/validators.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
+import "../despesas/category-badge.js";
+
+/** Cor do badge por classificação (espelha itens-view / backend). */
+const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
 
 class CotacaoForm extends BaseElement {
   set cotacao(v) {
@@ -31,6 +34,8 @@ class CotacaoForm extends BaseElement {
       .campos { display: flex; flex-direction: column; gap: var(--esp-4); }
       .linha { display: flex; gap: var(--esp-3); }
       .linha > * { flex: 1; }
+      .item-linha { display: flex; flex-direction: column; gap: var(--esp-2); }
+      #classBadge:empty { display: none; }
     `;
   }
 
@@ -40,8 +45,10 @@ class CotacaoForm extends BaseElement {
     return `
       <ui-modal open title="${this.ehEdicao ? "Editar cotação" : "Nova cotação"}">
         <div class="campos">
-          <ui-input id="descricao" label="Descrição (item/necessidade)"
-            value="${esc(c.descricao)}" placeholder="Ex.: Cimento CP-II 50kg"></ui-input>
+          <div class="item-linha">
+            <ui-select id="item" label="Item"></ui-select>
+            <div id="classBadge"></div>
+          </div>
           <div class="linha">
             <ui-input id="quantidade" label="Quantidade" type="number" step="0.01" min="0"
               value="${esc(c.quantidade)}" placeholder="0"></ui-input>
@@ -49,7 +56,7 @@ class CotacaoForm extends BaseElement {
               placeholder="un, m², kg, saco…"></ui-input>
           </div>
           <div class="linha">
-            <ui-select id="categoria" label="Classificação"></ui-select>
+            <ui-select id="categoria" label="Subclassificação"></ui-select>
             <ui-select id="obra" label="Obra (opcional)"></ui-select>
           </div>
           <ui-select id="status" label="Situação"></ui-select>
@@ -64,6 +71,14 @@ class CotacaoForm extends BaseElement {
 
   aposRender() {
     const c = this.cotacao || {};
+
+    const selItem = this.$("#item");
+    const itens = dataStore.itensAtivos();
+    selItem.setAttribute("placeholder", itens.length ? "Selecione um item" : "Nenhum item cadastrado");
+    selItem.options = itens.map((i) => ({ value: i.id, label: `${i.nome} · ${i.classificacao}` }));
+    selItem.value = c.item_id || "";
+    selItem.addEventListener("change", () => this.pintarClassBadge());
+    this.pintarClassBadge();
 
     const selCat = this.$("#categoria");
     selCat.options = [{ value: "", label: "— Sem classificação —" }].concat(
@@ -89,16 +104,25 @@ class CotacaoForm extends BaseElement {
     this.$("#salvar").addEventListener("click", () => this.salvar());
   }
 
+  /** Mostra a classificação (Material/Serviço) do item escolhido (somente leitura). */
+  pintarClassBadge() {
+    const alvo = this.$("#classBadge");
+    if (!alvo) return;
+    const item = dataStore.itensAtivos().find((i) => String(i.id) === String(this.$("#item").value));
+    alvo.innerHTML = item
+      ? `<category-badge nome="${item.classificacao}" cor="${COR_CLASSIFICACAO[item.classificacao] || "var(--cor-neutro)"}"></category-badge>`
+      : "";
+  }
+
   async salvar() {
-    const descricao = this.$("#descricao").value.trim();
-    const erro = obrigatorio(descricao, "A descrição");
-    if (erro) {
-      this.$("#descricao").setAttribute("error", erro);
+    const itemId = this.$("#item").value;
+    if (!itemId) {
+      this.$("#item").setAttribute("error", "Selecione um item.");
       return;
     }
-    this.$("#descricao").removeAttribute("error");
+    this.$("#item").removeAttribute("error");
     const dados = {
-      descricao,
+      item_id: itemId,
       quantidade: Number(this.$("#quantidade").value) || 0,
       unidade: this.$("#unidade").value.trim(),
       categoria_id: this.$("#categoria").value,

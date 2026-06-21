@@ -15,6 +15,9 @@ function _bool(v) {
   return v === true || v === "TRUE" || v === "true";
 }
 
+/** Cor do badge por classificação (espelha itens-view / backend). */
+const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
+
 class DespesaTable extends BaseElement {
   set despesas(v) {
     this._despesas = Array.isArray(v) ? v : [];
@@ -54,12 +57,20 @@ class DespesaTable extends BaseElement {
       { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
       { chave: "item", titulo: "Item" },
       {
-        chave: "categoria_id",
+        chave: "classificacao",
         titulo: "Classificação",
-        formato: (id) => {
-          const c = this.mapaCat[id] || { nome: "Sem categoria", cor: "var(--cor-neutro)" };
-          return `<category-badge nome="${c.nome}" cor="${c.cor}"></category-badge>`;
-        },
+        formato: (v) =>
+          v
+            ? `<category-badge nome="${v}" cor="${COR_CLASSIFICACAO[v] || "var(--cor-neutro)"}"></category-badge>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+      },
+      {
+        chave: "categoria_id",
+        titulo: "Subclassificação",
+        formato: (id) =>
+          this.mapaCat[id]
+            ? `<category-badge nome="${this.mapaCat[id].nome}" cor="${this.mapaCat[id].cor}"></category-badge>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
       },
       {
         chave: "criado_em",

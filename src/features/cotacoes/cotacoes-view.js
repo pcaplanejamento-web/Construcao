@@ -17,6 +17,9 @@ import "../../components/ui-empty-state.js";
 import "../despesas/category-badge.js";
 import "./cotacao-form.js";
 
+/** Cor do badge por classificação (espelha itens-view / backend). */
+const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
+
 class CotacoesView extends BaseElement {
   estilos() {
     return `
@@ -80,7 +83,15 @@ class CotacoesView extends BaseElement {
     tabela.setAttribute("fluido", "");
     tabela.setAttribute("clicavel", "");
     tabela.columns = [
-      { chave: "descricao", titulo: "Cotação" },
+      { chave: "descricao", titulo: "Item" },
+      {
+        chave: "classificacao",
+        titulo: "Classificação",
+        formato: (v) =>
+          v
+            ? `<category-badge nome="${v}" cor="${COR_CLASSIFICACAO[v] || "var(--cor-neutro)"}"></category-badge>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+      },
       {
         chave: "quantidade",
         titulo: "Qtd.",
@@ -88,7 +99,7 @@ class CotacoesView extends BaseElement {
       },
       {
         chave: "categoria_id",
-        titulo: "Classificação",
+        titulo: "Subclassificação",
         formato: (id) => {
           const c = mapaCat[id];
           return c

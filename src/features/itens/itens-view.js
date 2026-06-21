@@ -8,6 +8,7 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
+import { data as fmtData } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -76,6 +77,30 @@ class ItensView extends BaseElement {
     this.pintarSub();
   }
 
+  /** Colunas de auditoria (criação/modificação + usuário) reusadas nas 2 abas. */
+  colunasLog() {
+    return [
+      {
+        chave: "criado_em",
+        titulo: "Criado em",
+        formato: (v, linha) =>
+          v
+            ? `<div>${fmtData(v)}</div><small style="color:var(--cor-texto-fraco)">por ${linha.autor_nome || "—"}</small>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+      },
+      {
+        chave: "atualizado_em",
+        titulo: "Atualizado em",
+        formato: (v, linha) => {
+          const editou = linha.editor_nome && v && String(v) !== String(linha.criado_em);
+          return editou
+            ? `<div>${fmtData(v)}</div><small style="color:var(--cor-texto-fraco)">por ${linha.editor_nome}</small>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`;
+        },
+      },
+    ];
+  }
+
   /* ------------------------------ Itens ------------------------------- */
 
   pintarItens() {
@@ -105,6 +130,7 @@ class ItensView extends BaseElement {
         formato: (v) =>
           `<category-badge nome="${v || "—"}" cor="${COR_CLASSIFICACAO[v] || "var(--cor-neutro)"}"></category-badge>`,
       },
+      ...this.colunasLog(),
     ];
     tabela.acoes = [
       { nome: "editar", rotulo: "Editar" },
@@ -167,6 +193,7 @@ class ItensView extends BaseElement {
         formato: (nome, linha) =>
           `<category-badge nome="${nome}" cor="${linha.cor}"></category-badge>`,
       },
+      ...this.colunasLog(),
     ];
     tabela.acoes = [
       { nome: "editar", rotulo: "Editar" },

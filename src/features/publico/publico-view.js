@@ -16,6 +16,9 @@ import "../dashboard/dashboard-summary.js";
 import "../dashboard/category-breakdown.js";
 import "../despesas/category-badge.js";
 
+/** Cor do badge por classificação (espelha itens-view / backend). */
+const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
+
 class PublicoView extends BaseElement {
   get token() {
     return this.getAttribute("token");
@@ -80,20 +83,31 @@ class PublicoView extends BaseElement {
       <dashboard-summary id="dash"></dashboard-summary>
       <div class="colunas">
         <ui-card title="Itens"><ui-data-table id="tabela" fluido empty-text="Nenhuma despesa registrada."></ui-data-table></ui-card>
-        <ui-card><category-breakdown id="break"></category-breakdown></ui-card>
+        <ui-card><category-breakdown id="break" titulo="Gastos por subclassificação"></category-breakdown></ui-card>
       </div>
     `;
     this.$("#dash").resumo = d.resumo || {};
-    this.$("#break").porCategoria = (d.resumo && d.resumo.por_categoria) || [];
+    this.$("#break").porCategoria =
+      (d.resumo && (d.resumo.por_subclassificacao || d.resumo.por_categoria)) || [];
     const tabela = this.$("#tabela");
     tabela.columns = [
       { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
       { chave: "item", titulo: "Item" },
       {
-        chave: "categoria_nome",
+        chave: "classificacao",
         titulo: "Classificação",
+        formato: (v) =>
+          v
+            ? `<category-badge nome="${v}" cor="${COR_CLASSIFICACAO[v] || "var(--cor-neutro)"}"></category-badge>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+      },
+      {
+        chave: "categoria_nome",
+        titulo: "Subclassificação",
         formato: (nome, linha) =>
-          `<category-badge nome="${nome || "Sem categoria"}" cor="${linha.categoria_cor || ""}"></category-badge>`,
+          nome
+            ? `<category-badge nome="${nome}" cor="${linha.categoria_cor || ""}"></category-badge>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
       },
       { chave: "valor", titulo: "Valor", alinhar: "dir", formato: (v) => moeda(v) },
     ];

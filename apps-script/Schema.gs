@@ -66,12 +66,26 @@ const SCHEMA = {
       "pago", // boolean
       "pagamentos", // JSON [{chave, valor}] — quem pagou quanto
       "responsaveis", // JSON [{chave, pct}] — de quem é a responsabilidade (% por participante)
+      // Itens (append): vínculo ao catálogo. categoria_id segue sendo a SUBclassificação.
+      "item_id", // FK → Itens.id (obrigatório p/ novas despesas)
+      "classificacao", // Material | Serviço (desnormalizado do item)
     ],
   },
 
   CATEGORIAS: {
-    aba: "Categorias",
-    colunas: ["id", "usuario_id", "nome", "cor", "ativo"],
+    aba: "Categorias", // = "Subclassificações" na UI
+    colunas: [
+      "id",
+      "usuario_id",
+      "nome",
+      "cor",
+      "ativo",
+      // Auditoria (append; preserva linhas existentes):
+      "criado_em",
+      "atualizado_em",
+      "autor_nome", // quem criou (desnormalizado)
+      "editor_nome", // quem editou por último
+    ],
   },
 
   COMPARTILHAMENTOS: {
@@ -148,6 +162,9 @@ const SCHEMA = {
       "ativo",
       "criado_em",
       "atualizado_em",
+      // Auditoria (append):
+      "autor_nome", // quem criou (desnormalizado)
+      "editor_nome", // quem editou por último
     ],
   },
 
@@ -157,13 +174,16 @@ const SCHEMA = {
       "id",
       "usuario_id",
       "obra_id", // opcional (vazio = cotação geral)
-      "descricao",
+      "descricao", // = nome do item (desnormalizado)
       "quantidade",
       "unidade",
-      "categoria_id",
+      "categoria_id", // SUBclassificação (opcional)
       "status", // aberta | fechada
       "criado_em",
       "atualizado_em",
+      // Itens (append): vínculo ao catálogo.
+      "item_id", // FK → Itens.id (obrigatório p/ novas cotações)
+      "classificacao", // Material | Serviço (desnormalizado do item)
     ],
   },
 
@@ -218,6 +238,9 @@ const STATUS_COTACAO = ["aberta", "fechada"];
 
 /** Classificações de item (fixas). Toda despesa/item é Material ou Serviço. */
 const CLASSIFICACOES_ITEM = ["Material", "Serviço"];
+
+/** Cor de cada classificação (espelha COR_CLASSIFICACAO do front em itens-view.js). */
+const CLASSIFICACAO_COR = { Material: "#2563eb", "Serviço": "#7c3aed" };
 
 /** Cargos obrigatórios (fixos/built-in). A lógica condicional depende destes nomes. */
 const CARGOS_OBRIGATORIOS = [

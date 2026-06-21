@@ -326,12 +326,13 @@ function publicoObra(data) {
 
   const lista = despesas
     .map(function (d) {
-      const c = catMap[d.categoria_id] || { nome: "Sem categoria", cor: "#94a3b8" };
+      const c = catMap[d.categoria_id] || { nome: "Sem subclassificação", cor: "#94a3b8" };
       return {
         item: d.item,
         valor: Number(d.valor) || 0,
         data: d.data,
-        categoria_nome: c.nome,
+        classificacao: d.classificacao || "", // Material | Serviço
+        categoria_nome: c.nome, // subclassificação
         categoria_cor: c.cor,
       };
     })

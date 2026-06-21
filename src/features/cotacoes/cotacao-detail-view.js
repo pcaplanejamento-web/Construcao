@@ -24,6 +24,9 @@ import "./cotacao-form.js";
 import "./preco-form.js";
 import "./cotacao-despesa-form.js";
 
+/** Cor do badge por classificação (espelha itens-view / backend). */
+const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
+
 class CotacaoDetailView extends BaseElement {
   constructor() {
     super();
@@ -218,6 +221,7 @@ class CotacaoDetailView extends BaseElement {
         <h1>${c.descricao || ""}</h1>
         <div class="meta">
           ${qtd ? `<span>${qtd}</span>` : ""}
+          ${c.classificacao ? `<category-badge nome="${c.classificacao}" cor="${COR_CLASSIFICACAO[c.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
           ${cat ? `<category-badge nome="${cat.nome}" cor="${cat.cor}"></category-badge>` : ""}
           ${obra ? `· <a href="#/obras/${obra.id}"><ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</a>` : ""}
           <span>· ${c.status === "fechada" ? "Fechada" : "Aberta"}</span>

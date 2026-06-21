@@ -66,9 +66,9 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | id | UUID | PK |
 | obra_id | UUID | FK → Obras.id |
 | usuario_id | UUID | FK → Usuarios.id (desnormalizado p/ segurança) |
-| item | string | nome do item |
+| item | string | **nome do item** (desnormalizado de Itens.nome) |
 | valor | number | valor da despesa |
-| categoria_id | UUID | FK → Categorias.id |
+| categoria_id | UUID | FK → Categorias.id = **Subclassificação** (opcional) |
 | data | ISO `YYYY-MM-DD` | data da despesa |
 | observacao | string | opcional |
 | criado_em | ISO datetime | data da adição |
@@ -78,6 +78,13 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | pago | boolean | marcada como paga? |
 | pagamentos | JSON | `[{chave, valor}]` — quem pagou quanto (participantes) |
 | responsaveis | JSON | `[{chave, pct}]` — de quem é a responsabilidade (% por participante) |
+| item_id | UUID | **FK → Itens.id (obrigatório p/ novas despesas)** |
+| classificacao | string | `Material` \| `Serviço` (desnormalizado de Itens.classificacao) |
+
+> **Item × Classificação × Subclassificação:** a despesa referencia um **item**
+> (`item_id`, obrigatório); o item carrega sua **classificação** (`classificacao`,
+> Material/Serviço, desnormalizada). `categoria_id` é a **subclassificação** (opcional).
+> Gráficos: rosca por `classificacao`, barras por `categoria_id`.
 
 > `chave` de participante = `u:<usuario_id>` ou `c:<contato_id>`. `pagamentos`/
 > `responsaveis` são guardados como **JSON string** e devolvidos como **arrays** ao
@@ -93,9 +100,11 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 |--------|------|-----------|
 | id | UUID | PK |
 | usuario_id | UUID \| `GLOBAL` | dono; `GLOBAL` = padrão do sistema |
-| nome | string | ex.: Material, Mão de obra |
+| nome | string | ex.: Acabamento, Fundação |
 | cor | hex | usada pelo `category-badge` |
 | ativo | boolean | exclusão é lógica (ativo=false) |
+| criado_em / atualizado_em | ISO datetime | auditoria (log de criação/edição) |
+| autor_nome / editor_nome | string | quem criou / editou (desnormalizado) |
 
 Categorias semente (`GLOBAL`) são criadas no bootstrap. A listagem de um usuário
 = categorias `GLOBAL` + as próprias.
@@ -110,8 +119,8 @@ Categorias semente (`GLOBAL`) são criadas no bootstrap. A listagem de um usuár
 
 ## Aba `Itens` (catálogo)
 Cada item é classificado como **Material** ou **Serviço** (constante
-`CLASSIFICACOES_ITEM = ["Material","Serviço"]`). Despesas e cotações referenciarão
-um item (Fase 2). Por usuário.
+`CLASSIFICACOES_ITEM = ["Material","Serviço"]`; cores em `CLASSIFICACAO_COR`).
+Despesas e cotações **referenciam um item** (`item_id`, obrigatório). Por usuário.
 
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
@@ -120,7 +129,8 @@ um item (Fase 2). Por usuário.
 | nome | string | nome do item |
 | classificacao | string | `Material` \| `Serviço` (fixas) |
 | ativo | boolean | exclusão lógica (ativo=false) |
-| criado_em / atualizado_em | ISO datetime | |
+| criado_em / atualizado_em | ISO datetime | auditoria |
+| autor_nome / editor_nome | string | quem criou / editou (desnormalizado) |
 
 ## Módulo Compras
 
@@ -174,12 +184,14 @@ guarda só os **extras** criados pelo usuário (com log).
 | id | UUID | PK |
 | usuario_id | UUID | FK → Usuarios.id (dono) |
 | obra_id | UUID | FK → Obras.id (**opcional**; vazio = cotação geral) |
-| descricao | string | item/necessidade |
+| descricao | string | **nome do item** (desnormalizado de Itens.nome) |
 | quantidade | number | opcional |
 | unidade | string | texto livre (un, m², kg, saco…) |
-| categoria_id | UUID | FK → Categorias.id (opcional) |
+| categoria_id | UUID | FK → Categorias.id = **Subclassificação** (opcional) |
 | status | `aberta` \| `fechada` | |
 | criado_em / atualizado_em | ISO datetime | |
+| item_id | UUID | **FK → Itens.id (obrigatório p/ novas cotações)** |
+| classificacao | string | `Material` \| `Serviço` (desnormalizado de Itens.classificacao) |
 
 ### Aba `CotacaoPrecos` (oferta de um contato)
 | Coluna | Tipo | Descrição |

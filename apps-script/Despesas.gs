@@ -6,6 +6,42 @@
  * atualizado para a UI otimizar o dashboard sem refetch extra.
  */
 
+/**
+ * Agrupa despesas para os gráficos: por SUBclassificação (categoria_id) e por
+ * CLASSIFICAÇÃO (Material/Serviço). Reutilizado por _calcularResumo (Despesas)
+ * e _resumoEmMemoria (Snapshot). Itens em {nome, cor, total} (desc por total).
+ */
+function _agruparResumo(despesas, mapaCat) {
+  const porSub = {}; // categoria_id -> total
+  const porClass = {}; // classificacao -> total
+  let total = 0;
+  despesas.forEach(function (d) {
+    const v = Number(d.valor) || 0;
+    total += v;
+    porSub[d.categoria_id] = (porSub[d.categoria_id] || 0) + v;
+    porClass[String(d.classificacao || "")] = (porClass[String(d.classificacao || "")] || 0) + v;
+  });
+
+  const por_subclassificacao = Object.keys(porSub)
+    .map(function (catId) {
+      const cat = mapaCat[catId] || { nome: "Sem subclassificação", cor: "#94a3b8" };
+      return { categoria_id: catId, nome: cat.nome, cor: cat.cor, total: porSub[catId] };
+    })
+    .sort(function (a, b) {
+      return b.total - a.total;
+    });
+
+  const por_classificacao = Object.keys(porClass)
+    .map(function (cl) {
+      return { nome: cl || "Sem classificação", cor: CLASSIFICACAO_COR[cl] || "#94a3b8", total: porClass[cl] };
+    })
+    .sort(function (a, b) {
+      return b.total - a.total;
+    });
+
+  return { total: total, por_subclassificacao: por_subclassificacao, por_classificacao: por_classificacao };
+}
+
 /** Calcula o resumo financeiro de uma obra. */
 function _calcularResumo(obraId, usuarioId) {
   const obra = _obraAcessivel(obraId, usuarioId);
@@ -16,35 +52,18 @@ function _calcularResumo(obraId, usuarioId) {
   // Mapeia categorias pelo DONO da obra (global + dele), garantindo rótulos
   // consistentes para todos os colaboradores.
   const mapaCat = mapaCategorias(obra.usuario_id);
-  const acumulado = {}; // categoria_id -> total
-  let total = 0;
-  despesas.forEach(function (d) {
-    const v = Number(d.valor) || 0;
-    total += v;
-    acumulado[d.categoria_id] = (acumulado[d.categoria_id] || 0) + v;
-  });
-
-  const porCategoria = Object.keys(acumulado).map(function (catId) {
-    const cat = mapaCat[catId] || { nome: "Sem categoria", cor: "#94a3b8" };
-    return {
-      categoria_id: catId,
-      nome: cat.nome,
-      cor: cat.cor,
-      total: acumulado[catId],
-    };
-  });
-  porCategoria.sort(function (a, b) {
-    return b.total - a.total;
-  });
+  const ag = _agruparResumo(despesas, mapaCat);
 
   const orcamento = Number(obra.orcamento) || 0;
   return {
     obra_id: obraId,
-    total: total,
+    total: ag.total,
     qtd: despesas.length,
     orcamento: orcamento,
-    saldo: orcamento - total,
-    por_categoria: porCategoria,
+    saldo: orcamento - ag.total,
+    por_categoria: ag.por_subclassificacao, // compat (= subclassificação)
+    por_subclassificacao: ag.por_subclassificacao,
+    por_classificacao: ag.por_classificacao,
   };
 }
 
@@ -96,11 +115,23 @@ function despesasResumo(data, sessao) {
 function _novaDespesa(obraId, usuarioId, dados) {
   const nome = (buscarUsuarioPorId(usuarioId) || {}).nome || "";
   const agora = agoraIso();
+
+  // Vínculo ao item: se item_id, deriva nome+classificacao do catálogo (fonte de
+  // verdade). Sem item_id (legado/cotação antiga), usa o texto/classificacao recebidos.
+  let itemNome = String((dados && dados.item) || "").trim();
+  let classificacao = String((dados && dados.classificacao) || "");
+  const itemId = String((dados && dados.item_id) || "");
+  if (itemId) {
+    const it = _itemPorId(itemId, usuarioId);
+    itemNome = it.nome;
+    classificacao = it.classificacao;
+  }
+
   const despesa = {
     id: novoId(),
     obra_id: obraId,
     usuario_id: usuarioId,
-    item: String((dados && dados.item) || "").trim(),
+    item: itemNome,
     valor: Number(dados && dados.valor) || 0,
     categoria_id: String((dados && dados.categoria_id) || ""),
     data: String((dados && dados.data) || agora.substring(0, 10)),
@@ -116,6 +147,8 @@ function _novaDespesa(obraId, usuarioId, dados) {
     responsaveis: JSON.stringify(
       dados && Array.isArray(dados.responsaveis) ? dados.responsaveis : []
     ),
+    item_id: itemId,
+    classificacao: classificacao,
   };
   repoInserir(SCHEMA.DESPESAS, despesa);
   return despesa;
@@ -126,14 +159,14 @@ function despesasCriar(data, sessao) {
   const obraId = data && data.obra_id;
   _obraAcessivel(obraId, sessao.usuario_id);
 
-  const item = String((data && data.item) || "").trim();
+  const itemId = String((data && data.item_id) || "");
   const valor = Number(data && data.valor);
-  if (!item) lancar(ERRO.VALIDACAO, "Informe o item da despesa.");
+  if (!itemId) lancar(ERRO.VALIDACAO, "Selecione um item para a despesa.");
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
 
   return comLock(function () {
     const despesa = _novaDespesa(obraId, sessao.usuario_id, {
-      item: item,
+      item_id: itemId,
       valor: valor,
       categoria_id: data && data.categoria_id,
       data: data && data.data,
@@ -162,7 +195,13 @@ function despesasAtualizar(data, sessao) {
   const atual = _despesaAcessivel(id, sessao.usuario_id);
 
   const patch = {};
-  if (data.item !== undefined) {
+  // Item: se vier item_id, re-deriva nome+classificacao do catálogo (fonte de verdade).
+  if (data.item_id !== undefined && String(data.item_id || "")) {
+    const it = _itemPorId(String(data.item_id), sessao.usuario_id);
+    patch.item_id = String(data.item_id);
+    patch.item = it.nome;
+    patch.classificacao = it.classificacao;
+  } else if (data.item !== undefined) {
     const item = String(data.item).trim();
     if (!item) lancar(ERRO.VALIDACAO, "O item não pode ficar vazio.");
     patch.item = item;

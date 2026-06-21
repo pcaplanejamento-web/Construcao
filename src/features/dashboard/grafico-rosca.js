@@ -1,18 +1,29 @@
 /**
- * <grafico-rosca> — Donut (SVG) da distribuição por categoria, sem número no
- * centro. Preenche a altura do cartão; legenda rola se houver muitas categorias.
+ * <grafico-rosca> — Donut (SVG) da distribuição, sem número no centro. Preenche a
+ * altura do cartão; legenda rola se houver muitos itens. O título é configurável
+ * via o atributo `titulo` (padrão "Distribuição por categoria").
  * Propriedade: .porCategoria = [{ nome, cor, total }]
+ * Atributo: titulo
  */
 import { BaseElement } from "../../components/base-element.js";
 import { moeda, percentual } from "../../core/formatters.js";
 
 class GraficoRosca extends BaseElement {
+  static get observedAttributes() {
+    return ["titulo"];
+  }
+  attributeChangedCallback() {
+    if (this.shadowRoot.childElementCount) this.renderizar();
+  }
   set porCategoria(v) {
     this._lista = Array.isArray(v) ? v : [];
     if (this.shadowRoot.childElementCount) this.renderizar();
   }
   get porCategoria() {
     return this._lista || [];
+  }
+  get titulo() {
+    return this.getAttribute("titulo") || "Distribuição por categoria";
   }
 
   estilos() {
@@ -37,7 +48,7 @@ class GraficoRosca extends BaseElement {
     const lista = this.porCategoria;
     const total = lista.reduce((s, c) => s + (Number(c.total) || 0), 0);
     if (!total) {
-      return `<div class="titulo">Distribuição por categoria</div><div class="vazio">Sem despesas ainda.</div>`;
+      return `<div class="titulo">${this.titulo}</div><div class="vazio">Sem despesas ainda.</div>`;
     }
 
     let acc = 0;
@@ -62,9 +73,9 @@ class GraficoRosca extends BaseElement {
       .join("");
 
     return `
-      <div class="titulo">Distribuição por categoria</div>
+      <div class="titulo">${this.titulo}</div>
       <div class="wrap">
-        <svg viewBox="0 0 42 42" role="img" aria-label="Distribuição por categoria">
+        <svg viewBox="0 0 42 42" role="img" aria-label="${this.titulo}">
           <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--cor-borda)" stroke-width="6"></circle>
           ${segmentos}
         </svg>

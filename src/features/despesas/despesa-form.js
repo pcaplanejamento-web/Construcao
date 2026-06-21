@@ -1,21 +1,27 @@
 /**
  * <despesa-form> — Banner (modal) para ADICIONAR despesa. Auto-contido: chama
- * dataStore.adicionarDespesa e emite "salvo"/"fechar". Reusa ui-modal/ui-input/
- * ui-select/ui-button. (pago/pagamento/responsabilidade são definidos depois, no
- * banner de edição <despesa-detail>.)
+ * dataStore.adicionarDespesa e emite "salvo"/"fechar". Reusa ui-modal/ui-tabs/
+ * ui-input/ui-select/ui-button. (pago/pagamento/responsabilidade são definidos
+ * depois, no banner de edição <despesa-detail>.)
  *
- * Propriedades: .obraId, .categorias = [{ id, nome, cor }]
+ * Fluxo: abas Material/Serviço (classificação) → seleciona um ITEM cadastrado
+ * daquela classificação (obrigatório) → subclassificação (opcional).
+ *
+ * Propriedades: .obraId, .categorias = [{ id, nome, cor }] (subclassificações)
  * Eventos: "salvo", "fechar".
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { hojeIso } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { primeiroErro, obrigatorio, valorPositivo } from "../../core/validators.js";
+import { valorPositivo } from "../../core/validators.js";
 import "../../components/ui-modal.js";
+import "../../components/ui-tabs.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
+
+const CLASSIFICACOES = ["Material", "Serviço"];
 
 class DespesaForm extends BaseElement {
   set obraId(v) {
@@ -44,13 +50,14 @@ class DespesaForm extends BaseElement {
     return `
       <ui-modal open title="Registrar despesa">
         <div class="campos">
-          <ui-input id="item" label="Item" placeholder="Ex.: Cimento CP-II"></ui-input>
+          <ui-tabs id="abas"></ui-tabs>
+          <ui-select id="item" label="Item"></ui-select>
           <div class="linha">
             <ui-input id="valor" label="Valor (R$)" type="number" step="0.01" min="0"
                       placeholder="0,00"></ui-input>
             <ui-input id="data" label="Data" type="date" value="${hojeIso()}"></ui-input>
           </div>
-          <ui-select id="categoria" label="Classificação"></ui-select>
+          <ui-select id="categoria" label="Subclassificação"></ui-select>
         </div>
         <div slot="rodape">
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
@@ -61,6 +68,9 @@ class DespesaForm extends BaseElement {
   }
 
   aposRender() {
+    this.$("#abas").abas = CLASSIFICACOES.map((c) => ({ id: c, rotulo: c, icone: "tag" }));
+    this.$("#abas").addEventListener("mudar", () => this.preencherItens());
+    this.preencherItens();
     this.preencherCategorias();
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
@@ -68,24 +78,44 @@ class DespesaForm extends BaseElement {
     this.$$("ui-input").forEach((i) => i.addEventListener("enter", () => this.salvar()));
   }
 
+  get classificacao() {
+    return this.$("#abas").ativo || CLASSIFICACOES[0];
+  }
+
+  preencherItens() {
+    const sel = this.$("#item");
+    if (!sel) return;
+    const itens = dataStore.itensAtivos().filter((i) => i.classificacao === this.classificacao);
+    sel.setAttribute("placeholder", itens.length ? "Selecione um item" : "Nenhum item desta classificação");
+    sel.options = itens.map((i) => ({ value: i.id, label: i.nome }));
+    sel.value = "";
+    sel.removeAttribute("error");
+  }
+
   preencherCategorias() {
     const sel = this.$("#categoria");
     if (!sel) return;
-    sel.options = this.categorias.map((c) => ({ value: c.id, label: c.nome }));
-    if (this.categorias[0]) sel.value = this.categorias[0].id;
+    // Subclassificação é opcional → 1ª opção vazia.
+    sel.options = [{ value: "", label: "Sem subclassificação" }].concat(
+      this.categorias.map((c) => ({ value: c.id, label: c.nome }))
+    );
+    sel.value = "";
   }
 
   async salvar() {
-    const item = this.$("#item").value.trim();
+    const itemId = this.$("#item").value;
     const valor = Number(this.$("#valor").value);
-    const erro = primeiroErro(obrigatorio(item, "O item"), valorPositivo(valor));
-    if (erro) {
-      this.$("#item").setAttribute("error", obrigatorio(item, "O item"));
-      this.$("#valor").setAttribute("error", valorPositivo(valor));
-      return;
-    }
+    const erroValor = valorPositivo(valor);
+    if (!itemId) this.$("#item").setAttribute("error", "Selecione um item.");
+    if (erroValor) this.$("#valor").setAttribute("error", erroValor);
+    if (!itemId || erroValor) return;
+    this.$("#item").removeAttribute("error");
+
+    const item = dataStore.itensAtivos().find((i) => String(i.id) === String(itemId)) || {};
     const dados = {
-      item,
+      item_id: itemId,
+      classificacao: this.classificacao,
+      item: item.nome || "", // nome denormalizado p/ exibição otimista
       valor,
       categoria_id: this.$("#categoria").value,
       data: this.$("#data").value || hojeIso(),

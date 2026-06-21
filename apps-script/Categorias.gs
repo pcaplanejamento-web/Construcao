@@ -46,12 +46,18 @@ function categoriasCriar(data, sessao) {
   if (!nome) lancar(ERRO.VALIDACAO, "Informe o nome da categoria.");
 
   return comLock(function () {
+    const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const categoria = {
       id: novoId(),
       usuario_id: sessao.usuario_id,
       nome: nome,
       cor: String((data && data.cor) || "#64748b"),
       ativo: true,
+      criado_em: agora,
+      atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
     };
     repoInserir(SCHEMA.CATEGORIAS, categoria);
     cacheRemove(chaveCategorias(sessao.usuario_id));
@@ -94,6 +100,8 @@ function categoriasAtualizar(data, sessao) {
   }
   if (data.cor !== undefined) patch.cor = String(data.cor);
   if (data.ativo !== undefined) patch.ativo = data.ativo === true;
+  patch.atualizado_em = agoraIso();
+  patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
   return comLock(function () {
     const categoria = repoAtualizar(SCHEMA.CATEGORIAS, "id", id, patch);

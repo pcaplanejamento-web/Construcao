@@ -9,29 +9,17 @@
 
 /** Calcula o resumo de uma obra a partir de despesas já carregadas. */
 function _resumoEmMemoria(obra, despesas, catMap) {
-  const acumulado = {};
-  let total = 0;
-  despesas.forEach(function (d) {
-    const v = Number(d.valor) || 0;
-    total += v;
-    acumulado[d.categoria_id] = (acumulado[d.categoria_id] || 0) + v;
-  });
-  const por_categoria = Object.keys(acumulado)
-    .map(function (catId) {
-      const c = catMap[catId] || { nome: "Sem categoria", cor: "#94a3b8" };
-      return { categoria_id: catId, nome: c.nome, cor: c.cor, total: acumulado[catId] };
-    })
-    .sort(function (a, b) {
-      return b.total - a.total;
-    });
+  const ag = _agruparResumo(despesas, catMap); // helper compartilhado (Despesas.gs)
   const orcamento = Number(obra.orcamento) || 0;
   return {
     obra_id: obra.id,
-    total: total,
+    total: ag.total,
     qtd: despesas.length,
     orcamento: orcamento,
-    saldo: orcamento - total,
-    por_categoria: por_categoria,
+    saldo: orcamento - ag.total,
+    por_categoria: ag.por_subclassificacao, // compat (= subclassificação)
+    por_subclassificacao: ag.por_subclassificacao,
+    por_classificacao: ag.por_classificacao,
   };
 }
 

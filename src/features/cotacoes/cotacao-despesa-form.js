@@ -14,6 +14,10 @@ import { totalOferta } from "./cotacao-util.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
+import "../despesas/category-badge.js";
+
+/** Cor do badge por classificação (espelha itens-view / backend). */
+const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
 
 class CotacaoDespesaForm extends BaseElement {
   set cotacao(v) {
@@ -54,11 +58,12 @@ class CotacaoDespesaForm extends BaseElement {
         <div class="campos">
           <div class="resumo">
             <span class="item">${this.cotacao.descricao || ""}</span>
+            ${this.cotacao.classificacao ? `<category-badge nome="${this.cotacao.classificacao}" cor="${COR_CLASSIFICACAO[this.cotacao.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
             <span class="val">${moeda(total)}</span>
             <small>Oferta de ${this.contatoNome || "—"}</small>
           </div>
           <ui-select id="obra" label="Obra"></ui-select>
-          <ui-select id="categoria" label="Classificação"></ui-select>
+          <ui-select id="categoria" label="Subclassificação"></ui-select>
         </div>
         <div slot="rodape">
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>

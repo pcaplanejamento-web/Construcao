@@ -82,9 +82,9 @@ sobem por `CustomEvent`**.
 ### Despesas — `features/despesas/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `despesa-form` | `.obraId`, `.categorias`; eventos `salvo`, `fechar` | **Banner (modal)** de adição de despesa (item/valor/classificação/data); chama `dataStore.adicionarDespesa`. Aberto pelo botão "+ Adicionar despesa" no cabeçalho do card "Despesas". |
-| `despesa-table` | `.despesas`, `.categorias`, `.participantes`; eventos `abrir` (clique na linha), `editar`, `remover` | Tabela **full-width** e fluida; colunas Adicionado/Editado por + **Pago**, **Pagamento** (total), **Distribuição** (Único/Distribuído) e **Responsabilidade** (chips nome·%). Reusa `ui-data-table` + `category-badge`. |
-| `despesa-detail` | `.despesa`, `.categorias`; evento `fechar` | **Banner (modal)**: item/valor/classificação/data/observação + **Pago** (checkbox), **Pagamento** e **Responsabilidade** (via `split-editor`). **Regras** (via `ui-alert`): soma dos pagamentos ≤ valor da despesa; soma das % ≤ 100. Salva via data-store (otimista). |
+| `despesa-form` | `.obraId`, `.categorias`; eventos `salvo`, `fechar` | **Banner (modal)** de adição: `ui-tabs` **Material/Serviço** (classificação) → `ui-select` de **item** filtrado pela aba (obrigatório) → **Subclassificação** (opcional) + valor/data; chama `dataStore.adicionarDespesa`. Aberto pelo botão "+ Adicionar despesa" no card "Despesas". |
+| `despesa-table` | `.despesas`, `.categorias`, `.participantes`; eventos `abrir` (clique na linha), `editar`, `remover` | Tabela **full-width** e fluida; colunas Item, **Classificação** (Material/Serviço) e **Subclassificação** (distintas), Adicionado/Editado por + **Pago**, **Pagamento** (total), **Distribuição** e **Responsabilidade**. Reusa `ui-data-table` + `category-badge`. |
+| `despesa-detail` | `.despesa`, `.categorias`; evento `fechar` | **Banner (modal)**: abas Material/Serviço + item (obrigatório) + **Subclassificação**/valor/data/observação + **Pago**, **Pagamento** e **Responsabilidade** (via `split-editor`). **Regras** (via `ui-alert`): soma dos pagamentos ≤ valor; soma das % ≤ 100. Pré-seleciona aba/item por `classificacao`/`item_id`. |
 | `split-editor` | `.participantes`, `.itens=[{chave,valor}]`, `.modo("valor"\|"pct")`, `.limite`; evento `mudar` | Editor reutilizável de **distribuição entre participantes** (linhas `ui-select`+`ui-input`, total/soma com `.limite` = valor ou 100%; destaca quando excede). Usado p/ pagamento (R$) e responsabilidade (%). |
 | `despesa-split.js` | `parseLista`, `totalPago`, `distribuicao`, `rotuloOrigem` | Helpers puros (Fase 2: algoritmo de acerto). |
 | `despesa-filtros` | `.categorias`; evento `filtrar` ({texto, categoria}) | Pesquisa por item + filtro por classificação (aplicado só na tabela). |
@@ -93,7 +93,7 @@ sobem por `CustomEvent`**.
 ### Itens — `features/itens/` (+ `features/categorias/categoria-form.js`)
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `itens-view` | — | Rota `#/itens`. `ui-tabs`: **Itens** (catálogo; tabela com badge Material/Serviço; CRUD via `item-form`) e **Subclassificações** (categorias livres: lista única **todas editáveis**, próprias e padrão, reusa `categoria-form`). |
+| `itens-view` | — | Rota `#/itens`. `ui-tabs`: **Itens** (catálogo; badge Material/Serviço; CRUD via `item-form`) e **Subclassificações** (lista única **todas editáveis**, reusa `categoria-form`). Ambas as tabelas mostram **log** (Criado em/Atualizado em + autor/editor) via `colunasLog()`. |
 | `item-form` | `.item`; eventos `salvo`, `fechar` | Modal criar/editar item (nome + `ui-select` Classificação Material/Serviço). Emite `EVENTOS.ITENS`. Espelha `categoria-form`. |
 | `categoria-form` | `.categoria`; eventos `salvo`, `fechar` | Modal criar/editar **subclassificação** (nome + cor). Emite `EVENTOS.CATEGORIAS`. |
 
@@ -104,8 +104,8 @@ sobem por `CustomEvent`**.
 | Componente | Props | Descrição |
 |------------|-------|-----------|
 | `dashboard-summary` | `.resumo` | KPIs em **cartões com gradiente + ícone** (total, orçamento, saldo, qtd); reusa `ui-icon` e tokens `--grad-*`. |
-| `category-breakdown` | `.porCategoria` | Barras de gasto por categoria; preenche a altura e **rola na vertical** com muitas categorias. |
-| `grafico-rosca` | `.porCategoria` | Donut (SVG) **sem número central** + legenda (rola se necessário). |
+| `category-breakdown` | `.porCategoria`; attr `titulo` | Barras (rola na vertical). Título configurável (`titulo`, padrão "Gastos por categoria") p/ reuso: obra/público = **"Gastos por subclassificação"** (`por_subclassificacao`); cotação = comparativo por contato. |
+| `grafico-rosca` | `.porCategoria`; attr `titulo` | Donut (SVG) **sem número central** + legenda. Título configurável; na obra = **"Distribuição por classificação"** (`por_classificacao` = Material/Serviço). |
 | `grafico-mensal` | `.despesas` | Barras por mês; **rola na horizontal** com muitos meses. |
 
 > Os 3 gráficos ficam em `ui-card` de **tamanho igual** (grade 1×3, altura fixa);
@@ -127,12 +127,12 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 | `contato-form` | `.contato`; eventos `salvo`, `fechar` | Modal criar/editar. **Cargo** via `ui-select` (fixos+extras); campos condicionais: **Fornecedor** (só/obrigatório p/ Vendedor) e **Vínculo** Mestre/Engenheiro (só/obrigatório p/ Pedreiro), com `ui-alert`. |
 | `cargo-form` | `.cargo`; eventos `salvo`, `fechar` | Modal criar/editar **cargo extra** (nome). Os 6 obrigatórios são fixos. |
 | `cotacoes-view` | — | Rota `#/cotacoes`. Lista (tabela `clicavel`): descrição, qtd, classificação, obra, nº de ofertas, **melhor preço**, situação. |
-| `cotacao-form` | `.cotacao`; eventos `salvo`, `fechar` | Modal criar/editar (descrição*, quantidade, unidade, classificação, **obra opcional**, status). |
+| `cotacao-form` | `.cotacao`; eventos `salvo`, `fechar` | Modal criar/editar: `ui-select` de **item*** (rótulo "nome · classificação") + badge da **classificação** (só leitura), quantidade, unidade, **Subclassificação**, **obra opcional**, status. |
 | `cotacao-detail-view` | attr `id` (rota `#/cotacoes/:id`) | **KPIs + 2 gráficos + comparativo**: faixa `<oferta-kpis>`, `<grafico-evolucao-precos>` e `<category-breakdown>` (reusado p/ comparar ofertas por contato), e a tabela de ofertas (contato, empresa, valor unit., **total** com destaque do menor preço, prazo, obs, **Criado em**); escolher/editar/excluir oferta; **Registrar como despesa**. |
 | `oferta-kpis` | `.resumo={num,menor,media,maior,economia}` | KPIs das ofertas em cartões com gradiente (reusa o estilo do `dashboard-summary`). |
 | `grafico-evolucao-precos` | `.historico`, `.cotacao`, `.contatos`, `.cores` | **Gráfico de linhas (SVG), uma linha por contato** — evolução do preço no tempo a partir do histórico; legenda por contato. |
 | `preco-form` | `.cotacaoId`, `.preco`; eventos `salvo`, `fechar` | Modal de oferta (**contato**, valor unitário*, prazo, observação). |
-| `cotacao-despesa-form` | `.cotacao`, `.preco`, `.contatoNome`; eventos `registrado`, `fechar` | Banner flutuante: escolhe a **obra** + classificação e lança a oferta como despesa via `dataStore.registrarDespesaOferta` — que **marca a oferta** ("Registrada", `despesa_id`) e **fecha a cotação**. |
+| `cotacao-despesa-form` | `.cotacao`, `.preco`, `.contatoNome`; eventos `registrado`, `fechar` | Banner flutuante: escolhe a **obra** + **Subclassificação** e lança a oferta como despesa via `dataStore.registrarDespesaOferta` — que **marca a oferta** ("Registrada", `despesa_id`) e **fecha a cotação**. A despesa herda `item_id`/classificação da cotação. |
 | `cotacao-util.js` | `totalOferta`, `melhorTotal`, `resumoOfertas`, `coresPorContato`, `PALETA_CONTATOS` | Funções puras (total = valor_unit × quantidade; menor total; resumo p/ KPIs; cor estável por contato). |
 
 > As tabelas de fornecedores, contatos, cotações e ofertas mostram a coluna
