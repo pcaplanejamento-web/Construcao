@@ -123,13 +123,13 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 | `fornecedores-view` | — | Rota `#/fornecedores`. CRUD de fornecedores (nome, telefone, e-mail, classificação). Linha **clicável** → abre a página do fornecedor. Reusa `ui-data-table` + `category-badge`. |
 | `fornecedor-detail-view` | attr `id` (rota `#/fornecedores/:id`) | Página do fornecedor: cabeçalho + `ui-tabs` com **Contatos** (os contatos deste fornecedor; CRUD via `contato-form`) e **Ofertas** (ofertas feitas pelos contatos dele em todas as cotações, com link para a cotação). |
 | `fornecedor-form` | `.fornecedor`; eventos `salvo`, `fechar` | Modal criar/editar (nome*, telefone, e-mail, cnpj, classificação, observação). |
-| `contatos-view` | — | Rota `#/contatos`. `ui-tabs`: **Contatos** (tabela clicável → página do contato) e **Cargos** (fixos + extras, CRUD via `cargo-form`). |
-| `contato-detail-view` | attr `id` (rota `#/contatos/:id`) | Página do contato: `ui-tabs` conforme o cargo — **Obras** (onde participa), **Fornecedores** (se Vendedor), **Equipe** (Pedreiro→superior+colegas / Mestre·Engenheiro→subordinados). |
-| `contato-form` | `.contato`; eventos `salvo`, `fechar` | Modal criar/editar. **Cargo** via `ui-select` (fixos+extras); campos condicionais: **Fornecedor** (só/obrigatório p/ Vendedor) e **Vínculo** Mestre/Engenheiro (só/obrigatório p/ Pedreiro), com `ui-alert`. |
+| `contatos-view` | — | Rota `#/contatos`. `ui-tabs`: **Contatos** (tabela clicável), **Equipes** (grade de `equipe-card` + "+ Nova equipe") e **Cargos** (fixos + extras, CRUD via `cargo-form`). |
+| `contato-detail-view` | attr `id` (rota `#/contatos/:id`) | Página do contato: `ui-tabs` — **Obras**, **Fornecedores** (se Vendedor), **Equipes** (grade das equipes onde é líder/membro), **Ofertas**, **Orçamentos**. |
+| `contato-form` | `.contato`; eventos `salvo`, `fechar` | Modal criar/editar. **Cargo** via `ui-select`; campo condicional **Fornecedor** (só/obrigatório p/ Vendedor). (O campo "superior" do Pedreiro foi **removido** — agora é via Equipes.) |
 | `cargo-form` | `.cargo`; eventos `salvo`, `fechar` | Modal criar/editar **cargo extra** (nome). Os 6 obrigatórios são fixos. |
 | `cotacoes-view` | — | Rota `#/cotacoes`. `ui-tabs` **[Cotações \| Orçamento]**: aba Cotações = tabela `clicavel` (item, classificação, qtd, subclassificação, obra, nº ofertas, **melhor preço**, situação); aba Orçamento = **grade de `orcamento-card`** (estilo Obras) + "+ Novo orçamento". |
 | `cotacao-form` | `.cotacao`; eventos `salvo`, `fechar` | Modal criar/editar: `ui-select` de **item*** (rótulo "nome · classificação") + badge da **classificação** (só leitura), quantidade, unidade, **Subclassificação**, **obra opcional**, status. |
-| `cotacao-detail-view` | attr `id` (rota `#/cotacoes/:id`) | **KPIs + 2 gráficos + comparativo**: faixa `<oferta-kpis>`, `<grafico-evolucao-precos>` e `<category-breakdown>` (reusado p/ comparar ofertas por contato), e a tabela de ofertas (contato, empresa, valor unit., **total** com destaque do menor preço, prazo, obs, **Criado em**); escolher/editar/excluir oferta; **Registrar como despesa**. |
+| `cotacao-detail-view` | attr `id` (rota `#/cotacoes/:id`) | Faixa `<oferta-kpis>` + `ui-tabs` **[Gráficos \| Ofertas]**: **Gráficos** (`<grafico-evolucao-precos>` + `<category-breakdown>` no layout `.graficos`, como obras); **Ofertas** (tabela: contato, empresa, valor unit., **total** c/ menor preço, prazo, obs, **Orçamento**, log, status; escolher/editar/excluir; **Registrar como despesa**). |
 | `oferta-kpis` | `.resumo={num,menor,media,maior,economia}` | KPIs das ofertas em cartões com gradiente (reusa o estilo do `dashboard-summary`). |
 | `grafico-evolucao-precos` | `.historico`, `.cotacao`, `.contatos`, `.cores` | **Gráfico de linhas (SVG), uma linha por contato** — evolução do preço no tempo a partir do histórico; legenda por contato. |
 | `preco-form` | `.cotacaoId`, `.preco`, `.orcamento`; eventos `salvo`, `fechar` | Modal de oferta (valor unitário*, prazo, observação). Modo **cotação**: escolhe o contato. Modo **orçamento** (`.orcamento`): contato **travado** (ofertante do orçamento) + seletor de **cotação** filtrado pela classificação do orçamento. |
@@ -150,6 +150,18 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 > das cotações); as abas **Orçamentos** (fornecedor/contato/obra) usam
 > `montarGradeOrcamentos()` (grade de cards). O contato detail tem abas **Ofertas** e
 > **Orçamentos** separadas.
+
+**Equipes — `features/equipes/`** (grupo: líder + membros + obras; espelha Orçamentos)
+| Componente | Props/Eventos | Descrição |
+|------------|---------------|-----------|
+| `equipe-card` | `.equipe`; eventos `abrir`/`editar`/`remover` | Card quadrado: nome, líder, nº membros, nº obras, log. |
+| `equipe-form` | `.equipe`; eventos `salvo`, `fechar` | Modal: **nome** + **líder** (`ui-select` filtrado a Mestre de Obra/Engenheiro/Gestor). |
+| `equipe-detail-view` | attr `id` (rota `#/equipes/:id`) | Cabeçalho + seções **Obras vinculadas** e **Membros**, cada uma com `ui-select`+botão para adicionar e ação remover na tabela. Salva via `dataStore.atualizarEquipe`. |
+| `equipe-util.js` | `CARGOS_LIDER`, `liderNome` | Cargos elegíveis a líder; nome do líder ao vivo. |
+| `equipe-grade.js` | `montarGradeEquipes(el, lista)` | Grade de `equipe-card` (mesmo layout de Orçamento) — reusada nas abas Equipes de contatos/contato-detail/obra. |
+
+> A antiga lógica "Pedreiro → superior" foi **removida**; o Pedreiro agora pertence a
+> uma ou mais **Equipes**. `contato-detail` mostra as equipes do contato (líder/membro).
 
 > As tabelas de fornecedores, contatos, cotações e ofertas mostram a coluna
 > **"Criado em"** (campo `criado_em`); o detalhe da cotação mostra "Criada em …".

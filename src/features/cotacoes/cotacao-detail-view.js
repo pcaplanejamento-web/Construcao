@@ -19,6 +19,7 @@ import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-icon.js";
 import "../../components/ui-data-table.js";
+import "../../components/ui-tabs.js";
 import "../despesas/category-badge.js";
 import "../dashboard/category-breakdown.js";
 import "./oferta-kpis.js";
@@ -93,17 +94,25 @@ class CotacaoDetailView extends BaseElement {
       <oferta-kpis id="kpis"></oferta-kpis>
       <a class="voltar" href="#/cotacoes">← Cotações</a>
       <div class="topo" id="topo"></div>
-      <div class="graficos">
-        <ui-card><grafico-evolucao-precos id="evolucao"></grafico-evolucao-precos></ui-card>
-        <ui-card><category-breakdown id="comparacao"></category-breakdown></ui-card>
-      </div>
-      <ui-card title="Ofertas">
-        <ui-button slot="acoes" id="addOferta">+ Adicionar oferta</ui-button>
-        <ui-data-table id="tabela" fluido
-          empty-text="Nenhuma oferta ainda. Adicione ofertas de contatos para comparar."></ui-data-table>
-      </ui-card>
-      <div id="escolhida"></div>
+      <ui-tabs id="abas">
+        <div slot="graficos" class="graficos">
+          <ui-card><grafico-evolucao-precos id="evolucao"></grafico-evolucao-precos></ui-card>
+          <ui-card><category-breakdown id="comparacao"></category-breakdown></ui-card>
+        </div>
+        <div slot="ofertas">
+          <ui-card title="Ofertas">
+            <ui-button slot="acoes" id="addOferta">+ Adicionar oferta</ui-button>
+            <ui-data-table id="tabela" fluido
+              empty-text="Nenhuma oferta ainda. Adicione ofertas de contatos para comparar."></ui-data-table>
+          </ui-card>
+          <div id="escolhida"></div>
+        </div>
+      </ui-tabs>
     `;
+    alvo.querySelector("#abas").abas = [
+      { id: "graficos", rotulo: "Gráficos", icone: "grafico" },
+      { id: "ofertas", rotulo: "Ofertas", icone: "cifrao" },
+    ];
     alvo.querySelector("#addOferta").addEventListener("click", () => this.abrirPrecoForm(null));
     this._kpis = alvo.querySelector("#kpis");
     this._evolucao = alvo.querySelector("#evolucao");

@@ -1,9 +1,9 @@
 /**
  * <contato-form> — Modal para criar/editar um contato (pessoa).
  *
- * O Cargo é escolhido numa lista (cargos fixos + extras). Campos condicionais:
- *  - Vendedor → vínculo OBRIGATÓRIO a um Fornecedor (só aparece p/ Vendedor);
- *  - Pedreiro → vínculo OBRIGATÓRIO a um Mestre de Obra/Engenheiro (só p/ Pedreiro).
+ * O Cargo é escolhido numa lista (cargos fixos + extras). Campo condicional:
+ *  - Vendedor → vínculo OBRIGATÓRIO a um Fornecedor (só aparece p/ Vendedor).
+ * (Pedreiro agora é organizado por Equipes — sem campo de superior aqui.)
  * Auto-contido: chama o data-store e emite "salvo"/"fechar".
  *
  * Propriedade: .contato (objeto p/ edição; ausente = novo)
@@ -65,9 +65,6 @@ class ContatoForm extends BaseElement {
           <div id="campoFornecedor" hidden>
             <ui-select id="fornecedor" label="Empresa (fornecedor)"></ui-select>
           </div>
-          <div id="campoSuperior" hidden>
-            <ui-select id="superior" label="Vínculo (Mestre de Obra / Engenheiro)"></ui-select>
-          </div>
           <div>
             <label class="tx">Observação</label>
             <textarea id="observacao" placeholder="Detalhes (opcional)">${c.observacao || ""}</textarea>
@@ -96,19 +93,6 @@ class ContatoForm extends BaseElement {
     );
     selForn.value = c.fornecedor_id || "";
 
-    const selSup = this.$("#superior");
-    selSup.options = [{ value: "", label: "— Selecione —" }].concat(
-      dataStore
-        .contatosAtivos()
-        .filter(
-          (x) =>
-            String(x.id) !== String(c.id) &&
-            (x.cargo === "Mestre de Obra" || x.cargo === "Engenheiro")
-        )
-        .map((x) => ({ value: x.id, label: `${x.nome} (${x.cargo})` }))
-    );
-    selSup.value = c.superior_id || "";
-
     this.atualizarCondicionais();
     selCargo.addEventListener("change", () => this.atualizarCondicionais());
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
@@ -116,11 +100,10 @@ class ContatoForm extends BaseElement {
     this.$("#salvar").addEventListener("click", () => this.salvar());
   }
 
-  /** Mostra Fornecedor só p/ Vendedor e Superior só p/ Pedreiro. */
+  /** Mostra Fornecedor só p/ Vendedor. */
   atualizarCondicionais() {
     const cargo = this.$("#cargo").value;
     this.$("#campoFornecedor").hidden = cargo !== "Vendedor";
-    this.$("#campoSuperior").hidden = cargo !== "Pedreiro";
   }
 
   async salvar() {
@@ -136,16 +119,10 @@ class ContatoForm extends BaseElement {
 
     const cargo = this.$("#cargo").value;
     const ehVendedor = cargo === "Vendedor";
-    const ehPedreiro = cargo === "Pedreiro";
     const fornecedor_id = ehVendedor ? this.$("#fornecedor").value : "";
-    const superior_id = ehPedreiro ? this.$("#superior").value : "";
 
     if (ehVendedor && !fornecedor_id) {
       alerta.mensagem = "Vendedor deve ser vinculado a um fornecedor.";
-      return;
-    }
-    if (ehPedreiro && !superior_id) {
-      alerta.mensagem = "Pedreiro deve ser vinculado a um Mestre de Obra ou Engenheiro.";
       return;
     }
 
@@ -155,7 +132,6 @@ class ContatoForm extends BaseElement {
       email: this.$("#email").value.trim(),
       cargo,
       fornecedor_id,
-      superior_id,
       observacao: this.$("#observacao").value.trim(),
     };
     const btn = this.$("#salvar");

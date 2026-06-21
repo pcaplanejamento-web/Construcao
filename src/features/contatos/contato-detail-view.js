@@ -4,15 +4,15 @@
  * Cabeçalho + ui-tabs (conforme o cargo):
  *  - Obras (sempre): obras onde o contato participa.
  *  - Fornecedores (se vinculado a um fornecedor — Vendedor): dados do fornecedor.
- *  - Equipe (Pedreiro/Mestre de Obra/Engenheiro): Pedreiro → superior + colegas;
- *    Mestre/Engenheiro → subordinados.
+ *  - Equipes (sempre): equipes onde o contato é líder ou membro (nova lógica).
+ *  - Ofertas / Orçamentos.
  * Lê do data-store (cache-first). Espelha fornecedor-detail-view.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { data as fmtData } from "../../core/formatters.js";
 import { colunasOferta } from "../orcamentos/orcamento-util.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
+import { montarGradeEquipes } from "../equipes/equipe-grade.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -21,8 +21,6 @@ import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
 import "../despesas/category-badge.js";
 import "./contato-form.js";
-
-const CARGOS_EQUIPE = ["Pedreiro", "Mestre de Obra", "Engenheiro"];
 
 class ContatoDetailView extends BaseElement {
   constructor() {
@@ -84,10 +82,9 @@ class ContatoDetailView extends BaseElement {
               empty-text="Sem fornecedor vinculado."></ui-data-table>
           </ui-card>
         </div>
-        <div slot="equipe">
-          <ui-card title="Equipe">
-            <ui-data-table id="tabEquipe" fluido clicavel
-              empty-text="Nenhum integrante vinculado."></ui-data-table>
+        <div slot="equipes">
+          <ui-card title="Equipes do contato">
+            <div id="gradeEquipes"></div>
           </ui-card>
         </div>
         <div slot="ofertas">
@@ -106,7 +103,7 @@ class ContatoDetailView extends BaseElement {
 
     const abas = [{ id: "obras", rotulo: "Obras", icone: "obra" }];
     if (c.fornecedor_id) abas.push({ id: "fornecedores", rotulo: "Fornecedores", icone: "fornecedor" });
-    if (CARGOS_EQUIPE.indexOf(c.cargo) >= 0) abas.push({ id: "equipe", rotulo: "Equipe", icone: "usuario" });
+    abas.push({ id: "equipes", rotulo: "Equipes", icone: "usuario" });
     abas.push({ id: "ofertas", rotulo: "Ofertas", icone: "cifrao" });
     abas.push({ id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" });
     alvo.querySelector("#abas").abas = abas;
@@ -128,20 +125,7 @@ class ContatoDetailView extends BaseElement {
       location.hash = "#/fornecedores/" + e.detail.linha.id;
     });
 
-    this._tabEquipe = alvo.querySelector("#tabEquipe");
-    this._tabEquipe.columns = [
-      { chave: "nome", titulo: "Integrante" },
-      { chave: "cargo", titulo: "Cargo", formato: (v) => v || "—" },
-      {
-        chave: "_papel",
-        titulo: "Vínculo",
-        formato: (v) => `<category-badge nome="${v}" cor="var(--cor-info)"></category-badge>`,
-      },
-      { chave: "telefone", titulo: "Telefone", formato: (v) => v || "—" },
-    ];
-    this._tabEquipe.addEventListener("linha", (e) => {
-      location.hash = "#/contatos/" + e.detail.linha.id;
-    });
+    this._gradeEquipes = alvo.querySelector("#gradeEquipes");
 
     // Ofertas: MESMA tabela das ofertas das cotações (links navegam).
     this._tabOfertas = alvo.querySelector("#tabOfertas");
@@ -171,23 +155,8 @@ class ContatoDetailView extends BaseElement {
     const forn = dataStore.fornecedores().find((f) => String(f.id) === String(c.fornecedor_id));
     this._tabForn.rows = forn ? [forn] : [];
 
-    // Equipe.
-    const todos = dataStore.contatosAtivos();
-    let equipe = [];
-    if (c.cargo === "Pedreiro") {
-      const sup = todos.find((x) => String(x.id) === String(c.superior_id));
-      if (sup) equipe.push({ ...sup, _papel: "Superior" });
-      if (c.superior_id) {
-        todos
-          .filter((x) => String(x.id) !== String(c.id) && String(x.superior_id) === String(c.superior_id))
-          .forEach((x) => equipe.push({ ...x, _papel: "Colega" }));
-      }
-    } else if (c.cargo === "Mestre de Obra" || c.cargo === "Engenheiro") {
-      todos
-        .filter((x) => String(x.superior_id) === String(c.id))
-        .forEach((x) => equipe.push({ ...x, _papel: "Subordinado" }));
-    }
-    this._tabEquipe.rows = equipe;
+    // Equipes onde este contato é líder ou membro (nova lógica; grade de cards).
+    montarGradeEquipes(this._gradeEquipes, dataStore.equipesDoContato(c.id));
 
     // Ofertas deste contato (ofertas cruas), em todas as cotações.
     const ofertas = [];

@@ -183,6 +183,25 @@ contatos; a melhor oferta pode virar uma despesa numa obra (reusa `despesas.cria
 | ativo | boolean | exclusão lógica |
 | criado_em / atualizado_em | ISO datetime | |
 
+### Aba `Equipes` (grupos: líder + membros + obras)
+Um grupo de trabalho: **líder** (contato Mestre de Obra/Engenheiro/Gestor —
+`CARGOS_LIDER`) + **membros** (contatos, tipicamente Pedreiros) + **obras** (N:N).
+Substitui a antiga regra "Pedreiro → superior" (o `superior_id` de Contatos ficou sem uso).
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| usuario_id | UUID | FK → Usuarios.id (dono) |
+| nome | string | nome da equipe |
+| lider_id | UUID | FK → Contatos.id (cargo ∈ Mestre de Obra/Engenheiro/Gestor) |
+| membros | JSON | `[contato_id, ...]` |
+| obras | JSON | `[obra_id, ...]` (N:N) |
+| ativo | boolean | exclusão lógica |
+| criado_em / atualizado_em / autor_nome / editor_nome | — | auditoria |
+
+> `membros`/`obras` são JSON string no Sheets, devolvidos como **arrays** ao cliente
+> (`_lerEquipe`). Geridos na página da equipe (`#/equipes/:id`).
+
 ### Aba `Cargos` (cargos extras de contato)
 Os 6 obrigatórios (Vendedor, Mestre de Obra, Pedreiro, Engenheiro, Despachante,
 Gestor) são **fixos** (constante `CARGOS_OBRIGATORIOS`, não persistidos). Esta aba

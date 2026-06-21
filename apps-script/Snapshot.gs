@@ -122,6 +122,7 @@ function dadosSnapshot(data, sessao) {
     precosPorCotacao: precosPorCotacao,
     historicoPorCotacao: historicoPorCotacao,
     orcamentos: listarOrcamentosUsuario(u.id),
+    equipes: listarEquipesUsuario(u.id),
     servidor_em: agoraIso(),
   };
 

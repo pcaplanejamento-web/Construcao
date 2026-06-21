@@ -183,6 +183,17 @@ para dono **e** colaboradores.
 > Snapshot inclui `orcamentos`. As ofertas do orçamento vêm em `precosPorCotacao`
 > (têm `cotacao_id`); o cliente as agrupa por `orcamento_id`.
 
+### Equipes (grupos: líder + membros + obras)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `equipes.listar` | `{}` | `{ equipes: [...] }` (membros/obras como arrays) |
+| `equipes.criar` | `{ nome, lider_id, membros?, obras? }` | `{ equipe }` — líder ∈ Mestre de Obra/Engenheiro/Gestor |
+| `equipes.atualizar` | `{ id, nome?, lider_id?, membros?, obras? }` | `{ equipe }` (membros/obras = arrays de ids) |
+| `equipes.remover` | `{ id }` | `{ id }` (desativa) |
+
+> A antiga validação "Pedreiro → superior" foi **removida** de `contatos.*`;
+> o Pedreiro agora é organizado por Equipes. Snapshot inclui `equipes`.
+
 > **Registrar como despesa** (`cotacoes.registrarDespesa`): cria a despesa na obra
 > (item = descrição da cotação, valor = `valor_unit × quantidade`), **marca a
 > oferta** (`despesa_id` + `escolhido` exclusivo) e **fecha a cotação**

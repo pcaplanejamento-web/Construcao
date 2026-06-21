@@ -223,6 +223,23 @@ const SCHEMA = {
     ],
   },
 
+  EQUIPES: {
+    aba: "Equipes", // grupo: líder (contato) + membros (contatos) + obras (N:N)
+    colunas: [
+      "id",
+      "usuario_id",
+      "nome",
+      "lider_id", // FK → Contatos.id (Mestre de Obra/Engenheiro/Gestor)
+      "membros", // JSON [contato_id, ...]
+      "obras", // JSON [obra_id, ...]
+      "ativo",
+      "criado_em",
+      "atualizado_em",
+      "autor_nome",
+      "editor_nome",
+    ],
+  },
+
   ORCAMENTOS: {
     aba: "Orcamentos", // container de ofertas (de várias cotações) de um ofertante
     colunas: [
@@ -290,6 +307,9 @@ const CARGOS_OBRIGATORIOS = [
   "Despachante",
   "Gestor",
 ];
+
+/** Cargos que podem ser LÍDER de uma equipe. */
+const CARGOS_LIDER = ["Mestre de Obra", "Engenheiro", "Gestor"];
 
 /** Marcador de categoria global (compartilhada por todos). */
 const CATEGORIA_GLOBAL = "GLOBAL";

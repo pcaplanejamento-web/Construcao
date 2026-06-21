@@ -40,8 +40,9 @@ function contatosListar(data, sessao) {
 
 /**
  * Valida os vínculos do contato conforme o cargo (lança se inválido):
- *  - Vendedor exige fornecedor_id (de um fornecedor do usuário);
- *  - Pedreiro exige superior_id de um contato Mestre de Obra/Engenheiro do usuário.
+ *  - Vendedor exige fornecedor_id (de um fornecedor do usuário).
+ * (A antiga regra "Pedreiro → superior" foi removida; agora o Pedreiro é
+ * organizado por Equipes — ver Equipes.gs. `superior_id` segue no schema, sem uso.)
  */
 function _validarVinculosContato(cargo, fornecedorId, superiorId, usuarioId) {
   if (cargo === "Vendedor") {
@@ -49,13 +50,6 @@ function _validarVinculosContato(cargo, fornecedorId, superiorId, usuarioId) {
     _fornecedorDoUsuario(fornecedorId, usuarioId);
   } else if (fornecedorId) {
     _fornecedorDoUsuario(fornecedorId, usuarioId); // permitido, mas valida posse
-  }
-  if (cargo === "Pedreiro") {
-    if (!superiorId) lancar(ERRO.VALIDACAO, "Pedreiro deve ser vinculado a um Mestre de Obra ou Engenheiro.");
-    const sup = _contatoDoUsuario(superiorId, usuarioId);
-    if (sup.cargo !== "Mestre de Obra" && sup.cargo !== "Engenheiro") {
-      lancar(ERRO.VALIDACAO, "O vínculo do Pedreiro deve ser um Mestre de Obra ou Engenheiro.");
-    }
   }
 }
 

@@ -93,6 +93,12 @@ const ROTAS = {
   "orcamentos.atualizar": { fn: orcamentosAtualizar },
   "orcamentos.remover": { fn: orcamentosRemover },
 
+  // Equipes (grupos: líder + membros + obras)
+  "equipes.listar": { fn: equipesListar },
+  "equipes.criar": { fn: equipesCriar },
+  "equipes.atualizar": { fn: equipesAtualizar },
+  "equipes.remover": { fn: equipesRemover },
+
   // Usuários (autenticado)
   "usuarios.listar": { fn: usuariosListar },
 

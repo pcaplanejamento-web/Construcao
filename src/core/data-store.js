@@ -34,6 +34,7 @@ const ESTADO_VAZIO = {
   precosPorCotacao: {}, // cotacaoId -> [oferta]
   historicoPorCotacao: {}, // cotacaoId -> [ponto de histórico de preço]
   orcamentos: [], // módulo Compras (containers de ofertas)
+  equipes: [], // grupos (líder + membros + obras)
   usuarios: [], // admin
 };
 
@@ -68,6 +69,7 @@ function persistir() {
       precosPorCotacao: s.precosPorCotacao,
       historicoPorCotacao: s.historicoPorCotacao,
       orcamentos: s.orcamentos,
+      equipes: s.equipes,
       usuarios: s.usuarios,
     };
     localStorage.setItem(chave, JSON.stringify({ versao: CACHE_VERSAO, dados }));
@@ -123,6 +125,7 @@ function _aplicarSnapshot(d) {
     precosPorCotacao: d.precosPorCotacao || {},
     historicoPorCotacao: d.historicoPorCotacao || {},
     orcamentos: d.orcamentos || [],
+    equipes: d.equipes || [],
     usuarios: d.usuarios || [],
   });
   persistir();
@@ -173,6 +176,18 @@ const precosDaCotacao = (cotacaoId) => store.get().precosPorCotacao[cotacaoId] |
 const historicoDaCotacao = (cotacaoId) => store.get().historicoPorCotacao[cotacaoId] || [];
 const orcamentos = () => store.get().orcamentos;
 const orcamento = (id) => store.get().orcamentos.find((o) => String(o.id) === String(id)) || null;
+const equipes = () => store.get().equipes;
+const equipe = (id) => store.get().equipes.find((e) => String(e.id) === String(id)) || null;
+/** Equipes onde o contato é líder OU membro. */
+const equipesDoContato = (contatoId) =>
+  store.get().equipes.filter(
+    (e) =>
+      String(e.lider_id) === String(contatoId) ||
+      (e.membros || []).some((m) => String(m) === String(contatoId))
+  );
+/** Equipes vinculadas a uma obra. */
+const equipesDaObra = (obraId) =>
+  store.get().equipes.filter((e) => (e.obras || []).some((o) => String(o) === String(obraId)));
 /** Ofertas de um orçamento: achata precosPorCotacao e filtra orcamento_id. */
 const ofertasDoOrcamento = (orcId) => {
   const mapa = store.get().precosPorCotacao;
@@ -671,6 +686,36 @@ async function removerOrcamento(id) {
   bus.emit(EVENTOS.ORCAMENTOS, { tipo: "removido" });
 }
 
+/* ----------------------- Mutações: equipes --------------------------- */
+
+async function criarEquipe(dados) {
+  const r = await api.call("equipes.criar", dados);
+  const s = store.get();
+  store.set({ equipes: [r.equipe, ...s.equipes] });
+  persistir();
+  bus.emit(EVENTOS.EQUIPES, { tipo: "criada" });
+  return r.equipe;
+}
+
+async function atualizarEquipe(id, dados) {
+  const r = await api.call("equipes.atualizar", { id, ...dados });
+  const s = store.get();
+  store.set({
+    equipes: s.equipes.map((e) => (String(e.id) === String(id) ? r.equipe : e)),
+  });
+  persistir();
+  bus.emit(EVENTOS.EQUIPES, { tipo: "atualizada" });
+  return r.equipe;
+}
+
+async function removerEquipe(id) {
+  await api.call("equipes.remover", { id });
+  const s = store.get();
+  store.set({ equipes: s.equipes.filter((e) => String(e.id) !== String(id)) });
+  persistir();
+  bus.emit(EVENTOS.EQUIPES, { tipo: "removida" });
+}
+
 /** Acrescenta um ponto ao histórico de uma cotação (write-through local). */
 function _appendHistorico(cotacaoId, ponto) {
   if (!ponto) return;
@@ -804,6 +849,7 @@ export const dataStore = {
   cotacoes, cotacao, precosDaCotacao,
   historicoDaCotacao,
   orcamentos, orcamento, ofertasDoOrcamento,
+  equipes, equipe, equipesDoContato, equipesDaObra,
   // mutações
   criarObra, atualizarObra, removerObra,
   adicionarParticipante, removerParticipante, definirResponsavel,
@@ -817,5 +863,6 @@ export const dataStore = {
   criarCotacao, atualizarCotacao, removerCotacao,
   adicionarPreco, atualizarPreco, removerPreco, escolherPreco, registrarDespesaOferta,
   criarOrcamento, atualizarOrcamento, removerOrcamento,
+  criarEquipe, atualizarEquipe, removerEquipe,
   adminCriarUsuario, adminAtualizarUsuario,
 };

@@ -18,6 +18,7 @@ export const EVENTOS = {
   ITENS: "itens:changed", // CRUD de itens (catálogo Material/Serviço)
   COTACOES: "cotacoes:changed", // CRUD de cotações e ofertas
   ORCAMENTOS: "orcamentos:changed", // CRUD de orçamentos
+  EQUIPES: "equipes:changed", // CRUD de equipes (grupos)
   TEMA: "tema:changed", // troca de tema claro/escuro
   TOAST: "toast", // notificação para o usuário
 };

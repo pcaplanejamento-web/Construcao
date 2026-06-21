@@ -10,6 +10,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
+import { montarGradeEquipes } from "../equipes/equipe-grade.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -107,6 +108,11 @@ class ObraDetailView extends BaseElement {
             <div id="gradeOrc"></div>
           </ui-card>
         </div>
+        <div slot="equipes">
+          <ui-card title="Equipes da obra">
+            <div id="gradeEquipes"></div>
+          </ui-card>
+        </div>
       </ui-tabs>
     `;
     alvo.querySelector("#abas").abas = [
@@ -115,8 +121,10 @@ class ObraDetailView extends BaseElement {
       { id: "participantes", rotulo: "Participantes da obra", icone: "usuario" },
       { id: "responsaveis", rotulo: "Responsáveis", icone: "seguranca" },
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
+      { id: "equipes", rotulo: "Equipes", icone: "usuario" },
     ];
     this._gradeOrc = alvo.querySelector("#gradeOrc");
+    this._gradeEquipes = alvo.querySelector("#gradeEquipes");
     this._dash = alvo.querySelector("#dash");
     this._break = alvo.querySelector("#break");
     this._rosca = alvo.querySelector("#rosca");
@@ -161,6 +169,7 @@ class ObraDetailView extends BaseElement {
       this._gradeOrc,
       dataStore.orcamentos().filter((o) => String(o.obra_id) === String(this.obraId))
     );
+    montarGradeEquipes(this._gradeEquipes, dataStore.equipesDaObra(this.obraId));
     this.aplicarFiltro();
 
     const sig = categorias.map((c) => c.id).join(",");

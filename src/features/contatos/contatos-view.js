@@ -18,6 +18,8 @@ import "../../components/ui-empty-state.js";
 import "../despesas/category-badge.js";
 import "./contato-form.js";
 import "./cargo-form.js";
+import { montarGradeEquipes } from "../equipes/equipe-grade.js";
+import "../equipes/equipe-form.js";
 
 class ContatosView extends BaseElement {
   estilos() {
@@ -50,6 +52,12 @@ class ContatosView extends BaseElement {
               <div id="lista"></div>
             </ui-card>
           </div>
+          <div slot="equipes">
+            <ui-card title="Minhas equipes">
+              <ui-button slot="acoes" id="novaEquipe">+ Nova equipe</ui-button>
+              <div id="listaEquipes"></div>
+            </ui-card>
+          </div>
           <div slot="cargos" class="pilha">
             <ui-card title="Meus cargos">
               <ui-button slot="acoes" id="novoCargo">+ Novo cargo</ui-button>
@@ -65,16 +73,34 @@ class ContatosView extends BaseElement {
   aoConectar() {
     this.$("#abas").abas = [
       { id: "contatos", rotulo: "Contatos", icone: "contato" },
+      { id: "equipes", rotulo: "Equipes", icone: "usuario" },
       { id: "cargos", rotulo: "Cargos", icone: "tag" },
     ];
     this.$("#novo").addEventListener("click", () => this.abrirForm(null));
+    this.$("#novaEquipe").addEventListener("click", () => this.abrirEquipeForm(null));
     this.$("#novoCargo").addEventListener("click", () => this.abrirCargoForm(null));
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
 
   pintar() {
     this.pintarContatos();
+    this.pintarEquipes();
     this.pintarCargos();
+  }
+
+  pintarEquipes() {
+    const el = this.$("#listaEquipes");
+    if (!el || !dataStore.carregado()) return;
+    montarGradeEquipes(el, dataStore.equipes());
+  }
+
+  abrirEquipeForm(equipe) {
+    const form = document.createElement("equipe-form");
+    form.equipe = equipe;
+    const fechar = () => form.remove();
+    form.addEventListener("fechar", fechar);
+    form.addEventListener("salvo", fechar);
+    document.body.appendChild(form);
   }
 
   pintarContatos() {
