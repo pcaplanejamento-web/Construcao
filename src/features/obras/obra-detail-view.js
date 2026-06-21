@@ -126,7 +126,7 @@ class ObraDetailView extends BaseElement {
     alvo.querySelector("#abas").abas = [
       { id: "graficos", rotulo: "Gráficos", icone: "grafico" },
       { id: "despesas", rotulo: "Despesas", icone: "recibo" },
-      { id: "participantes", rotulo: "Participantes da obra", icone: "usuario" },
+      { id: "participantes", rotulo: "Participantes", icone: "usuario" },
       { id: "responsaveis", rotulo: "Responsáveis", icone: "seguranca" },
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
       { id: "equipes", rotulo: "Equipes", icone: "usuario" },

@@ -2,7 +2,8 @@
  * <ui-data-table> — Tabela genérica orientada a dados (primitivo).
  *
  * Propriedades:
- *   .columns = [{ chave, titulo, formato?(valor,linha)=>string, alinhar? }]
+ *   .columns = [{ chave, titulo, formato?(valor,linha)=>string, alinhar?, largura? }]
+ *     largura: CSS length opcional → min-width da coluna (ex.: "200px"); só onde definida.
  *   .rows    = [ objeto, ... ]
  *   .acoes   = [{ nome, rotulo, variant? }]  // botões por linha (opcional)
  * Atributo: empty-text (texto quando não há linhas)
@@ -85,11 +86,14 @@ class UiDataTable extends BaseElement {
       return `<div class="vazio">${txt}</div>`;
     }
 
+    // Largura opcional por coluna (min-width) — só aplica onde definida.
+    const estiloCol = (c) => (c.largura ? ` style="min-width:${c.largura}"` : "");
+
     const cabecalho =
       cols
         .map(
           (c) =>
-            `<th class="${c.alinhar === "dir" ? "dir" : ""}">${c.titulo}</th>`
+            `<th class="${c.alinhar === "dir" ? "dir" : ""}"${estiloCol(c)}>${c.titulo}</th>`
         )
         .join("") + (temAcoes ? "<th></th>" : "");
 
@@ -99,7 +103,7 @@ class UiDataTable extends BaseElement {
           .map((c) => {
             const bruto = linha[c.chave];
             const valor = c.formato ? c.formato(bruto, linha) : bruto;
-            return `<td class="${c.alinhar === "dir" ? "dir" : ""}">${
+            return `<td class="${c.alinhar === "dir" ? "dir" : ""}"${estiloCol(c)}>${
               valor == null ? "" : valor
             }</td>`;
           })
