@@ -2,7 +2,7 @@
  * <app-header> — Cabeçalho persistente (sticky) no topo.
  *
  * Esquerda: logo + marca "Dattaobra" + botão menu (emite "toggle-sidebar"),
- *   agrupados num bloco da largura da sidebar aberta (230px) — o menu encosta
+ *   agrupados num bloco da largura da sidebar aberta (200px) — o menu encosta
  *   no limite direito da sidebar; o logo alinha com a coluna de ícones dela.
  * Direita: alternador de tema (sol/lua), chip do usuário → #/perfil, Sair.
  * Reage a EVENTOS.AUTH (usuário) e EVENTOS.TEMA (ícone do alternador).
@@ -30,11 +30,12 @@ class AppHeader extends BaseElement {
       }
       .barra { display: flex; align-items: center; gap: var(--esp-3);
         padding: var(--esp-3) var(--esp-5) var(--esp-3) 0; } /* esq.=0: o marca-bloco controla o gutter (alinha com a sidebar) */
-      /* Cluster logo+marca+menu na largura da sidebar aberta (230px, border-box):
+      /* Cluster logo+marca+menu na largura da sidebar aberta (200px, border-box;
+         DEVE casar com a largura do nav em app-sidebar.js):
          padding-left = --esp-5 alinha o logo com a coluna de ícones da sidebar;
-         o menu (margin-left:auto) encosta no limite direito da sidebar (x=230). */
+         o menu (margin-left:auto) encosta no limite direito da sidebar (x=200). */
       .marca-bloco { display: flex; align-items: center; gap: var(--esp-2);
-        width: 230px; flex: none; padding-left: var(--esp-5); }
+        width: 200px; flex: none; padding-left: var(--esp-5); }
       .menu-btn { display: inline-flex; align-items: center; justify-content: center;
         margin-left: auto; background: none; border: none; color: var(--cor-texto-suave);
         padding: 8px; border-radius: var(--raio-sm); }
