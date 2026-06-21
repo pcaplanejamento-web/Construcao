@@ -122,6 +122,7 @@ class ItensView extends BaseElement {
     }
     const tabela = document.createElement("ui-data-table");
     tabela.setAttribute("fluido", "");
+    tabela.setAttribute("clicavel", "");
     tabela.columns = [
       { chave: "nome", titulo: "Item" },
       {
@@ -137,6 +138,9 @@ class ItensView extends BaseElement {
       { nome: "excluir", rotulo: "Excluir", variant: "perigo" },
     ];
     tabela.rows = itens;
+    tabela.addEventListener("linha", (e) => {
+      location.hash = "#/itens/" + e.detail.linha.id;
+    });
     tabela.addEventListener("acao", (e) => {
       if (e.detail.acao === "editar") this.abrirItemForm(e.detail.linha);
       else this.removerItem(e.detail.linha);

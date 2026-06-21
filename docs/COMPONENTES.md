@@ -93,7 +93,8 @@ sobem por `CustomEvent`**.
 ### Itens — `features/itens/` (+ `features/categorias/categoria-form.js`)
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `itens-view` | — | Rota `#/itens`. `ui-tabs`: **Itens** (catálogo; badge Material/Serviço; CRUD via `item-form`) e **Subclassificações** (lista única **todas editáveis**, reusa `categoria-form`). Ambas as tabelas mostram **log** (Criado em/Atualizado em + autor/editor) via `colunasLog()`. |
+| `itens-view` | — | Rota `#/itens`. `ui-tabs`: **Itens** (catálogo; badge Material/Serviço; **linha clicável → `#/itens/:id`**; CRUD via `item-form`) e **Subclassificações** (lista única **todas editáveis**, reusa `categoria-form`). Ambas mostram **log** (Criado em/Atualizado em + autor/editor) via `colunasLog()`. |
+| `item-detail-view` | attr `id` (rota `#/itens/:id`) | Página do item (espelha `fornecedor-detail-view`): **faixa de KPIs** (Total gasto · Despesas · Cotações · Obras; cards `--grad-*`) + cabeçalho (nome + badge classificação + "Editar item") + `ui-tabs` **Despesas** (de todas as obras; clique → obra), **Cotações** (clique → cotação; melhor preço via `melhorTotal`), **Obras** (agrega nº+valor gasto por obra; clique → obra). 100% client-side (lê `item_id` do store). |
 | `item-form` | `.item`; eventos `salvo`, `fechar` | Modal criar/editar item (nome + `ui-select` Classificação Material/Serviço). Emite `EVENTOS.ITENS`. Espelha `categoria-form`. |
 | `categoria-form` | `.categoria`; eventos `salvo`, `fechar` | Modal criar/editar **subclassificação** (nome + cor). Emite `EVENTOS.CATEGORIAS`. |
 
