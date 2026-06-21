@@ -11,12 +11,13 @@ import { data as fmtData } from "./formatters.js";
 
 const _fraco = (txt) => `<span style="color:var(--cor-texto-fraco)">${txt}</span>`;
 
-/** Devolve [colunaCriadoEm, colunaAtualizadoEm] no padrão do sistema. */
+/** Devolve [colunaCriadoEm, colunaAtualizadoEm] no padrão do sistema (secundárias no mobile). */
 export function colunasLog() {
   return [
     {
       chave: "criado_em",
       titulo: "Criado em",
+      secundaria: true,
       formato: (v, linha) =>
         v
           ? `<div>${fmtData(v)}</div><small style="color:var(--cor-texto-fraco)">por ${linha.autor_nome || "—"}</small>`
@@ -25,6 +26,7 @@ export function colunasLog() {
     {
       chave: "atualizado_em",
       titulo: "Atualizado em",
+      secundaria: true,
       formato: (v, linha) => {
         const editou = linha.editor_nome && v && String(v) !== String(linha.criado_em);
         return editou

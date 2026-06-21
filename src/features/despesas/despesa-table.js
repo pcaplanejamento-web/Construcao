@@ -78,6 +78,7 @@ class DespesaTable extends BaseElement {
       {
         chave: "categoria_id",
         titulo: "Subclassificação",
+        secundaria: true,
         formato: (id) =>
           this.mapaCat[id]
             ? `<category-badge nome="${this.mapaCat[id].nome}" cor="${this.mapaCat[id].cor}"></category-badge>`
@@ -86,6 +87,7 @@ class DespesaTable extends BaseElement {
       {
         chave: "ofertante_contato_id",
         titulo: "Ofertante",
+        secundaria: true,
         // Ofertante ao vivo: equipe (se houver) ou contato; "—" p/ despesas legadas.
         formato: (_, linha) => {
           const id = linha.ofertante_contato_id || linha.ofertante_equipe_id;
@@ -97,12 +99,14 @@ class DespesaTable extends BaseElement {
       {
         chave: "fornecedor_id",
         titulo: "Empresa",
+        secundaria: true,
         formato: (id) =>
           _empresaNome(id) || `<span style="color:var(--cor-texto-fraco)">—</span>`,
       },
       {
         chave: "criado_em",
         titulo: "Adicionado",
+        secundaria: true,
         formato: (criadoEm, linha) =>
           criadoEm
             ? `<div>${fmtData(criadoEm)}</div><small style="color:var(--cor-texto-fraco)">por ${
@@ -113,6 +117,7 @@ class DespesaTable extends BaseElement {
       {
         chave: "editor_nome",
         titulo: "Editado por",
+        secundaria: true,
         formato: (editor, linha) => {
           const editou =
             editor && linha.atualizado_em && String(linha.atualizado_em) !== String(linha.criado_em);
@@ -138,6 +143,7 @@ class DespesaTable extends BaseElement {
         chave: "pagamentos",
         titulo: "Pagamento",
         alinhar: "dir",
+        secundaria: true,
         formato: (_, linha) => {
           const t = totalPago(linha);
           return t > 0 ? moeda(t) : `<span style="color:var(--cor-texto-fraco)">—</span>`;
@@ -146,6 +152,7 @@ class DespesaTable extends BaseElement {
       {
         chave: "pagamentos",
         titulo: "Distribuição",
+        secundaria: true,
         formato: (_, linha) => {
           const d = distribuicao(linha);
           if (d === "distribuido")
@@ -158,6 +165,7 @@ class DespesaTable extends BaseElement {
       {
         chave: "responsaveis",
         titulo: "Responsabilidade",
+        secundaria: true,
         formato: (_, linha) => {
           const rs = parseLista(linha.responsaveis);
           if (!rs.length) return `<span style="color:var(--cor-texto-fraco)">—</span>`;

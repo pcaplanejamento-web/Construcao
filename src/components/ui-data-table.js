@@ -2,8 +2,9 @@
  * <ui-data-table> — Tabela genérica orientada a dados (primitivo).
  *
  * Propriedades:
- *   .columns = [{ chave, titulo, formato?(valor,linha)=>string, alinhar?, largura? }]
+ *   .columns = [{ chave, titulo, formato?(valor,linha)=>string, alinhar?, largura?, secundaria? }]
  *     largura: CSS length opcional → min-width da coluna (ex.: "200px"); só onde definida.
+ *     secundaria: true → coluna some no mobile (≤820px); use p/ tabelas largas.
  *   .rows    = [ objeto, ... ]
  *   .acoes   = [{ nome, rotulo, variant? }]  // botões por linha (opcional)
  * Atributo: empty-text (texto quando não há linhas)
@@ -72,6 +73,8 @@ class UiDataTable extends BaseElement {
       .btn-acao:hover { background: var(--cor-superficie-2); }
       .btn-acao.perigo { color: var(--cor-erro); border-color: var(--cor-erro-suave); }
       .vazio { padding: var(--esp-6); text-align: center; color: var(--cor-texto-fraco); }
+      /* Colunas marcadas secundárias somem no mobile (essenciais permanecem). */
+      @media (max-width: 820px) { th.sec, td.sec { display: none; } }
     `;
   }
 
@@ -86,14 +89,15 @@ class UiDataTable extends BaseElement {
       return `<div class="vazio">${txt}</div>`;
     }
 
-    // Largura opcional por coluna (min-width) — só aplica onde definida.
+    // Largura opcional (min-width) + classe da coluna (alinhamento/secundária).
     const estiloCol = (c) => (c.largura ? ` style="min-width:${c.largura}"` : "");
+    const classeCol = (c) => [c.alinhar === "dir" ? "dir" : "", c.secundaria ? "sec" : ""].filter(Boolean).join(" ");
 
     const cabecalho =
       cols
         .map(
           (c) =>
-            `<th class="${c.alinhar === "dir" ? "dir" : ""}"${estiloCol(c)}>${c.titulo}</th>`
+            `<th class="${classeCol(c)}"${estiloCol(c)}>${c.titulo}</th>`
         )
         .join("") + (temAcoes ? "<th></th>" : "");
 
@@ -103,7 +107,7 @@ class UiDataTable extends BaseElement {
           .map((c) => {
             const bruto = linha[c.chave];
             const valor = c.formato ? c.formato(bruto, linha) : bruto;
-            return `<td class="${c.alinhar === "dir" ? "dir" : ""}"${estiloCol(c)}>${
+            return `<td class="${classeCol(c)}"${estiloCol(c)}>${
               valor == null ? "" : valor
             }</td>`;
           })
