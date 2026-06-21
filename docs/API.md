@@ -90,8 +90,10 @@ para dono **e** colaboradores.
 | `despesas.listar` | `{ obra_id }` | `{ despesas: [...] }` (cada despesa inclui `criado_em`/`autor_nome` e `atualizado_em`/`editor_nome` — auditoria) |
 | `despesas.resumo` | `{ obra_id }` | `{ total, qtd, orcamento, saldo, por_subclassificacao:[{categoria_id,nome,cor,total}], por_classificacao:[{nome,cor,total}], por_categoria (alias de por_subclassificacao) }` |
 | `despesas.criar` | `{ obra_id, item_id, valor, categoria_id?, data, observacao?, pago?, pagamentos?, responsaveis? }` | `{ despesa, resumo }` — **`item_id` obrigatório**. ⚠️ O front **não** usa mais esta action: despesas são criadas só por `cotacoes.registrarDespesa` (oferta). Mantida no servidor por segurança/legado. |
-| `despesas.atualizar` | `{ id, ...campos }` (`item_id` re-deriva nome+classificação; inclui `pago`/`pagamentos`/`responsaveis`/**`recebidos`**) | `{ despesa, resumo }` |
+| `despesas.atualizar` | `{ id, ...campos }` (`item_id` re-deriva nome+classificação; inclui `pagamentos`/`responsaveis`/**`recebidos`**) | `{ despesa, resumo }` |
 | `despesas.remover` | `{ id }` | `{ id, resumo }` |
+| `despesas.lancarPagamento` | `{ despesa_id, valor, data?, distribuicao? }` | `{ despesa, resumo }` — lança um pagamento **parcial (leva)** ao ofertante. Servidor deriva o recebedor (equipe → líder + exige `distribuicao`; senão contato ofertante + empresa) e carimba data/autor. Valida `Σrealizados+valor ≤ valor` e (equipe) `Σdistribuicao ≤ valor` |
+| `despesas.removerPagamento` | `{ despesa_id, lancamento_id }` | `{ despesa, resumo }` — remove uma leva lançada |
 
 > `pagamentos` = `[{chave, valor}]`, `responsaveis` = `[{chave, pct}]`
 > (`chave` = `u:<usuario_id>`/`c:<contato_id>`). Enviados como arrays; persistidos
@@ -108,6 +110,12 @@ para dono **e** colaboradores.
 > **Acerto de contas** (cliente, `despesa-split.acerto`): por participante `pago` = Σ
 > pagamentos, `devido` = Σ valor×(pct/100), `saldo` = pago − devido; e `acertos`
 > pareados (quem deve a quem). Não há action de servidor — é derivado das despesas.
+
+> **Pagamentos parciais / restos / saldo** (cliente, `despesa-split`): `statusPagamento`
+> (A pagar/Em pagamento/Pago) + `totalRealizado`/`restoDespesa`; `restosESaldos(despesas)`
+> → `porChave` (restoApagar dos responsáveis + saldoReceber dos recebedores) e
+> `porFornecedor` (total/pago/resto por empresa). Alimenta as colunas em Participantes,
+> a aba Fornecedores da obra e as abas **Dados** de contato/fornecedor/equipe. Derivado.
 
 ### Categorias (= Subclassificações na UI)
 | Action | `data` | Retorno |

@@ -13,7 +13,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { acerto, rotuloOrigem } from "../despesas/despesa-split.js";
+import { acerto, rotuloOrigem, restosESaldos } from "../despesas/despesa-split.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-button.js";
@@ -79,6 +79,8 @@ class ObraParticipantes extends BaseElement {
     const { saldos, acertos } = acerto(despesas, todos);
     const mapaSaldo = {};
     saldos.forEach((s) => (mapaSaldo[s.chave] = s));
+    // Restos a pagar (responsáveis) / Saldo a receber (recebedores) — pagamentos parciais.
+    const { porChave } = restosESaldos(despesas);
 
     const visiveis =
       this.modo === "responsaveis" ? todos.filter((p) => p.eh_responsavel) : todos;
@@ -94,7 +96,15 @@ class ObraParticipantes extends BaseElement {
     } else {
       const rows = visiveis.map((p) => {
         const s = mapaSaldo[p.chave] || { pago: 0, devido: 0, saldo: 0 };
-        return { ...p, _pago: s.pago, _devido: s.devido, _saldo: s.saldo };
+        const rs = porChave[p.chave] || { restoApagar: 0, saldoReceber: 0 };
+        return {
+          ...p,
+          _pago: s.pago,
+          _devido: s.devido,
+          _saldo: s.saldo,
+          _restoApagar: rs.restoApagar,
+          _saldoReceber: rs.saldoReceber,
+        };
       });
       const tabela = document.createElement("ui-data-table");
       tabela.setAttribute("fluido", "");
@@ -113,6 +123,24 @@ class ObraParticipantes extends BaseElement {
           titulo: "Saldo",
           alinhar: "dir",
           formato: (v) => this._saldoCelula(v),
+        },
+        {
+          chave: "_restoApagar",
+          titulo: "Restos a pagar",
+          alinhar: "dir",
+          formato: (v) =>
+            v > 0.01
+              ? `<strong style="color:var(--cor-erro)">${moeda(v)}</strong>`
+              : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+        },
+        {
+          chave: "_saldoReceber",
+          titulo: "Saldo a receber",
+          alinhar: "dir",
+          formato: (v) =>
+            v > 0.01
+              ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>`
+              : `<span style="color:var(--cor-texto-fraco)">—</span>`,
         },
       ];
       tabela.acoes = [

@@ -158,6 +158,8 @@ const usuarios = () => store.get().usuarios;
 const obras = () => store.get().obras;
 const obra = (id) => store.get().obras.find((o) => String(o.id) === String(id)) || null;
 const despesas = (obraId) => store.get().despesas[obraId] || [];
+/** Todas as despesas (de todas as obras carregadas) — p/ visões cross-obra. */
+const todasDespesas = () => obras().flatMap((o) => despesas(o.id));
 const resumo = (obraId) => store.get().resumos[obraId] || { total: 0, qtd: 0, orcamento: 0, saldo: 0, por_categoria: [] };
 const categoriasDaObra = (obraId) => store.get().categoriasPorObra[obraId] || store.get().categorias;
 const participantesDaObra = (obraId) => store.get().participantesPorObra[obraId] || [];
@@ -437,6 +439,29 @@ async function removerDespesa(obraId, id) {
     _setDespesasObra(obraId, backup);
     throw e;
   }
+}
+
+/** Lança um pagamento parcial (leva) na despesa. dados: { valor, data?, distribuicao? }. */
+async function lancarPagamento(obraId, despesaId, dados) {
+  const r = await api.call("despesas.lancarPagamento", { despesa_id: despesaId, ...dados });
+  const lista = despesas(obraId).map((d) => (String(d.id) === String(despesaId) ? r.despesa : d));
+  _setDespesasObra(obraId, lista, r.resumo);
+  persistir();
+  bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada", obra_id: obraId });
+  return r.despesa;
+}
+
+/** Remove um pagamento parcial (leva) lançado da despesa. */
+async function removerPagamento(obraId, despesaId, lancamentoId) {
+  const r = await api.call("despesas.removerPagamento", {
+    despesa_id: despesaId,
+    lancamento_id: lancamentoId,
+  });
+  const lista = despesas(obraId).map((d) => (String(d.id) === String(despesaId) ? r.despesa : d));
+  _setDespesasObra(obraId, lista, r.resumo);
+  persistir();
+  bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada", obra_id: obraId });
+  return r.despesa;
 }
 
 /* --------------------- Mutações: categorias -------------------------- */
@@ -845,7 +870,7 @@ export const dataStore = {
   atualizarEmSegundoPlano,
   limparCache,
   // getters
-  usuario, config, categorias, usuarios, obras, obra, despesas, resumo, categoriasDaObra,
+  usuario, config, categorias, usuarios, obras, obra, despesas, todasDespesas, resumo, categoriasDaObra,
   participantesDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, itens, itensAtivos, item,
   cotacoes, cotacao, precosDaCotacao,
@@ -856,7 +881,7 @@ export const dataStore = {
   criarObra, atualizarObra, removerObra,
   adicionarParticipante, removerParticipante, definirResponsavel,
   gerarLinkPublico, removerLinkPublico,
-  adicionarDespesa, atualizarDespesa, removerDespesa,
+  adicionarDespesa, atualizarDespesa, removerDespesa, lancarPagamento, removerPagamento,
   criarCategoria, atualizarCategoria, removerCategoria,
   criarFornecedor, atualizarFornecedor, removerFornecedor,
   criarContato, atualizarContato, removerContato,

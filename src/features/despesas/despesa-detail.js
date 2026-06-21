@@ -1,10 +1,11 @@
 /**
  * <despesa-detail> — Banner (modal) com as informações completas de uma despesa.
  * Permite EDITAR e EXCLUIR aqui. A despesa nasce do REGISTRO de uma oferta:
- * quando tem `preco_id`, o Item/Valor/Ofertante/Empresa vêm da oferta (read-only)
- * e — se o ofertante é uma EQUIPE — edita-se quanto cada integrante recebeu.
- * Pagamento (quem pagou) / Responsabilidade / Subclassificação / Observação /
- * Pago seguem editáveis. Despesas legadas (sem `preco_id`) mantêm Item/Valor
+ * quando tem `preco_id`, o Item/Valor/Ofertante/Empresa vêm da oferta (read-only).
+ * O pagamento é por **lançamentos parciais (levas)**: status A pagar / Em pagamento
+ * / Pago é derivado; equipe → cada leva desmembra entre integrantes. Pagamento
+ * (quem pagou) / Responsabilidade / Recebido planejado / Subclassificação /
+ * Observação seguem editáveis. Despesas legadas (sem `preco_id`) mantêm Item/Valor
  * editáveis. Reusa ui-modal/ui-input/ui-select/ui-button/split-editor.
  *
  * Propriedades: .despesa, .categorias = [{id,nome,cor}]
@@ -12,10 +13,10 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { data as fmtData, moeda } from "../../core/formatters.js";
+import { data as fmtData, moeda, hojeIso } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { valorPositivo } from "../../core/validators.js";
-import { parseLista } from "./despesa-split.js";
+import { parseLista, statusPagamento, totalRealizado, restoDespesa } from "./despesa-split.js";
 import { ofertanteNome } from "../orcamentos/orcamento-util.js";
 import { integrantesDaEquipe } from "../equipes/equipe-util.js";
 import "../../components/ui-modal.js";
@@ -71,9 +72,17 @@ class DespesaDetail extends BaseElement {
         color: var(--cor-primaria); }
       .resumo small { color: var(--cor-texto-suave); }
       .secao { border-top: 1px solid var(--cor-borda); padding-top: var(--esp-3); }
-      .check { display: flex; align-items: center; gap: var(--esp-2); cursor: pointer;
-        font-weight: var(--peso-medio); }
-      .check input { width: 18px; height: 18px; accent-color: var(--cor-primaria); }
+      .statuslinha { display: flex; align-items: center; gap: var(--esp-2);
+        margin-bottom: var(--esp-2); flex-wrap: wrap; }
+      .muted { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
+      .lancamento { display: flex; align-items: center; gap: var(--esp-2);
+        padding: var(--esp-2) 0; border-bottom: 1px solid var(--cor-borda); }
+      .lc-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+      .lancar { display: flex; flex-direction: column; gap: var(--esp-3); margin-top: var(--esp-2); }
+      .rem { border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
+        color: var(--cor-erro); border-radius: var(--raio-sm); width: 30px; height: 30px;
+        flex: none; cursor: pointer; }
+      .rem:hover { background: var(--cor-superficie-2); }
       .auditoria { font-size: var(--fs-xs); color: var(--cor-texto-fraco);
         border-top: 1px solid var(--cor-borda); padding-top: var(--esp-3);
         display: flex; flex-direction: column; gap: 2px; }
@@ -129,11 +138,22 @@ class DespesaDetail extends BaseElement {
             <label class="tx">Observação</label>
             <textarea id="observacao" placeholder="Detalhes (opcional)">${d.observacao || ""}</textarea>
           </div>
-          <div class="secao">
-            <label class="check"><input type="checkbox" id="pago" ${d.pago ? "checked" : ""} /> Pago</label>
+          <div class="secao" id="secPag">
+            <label class="tx">Pagamentos — lançamentos (levas)</label>
+            <div class="statuslinha" id="statusLinha"></div>
+            <div id="listaPag"></div>
+            <div class="lancar">
+              <div class="linha">
+                <ui-input id="pagValor" label="Valor a lançar (R$)" type="number" step="0.01" min="0" placeholder="0,00"></ui-input>
+                <ui-input id="pagData" label="Data" type="date" value="${hojeIso()}"></ui-input>
+              </div>
+              ${eqp ? `<label class="tx">Distribuir entre integrantes (R$)</label>
+              <split-editor id="pagDist"></split-editor>` : ""}
+              <ui-button id="lancarPag" variant="secundario" tamanho="sm">＋ Lançar pagamento</ui-button>
+            </div>
           </div>
           ${eqp ? `<div class="secao">
-            <label class="tx">Recebido por integrante (R$)</label>
+            <label class="tx">Recebido por integrante — planejado (R$)</label>
             <split-editor id="recebidos"></split-editor>
           </div>` : ""}
           <div class="secao">
@@ -170,10 +190,139 @@ class DespesaDetail extends BaseElement {
     }
     this.preencherCategorias();
     this.preencherSplits();
+    this.preencherPagamentos();
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
     this.$("#excluir").addEventListener("click", () => this.excluir());
+  }
+
+  /* ---------------- Pagamentos parciais (lançamentos/levas) -------------- */
+
+  /** Liga o mini-form de lançamento + pinta status e lista. */
+  preencherPagamentos() {
+    const dist = this.$("#pagDist");
+    if (dist && this.despesa.ofertante_equipe_id) {
+      dist.modo = "valor";
+      dist.participantes = integrantesDaEquipe(this.despesa.ofertante_equipe_id);
+      dist.itens = [];
+    }
+    const pagValor = this.$("#pagValor");
+    if (pagValor && dist) {
+      pagValor.addEventListener("input", () => (dist.limite = Number(pagValor.value) || 0));
+    }
+    const btn = this.$("#lancarPag");
+    if (btn) btn.addEventListener("click", () => this.lancarPagamento());
+    this.atualizarStatusPag();
+    this.pintarLancamentos();
+  }
+
+  _corStatus(st) {
+    return st === "Pago" ? "var(--cor-sucesso)" : st === "Em pagamento" ? "var(--cor-aviso)" : "var(--cor-neutro)";
+  }
+
+  atualizarStatusPag() {
+    const el = this.$("#statusLinha");
+    if (!el) return;
+    const d = this.despesa;
+    const st = statusPagamento(d);
+    el.innerHTML = `<category-badge nome="${st}" cor="${this._corStatus(st)}"></category-badge>
+      <span class="muted">Pago ${moeda(totalRealizado(d))} de ${moeda(Number(d.valor) || 0)} · Resto ${moeda(restoDespesa(d))}</span>`;
+  }
+
+  /** Nome ao vivo de uma chave (c:contato / e:equipe). */
+  _nomeChave(chave) {
+    const s = String(chave || "");
+    const id = s.slice(2);
+    if (s.startsWith("c:")) return (dataStore.contatos().find((c) => String(c.id) === id) || {}).nome || "—";
+    if (s.startsWith("e:")) return (dataStore.equipe(id) || {}).nome || "—";
+    return "—";
+  }
+
+  pintarLancamentos() {
+    const cont = this.$("#listaPag");
+    if (!cont) return;
+    const lista = parseLista(this.despesa.pagamentos_realizados);
+    if (!lista.length) {
+      cont.innerHTML = `<p class="muted">Nenhum pagamento lançado.</p>`;
+      return;
+    }
+    cont.innerHTML = "";
+    lista.forEach((p) => {
+      const row = document.createElement("div");
+      row.className = "lancamento";
+      const dist = parseLista(p.distribuicao)
+        .map((x) => `${this._nomeChave(x.chave)}: ${moeda(x.valor)}`)
+        .join(" · ");
+      row.innerHTML = `<div class="lc-info">
+          <strong>${moeda(p.valor)}</strong>
+          <small class="muted">${fmtData(p.data)} · por ${p.autor_nome || "—"}</small>
+          ${dist ? `<small class="muted">${dist}</small>` : ""}
+        </div>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "rem";
+      btn.textContent = "✕";
+      btn.addEventListener("click", () => this.removerLancamento(p.id));
+      row.appendChild(btn);
+      cont.appendChild(row);
+    });
+  }
+
+  async lancarPagamento() {
+    const alerta = this.$("#erro");
+    if (alerta) alerta.mensagem = "";
+    const valorInp = this.$("#pagValor");
+    const valor = Number(valorInp.value);
+    if (!(valor > 0)) {
+      valorInp.setAttribute("error", "Informe um valor.");
+      return;
+    }
+    valorInp.removeAttribute("error");
+    const resto = restoDespesa(this.despesa);
+    if (valor - resto > 0.01) {
+      if (alerta) alerta.mensagem = `O valor (${moeda(valor)}) passa do que falta pagar (${moeda(resto)}).`;
+      return;
+    }
+    const dados = { valor, data: this.$("#pagData").value || hojeIso() };
+    const dist = this.$("#pagDist");
+    if (dist && this.despesa.ofertante_equipe_id) {
+      const distribuicao = dist.itens
+        .filter((x) => x.chave && Number(x.valor) > 0)
+        .map((x) => ({ chave: x.chave, valor: Number(x.valor) || 0 }));
+      const somaDist = distribuicao.reduce((s, x) => s + x.valor, 0);
+      if (somaDist - valor > 0.01) {
+        if (alerta) alerta.mensagem = `A distribuição (${moeda(somaDist)}) passa do valor da leva (${moeda(valor)}).`;
+        return;
+      }
+      dados.distribuicao = distribuicao;
+    }
+    const btn = this.$("#lancarPag");
+    btn.setAttribute("loading", "");
+    try {
+      const atualizada = await dataStore.lancarPagamento(this.despesa.obra_id, this.despesa.id, dados);
+      this._despesa = atualizada; // sem re-render total (preserva edições não salvas)
+      this.atualizarStatusPag();
+      this.pintarLancamentos();
+      valorInp.value = "";
+      if (dist) dist.itens = [];
+      toastSucesso("Pagamento lançado.");
+    } catch (e) {
+      notificarErro(e);
+    }
+    btn.removeAttribute("loading");
+  }
+
+  async removerLancamento(lancamentoId) {
+    if (!confirm("Remover este pagamento lançado?")) return;
+    try {
+      const atualizada = await dataStore.removerPagamento(this.despesa.obra_id, this.despesa.id, lancamentoId);
+      this._despesa = atualizada;
+      this.atualizarStatusPag();
+      this.pintarLancamentos();
+    } catch (e) {
+      notificarErro(e);
+    }
   }
 
   get classificacao() {
@@ -305,7 +454,6 @@ class DespesaDetail extends BaseElement {
       categoria_id: this.$("#categoria").value,
       data: this.$("#data").value || String(this.despesa.data || "").substring(0, 10),
       observacao: this.$("#observacao").value.trim(),
-      pago: this.$("#pago").checked,
       pagamentos,
       responsaveis,
     };

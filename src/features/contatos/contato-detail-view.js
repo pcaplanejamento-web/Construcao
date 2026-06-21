@@ -10,6 +10,8 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
+import { moeda } from "../../core/formatters.js";
+import { restosESaldos } from "../despesas/despesa-split.js";
 import { colunasOferta } from "../orcamentos/orcamento-util.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
@@ -98,6 +100,12 @@ class ContatoDetailView extends BaseElement {
             <div id="gradeOrc"></div>
           </ui-card>
         </div>
+        <div slot="dados">
+          <ui-card title="Dados — a receber e a pagar por obra">
+            <ui-data-table id="tabDados" fluido clicavel
+              empty-text="Sem valores a receber ou a pagar."></ui-data-table>
+          </ui-card>
+        </div>
       </ui-tabs>
     `;
 
@@ -106,6 +114,7 @@ class ContatoDetailView extends BaseElement {
     abas.push({ id: "equipes", rotulo: "Equipes", icone: "usuario" });
     abas.push({ id: "ofertas", rotulo: "Ofertas", icone: "cifrao" });
     abas.push({ id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" });
+    abas.push({ id: "dados", rotulo: "Dados", icone: "grafico" });
     alvo.querySelector("#abas").abas = abas;
 
     this._tabObras = alvo.querySelector("#tabObras");
@@ -131,6 +140,27 @@ class ContatoDetailView extends BaseElement {
     this._tabOfertas = alvo.querySelector("#tabOfertas");
     this._tabOfertas.columns = colunasOferta();
     this._gradeOrc = alvo.querySelector("#gradeOrc");
+
+    // Dados: saldo a receber (recebedor) / restos a pagar (responsável), por obra.
+    this._tabDados = alvo.querySelector("#tabDados");
+    this._tabDados.columns = [
+      { chave: "_obra", titulo: "Obra" },
+      {
+        chave: "_receber",
+        titulo: "Saldo a receber",
+        alinhar: "dir",
+        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
+      },
+      {
+        chave: "_pagar",
+        titulo: "Restos a pagar",
+        alinhar: "dir",
+        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-erro)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
+      },
+    ];
+    this._tabDados.addEventListener("linha", (e) => {
+      location.hash = "#/obras/" + e.detail.linha.id;
+    });
 
     this._montado = true;
   }
@@ -173,6 +203,16 @@ class ContatoDetailView extends BaseElement {
       this._gradeOrc,
       dataStore.orcamentos().filter((o) => String(o.contato_id) === String(c.id))
     );
+
+    // Dados: por obra, saldo a receber (como ofertante/integrante) + restos a pagar (responsável).
+    const dados = [];
+    dataStore.obras().forEach((o) => {
+      const v = restosESaldos(dataStore.despesas(o.id)).porChave[chave];
+      if (v && (v.saldoReceber > 0.01 || v.restoApagar > 0.01)) {
+        dados.push({ id: o.id, _obra: o.nome, _receber: v.saldoReceber, _pagar: v.restoApagar });
+      }
+    });
+    this._tabDados.rows = dados;
 
     this.pintarTopo();
   }

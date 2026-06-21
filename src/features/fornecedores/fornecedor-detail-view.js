@@ -10,8 +10,10 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
+import { moeda } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { restosESaldos } from "../despesas/despesa-split.js";
 import { colunasOferta } from "../orcamentos/orcamento-util.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import "../../components/ui-card.js";
@@ -92,12 +94,19 @@ class FornecedorDetailView extends BaseElement {
             <div id="gradeOrc"></div>
           </ui-card>
         </div>
+        <div slot="dados" class="aba">
+          <ui-card title="Dados — a receber por obra">
+            <ui-data-table id="tabDados" fluido clicavel
+              empty-text="Nenhuma despesa desta empresa ainda."></ui-data-table>
+          </ui-card>
+        </div>
       </ui-tabs>
     `;
     alvo.querySelector("#abas").abas = [
       { id: "contatos", rotulo: "Contatos", icone: "contato" },
       { id: "ofertas", rotulo: "Ofertas", icone: "cifrao" },
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
+      { id: "dados", rotulo: "Dados", icone: "grafico" },
     ];
 
     this._tabContatos = alvo.querySelector("#tabContatos");
@@ -123,6 +132,23 @@ class FornecedorDetailView extends BaseElement {
     this._tabOfertas.columns = colunasOferta();
 
     this._gradeOrc = alvo.querySelector("#gradeOrc");
+
+    // Dados: Total / Pago / Saldo a receber por obra.
+    this._tabDados = alvo.querySelector("#tabDados");
+    this._tabDados.columns = [
+      { chave: "_obra", titulo: "Obra" },
+      { chave: "_total", titulo: "Total", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
+      {
+        chave: "_resto",
+        titulo: "Saldo a receber",
+        alinhar: "dir",
+        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
+      },
+    ];
+    this._tabDados.addEventListener("linha", (e) => {
+      location.hash = "#/obras/" + e.detail.linha.id;
+    });
 
     alvo.querySelector("#novoContato").addEventListener("click", () =>
       this.abrirContatoForm({ fornecedor_id: this.fornecedorId, cargo: "Vendedor" })
@@ -162,6 +188,14 @@ class FornecedorDetailView extends BaseElement {
       this._gradeOrc,
       dataStore.orcamentos().filter((o) => String(o.fornecedor_id) === String(f.id))
     );
+
+    // Dados: por obra, total/pago/saldo a receber das despesas desta empresa.
+    const dados = [];
+    dataStore.obras().forEach((o) => {
+      const v = restosESaldos(dataStore.despesas(o.id)).porFornecedor[f.id];
+      if (v) dados.push({ id: o.id, _obra: o.nome, _total: v.total, _pago: v.pago, _resto: v.resto });
+    });
+    this._tabDados.rows = dados.sort((a, b) => b._resto - a._resto);
 
     this.pintarTopo();
   }

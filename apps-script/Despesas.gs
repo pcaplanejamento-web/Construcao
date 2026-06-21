@@ -87,6 +87,7 @@ function _lerDespesa(d) {
     pagamentos: _parseJsonLista(d.pagamentos),
     responsaveis: _parseJsonLista(d.responsaveis),
     recebidos: _parseJsonLista(d.recebidos),
+    pagamentos_realizados: _parseJsonLista(d.pagamentos_realizados),
   });
 }
 
@@ -158,6 +159,7 @@ function _novaDespesa(obraId, usuarioId, dados) {
     recebidos: JSON.stringify(
       dados && Array.isArray(dados.recebidos) ? dados.recebidos : []
     ),
+    pagamentos_realizados: "[]", // pagamentos lançados depois (despesas.lancarPagamento)
   };
   repoInserir(SCHEMA.DESPESAS, despesa);
   return despesa;
@@ -256,6 +258,113 @@ function despesasRemover(data, sessao) {
     repoRemover(SCHEMA.DESPESAS, "id", id);
     return {
       id: id,
+      resumo: _calcularResumo(atual.obra_id, sessao.usuario_id),
+    };
+  });
+}
+
+/** Soma dos pagamentos já lançados de uma despesa. */
+function _totalRealizado(despesa) {
+  return _parseJsonLista(despesa.pagamentos_realizados).reduce(function (s, p) {
+    return s + (Number(p && p.valor) || 0);
+  }, 0);
+}
+
+/**
+ * despesas.lancarPagamento -> { despesa, resumo }.
+ * Lança um pagamento PARCIAL (uma "leva") da despesa ao ofertante. Deriva o
+ * recebedor da própria despesa: equipe → contato = LÍDER (mestre) + exige a
+ * `distribuicao` entre integrantes; senão → o contato ofertante + a empresa.
+ * Carimba data/autor no servidor (log). Valida Σrealizados + valor ≤ valor da
+ * despesa e (equipe) Σdistribuicao ≤ valor da leva.
+ */
+function despesasLancarPagamento(data, sessao) {
+  const despesaId = data && data.despesa_id;
+  const atual = _despesaAcessivel(despesaId, sessao.usuario_id);
+
+  const valor = Number(data && data.valor);
+  if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
+  const totalDespesa = Number(atual.valor) || 0;
+  if (_totalRealizado(atual) + valor - totalDespesa > 0.01)
+    lancar(ERRO.VALIDACAO, "O total pago não pode passar do valor da despesa.");
+
+  // Recebedor: equipe (líder + distribuição) ou contato ofertante + empresa.
+  const equipeId = String(atual.ofertante_equipe_id || "");
+  let contatoId = String(atual.ofertante_contato_id || "");
+  let fornecedorId = String(atual.fornecedor_id || "");
+  let distribuicao = [];
+  if (equipeId) {
+    const equipe = repoEncontrar(SCHEMA.EQUIPES, function (x) {
+      return String(x.id) === equipeId;
+    }) || {};
+    contatoId = String(equipe.lider_id || "");
+    fornecedorId = "";
+    distribuicao = Array.isArray(data && data.distribuicao) ? data.distribuicao : [];
+    const somaDist = distribuicao.reduce(function (s, d) {
+      return s + (Number(d && d.valor) || 0);
+    }, 0);
+    if (somaDist - valor > 0.01)
+      lancar(ERRO.VALIDACAO, "A soma da distribuição não pode passar do valor da leva.");
+  }
+
+  const agora = agoraIso();
+  const nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+  const lancamento = {
+    id: novoId(),
+    data: String((data && data.data) || agora.substring(0, 10)),
+    valor: valor,
+    contato_id: contatoId,
+    fornecedor_id: fornecedorId,
+    distribuicao: distribuicao.map(function (d) {
+      return { chave: String(d.chave || ""), valor: Number(d.valor) || 0 };
+    }),
+    autor_nome: nome,
+    criado_em: agora,
+  };
+
+  return comLock(function () {
+    const lista = _parseJsonLista(atual.pagamentos_realizados);
+    lista.push(lancamento);
+    const somaTotal = lista.reduce(function (s, p) {
+      return s + (Number(p.valor) || 0);
+    }, 0);
+    const despesa = repoAtualizar(SCHEMA.DESPESAS, "id", despesaId, {
+      pagamentos_realizados: JSON.stringify(lista),
+      pago: somaTotal - totalDespesa >= -0.01, // quitada quando cobre o valor
+      atualizado_em: agora,
+      editor_nome: nome,
+    });
+    return {
+      despesa: _lerDespesa(despesa),
+      resumo: _calcularResumo(atual.obra_id, sessao.usuario_id),
+    };
+  });
+}
+
+/** despesas.removerPagamento -> { despesa, resumo }. Remove uma leva lançada. */
+function despesasRemoverPagamento(data, sessao) {
+  const despesaId = data && data.despesa_id;
+  const lancamentoId = String((data && data.lancamento_id) || "");
+  const atual = _despesaAcessivel(despesaId, sessao.usuario_id);
+  const totalDespesa = Number(atual.valor) || 0;
+  const nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+  const agora = agoraIso();
+
+  return comLock(function () {
+    const lista = _parseJsonLista(atual.pagamentos_realizados).filter(function (p) {
+      return String(p.id) !== lancamentoId;
+    });
+    const somaTotal = lista.reduce(function (s, p) {
+      return s + (Number(p.valor) || 0);
+    }, 0);
+    const despesa = repoAtualizar(SCHEMA.DESPESAS, "id", despesaId, {
+      pagamentos_realizados: JSON.stringify(lista),
+      pago: somaTotal - totalDespesa >= -0.01,
+      atualizado_em: agora,
+      editor_nome: nome,
+    });
+    return {
+      despesa: _lerDespesa(despesa),
       resumo: _calcularResumo(atual.obra_id, sessao.usuario_id),
     };
   });

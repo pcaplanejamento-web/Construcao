@@ -45,6 +45,8 @@ const ROTAS = {
   "despesas.criar": { fn: despesasCriar },
   "despesas.atualizar": { fn: despesasAtualizar },
   "despesas.remover": { fn: despesasRemover },
+  "despesas.lancarPagamento": { fn: despesasLancarPagamento },
+  "despesas.removerPagamento": { fn: despesasRemoverPagamento },
 
   // Categorias
   "categorias.listar": { fn: categoriasListar },

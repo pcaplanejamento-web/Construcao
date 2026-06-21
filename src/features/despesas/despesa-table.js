@@ -8,7 +8,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
-import { totalPago, distribuicao, parseLista } from "./despesa-split.js";
+import { totalPago, distribuicao, parseLista, statusPagamento } from "./despesa-split.js";
 import { ofertanteNome } from "../orcamentos/orcamento-util.js";
 import "../../components/ui-data-table.js";
 import "./category-badge.js";
@@ -17,10 +17,6 @@ import "./category-badge.js";
 function _empresaNome(id) {
   if (!id) return "";
   return (dataStore.fornecedores().find((f) => String(f.id) === String(id)) || {}).nome || "";
-}
-
-function _bool(v) {
-  return v === true || v === "TRUE" || v === "true";
 }
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
@@ -127,12 +123,14 @@ class DespesaTable extends BaseElement {
       },
       { chave: "valor", titulo: "Valor", alinhar: "dir", formato: (v) => moeda(v) },
       {
-        chave: "pago",
-        titulo: "Pago",
-        formato: (v) =>
-          _bool(v)
-            ? `<category-badge nome="Pago" cor="var(--cor-sucesso)"></category-badge>`
-            : `<category-badge nome="Não pago" cor="var(--cor-neutro)"></category-badge>`,
+        chave: "pagamentos_realizados",
+        titulo: "Status",
+        // Status derivado dos pagamentos lançados: A pagar / Em pagamento / Pago.
+        formato: (_, linha) => {
+          const st = statusPagamento(linha);
+          const cor = st === "Pago" ? "var(--cor-sucesso)" : st === "Em pagamento" ? "var(--cor-aviso)" : "var(--cor-neutro)";
+          return `<category-badge nome="${st}" cor="${cor}"></category-badge>`;
+        },
       },
       {
         chave: "pagamentos",

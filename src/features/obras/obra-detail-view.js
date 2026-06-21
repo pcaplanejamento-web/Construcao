@@ -8,7 +8,9 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
+import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { restosESaldos } from "../despesas/despesa-split.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
 import "../../components/ui-card.js";
@@ -113,6 +115,12 @@ class ObraDetailView extends BaseElement {
             <div id="gradeEquipes"></div>
           </ui-card>
         </div>
+        <div slot="fornecedores">
+          <ui-card title="Fornecedores da obra">
+            <ui-data-table id="tabForn" fluido clicavel
+              empty-text="Nenhum fornecedor usado nesta obra ainda."></ui-data-table>
+          </ui-card>
+        </div>
       </ui-tabs>
     `;
     alvo.querySelector("#abas").abas = [
@@ -122,9 +130,14 @@ class ObraDetailView extends BaseElement {
       { id: "responsaveis", rotulo: "Responsáveis", icone: "seguranca" },
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
       { id: "equipes", rotulo: "Equipes", icone: "usuario" },
+      { id: "fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
     ];
     this._gradeOrc = alvo.querySelector("#gradeOrc");
     this._gradeEquipes = alvo.querySelector("#gradeEquipes");
+    this._tabForn = alvo.querySelector("#tabForn");
+    this._tabForn.addEventListener("linha", (e) => {
+      location.hash = "#/fornecedores/" + e.detail.linha.id;
+    });
     this._dash = alvo.querySelector("#dash");
     this._break = alvo.querySelector("#break");
     this._rosca = alvo.querySelector("#rosca");
@@ -170,6 +183,7 @@ class ObraDetailView extends BaseElement {
       dataStore.orcamentos().filter((o) => String(o.obra_id) === String(this.obraId))
     );
     montarGradeEquipes(this._gradeEquipes, dataStore.equipesDaObra(this.obraId));
+    this.montarFornecedores(despesas);
     this.aplicarFiltro();
 
     const sig = categorias.map((c) => c.id).join(",");
@@ -238,6 +252,39 @@ class ObraDetailView extends BaseElement {
     form.addEventListener("fechar", fechar);
     form.addEventListener("registrado", fechar);
     document.body.appendChild(form);
+  }
+
+  /** Aba Fornecedores: empresas usadas na obra + Total/Pago/Saldo a receber. */
+  montarFornecedores(despesas) {
+    const tab = this._tabForn;
+    if (!tab) return;
+    const { porFornecedor } = restosESaldos(despesas);
+    const qtd = {};
+    despesas.forEach((d) => {
+      if (d.fornecedor_id) qtd[d.fornecedor_id] = (qtd[d.fornecedor_id] || 0) + 1;
+    });
+    tab.columns = [
+      { chave: "_nome", titulo: "Fornecedor" },
+      { chave: "_qtd", titulo: "Despesas", alinhar: "dir" },
+      { chave: "_total", titulo: "Total", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
+      {
+        chave: "_resto",
+        titulo: "Saldo a receber",
+        alinhar: "dir",
+        formato: (v) =>
+          v > 0.01
+            ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+      },
+    ];
+    tab.rows = Object.keys(porFornecedor)
+      .map((fid) => {
+        const f = dataStore.fornecedores().find((x) => String(x.id) === String(fid)) || {};
+        const v = porFornecedor[fid];
+        return { id: fid, _nome: f.nome || "—", _qtd: qtd[fid] || 0, _total: v.total, _pago: v.pago, _resto: v.resto };
+      })
+      .sort((a, b) => b._resto - a._resto);
   }
 
   /** Abre o banner com a despesa (ver/editar/excluir). O banner é autossuficiente. */

@@ -76,7 +76,9 @@ const SCHEMA = {
       "fornecedor_id", // empresa que recebe (do contato ofertante; vazio p/ equipe)
       "ofertante_contato_id", // ofertante CONTATO (XOR equipe)
       "ofertante_equipe_id", // ofertante EQUIPE (XOR contato)
-      "recebidos", // JSON [{chave, valor}] — quanto cada integrante da equipe recebeu
+      "recebidos", // JSON [{chave, valor}] — PLANEJADO por integrante da equipe (alvo)
+      // Pagamentos parciais (append): cada lançamento = uma "leva" paga ao ofertante.
+      "pagamentos_realizados", // JSON [{id,data,valor,contato_id,fornecedor_id,distribuicao:[{chave,valor}],autor_nome,criado_em}]
     ],
   },
 
