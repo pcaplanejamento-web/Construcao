@@ -62,8 +62,8 @@ class DespesaTable extends BaseElement {
       {
         chave: "item",
         titulo: "Item",
-        // Item pode ter texto longo → coluna mais larga (evita quebra excessiva).
-        largura: "200px",
+        // Item pode ter texto longo → coluna bem larga (evita quebra excessiva).
+        largura: "280px",
         // Nome ao vivo do catálogo (reflete renome); `item` denormalizado é fallback.
         formato: (v, linha) => (linha.item_id && (dataStore.item(linha.item_id) || {}).nome) || v || "—",
       },

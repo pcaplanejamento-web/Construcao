@@ -53,9 +53,9 @@ class UiDataTable extends BaseElement {
       th, td { padding: var(--esp-3) var(--esp-3); text-align: left;
         border-bottom: 1px solid var(--cor-borda); white-space: nowrap;
         vertical-align: middle; }
-      /* fluido: células proporcionais que quebram texto e preenchem a largura */
+      /* fluido: só as CÉLULAS quebram/preenchem; os títulos de coluna nunca quebram. */
       :host([fluido]) table { table-layout: auto; }
-      :host([fluido]) th, :host([fluido]) td { white-space: normal; }
+      :host([fluido]) td { white-space: normal; }
       /* clicavel: linha clicável (abre detalhe) */
       :host([clicavel]) tbody tr { cursor: pointer; }
       th { color: var(--cor-texto-suave); font-weight: var(--peso-semi);
