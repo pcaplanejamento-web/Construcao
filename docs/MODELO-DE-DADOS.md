@@ -243,6 +243,7 @@ guarda só os **extras** criados pelo usuário (com log).
 | despesa_id | UUID | FK → Despesas.id (preenchido quando a oferta é **registrada como despesa**) |
 | atualizado_em / autor_nome / editor_nome | — | auditoria |
 | orcamento_id | UUID | **FK → Orcamentos.id** (vazio = oferta criada direto na cotação) |
+| equipe_id | UUID | **FK → Equipes.id** — quando o ofertante do orçamento é uma equipe (Serviço); senão usa `contato_id` |
 
 > Total de uma oferta = `valor_unit × quantidade` (calculado no cliente; não
 > persiste). Excluir uma cotação remove suas ofertas.
@@ -262,7 +263,8 @@ Agrupa ofertas de **várias cotações**, todas de um mesmo ofertante. **Materia
 | obra_id | UUID | FK → Obras.id (opcional) |
 | tipo | string | `Material` \| `Serviço` |
 | fornecedor_id | UUID | FK → Fornecedores.id (obrigatório p/ Material; vazio p/ Serviço) |
-| contato_id | UUID | FK → Contatos.id (o ofertante/vendedor) |
+| contato_id | UUID | FK → Contatos.id — ofertante CONTATO (Material sempre; Serviço se não for equipe) |
+| equipe_id | UUID | FK → Equipes.id — ofertante EQUIPE (só Serviço). **Ofertante = contato XOR equipe** |
 | titulo | string | opcional (rótulo automático como fallback) |
 | ativo | boolean | |
 | criado_em / atualizado_em / autor_nome / editor_nome | — | auditoria |

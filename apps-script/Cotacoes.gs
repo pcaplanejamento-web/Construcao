@@ -178,15 +178,26 @@ function cotacoesAdicionarPreco(data, sessao) {
   const cotacaoId = data && data.cotacao_id;
   _cotacaoDoUsuario(cotacaoId, sessao.usuario_id);
 
-  // Oferta de orçamento: o contato é SEMPRE o ofertante do orçamento (forçado).
+  // Oferta de orçamento: o ofertante é SEMPRE o do orçamento (forçado) — pode ser
+  // um CONTATO ou uma EQUIPE (Serviço). Ofertas diretas na cotação são de contato.
   const orcamentoId = String((data && data.orcamento_id) || "");
   let contatoId = String((data && data.contato_id) || "");
+  let equipeId = "";
   if (orcamentoId) {
     const orc = _orcamentoDoUsuario(orcamentoId, sessao.usuario_id);
-    contatoId = String(orc.contato_id || "");
+    if (String(orc.equipe_id || "")) {
+      equipeId = String(orc.equipe_id);
+      contatoId = "";
+    } else {
+      contatoId = String(orc.contato_id || "");
+    }
   }
-  if (!contatoId) lancar(ERRO.VALIDACAO, "Selecione o contato da oferta.");
-  _contatoDoUsuario(contatoId, sessao.usuario_id);
+  if (equipeId) {
+    _equipeDoUsuario(equipeId, sessao.usuario_id);
+  } else {
+    if (!contatoId) lancar(ERRO.VALIDACAO, "Selecione o contato da oferta.");
+    _contatoDoUsuario(contatoId, sessao.usuario_id);
+  }
 
   const valor = Number(data && data.valor_unit);
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
@@ -207,6 +218,7 @@ function cotacoesAdicionarPreco(data, sessao) {
       autor_nome: nomeUsuario,
       editor_nome: nomeUsuario,
       orcamento_id: orcamentoId,
+      equipe_id: equipeId,
     };
     repoInserir(SCHEMA.COTACAO_PRECOS, preco);
     const historico = _logPreco(preco); // ponto inicial da evolução

@@ -11,7 +11,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda, numero, data as fmtData } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { abrirBannerVinculos, vinculosDaOferta } from "../shared/vinculos.js";
-import { rotuloOrcamento } from "../orcamentos/orcamento-util.js";
+import { rotuloOrcamento, ofertanteNome } from "../orcamentos/orcamento-util.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta, melhorTotal, resumoOfertas, coresPorContato } from "./cotacao-util.js";
 import "../../components/ui-card.js";
@@ -121,13 +121,14 @@ class CotacaoDetailView extends BaseElement {
     this._tabela.columns = [
       {
         chave: "contato_id",
-        titulo: "Contato",
-        formato: (id) => (this._mapaContato[id] || { nome: "—" }).nome,
+        titulo: "Ofertante",
+        formato: (id, linha) => ofertanteNome(linha.contato_id, linha.equipe_id),
       },
       {
         chave: "contato_id",
         titulo: "Empresa",
-        formato: (id) => {
+        formato: (id, linha) => {
+          if (linha.equipe_id) return `<span style="color:var(--cor-texto-fraco)">—</span>`;
           const c = this._mapaContato[id];
           const emp = c && c.fornecedor_id ? this._mapaForn[c.fornecedor_id] : "";
           return emp || `<span style="color:var(--cor-texto-fraco)">—</span>`;

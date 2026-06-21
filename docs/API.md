@@ -176,8 +176,8 @@ para dono **e** colaboradores.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `orcamentos.listar` | `{}` | `{ orcamentos: [...] }` |
-| `orcamentos.criar` | `{ tipo, fornecedor_id?, contato_id, obra_id?, titulo? }` | `{ orcamento }` — Material exige `fornecedor_id` + `contato_id` (vendedor do fornecedor); Serviço exige só `contato_id` |
-| `orcamentos.atualizar` | `{ id, ...campos }` | `{ orcamento }` — se `contato_id` muda, **propaga** às ofertas |
+| `orcamentos.criar` | `{ tipo, fornecedor_id?, contato_id?, equipe_id?, obra_id?, titulo? }` | `{ orcamento }` — Material exige `fornecedor_id` + `contato_id` (vendedor); Serviço exige o **ofertante = contato_id OU equipe_id** |
+| `orcamentos.atualizar` | `{ id, ...campos }` | `{ orcamento }` — se o **ofertante** (contato/equipe) muda, **propaga** `contato_id`/`equipe_id` às ofertas |
 | `orcamentos.remover` | `{ id }` | `{ id }` — remove o orçamento + ofertas (cascade); **bloqueia** se alguma oferta virou despesa |
 
 > Snapshot inclui `orcamentos`. As ofertas do orçamento vêm em `precosPorCotacao`

@@ -41,20 +41,28 @@ function _orcamentoDoUsuario(id, usuarioId) {
 }
 
 /**
- * Valida os vínculos do orçamento e devolve o contato. Material exige fornecedor
- * + contato vendedor DESSE fornecedor; Serviço exige só um contato (qualquer).
+ * Valida os vínculos do orçamento. Material → contato vendedor DESSE fornecedor
+ * (sem equipe). Serviço → ofertante = exatamente UM de contato OU equipe.
  */
-function _validarVinculosOrcamento(tipo, fornecedorId, contatoId, usuarioId) {
-  if (!contatoId) lancar(ERRO.VALIDACAO, "Selecione o contato (ofertante).");
-  const contato = _contatoDoUsuario(contatoId, usuarioId);
+function _validarVinculosOrcamento(tipo, fornecedorId, contatoId, equipeId, usuarioId) {
   if (tipo === "Material") {
+    if (!contatoId) lancar(ERRO.VALIDACAO, "Selecione o contato (ofertante).");
+    const contato = _contatoDoUsuario(contatoId, usuarioId);
     if (!fornecedorId) lancar(ERRO.VALIDACAO, "Selecione o fornecedor.");
     _fornecedorDoUsuario(fornecedorId, usuarioId);
     if (String(contato.fornecedor_id) !== String(fornecedorId)) {
       lancar(ERRO.VALIDACAO, "O contato deve ser um vendedor do fornecedor selecionado.");
     }
+  } else {
+    // Serviço: contato OU equipe.
+    if (equipeId) {
+      _equipeDoUsuario(equipeId, usuarioId);
+    } else if (contatoId) {
+      _contatoDoUsuario(contatoId, usuarioId);
+    } else {
+      lancar(ERRO.VALIDACAO, "Selecione o ofertante (contato ou equipe).");
+    }
   }
-  return contato;
 }
 
 /** orcamentos.listar -> { orcamentos: [...] }. */
@@ -68,8 +76,10 @@ function orcamentosCriar(data, sessao) {
   const obraId = String((data && data.obra_id) || "");
   if (obraId) _obraAcessivel(obraId, sessao.usuario_id);
   const fornecedorId = tipo === "Material" ? String((data && data.fornecedor_id) || "") : "";
-  const contatoId = String((data && data.contato_id) || "");
-  _validarVinculosOrcamento(tipo, fornecedorId, contatoId, sessao.usuario_id);
+  const equipeId = tipo === "Serviço" ? String((data && data.equipe_id) || "") : "";
+  // Ofertante = contato XOR equipe (equipe só no Serviço).
+  const contatoId = equipeId ? "" : String((data && data.contato_id) || "");
+  _validarVinculosOrcamento(tipo, fornecedorId, contatoId, equipeId, sessao.usuario_id);
 
   return comLock(function () {
     const agora = agoraIso();
@@ -81,6 +91,7 @@ function orcamentosCriar(data, sessao) {
       tipo: tipo,
       fornecedor_id: fornecedorId,
       contato_id: contatoId,
+      equipe_id: equipeId,
       titulo: String((data && data.titulo) || "").trim(),
       ativo: true,
       criado_em: agora,
@@ -103,10 +114,21 @@ function orcamentosAtualizar(data, sessao) {
     tipo === "Material"
       ? String((data.fornecedor_id !== undefined ? data.fornecedor_id : atual.fornecedor_id) || "")
       : "";
-  const contatoId = String((data.contato_id !== undefined ? data.contato_id : atual.contato_id) || "");
-  _validarVinculosOrcamento(tipo, fornecedorId, contatoId, sessao.usuario_id);
+  const equipeId =
+    tipo === "Serviço"
+      ? String((data.equipe_id !== undefined ? data.equipe_id : atual.equipe_id) || "")
+      : "";
+  const contatoRaw = String((data.contato_id !== undefined ? data.contato_id : atual.contato_id) || "");
+  const contatoId = equipeId ? "" : contatoRaw; // ofertante = contato XOR equipe
+  _validarVinculosOrcamento(tipo, fornecedorId, contatoId, equipeId, sessao.usuario_id);
 
-  const patch = { atualizado_em: agoraIso(), tipo: tipo, fornecedor_id: fornecedorId, contato_id: contatoId };
+  const patch = {
+    atualizado_em: agoraIso(),
+    tipo: tipo,
+    fornecedor_id: fornecedorId,
+    contato_id: contatoId,
+    equipe_id: equipeId,
+  };
   if (data.titulo !== undefined) patch.titulo = String(data.titulo).trim();
   if (data.obra_id !== undefined) {
     const obraId = String(data.obra_id || "");
@@ -115,16 +137,22 @@ function orcamentosAtualizar(data, sessao) {
   }
   patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
-  const contatoMudou = String(atual.contato_id) !== String(contatoId);
+  const ofertanteMudou =
+    String(atual.contato_id || "") !== String(contatoId) ||
+    String(atual.equipe_id || "") !== String(equipeId);
 
   return comLock(function () {
     const orc = repoAtualizar(SCHEMA.ORCAMENTOS, "id", id, patch);
-    if (contatoMudou) {
+    if (ofertanteMudou) {
       const agora = agoraIso();
       repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {
         return String(p.orcamento_id) === String(id);
       }).forEach(function (p) {
-        repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", p.id, { contato_id: contatoId, atualizado_em: agora });
+        repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", p.id, {
+          contato_id: contatoId,
+          equipe_id: equipeId,
+          atualizado_em: agora,
+        });
       });
     }
     return { orcamento: orc };

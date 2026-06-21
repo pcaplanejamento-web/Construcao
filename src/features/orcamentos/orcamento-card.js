@@ -7,7 +7,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { moeda, numero, data as fmtData } from "../../core/formatters.js";
 import { dataStore } from "../../core/data-store.js";
-import { rotuloOrcamento, totalOrcamento, COR_CLASSIFICACAO } from "./orcamento-util.js";
+import { rotuloOrcamento, totalOrcamento, ofertanteNome, COR_CLASSIFICACAO } from "./orcamento-util.js";
 import "../../components/ui-badge.js";
 import "../../components/ui-icon.js";
 
@@ -60,10 +60,10 @@ class OrcamentoCard extends BaseElement {
       o.tipo === "Material"
         ? dataStore.fornecedores().find((f) => String(f.id) === String(o.fornecedor_id))
         : null;
-    const contato = dataStore.contatos().find((c) => String(c.id) === String(o.contato_id));
+    const ofertante = ofertanteNome(o.contato_id, o.equipe_id);
     const partes = [];
     if (fornecedor) partes.push(fornecedor.nome);
-    if (contato) partes.push(contato.nome);
+    if (ofertante && ofertante !== "—") partes.push(o.equipe_id ? ofertante + " (equipe)" : ofertante);
     const editado = o.editor_nome && o.atualizado_em && String(o.atualizado_em) !== String(o.criado_em);
     const log = o.criado_em
       ? `<div class="log">

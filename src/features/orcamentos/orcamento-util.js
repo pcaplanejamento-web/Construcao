@@ -12,15 +12,25 @@ import { totalOferta } from "../cotacoes/cotacao-util.js";
 /** Cor do badge por classificação (espelha itens-view / backend). */
 export const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
 
-/** Rótulo do orçamento: título (se houver) ou "Tipo · fornecedor/contato". */
+/** Nome do ofertante: equipe (se houver) ou contato. Usado em orçamento e oferta. */
+export function ofertanteNome(contatoId, equipeId) {
+  if (equipeId) {
+    const e = dataStore.equipe(equipeId);
+    return e ? e.nome : "—";
+  }
+  const c = dataStore.contatos().find((x) => String(x.id) === String(contatoId));
+  return c ? c.nome : "—";
+}
+
+/** Rótulo do orçamento: título (se houver) ou "Tipo · fornecedor/ofertante". */
 export function rotuloOrcamento(orc) {
   if (!orc) return "—";
   if (orc.titulo) return orc.titulo;
   const alvo =
     orc.tipo === "Material"
       ? (dataStore.fornecedores().find((f) => String(f.id) === String(orc.fornecedor_id)) || {}).nome
-      : (dataStore.contatos().find((c) => String(c.id) === String(orc.contato_id)) || {}).nome;
-  return `${orc.tipo || "Orçamento"}${alvo ? " · " + alvo : ""}`;
+      : ofertanteNome(orc.contato_id, orc.equipe_id);
+  return `${orc.tipo || "Orçamento"}${alvo && alvo !== "—" ? " · " + alvo : ""}`;
 }
 
 /** Total do orçamento = soma dos totais das suas ofertas. */
@@ -39,7 +49,6 @@ const _nomeItemCot = (c) => (c && c.item_id && (dataStore.item(c.item_id) || {})
  * (as ofertas aqui vêm de cotações diferentes). Linhas = ofertas cruas (precos).
  */
 export function colunasOferta() {
-  const contatoNome = (id) => (dataStore.contatos().find((c) => String(c.id) === String(id)) || { nome: "—" }).nome;
   const empresaNome = (id) => {
     const c = dataStore.contatos().find((x) => String(x.id) === String(id));
     if (!c || !c.fornecedor_id) return "";
@@ -51,8 +60,8 @@ export function colunasOferta() {
       titulo: "Cotação",
       formato: (id) => (id ? `<a href="#/cotacoes/${id}">${_nomeItemCot(dataStore.cotacao(id))}</a>` : _fraco("—")),
     },
-    { chave: "contato_id", titulo: "Contato", formato: (id) => contatoNome(id) },
-    { chave: "contato_id", titulo: "Empresa", formato: (id) => empresaNome(id) || _fraco("—") },
+    { chave: "contato_id", titulo: "Ofertante", formato: (id, l) => ofertanteNome(l.contato_id, l.equipe_id) },
+    { chave: "contato_id", titulo: "Empresa", formato: (id, l) => (l.equipe_id ? _fraco("—") : empresaNome(id) || _fraco("—")) },
     { chave: "valor_unit", titulo: "Valor unit.", alinhar: "dir", formato: (v) => moeda(v) },
     {
       chave: "valor_unit",
@@ -88,8 +97,6 @@ export function colunasOferta() {
 export function colunasOrcamento() {
   const fornNome = (id) =>
     (dataStore.fornecedores().find((f) => String(f.id) === String(id)) || {}).nome || "—";
-  const contatoNome = (id) =>
-    (dataStore.contatos().find((c) => String(c.id) === String(id)) || {}).nome || "—";
   const obraNome = (id) => (dataStore.obra(id) || {}).nome || "—";
   return [
     { chave: "id", titulo: "Orçamento", formato: (id, l) => rotuloOrcamento(l) },
@@ -102,7 +109,7 @@ export function colunasOrcamento() {
           : `<span style="color:var(--cor-texto-fraco)">—</span>`,
     },
     { chave: "fornecedor_id", titulo: "Fornecedor", formato: (id) => (id ? fornNome(id) : "—") },
-    { chave: "contato_id", titulo: "Ofertante", formato: (id) => contatoNome(id) },
+    { chave: "contato_id", titulo: "Ofertante", formato: (id, l) => ofertanteNome(l.contato_id, l.equipe_id) },
     { chave: "obra_id", titulo: "Obra", formato: (id) => (id ? obraNome(id) : "—") },
     { chave: "id", titulo: "Ofertas", alinhar: "dir", formato: (id) => String(dataStore.ofertasDoOrcamento(id).length) },
     { chave: "id", titulo: "Total", alinhar: "dir", formato: (id) => moeda(totalOrcamento(id)) },

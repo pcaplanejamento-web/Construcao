@@ -12,6 +12,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { ofertanteNome } from "../orcamentos/orcamento-util.js";
 import { primeiroErro, obrigatorio, valorPositivo } from "../../core/validators.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
@@ -71,7 +72,8 @@ class PrecoForm extends BaseElement {
   _camposOrcamento() {
     const orc = this.orcamento;
     const p = this.preco || {};
-    const contato = dataStore.contatos().find((c) => String(c.id) === String(orc.contato_id)) || {};
+    const ofertante = ofertanteNome(orc.contato_id, orc.equipe_id);
+    const tipoRot = orc.equipe_id ? "Equipe (ofertante)" : "Contato (ofertante)";
     const cotFixaNome = this.ehEdicao ? this._nomeCotacao(dataStore.cotacao(p.cotacao_id)) : "";
     return `
       ${
@@ -79,8 +81,8 @@ class PrecoForm extends BaseElement {
           ? `<div><label class="tx">Cotação</label><div class="lido">${cotFixaNome}</div></div>`
           : `<ui-select id="cotacao" label="Cotação (item a ofertar)"></ui-select>`
       }
-      <div><label class="tx">Contato (ofertante)</label>
-        <div class="lido">${contato.nome || "—"} <small>· definido pelo orçamento</small></div></div>
+      <div><label class="tx">${tipoRot}</label>
+        <div class="lido">${ofertante} <small>· definido pelo orçamento</small></div></div>
     `;
   }
 

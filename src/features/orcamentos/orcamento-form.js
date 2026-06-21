@@ -49,7 +49,7 @@ class OrcamentoForm extends BaseElement {
             <ui-select id="tipo" label="Tipo"></ui-select>
             <ui-select id="fornecedor" label="Fornecedor"></ui-select>
           </div>
-          <ui-select id="contato" label="Ofertante (vendedor/contato)"></ui-select>
+          <ui-select id="contato" label="Ofertante (contato; ou equipe no Serviço)"></ui-select>
           <ui-select id="obra" label="Obra (opcional)"></ui-select>
         </div>
         <div slot="rodape">
@@ -101,38 +101,51 @@ class OrcamentoForm extends BaseElement {
     this.$("#fornecedor").style.display = ehMaterial ? "" : "none";
   }
 
-  /** Material → contatos do fornecedor; Serviço → qualquer contato. */
+  /**
+   * Ofertante. Material → contatos do fornecedor. Serviço → contatos + EQUIPES.
+   * Valores codificados: "c:<id>" (contato) / "e:<id>" (equipe).
+   */
   preencherContatos() {
     const sel = this.$("#contato");
     if (!sel) return;
-    let contatos = dataStore.contatosAtivos();
+    const opcoes = [];
     if (this.tipo === "Material") {
       const fornId = this.$("#fornecedor").value;
-      contatos = contatos.filter((c) => fornId && String(c.fornecedor_id) === String(fornId));
+      dataStore
+        .contatosAtivos()
+        .filter((c) => fornId && String(c.fornecedor_id) === String(fornId))
+        .forEach((c) => opcoes.push({ value: "c:" + c.id, label: c.nome }));
+    } else {
+      dataStore.contatosAtivos().forEach((c) => opcoes.push({ value: "c:" + c.id, label: c.nome }));
+      dataStore.equipes().forEach((e) => opcoes.push({ value: "e:" + e.id, label: `${e.nome} — equipe` }));
     }
-    sel.setAttribute("placeholder", contatos.length ? "Selecione o ofertante" : "Nenhum contato disponível");
-    sel.options = contatos.map((c) => ({ value: c.id, label: c.nome }));
-    const atual = (this.orcamento || {}).contato_id || "";
-    sel.value = contatos.some((c) => String(c.id) === String(atual)) ? atual : "";
+    sel.setAttribute("placeholder", opcoes.length ? "Selecione o ofertante" : "Nenhum ofertante disponível");
+    sel.options = opcoes;
+    const o = this.orcamento || {};
+    const atual = o.equipe_id ? "e:" + o.equipe_id : o.contato_id ? "c:" + o.contato_id : "";
+    sel.value = opcoes.some((op) => op.value === atual) ? atual : "";
   }
 
   async salvar() {
     const tipo = this.tipo;
-    const contatoId = this.$("#contato").value;
+    const ofertante = this.$("#contato").value; // "c:<id>" / "e:<id>"
     const fornecedorId = tipo === "Material" ? this.$("#fornecedor").value : "";
     if (tipo === "Material" && !fornecedorId) {
       this.$("#fornecedor").setAttribute("error", "Selecione o fornecedor.");
       return;
     }
-    if (!contatoId) {
+    if (!ofertante) {
       this.$("#contato").setAttribute("error", "Selecione o ofertante.");
       return;
     }
+    const contatoId = ofertante.indexOf("c:") === 0 ? ofertante.slice(2) : "";
+    const equipeId = ofertante.indexOf("e:") === 0 ? ofertante.slice(2) : "";
     const dados = {
       titulo: this.$("#titulo").value.trim(),
       tipo,
       fornecedor_id: fornecedorId,
       contato_id: contatoId,
+      equipe_id: equipeId,
       obra_id: this.$("#obra").value,
     };
     const btn = this.$("#salvar");

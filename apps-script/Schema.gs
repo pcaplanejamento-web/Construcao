@@ -220,6 +220,7 @@ const SCHEMA = {
       "autor_nome", // (append) quem criou a oferta
       "editor_nome", // (append) quem editou por último
       "orcamento_id", // (append) FK → Orcamentos.id (vazio = oferta criada direto na cotação)
+      "equipe_id", // (append) FK → Equipes.id (ofertante equipe; senão contato_id)
     ],
   },
 
@@ -248,7 +249,8 @@ const SCHEMA = {
       "obra_id", // opcional (vazio = orçamento geral)
       "tipo", // Material | Serviço
       "fornecedor_id", // obrigatório p/ Material (vazio p/ Serviço)
-      "contato_id", // o ofertante/vendedor (todas as ofertas do orçamento são dele)
+      "contato_id", // ofertante CONTATO (Material sempre; Serviço se não for equipe)
+      "equipe_id", // (append) ofertante EQUIPE (só Serviço); contato XOR equipe
       "titulo", // opcional (rótulo automático como fallback)
       "ativo",
       "criado_em",

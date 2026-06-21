@@ -12,7 +12,7 @@ import { moeda, numero } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { totalOferta } from "../cotacoes/cotacao-util.js";
-import { rotuloOrcamento, totalOrcamento, COR_CLASSIFICACAO } from "./orcamento-util.js";
+import { rotuloOrcamento, totalOrcamento, ofertanteNome, COR_CLASSIFICACAO } from "./orcamento-util.js";
 import { abrirBannerVinculos, vinculosDaOferta } from "../shared/vinculos.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
@@ -149,7 +149,7 @@ class OrcamentoDetailView extends BaseElement {
     const o = this._orcamento;
     const cor = COR_CLASSIFICACAO[o.tipo] || "var(--cor-neutro)";
     const forn = o.fornecedor_id ? dataStore.fornecedores().find((f) => String(f.id) === String(o.fornecedor_id)) : null;
-    const contato = dataStore.contatos().find((c) => String(c.id) === String(o.contato_id));
+    const ofertante = ofertanteNome(o.contato_id, o.equipe_id);
     const obra = o.obra_id ? dataStore.obra(o.obra_id) : null;
     const n = dataStore.ofertasDoOrcamento(o.id).length;
     topo.innerHTML = `
@@ -158,7 +158,7 @@ class OrcamentoDetailView extends BaseElement {
         <div class="meta">
           <category-badge nome="${o.tipo || "—"}" cor="${cor}"></category-badge>
           ${forn ? `<span>· ${forn.nome}</span>` : ""}
-          ${contato ? `<span>· <ui-icon name="contato" size="13"></ui-icon> ${contato.nome}</span>` : ""}
+          ${ofertante && ofertante !== "—" ? `<span>· <ui-icon name="${o.equipe_id ? "usuario" : "contato"}" size="13"></ui-icon> ${ofertante}</span>` : ""}
           ${obra ? `· <a href="#/obras/${obra.id}"><ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</a>` : ""}
         </div>
         <div class="resumo">${numero(n)} oferta(s) · Total <strong>${moeda(totalOrcamento(o.id))}</strong></div>

@@ -140,9 +140,9 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
 | `orcamento-card` | `.orcamento`; eventos `abrir`/`editar`/`remover` | Card quadrado (espelha `obra-card`): título (ou rótulo automático), badge do **tipo** (Material/Serviço), **Total** das ofertas + nº, fornecedor/contato + obra, log. |
-| `orcamento-form` | `.orcamento`; eventos `salvo`, `fechar` | Modal: título (opc), **tipo** (Material/Serviço), **fornecedor** (só Material), **ofertante** (Material → contatos do fornecedor; Serviço → qualquer), **obra** (opc). |
+| `orcamento-form` | `.orcamento`; eventos `salvo`, `fechar` | Modal: título (opc), **tipo** (Material/Serviço), **fornecedor** (só Material), **ofertante** (Material → contatos do fornecedor; **Serviço → contatos OU equipes**, valores `c:`/`e:`), **obra** (opc). |
 | `orcamento-detail-view` | attr `id` (rota `#/orcamentos/:id`) | Cabeçalho (tipo, fornecedor/contato, obra) + resumo (nº · total) + tabela das ofertas (cotação, valor unit., total, prazo, obs, status); "+ Adicionar oferta" abre `preco-form` modo orçamento. |
-| `orcamento-util.js` | `rotuloOrcamento`, `totalOrcamento`, `colunasOferta`, `colunasOrcamento`, `COR_CLASSIFICACAO` | Rótulo automático; soma das ofertas; **`colunasOferta()`** = colunas iguais às da tabela de ofertas das cotações (reusada nas abas Ofertas de fornecedor/contato). |
+| `orcamento-util.js` | `rotuloOrcamento`, `totalOrcamento`, `ofertanteNome`, `colunasOferta`, `colunasOrcamento`, `COR_CLASSIFICACAO` | Rótulo/soma; **`ofertanteNome(contatoId, equipeId)`** (equipe ou contato); **`colunasOferta()`** = colunas iguais às da tabela de ofertas das cotações (coluna **Ofertante** resolve contato/equipe). |
 | `orcamento-grade.js` | `montarGradeOrcamentos(el, lista)` | Renderiza uma **grade de `orcamento-card`** (mesmo componente da aba Orçamento de Cotações) com abrir/editar/excluir — reusada nas abas Orçamentos de fornecedor/contato/obra. |
 
 > A **oferta é única** (`CotacaoPrecos`+`orcamento_id`): aparece na cotação E no orçamento.
