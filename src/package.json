@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "//": "Marca os módulos de src/ como ESM para ferramentas node (testes, node --check). Inerte para o browser, o serve.js (CommonJS, fora de src/) e o clasp (apps-script/)."
+}
