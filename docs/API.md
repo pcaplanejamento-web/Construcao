@@ -211,9 +211,9 @@ para dono **e** colaboradores.
 
 > **Envio** (`Email.gs` → `enviarEmailResend(para, assunto, html)`): chama a API do Resend
 > via `UrlFetchApp`. A **chave nunca fica no código/frontend** — vem das **Script Properties**:
-> `RESEND_API_KEY`, `EMAIL_REMETENTE` (ex.: `Dataobra <notificacoes@envios.dataobra.com.br>`),
-> `EMAIL_TESTE` (só p/ `testarEmailResend()` no editor). Domínio de envio recomendado:
-> subdomínio `envios.dataobra.com.br` (isola SPF/DKIM/DMARC da caixa pessoal). Helper interno
+> `RESEND_API_KEY`, `EMAIL_REMETENTE` (ex.: `Dataobra <notificacoes@dattaobra.com.br>`),
+> `EMAIL_TESTE` (só p/ `testarEmailResend()` no editor). Domínio verificado no Resend:
+> **`dattaobra.com.br`** (apex; o Resend isola o SPF dele num subdomínio `send.`). Helper interno
 > reutilizável por futuros alertas/relatórios/link público.
 
 > **Registrar como despesa** (`cotacoes.registrarDespesa`): **único** caminho para
