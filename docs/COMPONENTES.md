@@ -142,10 +142,14 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 | `orcamento-card` | `.orcamento`; eventos `abrir`/`editar`/`remover` | Card quadrado (espelha `obra-card`): título (ou rótulo automático), badge do **tipo** (Material/Serviço), **Total** das ofertas + nº, fornecedor/contato + obra, log. |
 | `orcamento-form` | `.orcamento`; eventos `salvo`, `fechar` | Modal: título (opc), **tipo** (Material/Serviço), **fornecedor** (só Material), **ofertante** (Material → contatos do fornecedor; Serviço → qualquer), **obra** (opc). |
 | `orcamento-detail-view` | attr `id` (rota `#/orcamentos/:id`) | Cabeçalho (tipo, fornecedor/contato, obra) + resumo (nº · total) + tabela das ofertas (cotação, valor unit., total, prazo, obs, status); "+ Adicionar oferta" abre `preco-form` modo orçamento. |
-| `orcamento-util.js` | `rotuloOrcamento`, `totalOrcamento`, `colunasOrcamento`, `COR_CLASSIFICACAO` | Rótulo automático; soma dos totais das ofertas; colunas da tabela de orçamentos (abas de fornecedor/contato/obra). |
+| `orcamento-util.js` | `rotuloOrcamento`, `totalOrcamento`, `colunasOferta`, `colunasOrcamento`, `COR_CLASSIFICACAO` | Rótulo automático; soma das ofertas; **`colunasOferta()`** = colunas iguais às da tabela de ofertas das cotações (reusada nas abas Ofertas de fornecedor/contato). |
+| `orcamento-grade.js` | `montarGradeOrcamentos(el, lista)` | Renderiza uma **grade de `orcamento-card`** (mesmo componente da aba Orçamento de Cotações) com abrir/editar/excluir — reusada nas abas Orçamentos de fornecedor/contato/obra. |
 
 > A **oferta é única** (`CotacaoPrecos`+`orcamento_id`): aparece na cotação E no orçamento.
-> As abas **Orçamentos** (fornecedor/contato/obra detail) usam `colunasOrcamento()`.
+> As abas **Ofertas** (fornecedor/contato detail) usam `colunasOferta()` (mesma tabela
+> das cotações); as abas **Orçamentos** (fornecedor/contato/obra) usam
+> `montarGradeOrcamentos()` (grade de cards). O contato detail tem abas **Ofertas** e
+> **Orçamentos** separadas.
 
 > As tabelas de fornecedores, contatos, cotações e ofertas mostram a coluna
 > **"Criado em"** (campo `criado_em`); o detalhe da cotação mostra "Criada em …".

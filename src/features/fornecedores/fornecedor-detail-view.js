@@ -10,11 +10,10 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { moeda } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { totalOferta } from "../cotacoes/cotacao-util.js";
-import { colunasOrcamento } from "../orcamentos/orcamento-util.js";
+import { colunasOferta } from "../orcamentos/orcamento-util.js";
+import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -90,8 +89,7 @@ class FornecedorDetailView extends BaseElement {
         </div>
         <div slot="orcamentos" class="aba">
           <ui-card title="Orçamentos deste fornecedor">
-            <ui-data-table id="tabOrcamentos" fluido clicavel
-              empty-text="Nenhum orçamento deste fornecedor ainda."></ui-data-table>
+            <div id="gradeOrc"></div>
           </ui-card>
         </div>
       </ui-tabs>
@@ -119,33 +117,12 @@ class FornecedorDetailView extends BaseElement {
       else this.removerContato(e.detail.linha);
     });
 
+    // Ofertas: MESMA tabela das ofertas das cotações (links navegam).
     this._tabOfertas = alvo.querySelector("#tabOfertas");
-    this._tabOfertas.columns = [
-      { chave: "_cotacaoDesc", titulo: "Cotação" },
-      { chave: "_contatoNome", titulo: "Contato" },
-      { chave: "valor_unit", titulo: "Valor unit.", alinhar: "dir", formato: (v) => moeda(v) },
-      { chave: "_total", titulo: "Total", alinhar: "dir", formato: (v) => moeda(v) },
-      ...colunasLog(),
-      {
-        chave: "despesa_id",
-        titulo: "Status",
-        formato: (v, linha) =>
-          linha.despesa_id
-            ? `<category-badge nome="Registrada" cor="var(--cor-info)"></category-badge>`
-            : this._bool(linha.escolhido)
-            ? `<category-badge nome="Escolhida" cor="var(--cor-sucesso)"></category-badge>`
-            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
-      },
-    ];
-    this._tabOfertas.addEventListener("linha", (e) => {
-      if (e.detail.linha._cotacaoId) location.hash = "#/cotacoes/" + e.detail.linha._cotacaoId;
-    });
+    this._tabOfertas.removeAttribute("clicavel");
+    this._tabOfertas.columns = colunasOferta();
 
-    this._tabOrcamentos = alvo.querySelector("#tabOrcamentos");
-    this._tabOrcamentos.columns = colunasOrcamento();
-    this._tabOrcamentos.addEventListener("linha", (e) => {
-      location.hash = "#/orcamentos/" + e.detail.linha.id;
-    });
+    this._gradeOrc = alvo.querySelector("#gradeOrc");
 
     alvo.querySelector("#novoContato").addEventListener("click", () =>
       this.abrirContatoForm({ fornecedor_id: this.fornecedorId, cargo: "Vendedor" })
@@ -169,31 +146,22 @@ class FornecedorDetailView extends BaseElement {
       .filter((c) => String(c.fornecedor_id) === String(f.id));
     this._tabContatos.rows = contatos;
 
-    // Ofertas feitas por esses contatos, em todas as cotações.
-    const mapaContato = {};
-    contatos.forEach((c) => (mapaContato[c.id] = c.nome));
+    // Ofertas feitas por esses contatos, em todas as cotações (ofertas cruas).
     const ids = new Set(contatos.map((c) => String(c.id)));
     const ofertas = [];
     dataStore.cotacoes().forEach((cot) => {
       dataStore.precosDaCotacao(cot.id).forEach((p) => {
-        if (ids.has(String(p.contato_id))) {
-          ofertas.push({
-            ...p,
-            _cotacaoId: cot.id,
-            _cotacaoDesc: (cot.item_id && (dataStore.item(cot.item_id) || {}).nome) || cot.descricao || "—",
-            _contatoNome: mapaContato[p.contato_id] || "—",
-            _total: totalOferta(p, cot),
-          });
-        }
+        if (ids.has(String(p.contato_id))) ofertas.push(p);
       });
     });
     ofertas.sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
     this._tabOfertas.rows = ofertas;
 
-    // Orçamentos deste fornecedor.
-    this._tabOrcamentos.rows = dataStore
-      .orcamentos()
-      .filter((o) => String(o.fornecedor_id) === String(f.id));
+    // Orçamentos deste fornecedor (grade de cards — mesmo componente de Cotações).
+    montarGradeOrcamentos(
+      this._gradeOrc,
+      dataStore.orcamentos().filter((o) => String(o.fornecedor_id) === String(f.id))
+    );
 
     this.pintarTopo();
   }

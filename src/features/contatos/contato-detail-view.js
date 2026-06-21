@@ -11,7 +11,8 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { data as fmtData } from "../../core/formatters.js";
-import { colunasOrcamento } from "../orcamentos/orcamento-util.js";
+import { colunasOferta } from "../orcamentos/orcamento-util.js";
+import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -89,10 +90,15 @@ class ContatoDetailView extends BaseElement {
               empty-text="Nenhum integrante vinculado."></ui-data-table>
           </ui-card>
         </div>
+        <div slot="ofertas">
+          <ui-card title="Ofertas deste contato">
+            <ui-data-table id="tabOfertas" fluido
+              empty-text="Este contato não tem ofertas ainda."></ui-data-table>
+          </ui-card>
+        </div>
         <div slot="orcamentos">
-          <ui-card title="Ofertas e orçamentos">
-            <ui-data-table id="tabOrcamentos" fluido clicavel
-              empty-text="Este contato não tem orçamentos ainda."></ui-data-table>
+          <ui-card title="Orçamentos deste contato">
+            <div id="gradeOrc"></div>
           </ui-card>
         </div>
       </ui-tabs>
@@ -101,7 +107,8 @@ class ContatoDetailView extends BaseElement {
     const abas = [{ id: "obras", rotulo: "Obras", icone: "obra" }];
     if (c.fornecedor_id) abas.push({ id: "fornecedores", rotulo: "Fornecedores", icone: "fornecedor" });
     if (CARGOS_EQUIPE.indexOf(c.cargo) >= 0) abas.push({ id: "equipe", rotulo: "Equipe", icone: "usuario" });
-    abas.push({ id: "orcamentos", rotulo: "Ofertas e orçamentos", icone: "carteira" });
+    abas.push({ id: "ofertas", rotulo: "Ofertas", icone: "cifrao" });
+    abas.push({ id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" });
     alvo.querySelector("#abas").abas = abas;
 
     this._tabObras = alvo.querySelector("#tabObras");
@@ -136,11 +143,10 @@ class ContatoDetailView extends BaseElement {
       location.hash = "#/contatos/" + e.detail.linha.id;
     });
 
-    this._tabOrcamentos = alvo.querySelector("#tabOrcamentos");
-    this._tabOrcamentos.columns = colunasOrcamento();
-    this._tabOrcamentos.addEventListener("linha", (e) => {
-      location.hash = "#/orcamentos/" + e.detail.linha.id;
-    });
+    // Ofertas: MESMA tabela das ofertas das cotações (links navegam).
+    this._tabOfertas = alvo.querySelector("#tabOfertas");
+    this._tabOfertas.columns = colunasOferta();
+    this._gradeOrc = alvo.querySelector("#gradeOrc");
 
     this._montado = true;
   }
@@ -183,10 +189,21 @@ class ContatoDetailView extends BaseElement {
     }
     this._tabEquipe.rows = equipe;
 
-    // Orçamentos onde este contato é o ofertante.
-    this._tabOrcamentos.rows = dataStore
-      .orcamentos()
-      .filter((o) => String(o.contato_id) === String(c.id));
+    // Ofertas deste contato (ofertas cruas), em todas as cotações.
+    const ofertas = [];
+    dataStore.cotacoes().forEach((cot) => {
+      dataStore.precosDaCotacao(cot.id).forEach((p) => {
+        if (String(p.contato_id) === String(c.id)) ofertas.push(p);
+      });
+    });
+    ofertas.sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
+    this._tabOfertas.rows = ofertas;
+
+    // Orçamentos onde este contato é o ofertante (grade de cards).
+    montarGradeOrcamentos(
+      this._gradeOrc,
+      dataStore.orcamentos().filter((o) => String(o.contato_id) === String(c.id))
+    );
 
     this.pintarTopo();
   }

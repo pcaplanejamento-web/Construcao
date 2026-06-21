@@ -30,6 +30,60 @@ export function totalOrcamento(orcId) {
   }, 0);
 }
 
+const _fraco = (t) => `<span style="color:var(--cor-texto-fraco)">${t}</span>`;
+const _nomeItemCot = (c) => (c && c.item_id && (dataStore.item(c.item_id) || {}).nome) || (c || {}).descricao || "—";
+
+/**
+ * Colunas da tabela de OFERTAS (mesmo formato da tabela de ofertas das cotações),
+ * para reuso nas abas Ofertas de fornecedor/contato. Inclui a coluna "Cotação"
+ * (as ofertas aqui vêm de cotações diferentes). Linhas = ofertas cruas (precos).
+ */
+export function colunasOferta() {
+  const contatoNome = (id) => (dataStore.contatos().find((c) => String(c.id) === String(id)) || { nome: "—" }).nome;
+  const empresaNome = (id) => {
+    const c = dataStore.contatos().find((x) => String(x.id) === String(id));
+    if (!c || !c.fornecedor_id) return "";
+    return (dataStore.fornecedores().find((f) => String(f.id) === String(c.fornecedor_id)) || {}).nome || "";
+  };
+  return [
+    {
+      chave: "cotacao_id",
+      titulo: "Cotação",
+      formato: (id) => (id ? `<a href="#/cotacoes/${id}">${_nomeItemCot(dataStore.cotacao(id))}</a>` : _fraco("—")),
+    },
+    { chave: "contato_id", titulo: "Contato", formato: (id) => contatoNome(id) },
+    { chave: "contato_id", titulo: "Empresa", formato: (id) => empresaNome(id) || _fraco("—") },
+    { chave: "valor_unit", titulo: "Valor unit.", alinhar: "dir", formato: (v) => moeda(v) },
+    {
+      chave: "valor_unit",
+      titulo: "Total",
+      alinhar: "dir",
+      formato: (v, linha) => moeda(totalOferta(linha, dataStore.cotacao(linha.cotacao_id))),
+    },
+    { chave: "prazo_entrega", titulo: "Prazo", formato: (v) => v || "—" },
+    { chave: "observacao", titulo: "Obs.", formato: (v) => v || "—" },
+    {
+      chave: "orcamento_id",
+      titulo: "Orçamento",
+      formato: (id) => {
+        const o = id ? dataStore.orcamento(id) : null;
+        return o ? `<a href="#/orcamentos/${o.id}">${rotuloOrcamento(o)}</a>` : _fraco("—");
+      },
+    },
+    ...colunasLog(),
+    {
+      chave: "escolhido",
+      titulo: "Status",
+      formato: (v, linha) =>
+        linha.despesa_id
+          ? `<category-badge nome="Registrada" cor="var(--cor-info)"></category-badge>`
+          : v === true || v === "TRUE" || v === "true"
+          ? `<category-badge nome="Escolhida" cor="var(--cor-sucesso)"></category-badge>`
+          : _fraco("—"),
+    },
+  ];
+}
+
 /** Colunas da tabela de orçamentos (abas de fornecedor/contato/obra). */
 export function colunasOrcamento() {
   const fornNome = (id) =>

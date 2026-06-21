@@ -9,7 +9,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { colunasOrcamento } from "../orcamentos/orcamento-util.js";
+import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -104,8 +104,7 @@ class ObraDetailView extends BaseElement {
         </div>
         <div slot="orcamentos">
           <ui-card title="Orçamentos da obra">
-            <ui-data-table id="tabOrcamentos" fluido clicavel
-              empty-text="Nenhum orçamento vinculado a esta obra ainda."></ui-data-table>
+            <div id="gradeOrc"></div>
           </ui-card>
         </div>
       </ui-tabs>
@@ -117,11 +116,7 @@ class ObraDetailView extends BaseElement {
       { id: "responsaveis", rotulo: "Responsáveis", icone: "seguranca" },
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
     ];
-    this._tabOrcamentos = alvo.querySelector("#tabOrcamentos");
-    this._tabOrcamentos.columns = colunasOrcamento();
-    this._tabOrcamentos.addEventListener("linha", (e) => {
-      location.hash = "#/orcamentos/" + e.detail.linha.id;
-    });
+    this._gradeOrc = alvo.querySelector("#gradeOrc");
     this._dash = alvo.querySelector("#dash");
     this._break = alvo.querySelector("#break");
     this._rosca = alvo.querySelector("#rosca");
@@ -162,9 +157,10 @@ class ObraDetailView extends BaseElement {
     this._mensal.despesas = despesas;
     this._tabela.categorias = categorias;
     this._tabela.participantes = dataStore.participantesDaObra(this.obraId);
-    this._tabOrcamentos.rows = dataStore
-      .orcamentos()
-      .filter((o) => String(o.obra_id) === String(this.obraId));
+    montarGradeOrcamentos(
+      this._gradeOrc,
+      dataStore.orcamentos().filter((o) => String(o.obra_id) === String(this.obraId))
+    );
     this.aplicarFiltro();
 
     const sig = categorias.map((c) => c.id).join(",");
