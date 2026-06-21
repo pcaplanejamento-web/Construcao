@@ -39,7 +39,7 @@ class AppSidebar extends BaseElement {
       /* padding-top = --esp-tela: alinha o topo do 1º item com o topo do
          conteúdo (KPIs), que usa a MESMA distância padrão do header. */
       nav { display: flex; flex-direction: column; gap: var(--esp-1);
-        width: 200px; padding: var(--esp-tela) var(--esp-3) var(--esp-4); /* largura DEVE casar com .marca-bloco do app-header */
+        width: 195px; padding: var(--esp-tela) var(--esp-3) var(--esp-4); /* = largura natural do cluster do app-header (logo+Dattaobra+menu); mantém o sanduíche no limite direito */
         background: var(--cor-superficie); border-right: 1px solid var(--cor-borda);
         height: 100%; overflow: hidden; transition: width .2s ease; }
       a { display: flex; align-items: center; gap: var(--esp-3);
@@ -66,7 +66,7 @@ class AppSidebar extends BaseElement {
         :host { position: fixed; inset: 0 auto 0 0; z-index: var(--z-nav);
           transform: translateX(-100%); transition: transform .2s ease; }
         :host([aberto]) { transform: translateX(0); }
-        nav { box-shadow: var(--sombra-lg); width: 200px; }
+        nav { box-shadow: var(--sombra-lg); width: 195px; }
         .backdrop { display: block; position: fixed; inset: 0; z-index: -1;
           background: var(--cor-overlay); opacity: 0; pointer-events: none;
           transition: opacity .2s; }
