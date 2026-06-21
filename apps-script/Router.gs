@@ -64,6 +64,12 @@ const ROTAS = {
   "contatos.atualizar": { fn: contatosAtualizar },
   "contatos.remover": { fn: contatosRemover },
 
+  // Cargos (de contatos)
+  "cargos.listar": { fn: cargosListar },
+  "cargos.criar": { fn: cargosCriar },
+  "cargos.atualizar": { fn: cargosAtualizar },
+  "cargos.remover": { fn: cargosRemover },
+
   // Compras — Cotações + ofertas
   "cotacoes.listar": { fn: cotacoesListar },
   "cotacoes.criar": { fn: cotacoesCriar },

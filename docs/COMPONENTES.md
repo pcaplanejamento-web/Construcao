@@ -121,8 +121,10 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 | `fornecedores-view` | — | Rota `#/fornecedores`. CRUD de fornecedores (nome, telefone, e-mail, classificação). Linha **clicável** → abre a página do fornecedor. Reusa `ui-data-table` + `category-badge`. |
 | `fornecedor-detail-view` | attr `id` (rota `#/fornecedores/:id`) | Página do fornecedor: cabeçalho + `ui-tabs` com **Contatos** (os contatos deste fornecedor; CRUD via `contato-form`) e **Ofertas** (ofertas feitas pelos contatos dele em todas as cotações, com link para a cotação). |
 | `fornecedor-form` | `.fornecedor`; eventos `salvo`, `fechar` | Modal criar/editar (nome*, telefone, e-mail, cnpj, classificação, observação). |
-| `contatos-view` | — | Rota `#/contatos`. CRUD de contatos; mostra a **empresa** (fornecedor vinculado). |
-| `contato-form` | `.contato`; eventos `salvo`, `fechar` | Modal criar/editar (nome*, telefone, e-mail, cargo, **fornecedor** opcional, observação). |
+| `contatos-view` | — | Rota `#/contatos`. `ui-tabs`: **Contatos** (tabela clicável → página do contato) e **Cargos** (fixos + extras, CRUD via `cargo-form`). |
+| `contato-detail-view` | attr `id` (rota `#/contatos/:id`) | Página do contato: `ui-tabs` conforme o cargo — **Obras** (onde participa), **Fornecedores** (se Vendedor), **Equipe** (Pedreiro→superior+colegas / Mestre·Engenheiro→subordinados). |
+| `contato-form` | `.contato`; eventos `salvo`, `fechar` | Modal criar/editar. **Cargo** via `ui-select` (fixos+extras); campos condicionais: **Fornecedor** (só/obrigatório p/ Vendedor) e **Vínculo** Mestre/Engenheiro (só/obrigatório p/ Pedreiro), com `ui-alert`. |
+| `cargo-form` | `.cargo`; eventos `salvo`, `fechar` | Modal criar/editar **cargo extra** (nome). Os 6 obrigatórios são fixos. |
 | `cotacoes-view` | — | Rota `#/cotacoes`. Lista (tabela `clicavel`): descrição, qtd, classificação, obra, nº de ofertas, **melhor preço**, situação. |
 | `cotacao-form` | `.cotacao`; eventos `salvo`, `fechar` | Modal criar/editar (descrição*, quantidade, unidade, classificação, **obra opcional**, status). |
 | `cotacao-detail-view` | attr `id` (rota `#/cotacoes/:id`) | **KPIs + 2 gráficos + comparativo**: faixa `<oferta-kpis>`, `<grafico-evolucao-precos>` e `<category-breakdown>` (reusado p/ comparar ofertas por contato), e a tabela de ofertas (contato, empresa, valor unit., **total** com destaque do menor preço, prazo, obs, **Criado em**); escolher/editar/excluir oferta; **Registrar como despesa**. |

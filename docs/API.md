@@ -44,7 +44,7 @@ A API é um **único Web App** do Apps Script. Um `doPost` despacha por `action`
 ### Estado inicial (cache-first)
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, participantesPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cotacoes:[...], precosPorCotacao:{cotacaoId:[...]}, historicoPorCotacao:{cotacaoId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
+| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, participantesPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cargos:[...], cotacoes:[...], precosPorCotacao:{cotacaoId:[...]}, historicoPorCotacao:{cotacaoId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
 
 ### Obras (próprias + compartilhadas)
 Cada obra inclui `ehDono` (bool), `dono_nome`/`dono_email` e `total_gasto`.
@@ -123,6 +123,18 @@ para dono **e** colaboradores.
 | `contatos.criar` | `{ nome, telefone?, email?, cargo?, fornecedor_id?, observacao? }` | `{ contato }` |
 | `contatos.atualizar` | `{ id, ...campos }` | `{ contato }` |
 | `contatos.remover` | `{ id }` | `{ id }` (desativa) |
+
+> Contato: `cargo` (nome), `fornecedor_id` (obrigatório p/ **Vendedor**),
+> `superior_id` (obrigatório p/ **Pedreiro**: contato Mestre de Obra/Engenheiro).
+> Validado no servidor (`_validarVinculosContato`).
+
+### Cargos (de contatos)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `cargos.listar` | `{}` | `{ cargos:[{id,nome,fixo,criado_em?,atualizado_em?}] }` (6 fixos + extras) |
+| `cargos.criar` | `{ nome }` | `{ cargo }` (nome único; log de criação) |
+| `cargos.atualizar` | `{ id, nome }` | `{ cargo }` (só extras) |
+| `cargos.remover` | `{ id }` | `{ id }` (só extras) |
 
 ### Compras — Cotações + ofertas
 | Action | `data` | Retorno |

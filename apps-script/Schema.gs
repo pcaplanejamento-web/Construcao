@@ -129,7 +129,13 @@ const SCHEMA = {
       "ativo",
       "criado_em",
       "atualizado_em",
+      "superior_id", // (append) p/ Pedreiro: contato Mestre de Obra/Engenheiro
     ],
+  },
+
+  CARGOS: {
+    aba: "Cargos", // cargos EXTRAS do usuário (os obrigatórios são constantes)
+    colunas: ["id", "usuario_id", "nome", "criado_em", "atualizado_em"],
   },
 
   COTACOES: {
@@ -196,6 +202,16 @@ const STATUS_OBRA = ["ativa", "pausada", "concluida"];
 
 /** Status de cotação válidos. */
 const STATUS_COTACAO = ["aberta", "fechada"];
+
+/** Cargos obrigatórios (fixos/built-in). A lógica condicional depende destes nomes. */
+const CARGOS_OBRIGATORIOS = [
+  "Vendedor",
+  "Mestre de Obra",
+  "Pedreiro",
+  "Engenheiro",
+  "Despachante",
+  "Gestor",
+];
 
 /** Marcador de categoria global (compartilhada por todos). */
 const CATEGORIA_GLOBAL = "GLOBAL";

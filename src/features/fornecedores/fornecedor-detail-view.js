@@ -133,7 +133,7 @@ class FornecedorDetailView extends BaseElement {
     });
 
     alvo.querySelector("#novoContato").addEventListener("click", () =>
-      this.abrirContatoForm({ fornecedor_id: this.fornecedorId })
+      this.abrirContatoForm({ fornecedor_id: this.fornecedorId, cargo: "Vendedor" })
     );
 
     this._montado = true;

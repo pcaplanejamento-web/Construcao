@@ -38,13 +38,36 @@ function contatosListar(data, sessao) {
   return { contatos: listarContatosUsuario(sessao.usuario_id) };
 }
 
+/**
+ * Valida os vínculos do contato conforme o cargo (lança se inválido):
+ *  - Vendedor exige fornecedor_id (de um fornecedor do usuário);
+ *  - Pedreiro exige superior_id de um contato Mestre de Obra/Engenheiro do usuário.
+ */
+function _validarVinculosContato(cargo, fornecedorId, superiorId, usuarioId) {
+  if (cargo === "Vendedor") {
+    if (!fornecedorId) lancar(ERRO.VALIDACAO, "Vendedor deve ser vinculado a um fornecedor.");
+    _fornecedorDoUsuario(fornecedorId, usuarioId);
+  } else if (fornecedorId) {
+    _fornecedorDoUsuario(fornecedorId, usuarioId); // permitido, mas valida posse
+  }
+  if (cargo === "Pedreiro") {
+    if (!superiorId) lancar(ERRO.VALIDACAO, "Pedreiro deve ser vinculado a um Mestre de Obra ou Engenheiro.");
+    const sup = _contatoDoUsuario(superiorId, usuarioId);
+    if (sup.cargo !== "Mestre de Obra" && sup.cargo !== "Engenheiro") {
+      lancar(ERRO.VALIDACAO, "O vínculo do Pedreiro deve ser um Mestre de Obra ou Engenheiro.");
+    }
+  }
+}
+
 /** contatos.criar -> { contato }. */
 function contatosCriar(data, sessao) {
   const nome = String((data && data.nome) || "").trim();
   if (!nome) lancar(ERRO.VALIDACAO, "Informe o nome do contato.");
 
+  const cargo = String((data && data.cargo) || "").trim();
   const fornecedorId = String((data && data.fornecedor_id) || "");
-  if (fornecedorId) _fornecedorDoUsuario(fornecedorId, sessao.usuario_id);
+  const superiorId = String((data && data.superior_id) || "");
+  _validarVinculosContato(cargo, fornecedorId, superiorId, sessao.usuario_id);
 
   return comLock(function () {
     const agora = agoraIso();
@@ -54,12 +77,13 @@ function contatosCriar(data, sessao) {
       nome: nome,
       telefone: String((data && data.telefone) || ""),
       email: String((data && data.email) || ""),
-      cargo: String((data && data.cargo) || ""),
+      cargo: cargo,
       fornecedor_id: fornecedorId,
       observacao: String((data && data.observacao) || ""),
       ativo: true,
       criado_em: agora,
       atualizado_em: agora,
+      superior_id: superiorId,
     };
     repoInserir(SCHEMA.CONTATOS, contato);
     return { contato: contato };
@@ -69,8 +93,7 @@ function contatosCriar(data, sessao) {
 /** contatos.atualizar -> { contato }. */
 function contatosAtualizar(data, sessao) {
   const id = data && data.id;
-  _contatoDoUsuario(id, sessao.usuario_id);
-
+  const atual = _contatoDoUsuario(id, sessao.usuario_id);
   const patch = { atualizado_em: agoraIso() };
   if (data.nome !== undefined) {
     const nome = String(data.nome).trim();
@@ -80,13 +103,16 @@ function contatosAtualizar(data, sessao) {
   if (data.telefone !== undefined) patch.telefone = String(data.telefone);
   if (data.email !== undefined) patch.email = String(data.email);
   if (data.cargo !== undefined) patch.cargo = String(data.cargo);
-  if (data.fornecedor_id !== undefined) {
-    const fornecedorId = String(data.fornecedor_id || "");
-    if (fornecedorId) _fornecedorDoUsuario(fornecedorId, sessao.usuario_id);
-    patch.fornecedor_id = fornecedorId;
-  }
+  if (data.fornecedor_id !== undefined) patch.fornecedor_id = String(data.fornecedor_id || "");
+  if (data.superior_id !== undefined) patch.superior_id = String(data.superior_id || "");
   if (data.observacao !== undefined) patch.observacao = String(data.observacao);
   if (data.ativo !== undefined) patch.ativo = data.ativo === true;
+
+  // Valida os vínculos com os valores EFETIVOS (novos ou atuais).
+  const cargoEf = patch.cargo !== undefined ? patch.cargo : atual.cargo;
+  const fornEf = patch.fornecedor_id !== undefined ? patch.fornecedor_id : atual.fornecedor_id;
+  const supEf = patch.superior_id !== undefined ? patch.superior_id : atual.superior_id;
+  _validarVinculosContato(cargoEf, String(fornEf || ""), String(supEf || ""), sessao.usuario_id);
 
   return comLock(function () {
     const contato = repoAtualizar(SCHEMA.CONTATOS, "id", id, patch);

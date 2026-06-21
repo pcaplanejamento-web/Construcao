@@ -127,11 +127,24 @@ contatos; a melhor oferta pode virar uma despesa numa obra (reusa `despesas.cria
 | nome | string | |
 | telefone | string | opcional |
 | email | string | opcional |
-| cargo | string | opcional |
-| fornecedor_id | UUID | FK → Fornecedores.id (opcional — empresa do contato) |
+| cargo | string | nome do cargo (lista fixos + extras) |
+| fornecedor_id | UUID | FK → Fornecedores.id (obrigatório p/ **Vendedor**) |
+| superior_id | UUID | FK → Contatos.id (obrigatório p/ **Pedreiro**: um Mestre de Obra/Engenheiro) |
 | observacao | string | opcional |
 | ativo | boolean | exclusão lógica |
 | criado_em / atualizado_em | ISO datetime | |
+
+### Aba `Cargos` (cargos extras de contato)
+Os 6 obrigatórios (Vendedor, Mestre de Obra, Pedreiro, Engenheiro, Despachante,
+Gestor) são **fixos** (constante `CARGOS_OBRIGATORIOS`, não persistidos). Esta aba
+guarda só os **extras** criados pelo usuário (com log).
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| usuario_id | UUID | FK → Usuarios.id (dono) |
+| nome | string | único (não pode repetir fixo/extra) |
+| criado_em / atualizado_em | ISO datetime | log de criação/edição |
 
 ### Aba `Cotacoes` (necessidade a cotar)
 | Coluna | Tipo | Descrição |

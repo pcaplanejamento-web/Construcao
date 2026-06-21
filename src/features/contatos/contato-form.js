@@ -1,9 +1,12 @@
 /**
  * <contato-form> — Modal para criar/editar um contato (pessoa).
  *
+ * O Cargo é escolhido numa lista (cargos fixos + extras). Campos condicionais:
+ *  - Vendedor → vínculo OBRIGATÓRIO a um Fornecedor (só aparece p/ Vendedor);
+ *  - Pedreiro → vínculo OBRIGATÓRIO a um Mestre de Obra/Engenheiro (só p/ Pedreiro).
+ * Auto-contido: chama o data-store e emite "salvo"/"fechar".
+ *
  * Propriedade: .contato (objeto p/ edição; ausente = novo)
- * Eventos: "salvo", "fechar". Auto-contido: chama o data-store e emite EVENTOS.
- * O contato pode (opcionalmente) ser vinculado a um fornecedor (empresa).
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -13,6 +16,7 @@ import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
+import "../../components/ui-alert.js";
 
 class ContatoForm extends BaseElement {
   set contato(v) {
@@ -48,6 +52,7 @@ class ContatoForm extends BaseElement {
     return `
       <ui-modal open title="${this.ehEdicao ? "Editar contato" : "Novo contato"}">
         <div class="campos">
+          <ui-alert id="erro" tipo="erro"></ui-alert>
           <ui-input id="nome" label="Nome" value="${esc(c.nome)}"
             placeholder="Ex.: João da Silva"></ui-input>
           <div class="linha">
@@ -56,10 +61,12 @@ class ContatoForm extends BaseElement {
             <ui-input id="email" label="E-mail" type="email" value="${esc(c.email)}"
               placeholder="joao@empresa.com"></ui-input>
           </div>
-          <div class="linha">
-            <ui-input id="cargo" label="Cargo" value="${esc(c.cargo)}"
-              placeholder="Ex.: Vendedor"></ui-input>
+          <ui-select id="cargo" label="Cargo"></ui-select>
+          <div id="campoFornecedor" hidden>
             <ui-select id="fornecedor" label="Empresa (fornecedor)"></ui-select>
+          </div>
+          <div id="campoSuperior" hidden>
+            <ui-select id="superior" label="Vínculo (Mestre de Obra / Engenheiro)"></ui-select>
           </div>
           <div>
             <label class="tx">Observação</label>
@@ -75,22 +82,50 @@ class ContatoForm extends BaseElement {
   }
 
   aposRender() {
-    this.preencherFornecedores();
+    const c = this.contato || {};
+
+    const selCargo = this.$("#cargo");
+    selCargo.options = [{ value: "", label: "— Sem cargo —" }].concat(
+      dataStore.cargos().map((x) => ({ value: x.nome, label: x.nome }))
+    );
+    selCargo.value = c.cargo || "";
+
+    const selForn = this.$("#fornecedor");
+    selForn.options = [{ value: "", label: "— Selecione —" }].concat(
+      dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
+    );
+    selForn.value = c.fornecedor_id || "";
+
+    const selSup = this.$("#superior");
+    selSup.options = [{ value: "", label: "— Selecione —" }].concat(
+      dataStore
+        .contatosAtivos()
+        .filter(
+          (x) =>
+            String(x.id) !== String(c.id) &&
+            (x.cargo === "Mestre de Obra" || x.cargo === "Engenheiro")
+        )
+        .map((x) => ({ value: x.id, label: `${x.nome} (${x.cargo})` }))
+    );
+    selSup.value = c.superior_id || "";
+
+    this.atualizarCondicionais();
+    selCargo.addEventListener("change", () => this.atualizarCondicionais());
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
   }
 
-  preencherFornecedores() {
-    const sel = this.$("#fornecedor");
-    if (!sel) return;
-    sel.options = [{ value: "", label: "— Nenhuma —" }].concat(
-      dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
-    );
-    sel.value = (this.contato || {}).fornecedor_id || "";
+  /** Mostra Fornecedor só p/ Vendedor e Superior só p/ Pedreiro. */
+  atualizarCondicionais() {
+    const cargo = this.$("#cargo").value;
+    this.$("#campoFornecedor").hidden = cargo !== "Vendedor";
+    this.$("#campoSuperior").hidden = cargo !== "Pedreiro";
   }
 
   async salvar() {
+    const alerta = this.$("#erro");
+    alerta.mensagem = "";
     const nome = this.$("#nome").value.trim();
     const erro = obrigatorio(nome, "O nome");
     if (erro) {
@@ -98,12 +133,29 @@ class ContatoForm extends BaseElement {
       return;
     }
     this.$("#nome").removeAttribute("error");
+
+    const cargo = this.$("#cargo").value;
+    const ehVendedor = cargo === "Vendedor";
+    const ehPedreiro = cargo === "Pedreiro";
+    const fornecedor_id = ehVendedor ? this.$("#fornecedor").value : "";
+    const superior_id = ehPedreiro ? this.$("#superior").value : "";
+
+    if (ehVendedor && !fornecedor_id) {
+      alerta.mensagem = "Vendedor deve ser vinculado a um fornecedor.";
+      return;
+    }
+    if (ehPedreiro && !superior_id) {
+      alerta.mensagem = "Pedreiro deve ser vinculado a um Mestre de Obra ou Engenheiro.";
+      return;
+    }
+
     const dados = {
       nome,
       telefone: this.$("#telefone").value.trim(),
       email: this.$("#email").value.trim(),
-      cargo: this.$("#cargo").value.trim(),
-      fornecedor_id: this.$("#fornecedor").value,
+      cargo,
+      fornecedor_id,
+      superior_id,
       observacao: this.$("#observacao").value.trim(),
     };
     const btn = this.$("#salvar");

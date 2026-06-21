@@ -128,6 +128,7 @@ function dadosSnapshot(data, sessao) {
     participantesPorObra: participantesPorObra,
     fornecedores: listarFornecedoresUsuario(u.id),
     contatos: listarContatosUsuario(u.id),
+    cargos: listarCargosUsuario(u.id),
     cotacoes: cotacoes,
     precosPorCotacao: precosPorCotacao,
     historicoPorCotacao: historicoPorCotacao,
