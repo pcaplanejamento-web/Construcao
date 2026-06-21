@@ -1,5 +1,5 @@
 /**
- * <item-detail-view> — Página de um item (rota #/itens/:id).
+ * <item-detail-view> — Página de um item (rota /itens/:id).
  *
  * Faixa de KPIs (Total gasto · Despesas · Cotações · Obras) + cabeçalho com o
  * nome e a classificação + ui-tabs com tudo vinculado ao item:
@@ -10,6 +10,7 @@
  * Reusa ui-tabs, ui-card, ui-data-table, category-badge, item-form, formatters,
  * melhorTotal (cotacao-util) e os tokens --grad-* (mesmo estilo de oferta-kpis).
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda, numero, data as fmtData } from "../../core/formatters.js";
@@ -99,7 +100,7 @@ class ItemDetailView extends BaseElement {
 
   aoConectar() {
     if (!this._buscar()) {
-      this.$("#conteudo").innerHTML = `<p>Item não encontrado. <a href="#/itens">Voltar</a></p>`;
+      this.$("#conteudo").innerHTML = `<p>Item não encontrado. <a href="/itens">Voltar</a></p>`;
       return;
     }
     this.montarConteudo();
@@ -111,7 +112,7 @@ class ItemDetailView extends BaseElement {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
       <div class="kpis" id="kpis"></div>
-      <a class="voltar" href="#/itens">← Itens</a>
+      <a class="voltar" href="/itens">← Itens</a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="despesas" class="aba">
@@ -171,7 +172,7 @@ class ItemDetailView extends BaseElement {
       ...colunasLog(),
     ];
     this._tabDespesas.addEventListener("linha", (e) => {
-      if (e.detail.linha.obra_id) location.hash = "#/obras/" + e.detail.linha.obra_id;
+      if (e.detail.linha.obra_id) irPara("/obras/" + e.detail.linha.obra_id);
     });
 
     this._tabCotacoes = alvo.querySelector("#tabCotacoes");
@@ -208,7 +209,7 @@ class ItemDetailView extends BaseElement {
       ...colunasLog(),
     ];
     this._tabCotacoes.addEventListener("linha", (e) => {
-      location.hash = "#/cotacoes/" + e.detail.linha.id;
+      irPara("/cotacoes/" + e.detail.linha.id);
     });
 
     this._tabObras = alvo.querySelector("#tabObras");
@@ -218,7 +219,7 @@ class ItemDetailView extends BaseElement {
       { chave: "valor", titulo: "Valor gasto", alinhar: "dir", formato: (v) => moeda(v) },
     ];
     this._tabObras.addEventListener("linha", (e) => {
-      location.hash = "#/obras/" + e.detail.linha.id;
+      irPara("/obras/" + e.detail.linha.id);
     });
 
     this._montado = true;
@@ -228,7 +229,7 @@ class ItemDetailView extends BaseElement {
     if (!this._montado) return;
     const item = this._buscar();
     if (!item) {
-      location.hash = "#/itens";
+      irPara("/itens");
       return;
     }
     this._item = item;

@@ -58,7 +58,7 @@ export function colunasOferta() {
     {
       chave: "cotacao_id",
       titulo: "Cotação",
-      formato: (id) => (id ? `<a href="#/cotacoes/${id}">${_nomeItemCot(dataStore.cotacao(id))}</a>` : _fraco("—")),
+      formato: (id) => (id ? `<a href="/cotacoes/${id}">${_nomeItemCot(dataStore.cotacao(id))}</a>` : _fraco("—")),
     },
     { chave: "contato_id", titulo: "Ofertante", formato: (id, l) => ofertanteNome(l.contato_id, l.equipe_id) },
     { chave: "contato_id", titulo: "Empresa", formato: (id, l) => (l.equipe_id ? _fraco("—") : empresaNome(id) || _fraco("—")) },
@@ -76,7 +76,7 @@ export function colunasOferta() {
       titulo: "Orçamento",
       formato: (id) => {
         const o = id ? dataStore.orcamento(id) : null;
-        return o ? `<a href="#/orcamentos/${o.id}">${rotuloOrcamento(o)}</a>` : _fraco("—");
+        return o ? `<a href="/orcamentos/${o.id}">${rotuloOrcamento(o)}</a>` : _fraco("—");
       },
     },
     ...colunasLog(),

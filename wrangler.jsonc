@@ -6,6 +6,10 @@
   "name": "dattaobra",
   "compatibility_date": "2026-06-21",
   "observability": { "enabled": true },
-  "assets": { "directory": "." },
+  // URLs limpas (/obras, /obras/:id): qualquer path não-arquivo cai no index.html
+  // (SPA), então refresh e links diretos funcionam. Paths excluídos pelo
+  // .assetsignore (apps-script/ etc.) passam a servir o index.html — o shell do
+  // app, NUNCA o código do backend (segue protegido).
+  "assets": { "directory": ".", "not_found_handling": "single-page-application" },
   "compatibility_flags": ["nodejs_compat"]
 }

@@ -1,7 +1,7 @@
 # Setup e Deploy
 
 Guia passo a passo para colocar o sistema no ar: **backend** (Apps Script +
-Sheets) e **frontend** (GitHub Pages).
+Sheets) e **frontend** (Cloudflare Workers).
 
 ---
 
@@ -86,15 +86,20 @@ pelo `bootstrapAdmin()`.
    ```
    Abra `http://localhost:8123` e faça login com o admin do bootstrap.
 
-### Publicar no GitHub Pages
+### Publicar no Cloudflare Workers (git-connected)
 
-- **Automático:** o workflow [`.github/workflows/pages.yml`](../.github/workflows/pages.yml)
-  publica a raiz do repositório no Pages a cada push na `main`. Em
-  **Settings → Pages**, defina a origem como **GitHub Actions**.
-- **Manual:** em **Settings → Pages**, selecione branch `main` / pasta raiz.
+O site está em **Cloudflare Workers** (assets estáticos), conectado ao GitHub:
+cada push na `main` redeploya sozinho. Domínio: **dattaobra.com.br**.
 
-O arquivo `.nojekyll` garante que o Pages sirva os arquivos como estão (sem
-processar com Jekyll).
+- **`wrangler.jsonc`** — `assets.directory: "."` (serve a raiz) +
+  `not_found_handling: "single-page-application"` (URLs limpas: qualquer path cai
+  no `index.html`, então refresh/links diretos funcionam).
+- **`.assetsignore`** — exclui do que vai ao ar: `apps-script/` (backend), `docs/`,
+  `test/`, `scripts/`, `*.md`, configs. **Sem isso o backend vazaria.**
+- **`_headers`** — cabeçalhos de segurança/cache (Workers honra `_headers`).
+- **URLs limpas:** assets do `index.html` e do `app-header` usam caminho
+  **absoluto** (`/src/...`) — obrigatório para funcionarem em paths profundos
+  (ex.: `/obras/123`). Links internos são `<a href="/rota">` (sem `#`).
 
 ---
 

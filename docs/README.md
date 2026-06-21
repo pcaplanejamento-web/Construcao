@@ -12,7 +12,7 @@ cadastra os demais usuários e define as configurações de cada um.
 | Frontend    | **Web Components** puros (Custom Elements + ES Modules) — sem build, sem dependências |
 | Backend/API | **Google Apps Script** (Web App `doPost`/`doGet`, JSON) |
 | Banco       | **Google Sheets** (uma planilha com várias abas) |
-| Hospedagem  | GitHub Pages (frontend estático) + Web App do Apps Script (API) |
+| Hospedagem  | Cloudflare Workers (frontend estático em `dattaobra.com.br`, git-connected) + Web App do Apps Script (API) |
 
 ## Funcionalidades
 
@@ -21,7 +21,7 @@ cadastra os demais usuários e define as configurações de cada um.
 - 🌗 **Tema claro/escuro** (segue o SO + alternador) em todos os componentes;
   ícones em SVG (`ui-icon`), sem emoji; design consistente por tokens.
 - 🏢 Cada usuário cadastra e gerencia **suas próprias obras**; pode **compartilhá-las**
-  (colaboração) ou gerar um **link público somente-leitura** (`#/publico/:token`, sem login).
+  (colaboração) ou gerar um **link público somente-leitura** (`/publico/:token`, sem login).
 - 💸 Registro de **despesas** com item, valor, **classificação** e data.
 - 📊 **Dashboard em tempo real**: total gasto, orçamento, saldo e gasto por categoria.
 - 🏷️ **Classificações** globais + próprias por usuário.

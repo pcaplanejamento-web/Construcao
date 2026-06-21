@@ -4,7 +4,7 @@
 
 ```
 ┌─────────────────────────────────────────┐        ┌──────────────────────────┐
-│  Navegador (SPA estática — GitHub Pages) │        │   Google Apps Script      │
+│  Navegador (SPA estática — Cloudflare)   │        │   Google Apps Script      │
 │                                          │  POST  │   (Web App /exec)         │
 │  index.html                              │ ─────► │                           │
 │   └─ src/app.js (router + boot)          │  JSON  │  doPost(e)                │
@@ -24,7 +24,8 @@
    - `data-store.js`: **estado central + cache** (cache-first). Carrega tudo via
      `dados.snapshot`, persiste em localStorage por usuário, e expõe getters +
      mutações write-through. As views leem daqui (sem recarregar).
-   - `router.js`: roteamento hash-based + gating de rota.
+   - `router.js`: roteamento por path (History API, URLs limpas `/obras`) +
+     gating de rota; intercepta `<a href="/...">` e cai no `index.html` (SPA).
    - `store.js`, `event-bus.js`: estado reativo e pub/sub.
    - `formatters.js`, `validators.js`, `config.js`: utilitários e configuração.
 2. **`components/`** — primitivos reutilizáveis `ui-*` (botão, input, modal,

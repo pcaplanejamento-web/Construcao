@@ -8,6 +8,7 @@
  *
  * Cada "grupo" = { rotulo, colunas, linhas, rota(linha)->hash }.
  */
+import { irPara } from "../../core/router.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import "../../components/ui-modal.js";
@@ -48,8 +49,8 @@ export function vinculosDoItem(id) {
   const despesas = _despesasComObra((d) => String(d.item_id) === String(id));
   const cotacoes = dataStore.cotacoes().filter((c) => String(c.item_id) === String(id));
   return [
-    _grupo("Despesas", COL_DESPESA, despesas, (l) => "#/obras/" + l.obra_id),
-    _grupo("Cotações", COL_COTACAO, cotacoes, (l) => "#/cotacoes/" + l.id),
+    _grupo("Despesas", COL_DESPESA, despesas, (l) => "/obras/" + l.obra_id),
+    _grupo("Cotações", COL_COTACAO, cotacoes, (l) => "/cotacoes/" + l.id),
   ];
 }
 
@@ -63,7 +64,7 @@ export function vinculosDoFornecedor(id) {
         { chave: "cargo", titulo: "Cargo", formato: (v) => v || "—" },
       ],
       contatos,
-      (l) => "#/contatos/" + l.id
+      (l) => "/contatos/" + l.id
     ),
   ];
 }
@@ -96,9 +97,9 @@ export function vinculosDoContato(id) {
         { chave: "valor_unit", titulo: "Valor unit.", alinhar: "dir", formato: (v) => moeda(v) },
       ],
       ofertas,
-      (l) => "#/cotacoes/" + l._cotacaoId
+      (l) => "/cotacoes/" + l._cotacaoId
     ),
-    _grupo("Obras (participante)", [{ chave: "nome", titulo: "Obra" }], participacoes, (l) => "#/obras/" + l.id),
+    _grupo("Obras (participante)", [{ chave: "nome", titulo: "Obra" }], participacoes, (l) => "/obras/" + l.id),
     _grupo(
       "Equipe (subordinados)",
       [
@@ -106,7 +107,7 @@ export function vinculosDoContato(id) {
         { chave: "cargo", titulo: "Cargo", formato: (v) => v || "—" },
       ],
       subordinados,
-      (l) => "#/contatos/" + l.id
+      (l) => "/contatos/" + l.id
     ),
   ];
 }
@@ -116,23 +117,23 @@ export function vinculosDaSubclassificacao(id) {
   const cotacoes = dataStore.cotacoes().filter((c) => String(c.categoria_id) === String(id));
   const fornecedores = dataStore.fornecedoresAtivos().filter((f) => String(f.categoria_id) === String(id));
   return [
-    _grupo("Despesas", COL_DESPESA, despesas, (l) => "#/obras/" + l.obra_id),
-    _grupo("Cotações", COL_COTACAO, cotacoes, (l) => "#/cotacoes/" + l.id),
-    _grupo("Fornecedores", [{ chave: "nome", titulo: "Fornecedor" }], fornecedores, (l) => "#/fornecedores/" + l.id),
+    _grupo("Despesas", COL_DESPESA, despesas, (l) => "/obras/" + l.obra_id),
+    _grupo("Cotações", COL_COTACAO, cotacoes, (l) => "/cotacoes/" + l.id),
+    _grupo("Fornecedores", [{ chave: "nome", titulo: "Fornecedor" }], fornecedores, (l) => "/fornecedores/" + l.id),
   ];
 }
 
 export function vinculosDoCargo(nome) {
   const contatos = dataStore.contatosAtivos().filter((c) => String(c.cargo) === String(nome));
   return [
-    _grupo("Contatos", [{ chave: "nome", titulo: "Contato" }], contatos, (l) => "#/contatos/" + l.id),
+    _grupo("Contatos", [{ chave: "nome", titulo: "Contato" }], contatos, (l) => "/contatos/" + l.id),
   ];
 }
 
 export function vinculosDaOferta(preco) {
   if (!preco || !String(preco.despesa_id || "")) return [];
   const desp = _despesasComObra((d) => String(d.id) === String(preco.despesa_id));
-  return [_grupo("Despesa registrada", COL_DESPESA, desp, (l) => "#/obras/" + l.obra_id)];
+  return [_grupo("Despesa registrada", COL_DESPESA, desp, (l) => "/obras/" + l.obra_id)];
 }
 
 /* ------------------------------ Banner ------------------------------- */
@@ -175,7 +176,7 @@ export function abrirBannerVinculos({ titulo, grupos, aoExcluir }) {
         const hash = g.rota(e.detail.linha);
         if (hash) {
           modal.remove();
-          location.hash = hash;
+          irPara(hash);
         }
       });
     }

@@ -1,11 +1,12 @@
 /**
- * <orcamento-detail-view> — Página de um orçamento (rota #/orcamentos/:id).
+ * <orcamento-detail-view> — Página de um orçamento (rota /orcamentos/:id).
  *
  * Cabeçalho (tipo, fornecedor/contato, obra) + resumo (nº ofertas · total) +
  * tabela das ofertas (cada uma de uma cotação). "+ Adicionar oferta" abre o
  * preco-form em modo orçamento (cotação filtrada pelo tipo, contato travado).
  * Lê do data-store (cache-first) e assina mudanças. Espelha cotacao-detail-view.
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda, numero } from "../../core/formatters.js";
@@ -68,7 +69,7 @@ class OrcamentoDetailView extends BaseElement {
 
   aoConectar() {
     if (!this._buscar()) {
-      this.$("#conteudo").innerHTML = `<p>Orçamento não encontrado. <a href="#/cotacoes">Voltar</a></p>`;
+      this.$("#conteudo").innerHTML = `<p>Orçamento não encontrado. <a href="/cotacoes">Voltar</a></p>`;
       return;
     }
     this.montarConteudo();
@@ -79,7 +80,7 @@ class OrcamentoDetailView extends BaseElement {
   montarConteudo() {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
-      <a class="voltar" href="#/cotacoes">← Cotações</a>
+      <a class="voltar" href="/cotacoes">← Cotações</a>
       <div class="topo" id="topo"></div>
       <ui-card title="Ofertas do orçamento">
         <ui-button slot="acoes" id="addOferta">+ Adicionar oferta</ui-button>
@@ -131,7 +132,7 @@ class OrcamentoDetailView extends BaseElement {
     if (!this._montado) return;
     const o = this._buscar();
     if (!o) {
-      location.hash = "#/cotacoes";
+      irPara("/cotacoes");
       return;
     }
     this._orcamento = o;
@@ -159,7 +160,7 @@ class OrcamentoDetailView extends BaseElement {
           <category-badge nome="${o.tipo || "—"}" cor="${cor}"></category-badge>
           ${forn ? `<span>· ${forn.nome}</span>` : ""}
           ${ofertante && ofertante !== "—" ? `<span>· <ui-icon name="${o.equipe_id ? "usuario" : "contato"}" size="13"></ui-icon> ${ofertante}</span>` : ""}
-          ${obra ? `· <a href="#/obras/${obra.id}"><ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</a>` : ""}
+          ${obra ? `· <a href="/obras/${obra.id}"><ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</a>` : ""}
         </div>
         <div class="resumo">${numero(n)} oferta(s) · Total <strong>${moeda(totalOrcamento(o.id))}</strong></div>
       </div>

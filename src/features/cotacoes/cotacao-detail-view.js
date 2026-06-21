@@ -1,11 +1,12 @@
 /**
- * <cotacao-detail-view> — Detalhe/comparativo de uma cotação (#/cotacoes/:id).
+ * <cotacao-detail-view> — Detalhe/comparativo de uma cotação (/cotacoes/:id).
  *
  * Cabeçalho da necessidade + tabela comparativa das ofertas (contato, empresa,
  * valor unit., TOTAL com destaque do menor preço, prazo, obs). Permite escolher
  * a oferta, editar/excluir ofertas e REGISTRAR a escolhida como despesa.
  * Lê do data-store (cache-first) e assina mudanças.
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda, numero, data as fmtData } from "../../core/formatters.js";
@@ -80,7 +81,7 @@ class CotacaoDetailView extends BaseElement {
 
   aoConectar() {
     if (!dataStore.cotacao(this.cotacaoId)) {
-      this.$("#conteudo").innerHTML = `<p>Cotação não encontrada. <a href="#/cotacoes">Voltar</a></p>`;
+      this.$("#conteudo").innerHTML = `<p>Cotação não encontrada. <a href="/cotacoes">Voltar</a></p>`;
       return;
     }
     this.montarConteudo();
@@ -92,7 +93,7 @@ class CotacaoDetailView extends BaseElement {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
       <oferta-kpis id="kpis"></oferta-kpis>
-      <a class="voltar" href="#/cotacoes">← Cotações</a>
+      <a class="voltar" href="/cotacoes">← Cotações</a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="graficos" class="graficos">
@@ -155,7 +156,7 @@ class CotacaoDetailView extends BaseElement {
         formato: (id) => {
           const orc = id ? dataStore.orcamento(id) : null;
           return orc
-            ? `<a href="#/orcamentos/${orc.id}">${rotuloOrcamento(orc)}</a>`
+            ? `<a href="/orcamentos/${orc.id}">${rotuloOrcamento(orc)}</a>`
             : `<span style="color:var(--cor-texto-fraco)">—</span>`;
         },
       },
@@ -190,7 +191,7 @@ class CotacaoDetailView extends BaseElement {
     if (!this._montado) return;
     const c = dataStore.cotacao(this.cotacaoId);
     if (!c) {
-      location.hash = "#/cotacoes";
+      irPara("/cotacoes");
       return;
     }
     this._cotacao = c;
@@ -248,7 +249,7 @@ class CotacaoDetailView extends BaseElement {
           ${qtd ? `<span>${qtd}</span>` : ""}
           ${c.classificacao ? `<category-badge nome="${c.classificacao}" cor="${COR_CLASSIFICACAO[c.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
           ${cat ? `<category-badge nome="${cat.nome}" cor="${cat.cor}"></category-badge>` : ""}
-          ${obra ? `· <a href="#/obras/${obra.id}"><ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</a>` : ""}
+          ${obra ? `· <a href="/obras/${obra.id}"><ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</a>` : ""}
           <span>· ${c.status === "fechada" ? "Fechada" : "Aberta"}</span>
           ${c.criado_em ? `<span>· <ui-icon name="relogio" size="13"></ui-icon> Criada em ${fmtData(c.criado_em)}</span>` : ""}
         </div>

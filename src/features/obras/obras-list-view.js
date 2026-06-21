@@ -1,9 +1,10 @@
 /**
- * <obras-list-view> — Lista as obras do usuário (rota #/obras).
+ * <obras-list-view> — Lista as obras do usuário (rota /obras).
  *
  * Lê do data-store (cache-first, sem recarregar): assina o store e repinta.
  * Criar/editar/excluir vão pelas mutações do store (write-through).
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
@@ -74,7 +75,7 @@ class ObrasListView extends BaseElement {
       const card = document.createElement("obra-card");
       card.obra = o;
       card.addEventListener("abrir", (e) => {
-        location.hash = "#/obras/" + e.detail.obra.id;
+        irPara("/obras/" + e.detail.obra.id);
       });
       card.addEventListener("editar", (e) => this.abrirForm(e.detail.obra));
       card.addEventListener("compartilhar", (e) => this.abrirShare(e.detail.obra));

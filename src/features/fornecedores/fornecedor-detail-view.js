@@ -1,5 +1,5 @@
 /**
- * <fornecedor-detail-view> — Página de um fornecedor (rota #/fornecedores/:id).
+ * <fornecedor-detail-view> — Página de um fornecedor (rota /fornecedores/:id).
  *
  * Cabeçalho com os dados do fornecedor + ui-tabs com duas abas:
  *  - Contatos: os contatos vinculados a este fornecedor (CRUD via contato-form).
@@ -8,6 +8,7 @@
  * Lê do data-store (cache-first) e assina mudanças. Reusa ui-tabs, ui-card,
  * ui-data-table, category-badge, contato-form e totalOferta (cotacao-util).
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
@@ -58,7 +59,7 @@ class FornecedorDetailView extends BaseElement {
 
   aoConectar() {
     if (!this._buscar()) {
-      this.$("#conteudo").innerHTML = `<p>Fornecedor não encontrado. <a href="#/fornecedores">Voltar</a></p>`;
+      this.$("#conteudo").innerHTML = `<p>Fornecedor não encontrado. <a href="/fornecedores">Voltar</a></p>`;
       return;
     }
     this.montarConteudo();
@@ -73,7 +74,7 @@ class FornecedorDetailView extends BaseElement {
   montarConteudo() {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
-      <a class="voltar" href="#/fornecedores">← Fornecedores</a>
+      <a class="voltar" href="/fornecedores">← Fornecedores</a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="contatos" class="aba">
@@ -146,7 +147,7 @@ class FornecedorDetailView extends BaseElement {
       },
     ];
     this._tabDados.addEventListener("linha", (e) => {
-      location.hash = "#/obras/" + e.detail.linha.id;
+      irPara("/obras/" + e.detail.linha.id);
     });
 
     alvo.querySelector("#novoContato").addEventListener("click", () =>
@@ -160,7 +161,7 @@ class FornecedorDetailView extends BaseElement {
     if (!this._montado) return;
     const f = this._buscar();
     if (!f) {
-      location.hash = "#/fornecedores";
+      irPara("/fornecedores");
       return;
     }
     this._fornecedor = f;

@@ -1,11 +1,12 @@
 /**
- * <itens-view> — Catálogo de itens (rota #/itens), com abas:
+ * <itens-view> — Catálogo de itens (rota /itens), com abas:
  *  - Itens: cada item classificado como Material ou Serviço (CRUD via item-form);
  *  - Subclassificações: lista livre (entidade categoria), TODAS editáveis
  *    (as próprias e as padrão compartilhadas), reaproveitando categoria-form.
  * Lê do data-store (cache-first) e assina mudanças. Reusa ui-tabs, ui-card,
  * ui-data-table, category-badge, ui-button, ui-empty-state.
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { colunasLog } from "../../core/audit-columns.js";
@@ -116,7 +117,7 @@ class ItensView extends BaseElement {
     ];
     tabela.rows = itens;
     tabela.addEventListener("linha", (e) => {
-      location.hash = "#/itens/" + e.detail.linha.id;
+      irPara("/itens/" + e.detail.linha.id);
     });
     tabela.addEventListener("acao", (e) => {
       if (e.detail.acao === "editar") this.abrirItemForm(e.detail.linha);

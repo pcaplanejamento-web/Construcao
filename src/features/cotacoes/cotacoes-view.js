@@ -1,9 +1,10 @@
 /**
- * <cotacoes-view> — Rota #/cotacoes, com abas [Cotações | Orçamento].
+ * <cotacoes-view> — Rota /cotacoes, com abas [Cotações | Orçamento].
  *  - Cotações: tabela das necessidades (clique → detalhe comparativo).
  *  - Orçamento: grade de cards (estilo Obras) dos orçamentos (containers de ofertas).
  * CRUD próprio do usuário; lê do data-store (cache-first) e assina mudanças.
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda, numero } from "../../core/formatters.js";
@@ -174,7 +175,7 @@ class CotacoesView extends BaseElement {
     ];
     tabela.rows = cotacoes;
     tabela.addEventListener("linha", (e) => {
-      location.hash = "#/cotacoes/" + e.detail.linha.id;
+      irPara("/cotacoes/" + e.detail.linha.id);
     });
     tabela.addEventListener("acao", (e) => {
       if (e.detail.acao === "editar") this.abrirForm(e.detail.linha);
@@ -204,7 +205,7 @@ class CotacoesView extends BaseElement {
       const card = document.createElement("orcamento-card");
       card.orcamento = o;
       card.addEventListener("abrir", (e) => {
-        location.hash = "#/orcamentos/" + e.detail.orcamento.id;
+        irPara("/orcamentos/" + e.detail.orcamento.id);
       });
       card.addEventListener("editar", (e) => this.abrirOrcamentoForm(e.detail.orcamento));
       card.addEventListener("remover", (e) => this.removerOrcamento(e.detail.orcamento));

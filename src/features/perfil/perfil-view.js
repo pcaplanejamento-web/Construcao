@@ -1,5 +1,5 @@
 /**
- * <perfil-view> — Página do usuário (rota #/perfil).
+ * <perfil-view> — Página do usuário (rota /perfil).
  * Mostra os dados do usuário (do data-store) e permite trocar a senha.
  * Reusa ui-card + <senha-form>.
  */

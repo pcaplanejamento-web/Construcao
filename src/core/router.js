@@ -1,25 +1,37 @@
 /**
- * router.js — Roteador hash-based + gating de rota (UX).
+ * router.js — Roteador por path (History API) + gating de rota (UX).
  *
- * Hash (#/...) é obrigatório no GitHub Pages (evita 404 em refresh, sem
- * servidor para reescrever paths). O gating aqui é só UX; a autorização real
- * é server-side (princípio nº 7).
+ * URLs limpas: /obras, /obras/:id (sem #). O servidor faz fallback SPA (serve
+ * index.html em qualquer path) — ver wrangler.jsonc (not_found_handling) e, no
+ * preview, .claude/serve.js. Links internos <a href="/..."> são interceptados
+ * globalmente; o composedPath atravessa o Shadow DOM, então funciona com os
+ * Web Components. O gating aqui é só UX; a autorização real é server-side
+ * (princípio nº 7).
+ *
+ * Navegação programática: importe { irPara } e chame irPara("/obras/" + id).
+ * Quem precisa reagir à troca de rota escuta o evento window "rotamudou".
  *
  * Uso:
  *   const router = criarRouter(outletEl);
- *   router.adicionar("#/login", "login-view", { somentePublico: true });
- *   router.adicionar("#/obras", "obras-list-view", { protegida: true });
- *   router.adicionar("#/obras/:id", "obra-detail-view", { protegida: true });
- *   router.adicionar("#/admin", "admin-view", { protegida: true, admin: true });
+ *   router.adicionar("/login", "login-view", { somentePublico: true });
+ *   router.adicionar("/obras", "obras-list-view", { protegida: true });
+ *   router.adicionar("/obras/:id", "obra-detail-view", { protegida: true });
  *   router.iniciar();
  */
 import { auth } from "./auth-store.js";
 import { toastAviso } from "./event-bus.js";
 
+// Navegação programática global (ligada ao router ativo em iniciar()). Antes do
+// boot cai num pushState simples — não deve ocorrer na prática.
+let _navegar = (caminho) => history.pushState({}, "", caminho);
+export function irPara(caminho) {
+  _navegar(caminho);
+}
+
 export function criarRouter(outlet) {
   const rotas = [];
 
-  /** Converte "#/obras/:id" em { regex, params: ["id"], ... }. */
+  /** Converte "/obras/:id" em { regex, params: ["id"], ... }. */
   function compilar(caminho) {
     const params = [];
     // Escapa regex EXCETO ':' (usado para marcar parâmetros).
@@ -37,14 +49,21 @@ export function criarRouter(outlet) {
     return apiRouter;
   }
 
-  function navegar(hash) {
-    if (location.hash === hash) resolver();
-    else location.hash = hash;
+  function rotaAtual() {
+    return location.pathname || "/";
   }
 
-  function casar(hash) {
+  function navegar(caminho) {
+    if (rotaAtual() === caminho) resolver();
+    else {
+      history.pushState({}, "", caminho);
+      resolver();
+    }
+  }
+
+  function casar(caminho) {
     for (const r of rotas) {
-      const m = r.regex.exec(hash);
+      const m = r.regex.exec(caminho);
       if (m) {
         const valores = {};
         r.params.forEach((nome, i) => (valores[nome] = decodeURIComponent(m[i + 1])));
@@ -56,18 +75,18 @@ export function criarRouter(outlet) {
 
   function renderizar(tag, params) {
     const el = document.createElement(tag);
-    // Parâmetros de rota viram atributos kebab (ex.: :id -> obra-id se mapeado).
+    // Parâmetros de rota viram atributos (ex.: :id -> id).
     Object.keys(params).forEach((k) => el.setAttribute(k, params[k]));
     outlet.replaceChildren(el);
   }
 
   function resolver() {
-    const hash = location.hash || "#/";
-    const casado = casar(hash);
+    const caminho = rotaAtual();
+    const casado = casar(caminho);
 
     // Sem rota: manda para a inicial conforme autenticação.
     if (!casado) {
-      navegar(auth.estaAutenticado() ? "#/obras" : "#/login");
+      navegar(auth.estaAutenticado() ? "/obras" : "/login");
       return;
     }
 
@@ -76,29 +95,50 @@ export function criarRouter(outlet) {
 
     // Guarda: rota protegida exige sessão.
     if (op.protegida && !auth.estaAutenticado()) {
-      navegar("#/login");
+      navegar("/login");
       return;
     }
     // Guarda: rota admin exige role admin.
     if (op.admin && !auth.ehAdmin()) {
       toastAviso("Acesso restrito a administradores.");
-      navegar("#/obras");
+      navegar("/obras");
       return;
     }
     // Já autenticado não fica na tela de login.
     if (op.somentePublico && auth.estaAutenticado()) {
-      navegar("#/obras");
+      navegar("/obras");
       return;
     }
 
     renderizar(rota.tag, params);
+    // Avisa quem marca navegação ativa (ex.: app-sidebar) — substitui hashchange.
+    window.dispatchEvent(new CustomEvent("rotamudou", { detail: { caminho } }));
+  }
+
+  // Intercepta cliques em links internos (<a href="/...">) e navega via SPA.
+  function onClickGlobal(e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.composedPath().find((el) => el && el.tagName === "A");
+    if (!a) return;
+    const href = a.getAttribute("href");
+    if (!href || !href.startsWith("/")) return; // só rotas internas absolutas
+    if (a.target && a.target !== "_self") return;
+    if (a.hasAttribute("download")) return;
+    e.preventDefault();
+    navegar(href);
   }
 
   function iniciar() {
-    window.addEventListener("hashchange", resolver);
+    _navegar = navegar; // liga irPara() a este router
+    // Compat: links antigos com #/rota (bookmarks, links públicos) → /rota.
+    if (location.hash.startsWith("#/")) {
+      history.replaceState({}, "", location.hash.slice(1));
+    }
+    window.addEventListener("popstate", resolver);
+    document.addEventListener("click", onClickGlobal);
     resolver();
   }
 
-  const apiRouter = { adicionar, navegar, iniciar, resolver };
+  const apiRouter = { adicionar, navegar, iniciar, resolver, rotaAtual };
   return apiRouter;
 }

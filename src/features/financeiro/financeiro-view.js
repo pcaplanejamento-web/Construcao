@@ -1,6 +1,6 @@
 /**
  * <financeiro-view> — Painel financeiro CONSOLIDADO entre todas as obras (rota
- * #/financeiro). Compõe primitivos já existentes (KPIs inline + ui-tabs +
+ * /financeiro). Compõe primitivos já existentes (KPIs inline + ui-tabs +
  * ui-data-table) e reusa `despesa-split` (balancos/resto/status). Tudo derivado.
  *
  *  - KPIs: Total, Pago, Em aberto, Despesas em pagamento.
@@ -9,6 +9,7 @@
  *  - A pagar: por responsável (saldo a pagar via `balancos`).
  *  - Em aberto: despesas com resto > 0 (clique → obra).
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
@@ -105,7 +106,7 @@ class FinanceiroView extends BaseElement {
       { chave: "_status", titulo: "Status", formato: (v) => `<category-badge nome="${v}" cor="${COR_STATUS[v] || "var(--cor-neutro)"}"></category-badge>` },
     ];
     this._tabAberto.addEventListener("linha", (e) => {
-      if (e.detail.linha.id) location.hash = "#/obras/" + e.detail.linha.id;
+      if (e.detail.linha.id) irPara("/obras/" + e.detail.linha.id);
     });
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }

@@ -1,6 +1,6 @@
 /**
  * <login-view> — Tela de login: centraliza o <login-form> num cartão.
- * É a rota pública #/login.
+ * É a rota pública /login.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { API_NAO_CONFIGURADA } from "../../core/config.js";

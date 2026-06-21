@@ -1,5 +1,5 @@
 /**
- * <equipe-detail-view> — Página de uma equipe (rota #/equipes/:id).
+ * <equipe-detail-view> — Página de uma equipe (rota /equipes/:id).
  *
  * Cabeçalho (nome + líder) + `ui-tabs` **Obras / Membros / Dados**. Cada aba é um
  * `ui-card` + `ui-data-table` (padrão do sistema): o botão "+" fica no `slot="acoes"`
@@ -7,6 +7,7 @@
  * sem componente novo) para vincular obra / adicionar membro. Lê do data-store
  * (cache-first) e assina mudanças. Reusa ui-tabs/ui-card/ui-data-table/ui-modal/ui-select/ui-button.
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
@@ -57,7 +58,7 @@ class EquipeDetailView extends BaseElement {
 
   aoConectar() {
     if (!this._buscar()) {
-      this.$("#conteudo").innerHTML = `<p>Equipe não encontrada. <a href="#/contatos">Voltar</a></p>`;
+      this.$("#conteudo").innerHTML = `<p>Equipe não encontrada. <a href="/contatos">Voltar</a></p>`;
       return;
     }
     this.montarConteudo();
@@ -68,7 +69,7 @@ class EquipeDetailView extends BaseElement {
   montarConteudo() {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
-      <a class="voltar" href="#/contatos">← Contatos</a>
+      <a class="voltar" href="/contatos">← Contatos</a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="obras">
@@ -103,7 +104,7 @@ class EquipeDetailView extends BaseElement {
     this._tabObras.columns = [{ chave: "_nome", titulo: "Obra" }];
     this._tabObras.acoes = [{ nome: "remover", rotulo: "Remover", variant: "perigo" }];
     this._tabObras.addEventListener("linha", (e) => {
-      location.hash = "#/obras/" + e.detail.linha.id;
+      irPara("/obras/" + e.detail.linha.id);
     });
     this._tabObras.addEventListener("acao", (e) => this.removerObra(e.detail.linha.id));
 
@@ -114,7 +115,7 @@ class EquipeDetailView extends BaseElement {
     ];
     this._tabMembros.acoes = [{ nome: "remover", rotulo: "Remover", variant: "perigo" }];
     this._tabMembros.addEventListener("linha", (e) => {
-      location.hash = "#/contatos/" + e.detail.linha.id;
+      irPara("/contatos/" + e.detail.linha.id);
     });
     this._tabMembros.addEventListener("acao", (e) => this.removerMembro(e.detail.linha.id));
 
@@ -141,7 +142,7 @@ class EquipeDetailView extends BaseElement {
       },
     ];
     this._tabDados.addEventListener("linha", (e) => {
-      if (e.detail.linha.id) location.hash = "#/obras/" + e.detail.linha.id;
+      if (e.detail.linha.id) irPara("/obras/" + e.detail.linha.id);
     });
 
     alvo.querySelector("#addObra").addEventListener("click", () => this.adicionarObra());
@@ -182,7 +183,7 @@ class EquipeDetailView extends BaseElement {
     if (!this._montado) return;
     const e = this._buscar();
     if (!e) {
-      location.hash = "#/contatos";
+      irPara("/contatos");
       return;
     }
     this._equipe = e;

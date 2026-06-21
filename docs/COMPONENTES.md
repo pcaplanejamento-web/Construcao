@@ -33,7 +33,7 @@ sobem por `CustomEvent`**.
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
 | `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Altura de viewport fixa: o conteúdo rola no `main` → **sidebar com altura constante** em todas as telas. Esconde header/sidebar no login. |
-| `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky). **Marca-bloco** com gaps iguais (logo↔texto == texto↔sanduíche): **logo** `src/assets/dattaobra.png` (transparente) + texto **"Dattaobra"** (link → `#/obras`) + **botão sanduíche** (recolhe no desktop / drawer no mobile). O logo alinha com a coluna de ícones da sidebar e a largura do `nav` da sidebar (195px) é igualada a este cluster → o sanduíche encosta no limite direito da sidebar. À direita: **alternador de tema** (sol/lua), chip do usuário → `#/perfil`, Sair. Ícones via `ui-icon`. |
+| `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky). **Marca-bloco** com gaps iguais (logo↔texto == texto↔sanduíche): **logo** `src/assets/dattaobra.png` (transparente) + texto **"Dattaobra"** (link → `/obras`) + **botão sanduíche** (recolhe no desktop / drawer no mobile). O logo alinha com a coluna de ícones da sidebar e a largura do `nav` da sidebar (195px) é igualada a este cluster → o sanduíche encosta no limite direito da sidebar. À direita: **alternador de tema** (sol/lua), chip do usuário → `/perfil`, Sair. Ícones via `ui-icon`. |
 | `app-sidebar` | attr `aberto` (drawer mobile), `recolhido` (régua de ícones no desktop); evento `navegou` | Menu lateral em abas (Obras, Fornecedores, Contatos, Cotações, Itens, Administração via `role-guard`, Perfil). `template()` itera o array `ITENS`. Ao recolher, os rótulos somem e o ícone fica no mesmo lugar; altura sempre 100% do conteúdo. Preferência persistida. |
 | `app-loader` | attr `texto` | Tela de carregamento inicial (overlay) exibida enquanto o snapshot carrega. |
 | `role-guard` | attr `role="admin"\|"usuario"` | Mostra/oculta o slot conforme o papel (UX). |
@@ -57,28 +57,28 @@ sobem por `CustomEvent`**.
 ### Autenticação — `features/auth/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `login-view` | — | Tela `#/login` (cartão centralizado). |
+| `login-view` | — | Tela `/login` (cartão centralizado). |
 | `login-form` | — | Formulário; chama `auth.login`. |
 
 ### Perfil — `features/perfil/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `perfil-view` | — | Rota `#/perfil`. Dados do usuário (do data-store) + segurança. |
+| `perfil-view` | — | Rota `/perfil`. Dados do usuário (do data-store) + segurança. |
 | `senha-form` | — | Troca de senha (atual/nova/confirmar) → `auth.alterarSenha`. Reusa `ui-input`/`ui-button`. |
 
 ### Obras — `features/obras/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `obras-list-view` | — | Rota `#/obras`. Grid de cartões + criar/editar/excluir. |
+| `obras-list-view` | — | Rota `/obras`. Grid de cartões + criar/editar/excluir. |
 | `obra-card` | `.obra`; eventos `abrir`, `editar`, `remover` | Cartão com barra de orçamento. |
 | `obra-form` | `.obra`; eventos `salvo`, `fechar` | Modal criar/editar obra (chama a API). |
 | `obra-share-form` | `.obra`; evento `fechar` | Modal (só dono): **link público** curto (gerar/copiar/abrir/desativar) + **log de acessos** + convidar usuários para colaboração. |
-| `financeiro-view` | — (rota `#/financeiro`) | **Painel consolidado** entre todas as obras (compõe KPIs inline + `ui-tabs` + `ui-data-table`; reusa `despesa-split.balancos`). KPIs Total/Pago/Em aberto/Em pagamento; abas **A receber** (por destinatário real: Empresa p/ Material, Equipe/Contato p/ Serviço — sem dupla contagem), **A pagar** (por responsável), **Em aberto** (despesas com resto; clique → obra). 100% derivado. |
+| `financeiro-view` | — (rota `/financeiro`) | **Painel consolidado** entre todas as obras (compõe KPIs inline + `ui-tabs` + `ui-data-table`; reusa `despesa-split.balancos`). KPIs Total/Pago/Em aberto/Em pagamento; abas **A receber** (por destinatário real: Empresa p/ Material, Equipe/Contato p/ Serviço — sem dupla contagem), **A pagar** (por responsável), **Em aberto** (despesas com resto; clique → obra). 100% derivado. |
 | `obra-detail-view` | attr `id` (rota); — | **Coração do tempo real**: KPIs + `ui-tabs` (**Gráficos** / **Despesas** / **Participantes** / **Responsáveis** / **Orçamentos** / **Equipes** / **Fornecedores**); dashboard + despesas (otimista + cache). Aba **Fornecedores**: empresas usadas na obra + Nº/Total/Recebido/**Saldo a receber** (`balancos.porFornecedor`; clique → fornecedor). |
 | `obra-participantes` | attr `obra-id`, `modo` (participantes\|responsaveis) | Aba de participantes (modelo paga ↔ recebe): colunas **Pago · Recebido · Saldo a pagar · Saldo a receber** (`despesa-split.balancos`) + painel **"quem deve a quem"** (`despesa-split.acerto`). modo `participantes`: todos + adicionar/remover; modo `responsaveis`: só os marcados. |
 | `participante-form` | `.obraId`; eventos `salvo`, `fechar` | Modal `ui-select` p/ adicionar um **contato** cadastrado como participante. |
 | `responsaveis-form` | `.obraId`; evento `fechar` | Modal p/ marcar, entre os participantes, quem são **responsáveis** (alterna o flag via `dataStore.definirResponsavel`). |
-| `publico-view` | attr `token` (rota `#/publico/:token`) | Visão **pública somente-leitura** (sem login): dashboard + itens + gasto por categoria. |
+| `publico-view` | attr `token` (rota `/publico/:token`) | Visão **pública somente-leitura** (sem login): dashboard + itens + gasto por categoria. |
 
 ### Despesas — `features/despesas/`
 | Componente | Props/Eventos | Descrição |
@@ -94,8 +94,8 @@ sobem por `CustomEvent`**.
 ### Itens — `features/itens/` (+ `features/categorias/categoria-form.js`)
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `itens-view` | — | Rota `#/itens`. `ui-tabs`: **Itens** (catálogo; badge Material/Serviço; **linha clicável → `#/itens/:id`**; CRUD via `item-form`) e **Subclassificações** (só `tipo:"item"` via `dataStore.categoriasItem()`; **todas editáveis**, reusa `categoria-form`). Ambas mostram **log** (Criado em/Atualizado em + autor/editor) via `colunasLog()`. |
-| `item-detail-view` | attr `id` (rota `#/itens/:id`) | Página do item (espelha `fornecedor-detail-view`): **faixa de KPIs** (Total gasto · Despesas · Cotações · Obras; cards `--grad-*`) + cabeçalho (nome + badge classificação + "Editar item") + `ui-tabs` **Despesas** (de todas as obras; clique → obra), **Cotações** (clique → cotação; melhor preço via `melhorTotal`), **Obras** (agrega nº+valor gasto por obra; clique → obra). 100% client-side (lê `item_id` do store). |
+| `itens-view` | — | Rota `/itens`. `ui-tabs`: **Itens** (catálogo; badge Material/Serviço; **linha clicável → `/itens/:id`**; CRUD via `item-form`) e **Subclassificações** (só `tipo:"item"` via `dataStore.categoriasItem()`; **todas editáveis**, reusa `categoria-form`). Ambas mostram **log** (Criado em/Atualizado em + autor/editor) via `colunasLog()`. |
+| `item-detail-view` | attr `id` (rota `/itens/:id`) | Página do item (espelha `fornecedor-detail-view`): **faixa de KPIs** (Total gasto · Despesas · Cotações · Obras; cards `--grad-*`) + cabeçalho (nome + badge classificação + "Editar item") + `ui-tabs` **Despesas** (de todas as obras; clique → obra), **Cotações** (clique → cotação; melhor preço via `melhorTotal`), **Obras** (agrega nº+valor gasto por obra; clique → obra). 100% client-side (lê `item_id` do store). |
 | `item-form` | `.item`; eventos `salvo`, `fechar` | Modal criar/editar item (nome + `ui-select` Classificação Material/Serviço). Emite `EVENTOS.ITENS`. Espelha `categoria-form`. |
 | `categoria-form` | `.categoria`, **`.tipo`** (`item`\|`fornecedor`); eventos `salvo`, `fechar` | Modal criar/editar `categoria` (nome + cor). Rótulos conforme `.tipo`: **subclassificação** (item, default) ou **classificação** (fornecedor); envia `tipo` ao criar. Emite `EVENTOS.CATEGORIAS`. |
 
@@ -121,16 +121,16 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `fornecedores-view` | — | Rota `#/fornecedores`. `ui-tabs` **[Fornecedores \| Classificação]**. **Fornecedores**: CRUD (nome, telefone, e-mail, classificação); linha **clicável** → página do fornecedor. **Classificação**: gerencia as classificações de fornecedor — `categoria` com **`tipo:"fornecedor"`** (pool **distinto** da subclassificação de itens; `dataStore.categoriasFornecedor()`), reusando `categoria-form` (prop `.tipo="fornecedor"`) + `dataStore.*Categoria` + banner `vinculosDaSubclassificacao`. |
-| `fornecedor-detail-view` | attr `id` (rota `#/fornecedores/:id`) | Página do fornecedor: cabeçalho + `ui-tabs` com **Contatos**, **Ofertas**, **Orçamentos** e **Dados** (por obra: **Recebido / Saldo a receber**; clique → obra). |
+| `fornecedores-view` | — | Rota `/fornecedores`. `ui-tabs` **[Fornecedores \| Classificação]**. **Fornecedores**: CRUD (nome, telefone, e-mail, classificação); linha **clicável** → página do fornecedor. **Classificação**: gerencia as classificações de fornecedor — `categoria` com **`tipo:"fornecedor"`** (pool **distinto** da subclassificação de itens; `dataStore.categoriasFornecedor()`), reusando `categoria-form` (prop `.tipo="fornecedor"`) + `dataStore.*Categoria` + banner `vinculosDaSubclassificacao`. |
+| `fornecedor-detail-view` | attr `id` (rota `/fornecedores/:id`) | Página do fornecedor: cabeçalho + `ui-tabs` com **Contatos**, **Ofertas**, **Orçamentos** e **Dados** (por obra: **Recebido / Saldo a receber**; clique → obra). |
 | `fornecedor-form` | `.fornecedor`; eventos `salvo`, `fechar` | Modal criar/editar (nome*, telefone, e-mail, cnpj, classificação, observação). |
-| `contatos-view` | — | Rota `#/contatos`. `ui-tabs`: **Contatos** (tabela clicável), **Equipes** (grade de `equipe-card` + "+ Nova equipe") e **Cargos** (fixos + extras, CRUD via `cargo-form`). |
-| `contato-detail-view` | attr `id` (rota `#/contatos/:id`) | Página do contato: `ui-tabs` — **Obras**, **Fornecedores** (se Vendedor), **Equipes**, **Ofertas**, **Orçamentos** e **Dados** (por obra: **Pago · Recebido · Saldo a pagar · Saldo a receber**; clique → obra). |
+| `contatos-view` | — | Rota `/contatos`. `ui-tabs`: **Contatos** (tabela clicável), **Equipes** (grade de `equipe-card` + "+ Nova equipe") e **Cargos** (fixos + extras, CRUD via `cargo-form`). |
+| `contato-detail-view` | attr `id` (rota `/contatos/:id`) | Página do contato: `ui-tabs` — **Obras**, **Fornecedores** (se Vendedor), **Equipes**, **Ofertas**, **Orçamentos** e **Dados** (por obra: **Pago · Recebido · Saldo a pagar · Saldo a receber**; clique → obra). |
 | `contato-form` | `.contato`; eventos `salvo`, `fechar` | Modal criar/editar. **Cargo** via `ui-select`; campo condicional **Fornecedor** (só/obrigatório p/ Vendedor). (O campo "superior" do Pedreiro foi **removido** — agora é via Equipes.) |
 | `cargo-form` | `.cargo`; eventos `salvo`, `fechar` | Modal criar/editar **cargo extra** (nome). Os 6 obrigatórios são fixos. |
-| `cotacoes-view` | — | Rota `#/cotacoes`. `ui-tabs` **[Cotações \| Orçamento]**: aba Cotações = tabela `clicavel` (item, classificação, qtd, subclassificação, obra, nº ofertas, **melhor preço**, situação); aba Orçamento = **grade de `orcamento-card`** (estilo Obras) + "+ Novo orçamento". |
+| `cotacoes-view` | — | Rota `/cotacoes`. `ui-tabs` **[Cotações \| Orçamento]**: aba Cotações = tabela `clicavel` (item, classificação, qtd, subclassificação, obra, nº ofertas, **melhor preço**, situação); aba Orçamento = **grade de `orcamento-card`** (estilo Obras) + "+ Novo orçamento". |
 | `cotacao-form` | `.cotacao`; eventos `salvo`, `fechar` | Modal criar/editar: `ui-select` de **item*** (rótulo "nome · classificação") + badge da **classificação** (só leitura), quantidade, unidade, **Subclassificação**, **obra opcional**, status. |
-| `cotacao-detail-view` | attr `id` (rota `#/cotacoes/:id`) | Faixa `<oferta-kpis>` + `ui-tabs` **[Gráficos \| Ofertas]**: **Gráficos** (`<grafico-evolucao-precos>` + `<category-breakdown>` no layout `.graficos`, como obras); **Ofertas** (tabela: contato, empresa, valor unit., **total** c/ menor preço, prazo, obs, **Orçamento**, log, status; escolher/editar/excluir; **Registrar como despesa**). |
+| `cotacao-detail-view` | attr `id` (rota `/cotacoes/:id`) | Faixa `<oferta-kpis>` + `ui-tabs` **[Gráficos \| Ofertas]**: **Gráficos** (`<grafico-evolucao-precos>` + `<category-breakdown>` no layout `.graficos`, como obras); **Ofertas** (tabela: contato, empresa, valor unit., **total** c/ menor preço, prazo, obs, **Orçamento**, log, status; escolher/editar/excluir; **Registrar como despesa**). |
 | `oferta-kpis` | `.resumo={num,menor,media,maior,economia}` | KPIs das ofertas em cartões com gradiente (reusa o estilo do `dashboard-summary`). |
 | `grafico-evolucao-precos` | `.historico`, `.cotacao`, `.contatos`, `.cores` | **Gráfico de linhas (SVG), uma linha por contato** — evolução do preço no tempo a partir do histórico; legenda por contato. |
 | `preco-form` | `.cotacaoId`, `.preco`, `.orcamento`; eventos `salvo`, `fechar` | Modal de oferta (valor unitário*, prazo, observação). Modo **cotação**: escolhe o contato. Modo **orçamento** (`.orcamento`): contato **travado** (ofertante do orçamento) + seletor de **cotação** filtrado pela classificação do orçamento. |
@@ -142,7 +142,7 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 |------------|---------------|-----------|
 | `orcamento-card` | `.orcamento`; eventos `abrir`/`editar`/`remover` | Card quadrado (espelha `obra-card`): título (ou rótulo automático), badge do **tipo** (Material/Serviço), **Total** das ofertas + nº, fornecedor/contato + obra, log. |
 | `orcamento-form` | `.orcamento`; eventos `salvo`, `fechar` | Modal: título (opc), **tipo** (Material/Serviço), **fornecedor** (só Material), **ofertante** (Material → contatos do fornecedor; **Serviço → contatos OU equipes**, valores `c:`/`e:`), **obra** (opc). |
-| `orcamento-detail-view` | attr `id` (rota `#/orcamentos/:id`) | Cabeçalho (tipo, fornecedor/contato, obra) + resumo (nº · total) + tabela das ofertas (cotação, valor unit., total, prazo, obs, status); "+ Adicionar oferta" abre `preco-form` modo orçamento. |
+| `orcamento-detail-view` | attr `id` (rota `/orcamentos/:id`) | Cabeçalho (tipo, fornecedor/contato, obra) + resumo (nº · total) + tabela das ofertas (cotação, valor unit., total, prazo, obs, status); "+ Adicionar oferta" abre `preco-form` modo orçamento. |
 | `orcamento-util.js` | `rotuloOrcamento`, `totalOrcamento`, `ofertanteNome`, `colunasOferta`, `colunasOrcamento`, `COR_CLASSIFICACAO` | Rótulo/soma; **`ofertanteNome(contatoId, equipeId)`** (equipe ou contato); **`colunasOferta()`** = colunas iguais às da tabela de ofertas das cotações (coluna **Ofertante** resolve contato/equipe). |
 | `orcamento-grade.js` | `montarGradeOrcamentos(el, lista)` | Renderiza uma **grade de `orcamento-card`** (mesmo componente da aba Orçamento de Cotações) com abrir/editar/excluir — reusada nas abas Orçamentos de fornecedor/contato/obra. |
 
@@ -157,7 +157,7 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 |------------|---------------|-----------|
 | `equipe-card` | `.equipe`; eventos `abrir`/`editar`/`remover` | Card quadrado: nome, líder, nº membros, nº obras, log. |
 | `equipe-form` | `.equipe`; eventos `salvo`, `fechar` | Modal: **nome** + **líder** (`ui-select` filtrado a Mestre de Obra/Engenheiro/Gestor). |
-| `equipe-detail-view` | attr `id` (rota `#/equipes/:id`) | Cabeçalho + `ui-tabs` **Obras / Membros / Dados** (cada aba = `ui-card` + `ui-data-table`). Vincular obra / adicionar membro pelo botão "+" no `slot="acoes"` do card → **banner flutuante** (`ui-modal` + `ui-select` composto inline, sem componente novo). Dados: **tabela** (1 linha por despesa da equipe) com **Data · Obra · Item · Quem pagou · Data do pagamento · Pago · Saldo a receber** (clique → obra). Salva via `dataStore.atualizarEquipe`. |
+| `equipe-detail-view` | attr `id` (rota `/equipes/:id`) | Cabeçalho + `ui-tabs` **Obras / Membros / Dados** (cada aba = `ui-card` + `ui-data-table`). Vincular obra / adicionar membro pelo botão "+" no `slot="acoes"` do card → **banner flutuante** (`ui-modal` + `ui-select` composto inline, sem componente novo). Dados: **tabela** (1 linha por despesa da equipe) com **Data · Obra · Item · Quem pagou · Data do pagamento · Pago · Saldo a receber** (clique → obra). Salva via `dataStore.atualizarEquipe`. |
 | `equipe-util.js` | `CARGOS_LIDER`, `liderNome` | Cargos elegíveis a líder; nome do líder ao vivo. |
 | `equipe-grade.js` | `montarGradeEquipes(el, lista)` | Grade de `equipe-card` (mesmo layout de Orçamento) — reusada nas abas Equipes de contatos/contato-detail/obra. |
 
@@ -170,7 +170,7 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 ### Admin — `features/admin/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `admin-view` | — | Rota `#/admin` (só admin). Lista + ações. |
+| `admin-view` | — | Rota `/admin` (só admin). Lista + ações. |
 | `users-table` | `.usuarios`; eventos `editar`, `config` | Reutiliza `ui-data-table`. |
 | `user-form` | `.usuario`; eventos `salvo`, `fechar` | Modal criar/editar usuário. |
 | `user-config-form` | `.usuario`; evento `fechar` | Modal de configurações (chave-valor). |

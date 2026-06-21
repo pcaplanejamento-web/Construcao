@@ -1,5 +1,5 @@
 /**
- * <admin-view> — Painel de administração (rota #/admin, somente admin).
+ * <admin-view> — Painel de administração (rota /admin, somente admin).
  *
  * Lê os usuários do data-store (vêm no snapshot quando admin) e assina mudanças.
  * Criar/editar usuário vão pelas mutações do store; configurações por usuário

@@ -1,7 +1,7 @@
 /**
  * <publico-view> — Visão SOMENTE LEITURA de uma obra via link público.
  *
- * Rota: #/publico/:token (sem login). Busca publico.obra(token) e mostra o
+ * Rota: /publico/:token (sem login). Busca publico.obra(token) e mostra o
  * dashboard, o gasto por categoria e a lista de itens — sem ações de edição.
  * Reusa dashboard-summary, category-breakdown, ui-data-table, category-badge.
  */

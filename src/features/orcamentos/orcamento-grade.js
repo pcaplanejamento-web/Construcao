@@ -3,6 +3,7 @@
  * (o MESMO componente usado na aba Orçamento de Cotações), reusado nas abas
  * Orçamentos de fornecedor/contato/obra. Não é componente novo.
  */
+import { irPara } from "../../core/router.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-empty-state.js";
@@ -43,7 +44,7 @@ export function montarGradeOrcamentos(el, lista) {
     const card = document.createElement("orcamento-card");
     card.orcamento = o;
     card.addEventListener("abrir", (e) => {
-      location.hash = "#/orcamentos/" + e.detail.orcamento.id;
+      irPara("/orcamentos/" + e.detail.orcamento.id);
     });
     card.addEventListener("editar", (e) => _abrirForm(e.detail.orcamento));
     card.addEventListener("remover", (e) => _remover(e.detail.orcamento));

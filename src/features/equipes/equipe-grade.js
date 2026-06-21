@@ -2,6 +2,7 @@
  * equipe-grade.js — Helper para renderizar uma GRADE de `equipe-card` (mesmo
  * componente/layout de Orçamento), reusado nas abas Equipes de contatos/obra.
  */
+import { irPara } from "../../core/router.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-empty-state.js";
@@ -42,7 +43,7 @@ export function montarGradeEquipes(el, lista) {
     const card = document.createElement("equipe-card");
     card.equipe = e;
     card.addEventListener("abrir", (ev) => {
-      location.hash = "#/equipes/" + ev.detail.equipe.id;
+      irPara("/equipes/" + ev.detail.equipe.id);
     });
     card.addEventListener("editar", (ev) => _abrirForm(ev.detail.equipe));
     card.addEventListener("remover", (ev) => _remover(ev.detail.equipe));

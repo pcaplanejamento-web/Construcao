@@ -15,14 +15,14 @@ import "../components/ui-icon.js";
 
 // Itens principais (antes de Admin e Perfil).
 const ITENS = [
-  { rota: "#/obras", rotulo: "Minhas obras", icone: "obra" },
-  { rota: "#/financeiro", rotulo: "Financeiro", icone: "carteira" },
-  { rota: "#/fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
-  { rota: "#/contatos", rotulo: "Contatos", icone: "contato" },
-  { rota: "#/cotacoes", rotulo: "Cotações", icone: "cotacao" },
-  { rota: "#/itens", rotulo: "Itens", icone: "tag" },
+  { rota: "/obras", rotulo: "Minhas obras", icone: "obra" },
+  { rota: "/financeiro", rotulo: "Financeiro", icone: "carteira" },
+  { rota: "/fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
+  { rota: "/contatos", rotulo: "Contatos", icone: "contato" },
+  { rota: "/cotacoes", rotulo: "Cotações", icone: "cotacao" },
+  { rota: "/itens", rotulo: "Itens", icone: "tag" },
 ];
-const ITEM_PERFIL = { rota: "#/perfil", rotulo: "Meu perfil", icone: "usuario" };
+const ITEM_PERFIL = { rota: "/perfil", rotulo: "Meu perfil", icone: "usuario" };
 
 class AppSidebar extends BaseElement {
   static get observedAttributes() {
@@ -85,7 +85,7 @@ class AppSidebar extends BaseElement {
       <nav>
         ${ITENS.map(link).join("")}
         <role-guard role="admin">
-          <a href="#/admin" data-rota="#/admin" title="Administração">
+          <a href="/admin" data-rota="/admin" title="Administração">
             <ui-icon name="config" size="18"></ui-icon><span class="rotulo">Administração</span>
           </a>
         </role-guard>
@@ -96,9 +96,9 @@ class AppSidebar extends BaseElement {
   }
 
   aoConectar() {
-    this._onHash = () => this.marcarAtivo();
-    window.addEventListener("hashchange", this._onHash);
-    this.aoLimpar(() => window.removeEventListener("hashchange", this._onHash));
+    this._onRota = () => this.marcarAtivo();
+    window.addEventListener("rotamudou", this._onRota);
+    this.aoLimpar(() => window.removeEventListener("rotamudou", this._onRota));
     this.marcarAtivo();
     this.$$("a").forEach((a) =>
       a.addEventListener("click", () => this.emitir("navegou"))
@@ -107,10 +107,10 @@ class AppSidebar extends BaseElement {
   }
 
   marcarAtivo() {
-    const hash = location.hash || "";
+    const atual = location.pathname || "/";
     this.$$("a").forEach((a) => {
       const rota = a.dataset.rota;
-      a.classList.toggle("ativo", hash === rota || hash.startsWith(rota + "/"));
+      a.classList.toggle("ativo", atual === rota || atual.startsWith(rota + "/"));
     });
   }
 }

@@ -5,7 +5,7 @@
  *   com gaps iguais (logo↔texto == texto↔menu); o logo alinha com a coluna de
  *   ícones da sidebar e a largura da sidebar é igualada a este cluster, então o
  *   menu encosta no limite direito da sidebar.
- * Direita: alternador de tema (sol/lua), chip do usuário → #/perfil, Sair.
+ * Direita: alternador de tema (sol/lua), chip do usuário → /perfil, Sair.
  * Reage a EVENTOS.AUTH (usuário) e EVENTOS.TEMA (ícone do alternador).
  */
 import { BaseElement } from "../components/base-element.js";
@@ -80,12 +80,12 @@ class AppHeader extends BaseElement {
     return `
       <div class="barra">
         <div class="marca-bloco">
-          <a class="marca" href="#/obras"><img src="src/assets/dattaobra.png" alt="Dattaobra" /> Dattaobra</a>
+          <a class="marca" href="/obras"><img src="/src/assets/dattaobra.png" alt="Dattaobra" /> Dattaobra</a>
           <button class="menu-btn" id="menu" aria-label="Abrir menu"><ui-icon name="menu"></ui-icon></button>
         </div>
         <span class="cresce"></span>
         <button class="icone-btn" id="tema" aria-label="Alternar tema claro/escuro"><ui-icon name="${iconeTema}"></ui-icon></button>
-        <a class="chip" href="#/perfil" title="Meu perfil">
+        <a class="chip" href="/perfil" title="Meu perfil">
           <span class="avatar">${iniciais(u.nome)}</span>
           <span>
             <span class="nome">${u.nome || ""}</span>

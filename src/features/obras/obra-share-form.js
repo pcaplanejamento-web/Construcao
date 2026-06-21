@@ -26,9 +26,9 @@ class ObraShareForm extends BaseElement {
     return this._obra || null;
   }
 
-  /** URL pública a partir do token (relativa à app atual). */
+  /** URL pública (limpa) a partir do token. */
   _url(token) {
-    return `${location.origin}${location.pathname}#/publico/${token}`;
+    return `${location.origin}/publico/${token}`;
   }
 
   estilos() {

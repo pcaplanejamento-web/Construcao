@@ -1,5 +1,5 @@
 /**
- * <contato-detail-view> — Página de um contato (rota #/contatos/:id).
+ * <contato-detail-view> — Página de um contato (rota /contatos/:id).
  *
  * Cabeçalho + ui-tabs (conforme o cargo):
  *  - Obras (sempre): obras onde o contato participa.
@@ -8,6 +8,7 @@
  *  - Ofertas / Orçamentos.
  * Lê do data-store (cache-first). Espelha fornecedor-detail-view.
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
@@ -57,7 +58,7 @@ class ContatoDetailView extends BaseElement {
 
   aoConectar() {
     if (!this._buscar()) {
-      this.$("#conteudo").innerHTML = `<p>Contato não encontrado. <a href="#/contatos">Voltar</a></p>`;
+      this.$("#conteudo").innerHTML = `<p>Contato não encontrado. <a href="/contatos">Voltar</a></p>`;
       return;
     }
     this.montarConteudo();
@@ -69,7 +70,7 @@ class ContatoDetailView extends BaseElement {
     const c = this._buscar();
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
-      <a class="voltar" href="#/contatos">← Contatos</a>
+      <a class="voltar" href="/contatos">← Contatos</a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="obras">
@@ -120,7 +121,7 @@ class ContatoDetailView extends BaseElement {
     this._tabObras = alvo.querySelector("#tabObras");
     this._tabObras.columns = [{ chave: "nome", titulo: "Obra" }];
     this._tabObras.addEventListener("linha", (e) => {
-      location.hash = "#/obras/" + e.detail.linha.id;
+      irPara("/obras/" + e.detail.linha.id);
     });
 
     this._tabForn = alvo.querySelector("#tabForn");
@@ -131,7 +132,7 @@ class ContatoDetailView extends BaseElement {
       { chave: "cnpj", titulo: "CNPJ", formato: (v) => v || "—" },
     ];
     this._tabForn.addEventListener("linha", (e) => {
-      location.hash = "#/fornecedores/" + e.detail.linha.id;
+      irPara("/fornecedores/" + e.detail.linha.id);
     });
 
     this._gradeEquipes = alvo.querySelector("#gradeEquipes");
@@ -161,7 +162,7 @@ class ContatoDetailView extends BaseElement {
       },
     ];
     this._tabDados.addEventListener("linha", (e) => {
-      location.hash = "#/obras/" + e.detail.linha.id;
+      irPara("/obras/" + e.detail.linha.id);
     });
 
     this._montado = true;
@@ -171,7 +172,7 @@ class ContatoDetailView extends BaseElement {
     if (!this._montado) return;
     const c = this._buscar();
     if (!c) {
-      location.hash = "#/contatos";
+      irPara("/contatos");
       return;
     }
     this._contato = c;

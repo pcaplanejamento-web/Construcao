@@ -1,9 +1,10 @@
 /**
- * <contatos-view> — Agenda de contatos (rota #/contatos), com abas:
+ * <contatos-view> — Agenda de contatos (rota /contatos), com abas:
  *  - Contatos: tabela (clicável → página do contato);
  *  - Cargos: cargos fixos (referência) + cargos extras do usuário (CRUD).
  * Lê do data-store (cache-first) e assina mudanças.
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { colunasLog } from "../../core/audit-columns.js";
@@ -144,7 +145,7 @@ class ContatosView extends BaseElement {
     ];
     tabela.rows = contatos;
     tabela.addEventListener("linha", (e) => {
-      location.hash = "#/contatos/" + e.detail.linha.id;
+      irPara("/contatos/" + e.detail.linha.id);
     });
     tabela.addEventListener("acao", (e) => {
       if (e.detail.acao === "editar") this.abrirForm(e.detail.linha);

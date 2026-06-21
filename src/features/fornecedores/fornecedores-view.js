@@ -1,5 +1,5 @@
 /**
- * <fornecedores-view> — Agenda de fornecedores (rota #/fornecedores), com abas:
+ * <fornecedores-view> — Agenda de fornecedores (rota /fornecedores), com abas:
  *  - Fornecedores: CRUD próprio (nome/telefone/e-mail/classificação);
  *  - Classificação: lista a entidade `categoria` (a mesma "subclassificação" dos
  *    itens — o fornecedor usa `categoria_id` como Classificação), reaproveitando
@@ -7,6 +7,7 @@
  * Lê do data-store (cache-first) e assina mudanças. Reusa ui-tabs, ui-card,
  * ui-data-table, category-badge, ui-button, ui-empty-state, categoria-form.
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { colunasLog } from "../../core/audit-columns.js";
@@ -130,7 +131,7 @@ class FornecedoresView extends BaseElement {
     ];
     tabela.rows = fornecedores;
     tabela.addEventListener("linha", (e) => {
-      location.hash = "#/fornecedores/" + e.detail.linha.id;
+      irPara("/fornecedores/" + e.detail.linha.id);
     });
     tabela.addEventListener("acao", (e) => {
       if (e.detail.acao === "editar") this.abrirForm(e.detail.linha);

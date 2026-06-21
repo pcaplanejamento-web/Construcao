@@ -78,23 +78,23 @@ async function iniciar() {
 
   const router = criarRouter(outlet);
   router
-    .adicionar("#/publico/:token", "publico-view", {}) // pública: sem login, só leitura
-    .adicionar("#/login", "login-view", { somentePublico: true })
-    .adicionar("#/obras", "obras-list-view", { protegida: true })
-    .adicionar("#/obras/:id", "obra-detail-view", { protegida: true })
-    .adicionar("#/financeiro", "financeiro-view", { protegida: true })
-    .adicionar("#/itens", "itens-view", { protegida: true })
-    .adicionar("#/itens/:id", "item-detail-view", { protegida: true })
-    .adicionar("#/fornecedores", "fornecedores-view", { protegida: true })
-    .adicionar("#/fornecedores/:id", "fornecedor-detail-view", { protegida: true })
-    .adicionar("#/contatos", "contatos-view", { protegida: true })
-    .adicionar("#/contatos/:id", "contato-detail-view", { protegida: true })
-    .adicionar("#/cotacoes", "cotacoes-view", { protegida: true })
-    .adicionar("#/cotacoes/:id", "cotacao-detail-view", { protegida: true })
-    .adicionar("#/orcamentos/:id", "orcamento-detail-view", { protegida: true })
-    .adicionar("#/equipes/:id", "equipe-detail-view", { protegida: true })
-    .adicionar("#/perfil", "perfil-view", { protegida: true })
-    .adicionar("#/admin", "admin-view", { protegida: true, admin: true });
+    .adicionar("/publico/:token", "publico-view", {}) // pública: sem login, só leitura
+    .adicionar("/login", "login-view", { somentePublico: true })
+    .adicionar("/obras", "obras-list-view", { protegida: true })
+    .adicionar("/obras/:id", "obra-detail-view", { protegida: true })
+    .adicionar("/financeiro", "financeiro-view", { protegida: true })
+    .adicionar("/itens", "itens-view", { protegida: true })
+    .adicionar("/itens/:id", "item-detail-view", { protegida: true })
+    .adicionar("/fornecedores", "fornecedores-view", { protegida: true })
+    .adicionar("/fornecedores/:id", "fornecedor-detail-view", { protegida: true })
+    .adicionar("/contatos", "contatos-view", { protegida: true })
+    .adicionar("/contatos/:id", "contato-detail-view", { protegida: true })
+    .adicionar("/cotacoes", "cotacoes-view", { protegida: true })
+    .adicionar("/cotacoes/:id", "cotacao-detail-view", { protegida: true })
+    .adicionar("/orcamentos/:id", "orcamento-detail-view", { protegida: true })
+    .adicionar("/equipes/:id", "equipe-detail-view", { protegida: true })
+    .adicionar("/perfil", "perfil-view", { protegida: true })
+    .adicionar("/admin", "admin-view", { protegida: true, admin: true });
 
   await auth.restaurar();
   if (auth.estaAutenticado()) await carregarDados(false);
@@ -105,7 +105,7 @@ async function iniciar() {
       router.navegar(CONFIG.ROTA_INICIAL);
     } else {
       dataStore.limparCache();
-      router.navegar("#/login");
+      router.navegar("/login");
     }
   });
 

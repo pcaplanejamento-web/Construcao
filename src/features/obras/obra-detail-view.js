@@ -1,11 +1,12 @@
 /**
- * <obra-detail-view> — Detalhe da obra (rota #/obras/:id).
+ * <obra-detail-view> — Detalhe da obra (rota /obras/:id).
  *
  * Layout: cabeçalho → dashboard → GRÁFICOS (categoria/rosca/mês) → formulário de
  * adição → TABELA full-width. Lê do data-store (cache-first) e sincroniza os
  * filhos por propriedade. A edição de um item é feita no BANNER <despesa-detail>
  * (clique na linha ou em Editar), não mais no formulário de adição.
  */
+import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
@@ -70,7 +71,7 @@ class ObraDetailView extends BaseElement {
 
   aoConectar() {
     if (!dataStore.obra(this.obraId)) {
-      this.$("#conteudo").innerHTML = `<p>Obra não encontrada. <a href="#/obras">Voltar</a></p>`;
+      this.$("#conteudo").innerHTML = `<p>Obra não encontrada. <a href="/obras">Voltar</a></p>`;
       return;
     }
     this.montarConteudo();
@@ -84,7 +85,7 @@ class ObraDetailView extends BaseElement {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
       <dashboard-summary id="dash"></dashboard-summary>
-      <a class="voltar" href="#/obras">← Minhas obras</a>
+      <a class="voltar" href="/obras">← Minhas obras</a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="graficos" class="graficos">
@@ -136,7 +137,7 @@ class ObraDetailView extends BaseElement {
     this._gradeEquipes = alvo.querySelector("#gradeEquipes");
     this._tabForn = alvo.querySelector("#tabForn");
     this._tabForn.addEventListener("linha", (e) => {
-      location.hash = "#/fornecedores/" + e.detail.linha.id;
+      irPara("/fornecedores/" + e.detail.linha.id);
     });
     this._dash = alvo.querySelector("#dash");
     this._break = alvo.querySelector("#break");
@@ -162,7 +163,7 @@ class ObraDetailView extends BaseElement {
     if (!this._montado) return;
     const o = dataStore.obra(this.obraId);
     if (!o) {
-      location.hash = "#/obras";
+      irPara("/obras");
       return;
     }
     this._obra = o;

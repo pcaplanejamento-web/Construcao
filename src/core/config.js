@@ -21,7 +21,7 @@ export const CONFIG = {
   POLLING_RESUMO_MS: 45000,
 
   /** Rota inicial padrão após login. */
-  ROTA_INICIAL: "#/obras",
+  ROTA_INICIAL: "/obras",
 };
 
 /** Verdadeiro enquanto a API_URL não foi configurada (ajuda o onboarding). */

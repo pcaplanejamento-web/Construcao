@@ -247,7 +247,7 @@ Substitui a antiga regra "Pedreiro → superior" (o `superior_id` de Contatos fi
 | criado_em / atualizado_em / autor_nome / editor_nome | — | auditoria |
 
 > `membros`/`obras` são JSON string no Sheets, devolvidos como **arrays** ao cliente
-> (`_lerEquipe`). Geridos na página da equipe (`#/equipes/:id`).
+> (`_lerEquipe`). Geridos na página da equipe (`/equipes/:id`).
 
 ### Aba `Cargos` (cargos extras de contato)
 Os 6 obrigatórios (Vendedor, Mestre de Obra, Pedreiro, Engenheiro, Despachante,
