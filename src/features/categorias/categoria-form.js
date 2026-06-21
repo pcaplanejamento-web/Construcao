@@ -1,8 +1,9 @@
 /**
- * <categoria-form> — Modal para criar/editar a subclassificação (entidade
- * categoria). Lista livre: todas são editáveis (próprias e padrão).
+ * <categoria-form> — Modal para criar/editar uma `categoria`. A MESMA entidade
+ * serve a dois pools, via `.tipo`: **"item"** (subclassificação de itens, padrão)
+ * ou **"fornecedor"** (classificação de fornecedor) — rótulos se ajustam.
  *
- * Propriedade: .categoria (objeto p/ edição; ausente = nova)
+ * Propriedades: .categoria (objeto p/ edição; ausente = nova), .tipo ("item"|"fornecedor")
  * Eventos: "salvo", "fechar". Auto-contido: chama categorias.criar/atualizar e
  * emite EVENTOS.CATEGORIAS para os demais componentes reagirem.
  */
@@ -25,6 +26,17 @@ class CategoriaForm extends BaseElement {
   get ehEdicao() {
     return !!(this.categoria && this.categoria.id);
   }
+  set tipo(v) {
+    this._tipo = v === "fornecedor" ? "fornecedor" : "item";
+    if (this.shadowRoot.childElementCount) this.renderizar();
+  }
+  get tipo() {
+    return this._tipo || (this.categoria && this.categoria.tipo === "fornecedor" ? "fornecedor" : "item");
+  }
+  /** Termo exibido conforme o pool. */
+  get _termo() {
+    return this.tipo === "fornecedor" ? "classificação" : "subclassificação";
+  }
 
   estilos() {
     return `
@@ -37,11 +49,12 @@ class CategoriaForm extends BaseElement {
 
   template() {
     const c = this.categoria || {};
+    const termo = this._termo;
     return `
-      <ui-modal open title="${this.ehEdicao ? "Editar subclassificação" : "Nova subclassificação"}">
+      <ui-modal open title="${this.ehEdicao ? "Editar" : "Nova"} ${termo}">
         <div class="campos">
           <div class="linha">
-            <ui-input id="nome" label="Nome da subclassificação"
+            <ui-input id="nome" label="Nome da ${termo}"
               value="${(c.nome || "").replace(/"/g, "&quot;")}"
               placeholder="Ex.: Acabamento"></ui-input>
             <ui-input id="cor" class="cor" label="Cor" type="color"
@@ -74,13 +87,14 @@ class CategoriaForm extends BaseElement {
 
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");
+    const Termo = this._termo.charAt(0).toUpperCase() + this._termo.slice(1);
     try {
       if (this.ehEdicao) {
         await dataStore.atualizarCategoria(this.categoria.id, { nome, cor });
-        toastSucesso("Subclassificação atualizada.");
+        toastSucesso(`${Termo} atualizada.`);
       } else {
-        await dataStore.criarCategoria({ nome, cor });
-        toastSucesso("Subclassificação criada.");
+        await dataStore.criarCategoria({ nome, cor, tipo: this.tipo });
+        toastSucesso(`${Termo} criada.`);
       }
       this.emitir("salvo");
       this.emitir("fechar");

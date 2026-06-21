@@ -123,7 +123,7 @@ para dono **e** colaboradores.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `categorias.listar` | `{}` | `{ categorias: [...] }` (GLOBAL + do usuário) |
-| `categorias.criar` | `{ nome, cor? }` | `{ categoria }` (própria do usuário; grava `criado_em`/`autor_nome`) |
+| `categorias.criar` | `{ nome, cor?, tipo? }` | `{ categoria }` — `tipo` = `item` (subclassificação, default) \| `fornecedor` (classificação de fornecedor); própria do usuário; grava log |
 | `categorias.atualizar` | `{ id, nome?, cor?, ativo? }` | `{ categoria }` (grava `atualizado_em`/`editor_nome`) |
 | `categorias.remover` | `{ id }` | `{ id }` (desativa) |
 

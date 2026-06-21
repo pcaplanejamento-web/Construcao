@@ -58,6 +58,8 @@ function categoriasCriar(data, sessao) {
       atualizado_em: agora,
       autor_nome: nomeUsuario,
       editor_nome: nomeUsuario,
+      // Pool: "fornecedor" (classificação de fornecedor) ou "item" (subclassificação).
+      tipo: String((data && data.tipo) || "") === "fornecedor" ? "fornecedor" : "item",
     };
     repoInserir(SCHEMA.CATEGORIAS, categoria);
     cacheRemove(chaveCategorias(sessao.usuario_id));

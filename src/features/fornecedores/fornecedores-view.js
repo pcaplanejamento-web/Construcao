@@ -175,7 +175,7 @@ class FornecedoresView extends BaseElement {
       return;
     }
 
-    const todas = dataStore.categorias();
+    const todas = dataStore.categoriasFornecedor();
     if (!todas.length) {
       el.innerHTML = `
         <ui-empty-state icone="tag" titulo="Nenhuma classificação"
@@ -210,6 +210,7 @@ class FornecedoresView extends BaseElement {
 
   abrirClassForm(categoria) {
     const form = document.createElement("categoria-form");
+    form.tipo = "fornecedor";
     form.categoria = categoria;
     const fechar = () => form.remove();
     form.addEventListener("fechar", fechar);

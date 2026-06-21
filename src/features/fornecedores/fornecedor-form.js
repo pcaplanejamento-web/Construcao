@@ -85,7 +85,7 @@ class FornecedorForm extends BaseElement {
     const sel = this.$("#categoria");
     if (!sel) return;
     sel.options = [{ value: "", label: "— Sem classificação —" }].concat(
-      dataStore.categorias().map((c) => ({ value: c.id, label: c.nome }))
+      dataStore.categoriasFornecedor().map((c) => ({ value: c.id, label: c.nome }))
     );
     sel.value = (this.fornecedor || {}).categoria_id || "";
   }

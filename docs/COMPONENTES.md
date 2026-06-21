@@ -93,10 +93,10 @@ sobem por `CustomEvent`**.
 ### Itens — `features/itens/` (+ `features/categorias/categoria-form.js`)
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `itens-view` | — | Rota `#/itens`. `ui-tabs`: **Itens** (catálogo; badge Material/Serviço; **linha clicável → `#/itens/:id`**; CRUD via `item-form`) e **Subclassificações** (lista única **todas editáveis**, reusa `categoria-form`). Ambas mostram **log** (Criado em/Atualizado em + autor/editor) via `colunasLog()`. |
+| `itens-view` | — | Rota `#/itens`. `ui-tabs`: **Itens** (catálogo; badge Material/Serviço; **linha clicável → `#/itens/:id`**; CRUD via `item-form`) e **Subclassificações** (só `tipo:"item"` via `dataStore.categoriasItem()`; **todas editáveis**, reusa `categoria-form`). Ambas mostram **log** (Criado em/Atualizado em + autor/editor) via `colunasLog()`. |
 | `item-detail-view` | attr `id` (rota `#/itens/:id`) | Página do item (espelha `fornecedor-detail-view`): **faixa de KPIs** (Total gasto · Despesas · Cotações · Obras; cards `--grad-*`) + cabeçalho (nome + badge classificação + "Editar item") + `ui-tabs` **Despesas** (de todas as obras; clique → obra), **Cotações** (clique → cotação; melhor preço via `melhorTotal`), **Obras** (agrega nº+valor gasto por obra; clique → obra). 100% client-side (lê `item_id` do store). |
 | `item-form` | `.item`; eventos `salvo`, `fechar` | Modal criar/editar item (nome + `ui-select` Classificação Material/Serviço). Emite `EVENTOS.ITENS`. Espelha `categoria-form`. |
-| `categoria-form` | `.categoria`; eventos `salvo`, `fechar` | Modal criar/editar **subclassificação** (nome + cor). Emite `EVENTOS.CATEGORIAS`. |
+| `categoria-form` | `.categoria`, **`.tipo`** (`item`\|`fornecedor`); eventos `salvo`, `fechar` | Modal criar/editar `categoria` (nome + cor). Rótulos conforme `.tipo`: **subclassificação** (item, default) ou **classificação** (fornecedor); envia `tipo` ao criar. Emite `EVENTOS.CATEGORIAS`. |
 
 > Ao criar/editar uma classificação, `EVENTOS.CATEGORIAS` faz a `obra-detail-view`
 > recarregar as categorias (atualiza o select de despesa e os rótulos da tabela).
@@ -120,7 +120,7 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `fornecedores-view` | — | Rota `#/fornecedores`. `ui-tabs` **[Fornecedores \| Classificação]**. **Fornecedores**: CRUD (nome, telefone, e-mail, classificação); linha **clicável** → página do fornecedor. **Classificação**: gerencia a entidade `categoria` (a MESMA "subclassificação" dos itens — o fornecedor usa `categoria_id` como Classificação), espelhando a aba Subclassificações de itens (reusa `categoria-form` + `dataStore.*Categoria` + banner `vinculosDaSubclassificacao`). |
+| `fornecedores-view` | — | Rota `#/fornecedores`. `ui-tabs` **[Fornecedores \| Classificação]**. **Fornecedores**: CRUD (nome, telefone, e-mail, classificação); linha **clicável** → página do fornecedor. **Classificação**: gerencia as classificações de fornecedor — `categoria` com **`tipo:"fornecedor"`** (pool **distinto** da subclassificação de itens; `dataStore.categoriasFornecedor()`), reusando `categoria-form` (prop `.tipo="fornecedor"`) + `dataStore.*Categoria` + banner `vinculosDaSubclassificacao`. |
 | `fornecedor-detail-view` | attr `id` (rota `#/fornecedores/:id`) | Página do fornecedor: cabeçalho + `ui-tabs` com **Contatos**, **Ofertas**, **Orçamentos** e **Dados** (por obra: **Recebido / Saldo a receber**; clique → obra). |
 | `fornecedor-form` | `.fornecedor`; eventos `salvo`, `fechar` | Modal criar/editar (nome*, telefone, e-mail, cnpj, classificação, observação). |
 | `contatos-view` | — | Rota `#/contatos`. `ui-tabs`: **Contatos** (tabela clicável), **Equipes** (grade de `equipe-card` + "+ Nova equipe") e **Cargos** (fixos + extras, CRUD via `cargo-form`). |

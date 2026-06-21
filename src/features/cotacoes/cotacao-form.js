@@ -82,7 +82,7 @@ class CotacaoForm extends BaseElement {
 
     const selCat = this.$("#categoria");
     selCat.options = [{ value: "", label: "— Sem classificação —" }].concat(
-      dataStore.categorias().map((x) => ({ value: x.id, label: x.nome }))
+      dataStore.categoriasItem().map((x) => ({ value: x.id, label: x.nome }))
     );
     selCat.value = c.categoria_id || "";
 

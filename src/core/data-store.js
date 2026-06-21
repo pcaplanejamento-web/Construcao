@@ -162,6 +162,10 @@ const despesas = (obraId) => store.get().despesas[obraId] || [];
 const todasDespesas = () => obras().flatMap((o) => despesas(o.id));
 const resumo = (obraId) => store.get().resumos[obraId] || { total: 0, qtd: 0, orcamento: 0, saldo: 0, por_categoria: [] };
 const categoriasDaObra = (obraId) => store.get().categoriasPorObra[obraId] || store.get().categorias;
+/** Subclassificações de ITEM (tipo != fornecedor; inclui legado sem tipo). */
+const categoriasItem = () => store.get().categorias.filter((c) => String(c.tipo || "") !== "fornecedor");
+/** Classificações de FORNECEDOR (tipo == fornecedor). */
+const categoriasFornecedor = () => store.get().categorias.filter((c) => String(c.tipo || "") === "fornecedor");
 const participantesDaObra = (obraId) => store.get().participantesPorObra[obraId] || [];
 // Módulo Compras
 const fornecedores = () => store.get().fornecedores;
@@ -869,7 +873,7 @@ export const dataStore = {
   atualizarEmSegundoPlano,
   limparCache,
   // getters
-  usuario, config, categorias, usuarios, obras, obra, despesas, todasDespesas, resumo, categoriasDaObra,
+  usuario, config, categorias, categoriasItem, categoriasFornecedor, usuarios, obras, obra, despesas, todasDespesas, resumo, categoriasDaObra,
   participantesDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, itens, itensAtivos, item,
   cotacoes, cotacao, precosDaCotacao,

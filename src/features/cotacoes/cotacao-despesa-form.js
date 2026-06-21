@@ -107,7 +107,7 @@ class CotacaoDespesaForm extends BaseElement {
     // Subclassificação (comum aos dois modos).
     const selCat = this.$("#categoria");
     selCat.options = [{ value: "", label: "— Sem subclassificação —" }].concat(
-      dataStore.categorias().map((c) => ({ value: c.id, label: c.nome }))
+      dataStore.categoriasItem().map((c) => ({ value: c.id, label: c.nome }))
     );
     selCat.value = this.modoObra ? "" : this.cotacao.categoria_id || "";
 

@@ -160,8 +160,8 @@ class ItensView extends BaseElement {
       return;
     }
 
-    // Lista livre: TODAS as subclassificações são editáveis (próprias + padrão).
-    const todas = dataStore.categorias();
+    // Subclassificações de ITEM (exclui as classificações de fornecedor).
+    const todas = dataStore.categoriasItem();
     if (!todas.length) {
       el.innerHTML = `
         <ui-empty-state icone="tag" titulo="Nenhuma subclassificação"

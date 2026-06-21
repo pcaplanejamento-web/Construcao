@@ -166,7 +166,8 @@ class ObraDetailView extends BaseElement {
       return;
     }
     this._obra = o;
-    const categorias = dataStore.categoriasDaObra(this.obraId);
+    // Subclassificações de ITEM (exclui classificações de fornecedor).
+    const categorias = dataStore.categoriasDaObra(this.obraId).filter((c) => String(c.tipo || "") !== "fornecedor");
     const resumo = dataStore.resumo(this.obraId);
     const despesas = dataStore.despesas(this.obraId);
 
@@ -291,7 +292,7 @@ class ObraDetailView extends BaseElement {
   abrirBanner(despesa) {
     const banner = document.createElement("despesa-detail");
     banner.despesa = despesa;
-    banner.categorias = dataStore.categoriasDaObra(this.obraId);
+    banner.categorias = dataStore.categoriasDaObra(this.obraId).filter((c) => String(c.tipo || "") !== "fornecedor");
     banner.addEventListener("fechar", () => banner.remove());
     document.body.appendChild(banner);
   }

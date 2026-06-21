@@ -149,12 +149,19 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | ativo | boolean | exclusão é lógica (ativo=false) |
 | criado_em / atualizado_em | ISO datetime | auditoria (log de criação/edição) |
 | autor_nome / editor_nome | string | quem criou / editou (desnormalizado) |
+| tipo | string | **`item`** (subclassificação de item; default/legado) \| **`fornecedor`** (classificação de fornecedor) |
 
 Categorias semente (`GLOBAL`) são criadas no bootstrap. A listagem de um usuário
 = categorias `GLOBAL` + as próprias.
 
-> **Na UI**, a entidade `Categorias` é exibida como **Subclassificação** (lista livre,
-> aba "Subclassificações" da página **Itens**). A estrutura da aba não mudou — só o rótulo.
+> **Dois pools distintos no mesmo registro** (via `tipo`): **`item`** = *Subclassificação*
+> (aba "Subclassificações" de **Itens**; usada por despesas/cotações) e **`fornecedor`** =
+> *Classificação de fornecedor* (aba "Classificação" de **Fornecedores**; `fornecedor.categoria_id`).
+> Os seletores nunca misturam: cada tela filtra pelo seu `tipo` (`dataStore.categoriasItem()` /
+> `categoriasFornecedor()`). Legado sem `tipo` conta como `item`.
+
+> **Na UI**, a entidade `Categorias` é exibida como **Subclassificação** (itens) ou
+> **Classificação** (fornecedores), conforme o `tipo`.
 > As classificações fixas (Material/Serviço) ficam em `Itens.classificacao`, não aqui.
 > **Todas as subclassificações são editáveis** (não há mais “padrão só leitura”): as
 > `GLOBAL` agora podem ser editadas/removidas por qualquer usuário — como são
@@ -190,7 +197,7 @@ contatos; a melhor oferta pode virar uma despesa numa obra (reusa `despesas.cria
 | telefone | string | opcional |
 | email | string | opcional |
 | cnpj | string | opcional |
-| categoria_id | UUID | FK → Categorias.id (opcional) |
+| categoria_id | UUID | **Classificação** — FK → Categorias.id (tipo `fornecedor`; opcional) |
 | observacao | string | opcional |
 | ativo | boolean | exclusão lógica |
 | criado_em / atualizado_em | ISO datetime | |

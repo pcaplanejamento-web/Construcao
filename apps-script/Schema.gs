@@ -83,7 +83,7 @@ const SCHEMA = {
   },
 
   CATEGORIAS: {
-    aba: "Categorias", // = "Subclassificações" na UI
+    aba: "Categorias", // Subclassificação de ITEM (tipo "item") ou Classificação de FORNECEDOR (tipo "fornecedor")
     colunas: [
       "id",
       "usuario_id",
@@ -95,6 +95,8 @@ const SCHEMA = {
       "atualizado_em",
       "autor_nome", // quem criou (desnormalizado)
       "editor_nome", // quem editou por último
+      // Pool: distingue subclassificação de item × classificação de fornecedor.
+      "tipo", // "item" (default/legado) | "fornecedor"
     ],
   },
 
