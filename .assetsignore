@@ -1,0 +1,25 @@
+# Cloudflare Workers — arquivos que NUNCA devem ser servidos publicamente.
+# Sintaxe igual à do .gitignore. O Worker publica a raiz (wrangler.jsonc
+# assets.directory="."), então tudo que é backend/interno é excluído aqui.
+
+# Backend (Apps Script) — código do servidor
+apps-script/
+
+# Documentação interna e testes
+docs/
+test/
+
+# Scripts de build/deploy e artefato local de build
+scripts/
+dist/
+node_modules/
+
+# Markdown (README etc.) e metadados/configuração do projeto
+*.md
+.gitignore
+.assetsignore
+wrangler.jsonc
+.wrangler/
+.clasp.json
+.clasprc.json
+.DS_Store

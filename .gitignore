@@ -9,6 +9,9 @@ node_modules/
 # Build do site p/ Cloudflare Pages (gerado por scripts/build-site.sh)
 dist/
 
+# Cache local do Wrangler (Cloudflare)
+.wrangler/
+
 # Sistema operacional
 .DS_Store
 Thumbs.db

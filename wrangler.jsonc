@@ -1,0 +1,11 @@
+{
+  // Cloudflare Workers (assets estáticos) — publica o frontend a partir da raiz.
+  // O QUE NÃO VAI AO AR fica em .assetsignore (backend, docs, testes, scripts).
+  // Cabeçalhos/cache: ver _headers (Workers honra _headers/_redirects nos assets).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dattaobra",
+  "compatibility_date": "2026-06-21",
+  "observability": { "enabled": true },
+  "assets": { "directory": "." },
+  "compatibility_flags": ["nodejs_compat"]
+}
