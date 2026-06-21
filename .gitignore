@@ -6,6 +6,9 @@ apps-script/.clasprc.json
 # Dependências (não usamos, mas evita commit acidental)
 node_modules/
 
+# Build do site p/ Cloudflare Pages (gerado por scripts/build-site.sh)
+dist/
+
 # Sistema operacional
 .DS_Store
 Thumbs.db

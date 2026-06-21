@@ -1,0 +1,19 @@
+# Cloudflare Pages — cabeçalhos do site (app estático, SEM build/transpile).
+# Como os nomes de arquivo são estáveis (sem hash), HTML/CSS/JS usam `no-cache`:
+# o navegador revalida via ETag (304 quando nada mudou) → um deploy novo NUNCA
+# serve código velho. Imagens/assets seguem o cache padrão do CDN.
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+/index.html
+  Cache-Control: no-cache
+
+/*.js
+  Cache-Control: no-cache
+
+/*.css
+  Cache-Control: no-cache
