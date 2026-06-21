@@ -11,10 +11,12 @@ import { dataStore } from "../../core/data-store.js";
 import { data as fmtData } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { primeiroErro, obrigatorio, valorPositivo } from "../../core/validators.js";
+import { parseLista } from "./despesa-split.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
+import "./split-editor.js";
 
 class DespesaDetail extends BaseElement {
   set despesa(v) {
@@ -45,6 +47,10 @@ class DespesaDetail extends BaseElement {
         color: var(--cor-texto); }
       textarea:focus { outline: none; border-color: var(--cor-primaria);
         box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
+      .secao { border-top: 1px solid var(--cor-borda); padding-top: var(--esp-3); }
+      .check { display: flex; align-items: center; gap: var(--esp-2); cursor: pointer;
+        font-weight: var(--peso-medio); }
+      .check input { width: 18px; height: 18px; accent-color: var(--cor-primaria); }
       .auditoria { font-size: var(--fs-xs); color: var(--cor-texto-fraco);
         border-top: 1px solid var(--cor-borda); padding-top: var(--esp-3);
         display: flex; flex-direction: column; gap: 2px; }
@@ -70,6 +76,17 @@ class DespesaDetail extends BaseElement {
             <label class="tx">Observação</label>
             <textarea id="observacao" placeholder="Detalhes (opcional)">${d.observacao || ""}</textarea>
           </div>
+          <div class="secao">
+            <label class="check"><input type="checkbox" id="pago" ${d.pago ? "checked" : ""} /> Pago</label>
+          </div>
+          <div class="secao">
+            <label class="tx">Pagamento — quem pagou quanto (R$)</label>
+            <split-editor id="pagamentos"></split-editor>
+          </div>
+          <div class="secao">
+            <label class="tx">Responsabilidade — % por participante (soma 100%)</label>
+            <split-editor id="responsaveis"></split-editor>
+          </div>
           <div class="auditoria">
             <span>Adicionada em ${fmtData(d.criado_em)} por ${d.autor_nome || "—"}</span>
             ${editado ? `<span>Editado por ${d.editor_nome} em ${fmtData(d.atualizado_em)}</span>` : ""}
@@ -87,10 +104,34 @@ class DespesaDetail extends BaseElement {
 
   aposRender() {
     this.preencherCategorias();
+    this.preencherSplits();
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
     this.$("#excluir").addEventListener("click", () => this.excluir());
+  }
+
+  /** Popula os editores de pagamento (R$) e responsabilidade (%). */
+  preencherSplits() {
+    const parts = dataStore.participantesDaObra(this.despesa.obra_id);
+    const pg = this.$("#pagamentos");
+    if (pg) {
+      pg.modo = "valor";
+      pg.participantes = parts;
+      pg.itens = parseLista(this.despesa.pagamentos).map((p) => ({
+        chave: p.chave,
+        valor: Number(p.valor) || 0,
+      }));
+    }
+    const rp = this.$("#responsaveis");
+    if (rp) {
+      rp.modo = "pct";
+      rp.participantes = parts;
+      rp.itens = parseLista(this.despesa.responsaveis).map((r) => ({
+        chave: r.chave,
+        valor: Number(r.pct) || 0,
+      }));
+    }
   }
 
   preencherCategorias() {
@@ -109,12 +150,21 @@ class DespesaDetail extends BaseElement {
       this.$("#valor").setAttribute("error", valorPositivo(valor));
       return;
     }
+    const pagamentos = this.$("#pagamentos").itens
+      .filter((x) => x.chave && Number(x.valor) > 0)
+      .map((x) => ({ chave: x.chave, valor: Number(x.valor) || 0 }));
+    const responsaveis = this.$("#responsaveis").itens
+      .filter((x) => x.chave)
+      .map((x) => ({ chave: x.chave, pct: Number(x.valor) || 0 }));
     const dados = {
       item,
       valor,
       categoria_id: this.$("#categoria").value,
       data: this.$("#data").value || String(this.despesa.data || "").substring(0, 10),
       observacao: this.$("#observacao").value.trim(),
+      pago: this.$("#pago").checked,
+      pagamentos,
+      responsaveis,
     };
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");

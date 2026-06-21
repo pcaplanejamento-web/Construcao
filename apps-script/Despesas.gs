@@ -48,6 +48,28 @@ function _calcularResumo(obraId, usuarioId) {
   };
 }
 
+/** JSON de lista (pagamentos/responsaveis) -> array; tolerante a vazio/erro. */
+function _parseJsonLista(v) {
+  if (Array.isArray(v)) return v;
+  if (!v) return [];
+  try {
+    const a = JSON.parse(v);
+    return Array.isArray(a) ? a : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+/** Normaliza uma despesa para o cliente: pago boolean + listas como arrays. */
+function _lerDespesa(d) {
+  if (!d) return d;
+  return Object.assign({}, d, {
+    pago: _boolDe(d.pago),
+    pagamentos: _parseJsonLista(d.pagamentos),
+    responsaveis: _parseJsonLista(d.responsaveis),
+  });
+}
+
 /** despesas.listar -> { despesas: [...] } (da obra acessível). */
 function despesasListar(data, sessao) {
   const obraId = data && data.obra_id;
@@ -58,7 +80,7 @@ function despesasListar(data, sessao) {
   despesas.sort(function (a, b) {
     return String(b.data).localeCompare(String(a.data));
   });
-  return { despesas: despesas };
+  return { despesas: despesas.map(_lerDespesa) };
 }
 
 /** despesas.resumo -> { ...resumo } (usado pelo polling do dashboard). */
@@ -87,6 +109,13 @@ function _novaDespesa(obraId, usuarioId, dados) {
     autor_nome: nome,
     atualizado_em: agora,
     editor_nome: nome,
+    pago: (dados && dados.pago) === true,
+    pagamentos: JSON.stringify(
+      dados && Array.isArray(dados.pagamentos) ? dados.pagamentos : []
+    ),
+    responsaveis: JSON.stringify(
+      dados && Array.isArray(dados.responsaveis) ? dados.responsaveis : []
+    ),
   };
   repoInserir(SCHEMA.DESPESAS, despesa);
   return despesa;
@@ -109,8 +138,11 @@ function despesasCriar(data, sessao) {
       categoria_id: data && data.categoria_id,
       data: data && data.data,
       observacao: data && data.observacao,
+      pago: data && data.pago,
+      pagamentos: data && data.pagamentos,
+      responsaveis: data && data.responsaveis,
     });
-    return { despesa: despesa, resumo: _calcularResumo(obraId, sessao.usuario_id) };
+    return { despesa: _lerDespesa(despesa), resumo: _calcularResumo(obraId, sessao.usuario_id) };
   });
 }
 
@@ -145,6 +177,12 @@ function despesasAtualizar(data, sessao) {
   if (data.data !== undefined) patch.data = String(data.data);
   if (data.observacao !== undefined)
     patch.observacao = String(data.observacao);
+  // Participantes / divisão de contas.
+  if (data.pago !== undefined) patch.pago = data.pago === true;
+  if (data.pagamentos !== undefined)
+    patch.pagamentos = JSON.stringify(Array.isArray(data.pagamentos) ? data.pagamentos : []);
+  if (data.responsaveis !== undefined)
+    patch.responsaveis = JSON.stringify(Array.isArray(data.responsaveis) ? data.responsaveis : []);
 
   // Auditoria: registra quem editou e quando.
   patch.atualizado_em = agoraIso();
@@ -153,7 +191,7 @@ function despesasAtualizar(data, sessao) {
   return comLock(function () {
     const despesa = repoAtualizar(SCHEMA.DESPESAS, "id", id, patch);
     return {
-      despesa: despesa,
+      despesa: _lerDespesa(despesa),
       resumo: _calcularResumo(atual.obra_id, sessao.usuario_id),
     };
   });

@@ -33,6 +33,11 @@ const ROTAS = {
   // Visão pública somente-leitura (sem login)
   "publico.obra": { fn: publicoObra, publica: true },
 
+  // Participantes da obra
+  "participantes.listar": { fn: participantesListar },
+  "participantes.adicionarContato": { fn: participantesAdicionarContato },
+  "participantes.remover": { fn: participantesRemover },
+
   // Despesas
   "despesas.listar": { fn: despesasListar },
   "despesas.resumo": { fn: despesasResumo },

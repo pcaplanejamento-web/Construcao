@@ -7,8 +7,13 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
+import { totalPago, distribuicao, parseLista } from "./despesa-split.js";
 import "../../components/ui-data-table.js";
 import "./category-badge.js";
+
+function _bool(v) {
+  return v === true || v === "TRUE" || v === "true";
+}
 
 class DespesaTable extends BaseElement {
   set despesas(v) {
@@ -25,6 +30,14 @@ class DespesaTable extends BaseElement {
   }
   get mapaCat() {
     return this._mapaCat || {};
+  }
+  set participantes(v) {
+    this._mapaPart = {};
+    (Array.isArray(v) ? v : []).forEach((p) => (this._mapaPart[p.chave] = p.nome));
+    this.atualizarTabela();
+  }
+  get mapaPart() {
+    return this._mapaPart || {};
   }
 
   estilos() {
@@ -72,6 +85,49 @@ class DespesaTable extends BaseElement {
         },
       },
       { chave: "valor", titulo: "Valor", alinhar: "dir", formato: (v) => moeda(v) },
+      {
+        chave: "pago",
+        titulo: "Pago",
+        formato: (v) =>
+          _bool(v)
+            ? `<category-badge nome="Pago" cor="var(--cor-sucesso)"></category-badge>`
+            : `<category-badge nome="Não pago" cor="var(--cor-neutro)"></category-badge>`,
+      },
+      {
+        chave: "pagamentos",
+        titulo: "Pagamento",
+        alinhar: "dir",
+        formato: (_, linha) => {
+          const t = totalPago(linha);
+          return t > 0 ? moeda(t) : `<span style="color:var(--cor-texto-fraco)">—</span>`;
+        },
+      },
+      {
+        chave: "pagamentos",
+        titulo: "Distribuição",
+        formato: (_, linha) => {
+          const d = distribuicao(linha);
+          if (d === "distribuido")
+            return `<category-badge nome="Distribuído" cor="var(--cor-info)"></category-badge>`;
+          if (d === "unico")
+            return `<category-badge nome="Único" cor="var(--cor-neutro)"></category-badge>`;
+          return `<span style="color:var(--cor-texto-fraco)">—</span>`;
+        },
+      },
+      {
+        chave: "responsaveis",
+        titulo: "Responsabilidade",
+        formato: (_, linha) => {
+          const rs = parseLista(linha.responsaveis);
+          if (!rs.length) return `<span style="color:var(--cor-texto-fraco)">—</span>`;
+          return rs
+            .map((r) => {
+              const nome = this.mapaPart[r.chave] || "—";
+              return `<category-badge nome="${nome} · ${Number(r.pct) || 0}%" cor="var(--cor-aviso)"></category-badge>`;
+            })
+            .join(" ");
+        },
+      },
     ];
     tabela.acoes = [
       { nome: "editar", rotulo: "Editar" },

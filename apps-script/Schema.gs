@@ -62,6 +62,10 @@ const SCHEMA = {
       "autor_nome", // quem adicionou
       "atualizado_em", // data da última edição
       "editor_nome", // quem editou por último
+      // Participantes / divisão de contas (append; preserva linhas existentes):
+      "pago", // boolean
+      "pagamentos", // JSON [{chave, valor}] — quem pagou quanto
+      "responsaveis", // JSON [{chave, pct}] — de quem é a responsabilidade (% por participante)
     ],
   },
 
@@ -73,6 +77,19 @@ const SCHEMA = {
   COMPARTILHAMENTOS: {
     aba: "Compartilhamentos",
     colunas: ["id", "obra_id", "usuario_id", "criado_em"],
+  },
+
+  OBRA_PARTICIPANTES: {
+    aba: "ObraParticipantes",
+    colunas: [
+      "id",
+      "obra_id",
+      "tipo", // usuario | contato
+      "ref_id", // usuario_id ou contato_id
+      "nome", // desnormalizado p/ exibir sem lookup
+      "eh_responsavel", // boolean (Fase 2)
+      "criado_em",
+    ],
   },
 
   ACESSOS_LINK: {

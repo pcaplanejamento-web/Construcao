@@ -24,6 +24,7 @@ import "../despesas/despesa-detail.js";
 import "../despesas/despesa-filtros.js";
 import "./obra-form.js";
 import "./obra-share-form.js";
+import "./obra-participantes.js";
 
 class ObraDetailView extends BaseElement {
   constructor() {
@@ -93,11 +94,15 @@ class ObraDetailView extends BaseElement {
             <despesa-table id="tabela"></despesa-table>
           </ui-card>
         </div>
+        <div slot="participantes">
+          <obra-participantes obra-id="${this.obraId}"></obra-participantes>
+        </div>
       </ui-tabs>
     `;
     alvo.querySelector("#abas").abas = [
       { id: "graficos", rotulo: "Gráficos", icone: "grafico" },
       { id: "despesas", rotulo: "Despesas", icone: "recibo" },
+      { id: "participantes", rotulo: "Participantes da obra", icone: "usuario" },
     ];
     this._dash = alvo.querySelector("#dash");
     this._break = alvo.querySelector("#break");
@@ -138,6 +143,7 @@ class ObraDetailView extends BaseElement {
     this._rosca.porCategoria = resumo.por_categoria || [];
     this._mensal.despesas = despesas;
     this._tabela.categorias = categorias;
+    this._tabela.participantes = dataStore.participantesDaObra(this.obraId);
     this.aplicarFiltro();
 
     const sig = categorias.map((c) => c.id).join(",");

@@ -53,7 +53,7 @@ function dadosSnapshot(data, sessao) {
     despesasPorObra[o.id] = [];
   });
   repoListar(SCHEMA.DESPESAS).forEach(function (d) {
-    if (idsAcc[d.obra_id]) despesasPorObra[d.obra_id].push(d);
+    if (idsAcc[d.obra_id]) despesasPorObra[d.obra_id].push(_lerDespesa(d));
   });
   // Ordena cada lista por data (desc), como em despesas.listar.
   Object.keys(despesasPorObra).forEach(function (id) {
@@ -76,10 +76,12 @@ function dadosSnapshot(data, sessao) {
 
   const resumos = {};
   const categoriasPorObra = {};
+  const participantesPorObra = {};
   obras.forEach(function (o) {
     const dono = o.usuario_id;
     resumos[o.id] = _resumoEmMemoria(o, despesasPorObra[o.id], catMapDe(dono));
     categoriasPorObra[o.id] = catListaDe(dono);
+    participantesPorObra[o.id] = listarParticipantesObra(o.id);
   });
 
   // Módulo Compras: coleções globais do usuário + ofertas agrupadas por cotação.
@@ -123,6 +125,7 @@ function dadosSnapshot(data, sessao) {
     despesas: despesasPorObra,
     resumos: resumos,
     categoriasPorObra: categoriasPorObra,
+    participantesPorObra: participantesPorObra,
     fornecedores: listarFornecedoresUsuario(u.id),
     contatos: listarContatosUsuario(u.id),
     cotacoes: cotacoes,

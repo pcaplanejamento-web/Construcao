@@ -25,6 +25,7 @@ const ESTADO_VAZIO = {
   despesas: {}, // obraId -> [despesa]
   resumos: {}, // obraId -> resumo
   categoriasPorObra: {}, // obraId -> [categoria do dono]
+  participantesPorObra: {}, // obraId -> [participante] (dono + compartilhados + contatos)
   fornecedores: [], // módulo Compras (empresas/lojas do usuário)
   contatos: [], // módulo Compras (pessoas do usuário)
   cotacoes: [], // módulo Compras (necessidades a cotar)
@@ -55,6 +56,7 @@ function persistir() {
       despesas: s.despesas,
       resumos: s.resumos,
       categoriasPorObra: s.categoriasPorObra,
+      participantesPorObra: s.participantesPorObra,
       fornecedores: s.fornecedores,
       contatos: s.contatos,
       cotacoes: s.cotacoes,
@@ -106,6 +108,7 @@ function _aplicarSnapshot(d) {
     despesas: d.despesas || {},
     resumos: d.resumos || {},
     categoriasPorObra: d.categoriasPorObra || {},
+    participantesPorObra: d.participantesPorObra || {},
     fornecedores: d.fornecedores || [],
     contatos: d.contatos || [],
     cotacoes: d.cotacoes || [],
@@ -145,6 +148,7 @@ const obra = (id) => store.get().obras.find((o) => String(o.id) === String(id)) 
 const despesas = (obraId) => store.get().despesas[obraId] || [];
 const resumo = (obraId) => store.get().resumos[obraId] || { total: 0, qtd: 0, orcamento: 0, saldo: 0, por_categoria: [] };
 const categoriasDaObra = (obraId) => store.get().categoriasPorObra[obraId] || store.get().categorias;
+const participantesDaObra = (obraId) => store.get().participantesPorObra[obraId] || [];
 // Módulo Compras
 const fornecedores = () => store.get().fornecedores;
 const fornecedoresAtivos = () => store.get().fornecedores.filter((f) => f.ativo !== false);
@@ -250,6 +254,43 @@ async function removerObra(id) {
   });
   persistir();
   bus.emit(EVENTOS.OBRAS, { tipo: "removida" });
+}
+
+/* -------------------- Mutações: participantes ------------------------ */
+
+function _setParticipantes(obraId, lista) {
+  const s = store.get();
+  store.set({ participantesPorObra: { ...s.participantesPorObra, [obraId]: lista } });
+  persistir();
+  bus.emit(EVENTOS.OBRAS, { tipo: "participantes", obra_id: obraId });
+}
+
+async function adicionarParticipante(obraId, contatoId) {
+  const r = await api.call("participantes.adicionarContato", { obra_id: obraId, contato_id: contatoId });
+  const p = r.participante || {};
+  const item = {
+    id: p.id,
+    chave: "c:" + p.ref_id,
+    tipo: "contato",
+    ref_id: p.ref_id,
+    nome: p.nome || "",
+    email: "",
+    origem: "contato",
+    eh_responsavel: false,
+  };
+  const atual = participantesDaObra(obraId);
+  if (!atual.some((x) => String(x.chave) === String(item.chave))) {
+    _setParticipantes(obraId, [...atual, item]);
+  }
+  return item;
+}
+
+async function removerParticipante(obraId, id) {
+  await api.call("participantes.remover", { id });
+  _setParticipantes(
+    obraId,
+    participantesDaObra(obraId).filter((x) => String(x.id) !== String(id))
+  );
 }
 
 /** Atualiza o link_token de uma obra no store (write-through). */
@@ -622,10 +663,12 @@ export const dataStore = {
   limparCache,
   // getters
   usuario, config, categorias, usuarios, obras, obra, despesas, resumo, categoriasDaObra,
+  participantesDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cotacoes, cotacao, precosDaCotacao,
   historicoDaCotacao,
   // mutações
   criarObra, atualizarObra, removerObra,
+  adicionarParticipante, removerParticipante,
   gerarLinkPublico, removerLinkPublico,
   adicionarDespesa, atualizarDespesa, removerDespesa,
   criarCategoria, atualizarCategoria, removerCategoria,

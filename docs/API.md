@@ -44,7 +44,7 @@ A API é um **único Web App** do Apps Script. Um `doPost` despacha por `action`
 ### Estado inicial (cache-first)
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cotacoes:[...], precosPorCotacao:{cotacaoId:[...]}, historicoPorCotacao:{cotacaoId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
+| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, participantesPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cotacoes:[...], precosPorCotacao:{cotacaoId:[...]}, historicoPorCotacao:{cotacaoId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
 
 ### Obras (próprias + compartilhadas)
 Cada obra inclui `ehDono` (bool), `dono_nome`/`dono_email` e `total_gasto`.
@@ -80,9 +80,20 @@ para dono **e** colaboradores.
 |--------|--------|---------|
 | `despesas.listar` | `{ obra_id }` | `{ despesas: [...] }` (cada despesa inclui `criado_em`/`autor_nome` e `atualizado_em`/`editor_nome` — auditoria) |
 | `despesas.resumo` | `{ obra_id }` | `{ total, qtd, orcamento, saldo, por_categoria:[{categoria_id,nome,cor,total}] }` |
-| `despesas.criar` | `{ obra_id, item, valor, categoria_id, data, observacao? }` | `{ despesa, resumo }` |
-| `despesas.atualizar` | `{ id, ...campos }` | `{ despesa, resumo }` |
+| `despesas.criar` | `{ obra_id, item, valor, categoria_id, data, observacao?, pago?, pagamentos?, responsaveis? }` | `{ despesa, resumo }` |
+| `despesas.atualizar` | `{ id, ...campos }` (inclui `pago`/`pagamentos`/`responsaveis`) | `{ despesa, resumo }` |
 | `despesas.remover` | `{ id }` | `{ id, resumo }` |
+
+> `pagamentos` = `[{chave, valor}]`, `responsaveis` = `[{chave, pct}]`
+> (`chave` = `u:<usuario_id>`/`c:<contato_id>`). Enviados como arrays; persistidos
+> como JSON; devolvidos como arrays.
+
+### Participantes da obra
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `participantes.listar` | `{ obra_id }` | `{ participantes:[{chave,tipo,ref_id,nome,email,origem,eh_responsavel}] }` (dono+compartilhados+contatos) |
+| `participantes.adicionarContato` | `{ obra_id, contato_id }` | `{ participante }` (idempotente) |
+| `participantes.remover` | `{ id }` | `{ id }` (só contatos têm linha) |
 
 ### Categorias
 | Action | `data` | Retorno |

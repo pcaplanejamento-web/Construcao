@@ -75,6 +75,14 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | autor_nome | string | quem adicionou (desnormalizado) |
 | atualizado_em | ISO datetime | data da última edição |
 | editor_nome | string | quem editou por último (desnormalizado) |
+| pago | boolean | marcada como paga? |
+| pagamentos | JSON | `[{chave, valor}]` — quem pagou quanto (participantes) |
+| responsaveis | JSON | `[{chave, pct}]` — de quem é a responsabilidade (% por participante) |
+
+> `chave` de participante = `u:<usuario_id>` ou `c:<contato_id>`. `pagamentos`/
+> `responsaveis` são guardados como **JSON string** e devolvidos como **arrays** ao
+> cliente (o backend faz parse). Total pago = soma de `pagamentos[].valor`;
+> distribuição (Único/Distribuído) é derivada do nº de pagantes.
 
 > Auditoria: `criado_em`/`autor_nome` registram a adição; `atualizado_em`/
 > `editor_nome` a última edição. Nomes são desnormalizados para exibir sem
@@ -184,6 +192,25 @@ Relaciona obras a usuários convidados (colaboradores). O dono permanece em
 
 Colaboradores podem ver a obra e lançar/editar despesas; **não** podem editar,
 excluir nem compartilhar a obra (só o dono).
+
+## Aba `ObraParticipantes`
+Participantes adicionados a uma obra. Dono e usuários compartilhados são
+**derivados** (não têm linha); só **contatos adicionados** (e, na Fase 2, usuários
+marcados como responsável) viram linha aqui.
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| obra_id | UUID | FK → Obras.id |
+| tipo | `usuario` \| `contato` | |
+| ref_id | UUID | usuario_id ou contato_id |
+| nome | string | desnormalizado (exibição) |
+| eh_responsavel | boolean | responsável da obra (Fase 2) |
+| criado_em | ISO datetime | |
+
+> A lista de participantes de uma obra = dono + compartilhados (derivados de
+> `Obras`/`Compartilhamentos`) **+** contatos desta aba. Chave estável:
+> `u:<usuario_id>` / `c:<contato_id>`.
 
 ## Aba `AcessosLink`
 Registra cada acesso ao link público de uma obra (log).

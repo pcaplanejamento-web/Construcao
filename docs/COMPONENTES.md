@@ -72,15 +72,19 @@ sobem por `CustomEvent`**.
 | `obra-card` | `.obra`; eventos `abrir`, `editar`, `remover` | Cartão com barra de orçamento. |
 | `obra-form` | `.obra`; eventos `salvo`, `fechar` | Modal criar/editar obra (chama a API). |
 | `obra-share-form` | `.obra`; evento `fechar` | Modal (só dono): **link público** curto (gerar/copiar/abrir/desativar) + **log de acessos** + convidar usuários para colaboração. |
-| `obra-detail-view` | attr `id` (rota); — | **Coração do tempo real**: dashboard + despesas (otimista + cache). |
+| `obra-detail-view` | attr `id` (rota); — | **Coração do tempo real**: KPIs + `ui-tabs` (**Gráficos** / **Despesas** / **Participantes da obra**); dashboard + despesas (otimista + cache). |
+| `obra-participantes` | attr `obra-id` | Aba **Participantes da obra**: lista dono + usuários compartilhados + contatos (badge de origem); adiciona/remove contatos (`participante-form`). Lê `dataStore.participantesDaObra`. (Saldos/acerto: Fase 2.) |
+| `participante-form` | `.obraId`; eventos `salvo`, `fechar` | Modal `ui-select` p/ adicionar um **contato** cadastrado como participante. |
 | `publico-view` | attr `token` (rota `#/publico/:token`) | Visão **pública somente-leitura** (sem login): dashboard + itens + gasto por categoria. |
 
 ### Despesas — `features/despesas/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
 | `despesa-form` | `.categorias`; evento `adicionar` | Formulário **só de adição** (edição é no banner). Não chama API. |
-| `despesa-table` | `.despesas`, `.categorias`; eventos `abrir` (clique na linha), `editar`, `remover` | Tabela **full-width** e fluida; colunas **Adicionado** e **Editado por** separadas. Reusa `ui-data-table` + `category-badge`. |
-| `despesa-detail` | `.despesa`, `.categorias`; evento `fechar` | **Banner (modal)** com info completa; **edita/exclui via data-store** (otimista, com loading) — item, valor, classificação, data e **observação** persistem; preenche **autor/editor**. |
+| `despesa-table` | `.despesas`, `.categorias`, `.participantes`; eventos `abrir` (clique na linha), `editar`, `remover` | Tabela **full-width** e fluida; colunas Adicionado/Editado por + **Pago**, **Pagamento** (total), **Distribuição** (Único/Distribuído) e **Responsabilidade** (chips nome·%). Reusa `ui-data-table` + `category-badge`. |
+| `despesa-detail` | `.despesa`, `.categorias`; evento `fechar` | **Banner (modal)**: item/valor/classificação/data/observação + **Pago** (checkbox), **Pagamento** e **Responsabilidade** (via `split-editor`). Salva via data-store (otimista). |
+| `split-editor` | `.participantes`, `.itens=[{chave,valor}]`, `.modo("valor"\|"pct")`; evento `mudar` | Editor reutilizável de **distribuição entre participantes** (linhas `ui-select`+`ui-input`, total/soma). Usado p/ pagamento (R$) e responsabilidade (%). |
+| `despesa-split.js` | `parseLista`, `totalPago`, `distribuicao`, `rotuloOrigem` | Helpers puros (Fase 2: algoritmo de acerto). |
 | `despesa-filtros` | `.categorias`; evento `filtrar` ({texto, categoria}) | Pesquisa por item + filtro por classificação (aplicado só na tabela). |
 | `category-badge` | `nome`, `cor` | Reutiliza `ui-badge`. |
 
