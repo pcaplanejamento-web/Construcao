@@ -100,13 +100,19 @@ para dono **e** colaboradores.
 > pagamentos, `devido` = Σ valor×(pct/100), `saldo` = pago − devido; e `acertos`
 > pareados (quem deve a quem). Não há action de servidor — é derivado das despesas.
 
-### Categorias
+### Categorias (= Subclassificações na UI)
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `categorias.listar` | `{}` | `{ categorias: [...] }` (GLOBAL + do usuário) |
-| `categorias.criar` | `{ nome, cor? }` | `{ categoria }` |
+| `categorias.criar` | `{ nome, cor? }` | `{ categoria }` (própria do usuário) |
 | `categorias.atualizar` | `{ id, nome?, cor?, ativo? }` | `{ categoria }` |
 | `categorias.remover` | `{ id }` | `{ id }` (desativa) |
+
+> **Lista livre, todas editáveis:** não há mais subclassificação “só leitura”. As
+> padrão **GLOBAL** agora podem ser editadas/removidas por qualquer usuário
+> (`_categoriaEditavel` aceita própria ou GLOBAL). Como GLOBAL é compartilhada,
+> alterá-la afeta todos: o cache é invalidado para todos via `bumpVersaoCategorias()`
+> (versão embutida na chave `categorias:<versao>:<usuarioId>`).
 
 ### Compras — Fornecedores (próprios do usuário)
 | Action | `data` | Retorno |

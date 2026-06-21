@@ -1,5 +1,6 @@
 /**
- * <categoria-form> — Modal para criar/editar a classificação do usuário.
+ * <categoria-form> — Modal para criar/editar a subclassificação (entidade
+ * categoria). Lista livre: todas são editáveis (próprias e padrão).
  *
  * Propriedade: .categoria (objeto p/ edição; ausente = nova)
  * Eventos: "salvo", "fechar". Auto-contido: chama categorias.criar/atualizar e
@@ -37,10 +38,10 @@ class CategoriaForm extends BaseElement {
   template() {
     const c = this.categoria || {};
     return `
-      <ui-modal open title="${this.ehEdicao ? "Editar classificação" : "Nova classificação"}">
+      <ui-modal open title="${this.ehEdicao ? "Editar subclassificação" : "Nova subclassificação"}">
         <div class="campos">
           <div class="linha">
-            <ui-input id="nome" label="Nome da classificação"
+            <ui-input id="nome" label="Nome da subclassificação"
               value="${(c.nome || "").replace(/"/g, "&quot;")}"
               placeholder="Ex.: Acabamento"></ui-input>
             <ui-input id="cor" class="cor" label="Cor" type="color"
@@ -76,10 +77,10 @@ class CategoriaForm extends BaseElement {
     try {
       if (this.ehEdicao) {
         await dataStore.atualizarCategoria(this.categoria.id, { nome, cor });
-        toastSucesso("Classificação atualizada.");
+        toastSucesso("Subclassificação atualizada.");
       } else {
         await dataStore.criarCategoria({ nome, cor });
-        toastSucesso("Classificação criada.");
+        toastSucesso("Subclassificação criada.");
       }
       this.emitir("salvo");
       this.emitir("fechar");

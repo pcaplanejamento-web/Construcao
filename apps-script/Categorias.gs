@@ -59,21 +59,32 @@ function categoriasCriar(data, sessao) {
   });
 }
 
-/** Garante que a categoria é do usuário (não permite editar GLOBAL). */
-function _categoriaDoUsuario(catId, usuarioId) {
+/**
+ * Garante que a subclassificação é editável pelo usuário: ou é dele, ou é uma
+ * padrão GLOBAL (compartilhada e editável por qualquer usuário). Retorna a linha.
+ */
+function _categoriaEditavel(catId, usuarioId) {
   const c = repoEncontrar(SCHEMA.CATEGORIAS, function (x) {
     return String(x.id) === String(catId);
   });
-  if (!c || String(c.usuario_id) !== String(usuarioId)) {
-    lancar(ERRO.NAO_AUTORIZADO, "Categoria não pode ser alterada.");
+  const dono = c && String(c.usuario_id);
+  if (!c || (dono !== String(usuarioId) && dono !== CATEGORIA_GLOBAL)) {
+    lancar(ERRO.NAO_AUTORIZADO, "Subclassificação não pode ser alterada.");
   }
   return c;
+}
+
+/** Invalida o cache após mudança: GLOBAL afeta todos; própria só o usuário. */
+function _invalidarCacheCategoria(ehGlobal, usuarioId) {
+  if (ehGlobal) bumpVersaoCategorias();
+  else cacheRemove(chaveCategorias(usuarioId));
 }
 
 /** categorias.atualizar -> { categoria }. */
 function categoriasAtualizar(data, sessao) {
   const id = data && data.id;
-  _categoriaDoUsuario(id, sessao.usuario_id);
+  const atual = _categoriaEditavel(id, sessao.usuario_id);
+  const ehGlobal = String(atual.usuario_id) === CATEGORIA_GLOBAL;
 
   const patch = {};
   if (data.nome !== undefined) {
@@ -86,7 +97,7 @@ function categoriasAtualizar(data, sessao) {
 
   return comLock(function () {
     const categoria = repoAtualizar(SCHEMA.CATEGORIAS, "id", id, patch);
-    cacheRemove(chaveCategorias(sessao.usuario_id));
+    _invalidarCacheCategoria(ehGlobal, sessao.usuario_id);
     return { categoria: categoria };
   });
 }
@@ -94,11 +105,12 @@ function categoriasAtualizar(data, sessao) {
 /** categorias.remover -> { id } (desativa logicamente). */
 function categoriasRemover(data, sessao) {
   const id = data && data.id;
-  _categoriaDoUsuario(id, sessao.usuario_id);
+  const atual = _categoriaEditavel(id, sessao.usuario_id);
+  const ehGlobal = String(atual.usuario_id) === CATEGORIA_GLOBAL;
 
   return comLock(function () {
     repoAtualizar(SCHEMA.CATEGORIAS, "id", id, { ativo: false });
-    cacheRemove(chaveCategorias(sessao.usuario_id));
+    _invalidarCacheCategoria(ehGlobal, sessao.usuario_id);
     return { id: id };
   });
 }

@@ -1,8 +1,8 @@
 /**
  * <itens-view> — Catálogo de itens (rota #/itens), com abas:
  *  - Itens: cada item classificado como Material ou Serviço (CRUD via item-form);
- *  - Subclassificações: as classificações livres do usuário (entidade categoria),
- *    minhas (CRUD) + padrão (referência), reaproveitando categoria-form.
+ *  - Subclassificações: lista livre (entidade categoria), TODAS editáveis
+ *    (as próprias e as padrão compartilhadas), reaproveitando categoria-form.
  * Lê do data-store (cache-first) e assina mudanças. Reusa ui-tabs, ui-card,
  * ui-data-table, category-badge, ui-button, ui-empty-state.
  */
@@ -31,8 +31,6 @@ class ItensView extends BaseElement {
         gap: var(--esp-3); flex-wrap: wrap; }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       p.sub { color: var(--cor-texto-suave); margin-top: var(--esp-2); }
-      .pilha { display: flex; flex-direction: column; gap: var(--esp-5); }
-      .globais { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
     `;
   }
 
@@ -52,12 +50,11 @@ class ItensView extends BaseElement {
               <div id="listaItens"></div>
             </ui-card>
           </div>
-          <div slot="sub" class="pilha">
-            <ui-card title="Minhas subclassificações">
+          <div slot="sub">
+            <ui-card title="Subclassificações">
               <ui-button slot="acoes" id="novaSub">+ Nova subclassificação</ui-button>
-              <div id="minhasSub"></div>
+              <div id="listaSub"></div>
             </ui-card>
-            <ui-card title="Subclassificações padrão (todos)"><div id="globaisSub"></div></ui-card>
           </div>
         </ui-tabs>
       </div>
@@ -143,47 +140,44 @@ class ItensView extends BaseElement {
   /* ------------------------ Subclassificações ------------------------- */
 
   pintarSub() {
-    const minhasEl = this.$("#minhasSub");
-    const globaisEl = this.$("#globaisSub");
-    if (!minhasEl || !dataStore.carregado()) return;
+    const el = this.$("#listaSub");
+    if (!el) return;
+    if (!dataStore.carregado()) {
+      el.innerHTML = `<ui-spinner centro text="Carregando..."></ui-spinner>`;
+      return;
+    }
 
-    const meuId = (dataStore.usuario() || {}).id;
+    // Lista livre: TODAS as subclassificações são editáveis (próprias + padrão).
     const todas = dataStore.categorias();
-    const minhas = todas.filter((c) => String(c.usuario_id) === String(meuId));
-    const globais = todas.filter((c) => String(c.usuario_id) !== String(meuId));
-
-    if (!minhas.length) {
-      minhasEl.innerHTML = `
-        <ui-empty-state icone="tag" titulo="Nenhuma subclassificação sua"
+    if (!todas.length) {
+      el.innerHTML = `
+        <ui-empty-state icone="tag" titulo="Nenhuma subclassificação"
           texto="Crie subclassificações para detalhar despesas e itens.">
           <ui-button slot="acao" id="vaziaSub">+ Criar subclassificação</ui-button>
         </ui-empty-state>`;
-      minhasEl.querySelector("#vaziaSub").addEventListener("click", () => this.abrirSubForm(null));
-    } else {
-      const tabela = document.createElement("ui-data-table");
-      tabela.columns = [
-        {
-          chave: "nome",
-          titulo: "Subclassificação",
-          formato: (nome, linha) =>
-            `<category-badge nome="${nome}" cor="${linha.cor}"></category-badge>`,
-        },
-      ];
-      tabela.acoes = [
-        { nome: "editar", rotulo: "Editar" },
-        { nome: "excluir", rotulo: "Excluir", variant: "perigo" },
-      ];
-      tabela.rows = minhas;
-      tabela.addEventListener("acao", (e) => {
-        if (e.detail.acao === "editar") this.abrirSubForm(e.detail.linha);
-        else this.removerSub(e.detail.linha);
-      });
-      minhasEl.replaceChildren(tabela);
+      el.querySelector("#vaziaSub").addEventListener("click", () => this.abrirSubForm(null));
+      return;
     }
-
-    globaisEl.innerHTML = `<div class="globais">${globais
-      .map((c) => `<category-badge nome="${c.nome}" cor="${c.cor}"></category-badge>`)
-      .join("")}</div>`;
+    const tabela = document.createElement("ui-data-table");
+    tabela.setAttribute("fluido", "");
+    tabela.columns = [
+      {
+        chave: "nome",
+        titulo: "Subclassificação",
+        formato: (nome, linha) =>
+          `<category-badge nome="${nome}" cor="${linha.cor}"></category-badge>`,
+      },
+    ];
+    tabela.acoes = [
+      { nome: "editar", rotulo: "Editar" },
+      { nome: "excluir", rotulo: "Excluir", variant: "perigo" },
+    ];
+    tabela.rows = todas;
+    tabela.addEventListener("acao", (e) => {
+      if (e.detail.acao === "editar") this.abrirSubForm(e.detail.linha);
+      else this.removerSub(e.detail.linha);
+    });
+    el.replaceChildren(tabela);
   }
 
   abrirSubForm(categoria) {

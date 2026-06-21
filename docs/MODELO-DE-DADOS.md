@@ -103,6 +103,10 @@ Categorias semente (`GLOBAL`) são criadas no bootstrap. A listagem de um usuár
 > **Na UI**, a entidade `Categorias` é exibida como **Subclassificação** (lista livre,
 > aba "Subclassificações" da página **Itens**). A estrutura da aba não mudou — só o rótulo.
 > As classificações fixas (Material/Serviço) ficam em `Itens.classificacao`, não aqui.
+> **Todas as subclassificações são editáveis** (não há mais “padrão só leitura”): as
+> `GLOBAL` agora podem ser editadas/removidas por qualquer usuário — como são
+> compartilhadas, a alteração afeta todos e invalida o cache de todos
+> (`bumpVersaoCategorias`, versão na chave `categorias:<versao>:<usuarioId>`).
 
 ## Aba `Itens` (catálogo)
 Cada item é classificado como **Material** ou **Serviço** (constante

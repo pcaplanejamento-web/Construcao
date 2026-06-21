@@ -93,7 +93,7 @@ sobem por `CustomEvent`**.
 ### Itens — `features/itens/` (+ `features/categorias/categoria-form.js`)
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `itens-view` | — | Rota `#/itens`. `ui-tabs`: **Itens** (catálogo; tabela com badge Material/Serviço; CRUD via `item-form`) e **Subclassificações** (as categorias livres: minhas com CRUD + padrão como referência, reusa `categoria-form`). |
+| `itens-view` | — | Rota `#/itens`. `ui-tabs`: **Itens** (catálogo; tabela com badge Material/Serviço; CRUD via `item-form`) e **Subclassificações** (categorias livres: lista única **todas editáveis**, próprias e padrão, reusa `categoria-form`). |
 | `item-form` | `.item`; eventos `salvo`, `fechar` | Modal criar/editar item (nome + `ui-select` Classificação Material/Serviço). Emite `EVENTOS.ITENS`. Espelha `categoria-form`. |
 | `categoria-form` | `.categoria`; eventos `salvo`, `fechar` | Modal criar/editar **subclassificação** (nome + cor). Emite `EVENTOS.CATEGORIAS`. |
 
