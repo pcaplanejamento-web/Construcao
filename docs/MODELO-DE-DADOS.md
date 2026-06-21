@@ -108,6 +108,19 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > (integrante); `saldoReceber` = Σ resto do ofertante (grupo no nível `e:`). Não há mais
 > "Devido"/"Restos a pagar" como colunas.
 
+> **Mapa de pagamentos (fonte da verdade)** — para não confundir os campos da despesa:
+> - **`pagamentos_realizados`** (levas): **fonte única** dos pagamentos reais. Dela derivam
+>   tudo: status (A pagar/Em pagamento/Pago), `pago`(boolean = quitada), `pagamentos`
+>   (quem pagou quanto → acerto) e o `balancos` (paga ↔ recebe).
+> - **`pagamentos`** `[{chave,valor}]` = **derivado** das levas por `pagador` (não editar à mão);
+>   alimenta o **acerto** "quem deve a quem" (`despesa-split.acerto`).
+> - **`responsaveis`** `[{chave,pct}]` = quem é responsável (base do *Saldo a pagar*).
+> - **`pago`** (boolean) = quitada (Σ levas ≥ valor); mantido pelas levas; flag simples.
+> - **`recebidos`** = **DEPRECADO** (sempre `[]`; a distribuição por integrante vive em
+>   `pagamentos_realizados[].distribuicao`).
+> - **`balancos`** (derivado) vs **`acerto`** (derivado): `balancos` = AP/AR com o ofertante/
+>   empresa (paga↔recebe); `acerto` = reembolso **entre participantes** (quem adiantou).
+
 > **Item × Classificação × Subclassificação:** a despesa referencia um **item**
 > (`item_id`, obrigatório); o item carrega sua **classificação** (`classificacao`,
 > Material/Serviço, desnormalizada). `categoria_id` é a **subclassificação** (opcional).
