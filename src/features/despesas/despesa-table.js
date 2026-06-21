@@ -9,8 +9,15 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
 import { totalPago, distribuicao, parseLista } from "./despesa-split.js";
+import { ofertanteNome } from "../orcamentos/orcamento-util.js";
 import "../../components/ui-data-table.js";
 import "./category-badge.js";
+
+/** Nome da empresa (fornecedor) pelo id. */
+function _empresaNome(id) {
+  if (!id) return "";
+  return (dataStore.fornecedores().find((f) => String(f.id) === String(id)) || {}).nome || "";
+}
 
 function _bool(v) {
   return v === true || v === "TRUE" || v === "true";
@@ -77,6 +84,23 @@ class DespesaTable extends BaseElement {
           this.mapaCat[id]
             ? `<category-badge nome="${this.mapaCat[id].nome}" cor="${this.mapaCat[id].cor}"></category-badge>`
             : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+      },
+      {
+        chave: "ofertante_contato_id",
+        titulo: "Ofertante",
+        // Ofertante ao vivo: equipe (se houver) ou contato; "—" p/ despesas legadas.
+        formato: (_, linha) => {
+          const id = linha.ofertante_contato_id || linha.ofertante_equipe_id;
+          return id
+            ? ofertanteNome(linha.ofertante_contato_id, linha.ofertante_equipe_id)
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`;
+        },
+      },
+      {
+        chave: "fornecedor_id",
+        titulo: "Empresa",
+        formato: (id) =>
+          _empresaNome(id) || `<span style="color:var(--cor-texto-fraco)">—</span>`,
       },
       {
         chave: "criado_em",

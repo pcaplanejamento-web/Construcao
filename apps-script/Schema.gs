@@ -71,6 +71,12 @@ const SCHEMA = {
       // Itens (append): vínculo ao catálogo. categoria_id segue sendo a SUBclassificação.
       "item_id", // FK → Itens.id (obrigatório p/ novas despesas)
       "classificacao", // Material | Serviço (desnormalizado do item)
+      // Oferta de origem (append): a despesa nasce do REGISTRO de uma oferta.
+      "preco_id", // FK → CotacaoPrecos.id (oferta registrada)
+      "fornecedor_id", // empresa que recebe (do contato ofertante; vazio p/ equipe)
+      "ofertante_contato_id", // ofertante CONTATO (XOR equipe)
+      "ofertante_equipe_id", // ofertante EQUIPE (XOR contato)
+      "recebidos", // JSON [{chave, valor}] — quanto cada integrante da equipe recebeu
     ],
   },
 

@@ -1,10 +1,14 @@
 /**
  * <despesa-detail> — Banner (modal) com as informações completas de uma despesa.
- * Permite EDITAR e EXCLUIR aqui (a edição não é mais feita no formulário de
- * adição). Reusa ui-modal/ui-input/ui-select/ui-button.
+ * Permite EDITAR e EXCLUIR aqui. A despesa nasce do REGISTRO de uma oferta:
+ * quando tem `preco_id`, o Item/Valor/Ofertante/Empresa vêm da oferta (read-only)
+ * e — se o ofertante é uma EQUIPE — edita-se quanto cada integrante recebeu.
+ * Pagamento (quem pagou) / Responsabilidade / Subclassificação / Observação /
+ * Pago seguem editáveis. Despesas legadas (sem `preco_id`) mantêm Item/Valor
+ * editáveis. Reusa ui-modal/ui-input/ui-select/ui-button/split-editor.
  *
  * Propriedades: .despesa, .categorias = [{id,nome,cor}]
- * Eventos: "salvar" ({ id, dados }), "remover" ({ despesa }), "fechar".
+ * Eventos: "fechar".
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -12,6 +16,8 @@ import { data as fmtData, moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { valorPositivo } from "../../core/validators.js";
 import { parseLista } from "./despesa-split.js";
+import { ofertanteNome } from "../orcamentos/orcamento-util.js";
+import { integrantesDaEquipe } from "../equipes/equipe-util.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-input.js";
@@ -19,8 +25,10 @@ import "../../components/ui-select.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
 import "./split-editor.js";
+import "./category-badge.js";
 
 const CLASSIFICACOES = ["Material", "Serviço"];
+const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
 
 class DespesaDetail extends BaseElement {
   set despesa(v) {
@@ -38,6 +46,11 @@ class DespesaDetail extends BaseElement {
     return this._categorias || [];
   }
 
+  /** Despesa vinda de uma oferta (Item/Valor/Ofertante fixos). */
+  get travado() {
+    return !!this.despesa.preco_id;
+  }
+
   estilos() {
     return `
       .campos { display: flex; flex-direction: column; gap: var(--esp-4); }
@@ -51,6 +64,12 @@ class DespesaDetail extends BaseElement {
         color: var(--cor-texto); }
       textarea:focus { outline: none; border-color: var(--cor-primaria);
         box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
+      .resumo { background: var(--cor-superficie-2); border-radius: var(--raio-sm);
+        padding: var(--esp-3) var(--esp-4); display: flex; flex-direction: column; gap: 4px; }
+      .resumo .item { font-weight: var(--peso-semi); }
+      .resumo .val { font-size: var(--fs-lg); font-weight: var(--peso-forte);
+        color: var(--cor-primaria); }
+      .resumo small { color: var(--cor-texto-suave); }
       .secao { border-top: 1px solid var(--cor-borda); padding-top: var(--esp-3); }
       .check { display: flex; align-items: center; gap: var(--esp-2); cursor: pointer;
         font-weight: var(--peso-medio); }
@@ -63,20 +82,48 @@ class DespesaDetail extends BaseElement {
     `;
   }
 
+  /** Nome da empresa (fornecedor) pelo id. */
+  empresaNome(id) {
+    if (!id) return "";
+    return (dataStore.fornecedores().find((f) => String(f.id) === String(id)) || {}).nome || "";
+  }
+
   template() {
     const d = this.despesa;
     const editado =
       d.editor_nome && d.atualizado_em && String(d.atualizado_em) !== String(d.criado_em);
+    const dataVal = d.data ? String(d.data).substring(0, 10) : "";
+
+    // Item/Valor: read-only (oferta) ou editáveis (legado).
+    let topo;
+    if (this.travado) {
+      const nomeItem = (d.item_id && (dataStore.item(d.item_id) || {}).nome) || d.item || "—";
+      const ofert = ofertanteNome(d.ofertante_contato_id, d.ofertante_equipe_id);
+      const empresa = this.empresaNome(d.fornecedor_id);
+      topo = `
+        <div class="resumo">
+          <span class="item">${nomeItem}</span>
+          ${d.classificacao ? `<category-badge nome="${d.classificacao}" cor="${COR_CLASSIFICACAO[d.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
+          <span class="val">${moeda(d.valor || 0)}</span>
+          <small>Ofertante: ${ofert}${empresa ? " · Empresa: " + empresa : ""}</small>
+        </div>
+        <ui-input id="data" label="Data" type="date" value="${dataVal}"></ui-input>`;
+    } else {
+      topo = `
+        <ui-tabs id="abas"></ui-tabs>
+        <ui-select id="item" label="Item"></ui-select>
+        <div class="linha">
+          <ui-input id="valor" label="Valor (R$)" type="number" step="0.01" min="0" value="${d.valor || ""}"></ui-input>
+          <ui-input id="data" label="Data" type="date" value="${dataVal}"></ui-input>
+        </div>`;
+    }
+
+    const eqp = !!d.ofertante_equipe_id;
     return `
       <ui-modal open title="Despesa">
         <div class="campos">
           <ui-alert id="erro" tipo="erro"></ui-alert>
-          <ui-tabs id="abas"></ui-tabs>
-          <ui-select id="item" label="Item"></ui-select>
-          <div class="linha">
-            <ui-input id="valor" label="Valor (R$)" type="number" step="0.01" min="0" value="${d.valor || ""}"></ui-input>
-            <ui-input id="data" label="Data" type="date" value="${d.data ? String(d.data).substring(0, 10) : ""}"></ui-input>
-          </div>
+          ${topo}
           <ui-select id="categoria" label="Subclassificação"></ui-select>
           <div>
             <label class="tx">Observação</label>
@@ -85,6 +132,10 @@ class DespesaDetail extends BaseElement {
           <div class="secao">
             <label class="check"><input type="checkbox" id="pago" ${d.pago ? "checked" : ""} /> Pago</label>
           </div>
+          ${eqp ? `<div class="secao">
+            <label class="tx">Recebido por integrante (R$)</label>
+            <split-editor id="recebidos"></split-editor>
+          </div>` : ""}
           <div class="secao">
             <label class="tx">Pagamento — quem pagou quanto (R$)</label>
             <split-editor id="pagamentos"></split-editor>
@@ -110,11 +161,13 @@ class DespesaDetail extends BaseElement {
 
   aposRender() {
     const d = this.despesa;
-    const inicial = CLASSIFICACOES.indexOf(d.classificacao) >= 0 ? d.classificacao : CLASSIFICACOES[0];
-    this.$("#abas").abas = CLASSIFICACOES.map((c) => ({ id: c, rotulo: c, icone: "tag" }));
-    this.$("#abas").setAttribute("ativo", inicial);
-    this.$("#abas").addEventListener("mudar", () => this.preencherItens());
-    this.preencherItens();
+    if (!this.travado) {
+      const inicial = CLASSIFICACOES.indexOf(d.classificacao) >= 0 ? d.classificacao : CLASSIFICACOES[0];
+      this.$("#abas").abas = CLASSIFICACOES.map((c) => ({ id: c, rotulo: c, icone: "tag" }));
+      this.$("#abas").setAttribute("ativo", inicial);
+      this.$("#abas").addEventListener("mudar", () => this.preencherItens());
+      this.preencherItens();
+    }
     this.preencherCategorias();
     this.preencherSplits();
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
@@ -124,7 +177,7 @@ class DespesaDetail extends BaseElement {
   }
 
   get classificacao() {
-    return this.$("#abas").ativo || CLASSIFICACOES[0];
+    return (this.$("#abas") && this.$("#abas").ativo) || this.despesa.classificacao || CLASSIFICACOES[0];
   }
 
   preencherItens() {
@@ -139,24 +192,45 @@ class DespesaDetail extends BaseElement {
     sel.removeAttribute("error");
   }
 
-  /** Popula os editores de pagamento (R$) e responsabilidade (%). */
+  /** Valor da despesa (input no modo legado; fixo no modo oferta). */
+  valorAtual() {
+    const inp = this.$("#valor");
+    return inp ? Number(inp.value) || 0 : Number(this.despesa.valor) || 0;
+  }
+
+  /** Popula os editores de recebidos (R$), pagamento (R$) e responsabilidade (%). */
   preencherSplits() {
     const parts = dataStore.participantesDaObra(this.despesa.obra_id);
+
+    // Recebido por integrante (só quando o ofertante é equipe).
+    const rec = this.$("#recebidos");
+    if (rec && this.despesa.ofertante_equipe_id) {
+      rec.modo = "valor";
+      rec.participantes = integrantesDaEquipe(this.despesa.ofertante_equipe_id);
+      rec.limite = this.valorAtual();
+      rec.itens = parseLista(this.despesa.recebidos).map((r) => ({
+        chave: r.chave,
+        valor: Number(r.valor) || 0,
+      }));
+    }
+
     const pg = this.$("#pagamentos");
     if (pg) {
       pg.modo = "valor";
       pg.participantes = parts;
-      pg.limite = Number(this.$("#valor").value) || 0; // soma ≤ valor da despesa
+      pg.limite = this.valorAtual(); // soma ≤ valor da despesa
       pg.itens = parseLista(this.despesa.pagamentos).map((p) => ({
         chave: p.chave,
         valor: Number(p.valor) || 0,
       }));
     }
-    // Mantém o limite do pagamento sincronizado com o valor digitado.
+    // Mantém o limite sincronizado com o valor digitado (modo legado).
     const valInput = this.$("#valor");
-    if (valInput && pg) {
+    if (valInput) {
       valInput.addEventListener("input", () => {
-        pg.limite = Number(valInput.value) || 0;
+        const lim = Number(valInput.value) || 0;
+        if (pg) pg.limite = lim;
+        if (rec && this.despesa.ofertante_equipe_id) rec.limite = lim;
       });
     }
     const rp = this.$("#responsaveis");
@@ -183,13 +257,26 @@ class DespesaDetail extends BaseElement {
   async salvar() {
     const alerta = this.$("#erro");
     if (alerta) alerta.mensagem = "";
-    const itemId = this.$("#item").value;
-    const valor = Number(this.$("#valor").value);
-    const erroValor = valorPositivo(valor);
-    if (!itemId) this.$("#item").setAttribute("error", "Selecione um item.");
-    if (erroValor) this.$("#valor").setAttribute("error", erroValor);
-    if (!itemId || erroValor) return;
-    this.$("#item").removeAttribute("error");
+
+    // Item/Valor/Classificação: da oferta (travado) ou dos campos (legado).
+    let itemId, valor, classificacao, itemNome;
+    if (this.travado) {
+      itemId = this.despesa.item_id || "";
+      valor = Number(this.despesa.valor) || 0;
+      classificacao = this.despesa.classificacao || "";
+      itemNome = this.despesa.item || "";
+    } else {
+      itemId = this.$("#item").value;
+      valor = Number(this.$("#valor").value);
+      const erroValor = valorPositivo(valor);
+      if (!itemId) this.$("#item").setAttribute("error", "Selecione um item.");
+      if (erroValor) this.$("#valor").setAttribute("error", erroValor);
+      if (!itemId || erroValor) return;
+      this.$("#item").removeAttribute("error");
+      const item = dataStore.itensAtivos().find((i) => String(i.id) === String(itemId)) || {};
+      itemNome = item.nome || "";
+      classificacao = this.classificacao;
+    }
 
     const pagamentos = this.$("#pagamentos").itens
       .filter((x) => x.chave && Number(x.valor) > 0)
@@ -198,25 +285,22 @@ class DespesaDetail extends BaseElement {
       .filter((x) => x.chave)
       .map((x) => ({ chave: x.chave, pct: Number(x.valor) || 0 }));
 
-    // Regras: soma dos pagamentos ≤ valor da despesa; soma das % ≤ 100.
+    // Regras: soma dos pagamentos ≤ valor; soma das % ≤ 100.
     const somaPag = pagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0);
     const somaPct = responsaveis.reduce((s, r) => s + (Number(r.pct) || 0), 0);
     if (somaPag - valor > 0.01) {
-      if (alerta)
-        alerta.mensagem = `A soma dos pagamentos (${moeda(somaPag)}) não pode passar do valor da despesa (${moeda(valor)}).`;
+      if (alerta) alerta.mensagem = `A soma dos pagamentos (${moeda(somaPag)}) não pode passar do valor da despesa (${moeda(valor)}).`;
       return;
     }
     if (somaPct - 100 > 0.01) {
-      if (alerta)
-        alerta.mensagem = `A soma das responsabilidades (${Math.round(somaPct * 100) / 100}%) não pode passar de 100%.`;
+      if (alerta) alerta.mensagem = `A soma das responsabilidades (${Math.round(somaPct * 100) / 100}%) não pode passar de 100%.`;
       return;
     }
 
-    const item = dataStore.itensAtivos().find((i) => String(i.id) === String(itemId)) || {};
     const dados = {
       item_id: itemId,
-      classificacao: this.classificacao,
-      item: item.nome || "", // nome denormalizado p/ exibição otimista
+      classificacao,
+      item: itemNome, // nome denormalizado p/ exibição otimista
       valor,
       categoria_id: this.$("#categoria").value,
       data: this.$("#data").value || String(this.despesa.data || "").substring(0, 10),
@@ -225,6 +309,21 @@ class DespesaDetail extends BaseElement {
       pagamentos,
       responsaveis,
     };
+
+    // Recebidos por integrante (só quando o ofertante é equipe).
+    const rec = this.$("#recebidos");
+    if (rec && this.despesa.ofertante_equipe_id) {
+      const recebidos = rec.itens
+        .filter((x) => x.chave && Number(x.valor) > 0)
+        .map((x) => ({ chave: x.chave, valor: Number(x.valor) || 0 }));
+      const somaRec = recebidos.reduce((s, r) => s + (Number(r.valor) || 0), 0);
+      if (somaRec - valor > 0.01) {
+        if (alerta) alerta.mensagem = `A soma dos valores recebidos (${moeda(somaRec)}) não pode passar do valor da despesa (${moeda(valor)}).`;
+        return;
+      }
+      dados.recebidos = recebidos;
+    }
+
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");
     try {

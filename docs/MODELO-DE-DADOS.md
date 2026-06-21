@@ -80,6 +80,16 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | responsaveis | JSON | `[{chave, pct}]` — de quem é a responsabilidade (% por participante) |
 | item_id | UUID | **FK → Itens.id (obrigatório p/ novas despesas)** |
 | classificacao | string | `Material` \| `Serviço` (desnormalizado de Itens.classificacao) |
+| preco_id | UUID | **FK → CotacaoPrecos.id** — a oferta registrada (despesa nasce dela) |
+| fornecedor_id | UUID | **empresa** que recebe (fornecedor do contato ofertante; vazio p/ equipe) |
+| ofertante_contato_id | UUID | ofertante **contato** (XOR equipe) |
+| ofertante_equipe_id | UUID | ofertante **equipe** (XOR contato) |
+| recebidos | JSON | `[{chave, valor}]` — quanto **cada integrante** da equipe recebeu |
+
+> **Despesa = registro de uma oferta (inteira).** Não há mais cadastro manual: a
+> despesa nasce de uma oferta (`preco_id`) e herda o **ofertante** (contato XOR
+> equipe) e a **empresa** (`fornecedor_id`, vazio p/ equipe). Quando o ofertante é
+> uma equipe, `recebidos` distribui o valor por integrante (chave `c:<contato_id>`).
 
 > **Item × Classificação × Subclassificação:** a despesa referencia um **item**
 > (`item_id`, obrigatório); o item carrega sua **classificação** (`classificacao`,
@@ -87,9 +97,10 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > Gráficos: rosca por `classificacao`, barras por `categoria_id`.
 
 > `chave` de participante = `u:<usuario_id>` ou `c:<contato_id>`. `pagamentos`/
-> `responsaveis` são guardados como **JSON string** e devolvidos como **arrays** ao
-> cliente (o backend faz parse). Total pago = soma de `pagamentos[].valor`;
-> distribuição (Único/Distribuído) é derivada do nº de pagantes.
+> `responsaveis`/`recebidos` são guardados como **JSON string** e devolvidos como
+> **arrays** ao cliente (o backend faz parse). Total pago = soma de `pagamentos[].valor`;
+> distribuição (Único/Distribuído) é derivada do nº de pagantes. `pagamentos` (quem
+> pagou) e o **acerto** "quem deve a quem" seguem independentes de ofertante/recebidos.
 
 > Auditoria: `criado_em`/`autor_nome` registram a adição; `atualizado_em`/
 > `editor_nome` a última edição. Nomes são desnormalizados para exibir sem

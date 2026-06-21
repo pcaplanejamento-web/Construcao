@@ -791,12 +791,14 @@ async function escolherPreco(cotacaoId, id) {
  * cotação — tudo no servidor (atômico). Atualiza despesas/resumo, ofertas e a
  * cotação no store.
  */
-async function registrarDespesaOferta(cotacaoId, precoId, obraId, categoriaId) {
+async function registrarDespesaOferta(cotacaoId, precoId, obraId, categoriaId, responsaveis, recebidos) {
   const r = await api.call("cotacoes.registrarDespesa", {
     preco_id: precoId,
     cotacao_id: cotacaoId,
     obra_id: obraId,
     categoria_id: categoriaId,
+    responsaveis: Array.isArray(responsaveis) ? responsaveis : [],
+    recebidos: Array.isArray(recebidos) ? recebidos : [],
   });
   // Despesa criada na obra (com resumo recalculado pelo servidor).
   _setDespesasObra(obraId, [r.despesa, ...despesas(obraId)], r.resumo);

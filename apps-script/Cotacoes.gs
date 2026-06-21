@@ -297,8 +297,11 @@ function cotacoesEscolherPreco(data, sessao) {
 
 /**
  * cotacoes.registrarDespesa -> { despesa, resumo, precos, cotacao }.
- * Lança a oferta como DESPESA na obra escolhida, MARCA a oferta (despesa_id +
- * escolhido exclusivo) e FECHA a cotação. Reusa _novaDespesa (Despesas.gs).
+ * Lança a oferta (INTEIRA) como DESPESA na obra escolhida, MARCA a oferta
+ * (despesa_id + escolhido exclusivo) e FECHA a cotação. A despesa guarda o
+ * OFERTANTE (contato XOR equipe), a EMPRESA (fornecedor do contato; vazio p/
+ * equipe) e — quando equipe — quanto cada integrante RECEBEU. Aceita também a
+ * RESPONSABILIDADE (% por participante). Reusa _novaDespesa (Despesas.gs).
  */
 function cotacoesRegistrarDespesa(data, sessao) {
   const precoId = data && data.preco_id;
@@ -313,10 +316,40 @@ function cotacoesRegistrarDespesa(data, sessao) {
   const valor = (Number(preco.valor_unit) || 0) * qtd;
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Valor da oferta inválido.");
   const item = String(cotacao.descricao || "").trim() || "Cotação";
-  const contato = repoEncontrar(SCHEMA.CONTATOS, function (x) {
-    return String(x.id) === String(preco.contato_id);
-  }) || {};
+
+  // Ofertante = contato XOR equipe (herdado da oferta). Empresa = fornecedor do
+  // contato ofertante (equipe não tem empresa).
+  const ofertanteContatoId = String(preco.contato_id || "");
+  const ofertanteEquipeId = String(preco.equipe_id || "");
+  let ofertanteNome = "";
+  let fornecedorId = "";
+  if (ofertanteEquipeId) {
+    const equipe = repoEncontrar(SCHEMA.EQUIPES, function (x) {
+      return String(x.id) === ofertanteEquipeId;
+    }) || {};
+    ofertanteNome = equipe.nome || "";
+  } else if (ofertanteContatoId) {
+    const contato = repoEncontrar(SCHEMA.CONTATOS, function (x) {
+      return String(x.id) === ofertanteContatoId;
+    }) || {};
+    ofertanteNome = contato.nome || "";
+    fornecedorId = String(contato.fornecedor_id || "");
+  }
   const categoriaId = String((data && data.categoria_id) || cotacao.categoria_id || "");
+
+  // Responsabilidade (% por participante) e recebidos (valor por integrante).
+  const responsaveis = Array.isArray(data && data.responsaveis) ? data.responsaveis : [];
+  const somaPct = responsaveis.reduce(function (s, r) {
+    return s + (Number(r && r.pct) || 0);
+  }, 0);
+  if (somaPct - 100 > 0.01)
+    lancar(ERRO.VALIDACAO, "A soma das responsabilidades não pode passar de 100%.");
+  const recebidos = ofertanteEquipeId && Array.isArray(data && data.recebidos) ? data.recebidos : [];
+  const somaRec = recebidos.reduce(function (s, r) {
+    return s + (Number(r && r.valor) || 0);
+  }, 0);
+  if (somaRec - valor > 0.01)
+    lancar(ERRO.VALIDACAO, "A soma dos valores recebidos não pode passar do valor da despesa.");
 
   return comLock(function () {
     const despesa = _novaDespesa(obraId, sessao.usuario_id, {
@@ -325,7 +358,13 @@ function cotacoesRegistrarDespesa(data, sessao) {
       classificacao: cotacao.classificacao,
       valor: valor,
       categoria_id: categoriaId,
-      observacao: "Cotação · " + (contato.nome || ""),
+      observacao: "Oferta · " + (ofertanteNome || ""),
+      preco_id: precoId,
+      fornecedor_id: fornecedorId,
+      ofertante_contato_id: ofertanteContatoId,
+      ofertante_equipe_id: ofertanteEquipeId,
+      responsaveis: responsaveis,
+      recebidos: recebidos,
     });
     // Marca esta oferta como registrada/escolhida e desmarca as demais.
     repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {

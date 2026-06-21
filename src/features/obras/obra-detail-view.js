@@ -21,7 +21,7 @@ import "../dashboard/dashboard-summary.js";
 import "../dashboard/category-breakdown.js";
 import "../dashboard/grafico-rosca.js";
 import "../dashboard/grafico-mensal.js";
-import "../despesas/despesa-form.js";
+import "../cotacoes/cotacao-despesa-form.js";
 import "../despesas/despesa-table.js";
 import "../despesas/despesa-detail.js";
 import "../despesas/despesa-filtros.js";
@@ -92,7 +92,7 @@ class ObraDetailView extends BaseElement {
         </div>
         <div slot="despesas" class="despesas-aba">
           <ui-card title="Despesas">
-            <ui-button slot="acoes" id="addDespesa">+ Adicionar despesa</ui-button>
+            <ui-button slot="acoes" id="addDespesa">+ Registrar oferta</ui-button>
             <despesa-filtros id="filtros"></despesa-filtros>
             <despesa-table id="tabela"></despesa-table>
           </ui-card>
@@ -227,14 +227,16 @@ class ObraDetailView extends BaseElement {
 
   /* --------------------------- Ações --------------------------------- */
 
-  /** Abre o banner de ADIÇÃO de despesa (autossuficiente; chama o data-store). */
+  /**
+   * Abre o modal para REGISTRAR uma oferta como despesa nesta obra (obra-fixa;
+   * escolhe a oferta). Não há mais cadastro manual — a despesa nasce da oferta.
+   */
   abrirDespesaForm() {
-    const form = document.createElement("despesa-form");
-    form.obraId = this.obraId;
-    form.categorias = dataStore.categoriasDaObra(this.obraId);
+    const form = document.createElement("cotacao-despesa-form");
+    form.obraFixaId = this.obraId;
     const fechar = () => form.remove();
     form.addEventListener("fechar", fechar);
-    form.addEventListener("salvo", fechar);
+    form.addEventListener("registrado", fechar);
     document.body.appendChild(form);
   }
 

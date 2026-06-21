@@ -89,8 +89,8 @@ para dono **e** colaboradores.
 |--------|--------|---------|
 | `despesas.listar` | `{ obra_id }` | `{ despesas: [...] }` (cada despesa inclui `criado_em`/`autor_nome` e `atualizado_em`/`editor_nome` — auditoria) |
 | `despesas.resumo` | `{ obra_id }` | `{ total, qtd, orcamento, saldo, por_subclassificacao:[{categoria_id,nome,cor,total}], por_classificacao:[{nome,cor,total}], por_categoria (alias de por_subclassificacao) }` |
-| `despesas.criar` | `{ obra_id, item_id, valor, categoria_id?, data, observacao?, pago?, pagamentos?, responsaveis? }` | `{ despesa, resumo }` — **`item_id` obrigatório**; servidor deriva `item`(nome)+`classificacao` do item; `categoria_id` = subclassificação (opcional) |
-| `despesas.atualizar` | `{ id, ...campos }` (`item_id` re-deriva nome+classificação; inclui `pago`/`pagamentos`/`responsaveis`) | `{ despesa, resumo }` |
+| `despesas.criar` | `{ obra_id, item_id, valor, categoria_id?, data, observacao?, pago?, pagamentos?, responsaveis? }` | `{ despesa, resumo }` — **`item_id` obrigatório**. ⚠️ O front **não** usa mais esta action: despesas são criadas só por `cotacoes.registrarDespesa` (oferta). Mantida no servidor por segurança/legado. |
+| `despesas.atualizar` | `{ id, ...campos }` (`item_id` re-deriva nome+classificação; inclui `pago`/`pagamentos`/`responsaveis`/**`recebidos`**) | `{ despesa, resumo }` |
 | `despesas.remover` | `{ id }` | `{ id, resumo }` |
 
 > `pagamentos` = `[{chave, valor}]`, `responsaveis` = `[{chave, pct}]`
@@ -170,7 +170,7 @@ para dono **e** colaboradores.
 | `cotacoes.atualizarPreco` | `{ id, contato_id?, valor_unit?, prazo_entrega?, observacao? }` | `{ preco, historico }` (`historico` só se o valor mudou; senão `null`) |
 | `cotacoes.removerPreco` | `{ id }` | `{ id, cotacao_id }` (mantém o histórico; **bloqueia** se registrada) |
 | `cotacoes.escolherPreco` | `{ id }` | `{ precos }` (marca a escolhida e desmarca as demais da cotação) |
-| `cotacoes.registrarDespesa` | `{ preco_id, obra_id, categoria_id? }` | `{ despesa, resumo, precos, cotacao }` |
+| `cotacoes.registrarDespesa` | `{ preco_id, obra_id, categoria_id?, responsaveis?, recebidos? }` | `{ despesa, resumo, precos, cotacao }` — **único caminho** p/ criar despesa |
 
 ### Compras — Orçamentos (container de ofertas)
 | Action | `data` | Retorno |
@@ -194,10 +194,14 @@ para dono **e** colaboradores.
 > A antiga validação "Pedreiro → superior" foi **removida** de `contatos.*`;
 > o Pedreiro agora é organizado por Equipes. Snapshot inclui `equipes`.
 
-> **Registrar como despesa** (`cotacoes.registrarDespesa`): cria a despesa na obra
-> (item = descrição da cotação, valor = `valor_unit × quantidade`), **marca a
-> oferta** (`despesa_id` + `escolhido` exclusivo) e **fecha a cotação**
-> (`status="fechada"`) — tudo atômico no servidor (reusa `_novaDespesa`).
+> **Registrar como despesa** (`cotacoes.registrarDespesa`): **único** caminho para
+> criar uma despesa (não há mais cadastro manual). Cria a despesa na obra (item =
+> descrição da cotação, valor = `valor_unit × quantidade` — oferta **inteira**),
+> grava o **ofertante** (contato XOR equipe do preço) + a **empresa** (`fornecedor`
+> do contato; vazio p/ equipe), a **responsabilidade** (`responsaveis`, % por
+> participante) e — quando equipe — os **recebidos** por integrante; **marca a
+> oferta** (`despesa_id` + `escolhido`) e **fecha a cotação** (`status="fechada"`).
+> Valida `Σ responsaveis ≤ 100` e `Σ recebidos ≤ valor`. Atômico (reusa `_novaDespesa`).
 
 ### Admin (exigem role admin)
 | Action | `data` | Retorno |

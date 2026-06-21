@@ -86,6 +86,7 @@ function _lerDespesa(d) {
     pago: _boolDe(d.pago),
     pagamentos: _parseJsonLista(d.pagamentos),
     responsaveis: _parseJsonLista(d.responsaveis),
+    recebidos: _parseJsonLista(d.recebidos),
   });
 }
 
@@ -149,6 +150,14 @@ function _novaDespesa(obraId, usuarioId, dados) {
     ),
     item_id: itemId,
     classificacao: classificacao,
+    // Oferta de origem: ofertante (contato XOR equipe) + empresa + recebidos por integrante.
+    preco_id: String((dados && dados.preco_id) || ""),
+    fornecedor_id: String((dados && dados.fornecedor_id) || ""),
+    ofertante_contato_id: String((dados && dados.ofertante_contato_id) || ""),
+    ofertante_equipe_id: String((dados && dados.ofertante_equipe_id) || ""),
+    recebidos: JSON.stringify(
+      dados && Array.isArray(dados.recebidos) ? dados.recebidos : []
+    ),
   };
   repoInserir(SCHEMA.DESPESAS, despesa);
   return despesa;
@@ -222,6 +231,8 @@ function despesasAtualizar(data, sessao) {
     patch.pagamentos = JSON.stringify(Array.isArray(data.pagamentos) ? data.pagamentos : []);
   if (data.responsaveis !== undefined)
     patch.responsaveis = JSON.stringify(Array.isArray(data.responsaveis) ? data.responsaveis : []);
+  if (data.recebidos !== undefined)
+    patch.recebidos = JSON.stringify(Array.isArray(data.recebidos) ? data.recebidos : []);
 
   // Auditoria: registra quem editou e quando.
   patch.atualizado_em = agoraIso();
