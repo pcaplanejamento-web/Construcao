@@ -19,6 +19,7 @@ sobem por `CustomEvent`**.
 | `ui-card` | `title`; slots: default, `acoes` | — | Cartão de superfície. |
 | `ui-data-table` | `.columns`, `.rows`, `.acoes`; attrs `empty-text`, `fluido` (células proporcionais/quebram), `clicavel` (linha clicável) | `acao` ({acao,linha}), `linha` ({linha}) | Tabela genérica orientada a dados. |
 | `ui-icon` | `name`, `size` | — | Biblioteca de ícones padrão (SVG `currentColor`). Sem emoji. Inclui `fornecedor`, `contato`, `cotacao` (módulo Compras). |
+| `ui-alert` | `tipo` (erro\|aviso\|info\|sucesso), `message`; prop `.mensagem` | — | **Componente PADRÃO de mensagem de erro/alerta inline.** Some quando sem `message`. Usar sempre que houver mensagem de erro de validação numa tela/form. |
 | `ui-tabs` | `.abas=[{id,rotulo,icone}]`, attr `ativo`; evento `mudar` | Abas com slots nomeados (`slot="<id>"`); mostra só a aba ativa. A aba ativa muda **apenas a cor** (texto + ícone via `currentColor`) e a barra inferior — sem alterar `font-weight`/tamanho (evita reflow/deslocamento). |
 | `ui-badge` | `color` (hex ou `var(--token)`), `text` | — | Etiqueta colorida; fundo via `color-mix` (tema-seguro). |
 | `ui-spinner` | `text`, `centro` | — | Indicador de carregamento. |
@@ -82,8 +83,8 @@ sobem por `CustomEvent`**.
 |------------|---------------|-----------|
 | `despesa-form` | `.categorias`; evento `adicionar` | Formulário **só de adição** (edição é no banner). Não chama API. |
 | `despesa-table` | `.despesas`, `.categorias`, `.participantes`; eventos `abrir` (clique na linha), `editar`, `remover` | Tabela **full-width** e fluida; colunas Adicionado/Editado por + **Pago**, **Pagamento** (total), **Distribuição** (Único/Distribuído) e **Responsabilidade** (chips nome·%). Reusa `ui-data-table` + `category-badge`. |
-| `despesa-detail` | `.despesa`, `.categorias`; evento `fechar` | **Banner (modal)**: item/valor/classificação/data/observação + **Pago** (checkbox), **Pagamento** e **Responsabilidade** (via `split-editor`). Salva via data-store (otimista). |
-| `split-editor` | `.participantes`, `.itens=[{chave,valor}]`, `.modo("valor"\|"pct")`; evento `mudar` | Editor reutilizável de **distribuição entre participantes** (linhas `ui-select`+`ui-input`, total/soma). Usado p/ pagamento (R$) e responsabilidade (%). |
+| `despesa-detail` | `.despesa`, `.categorias`; evento `fechar` | **Banner (modal)**: item/valor/classificação/data/observação + **Pago** (checkbox), **Pagamento** e **Responsabilidade** (via `split-editor`). **Regras** (via `ui-alert`): soma dos pagamentos ≤ valor da despesa; soma das % ≤ 100. Salva via data-store (otimista). |
+| `split-editor` | `.participantes`, `.itens=[{chave,valor}]`, `.modo("valor"\|"pct")`, `.limite`; evento `mudar` | Editor reutilizável de **distribuição entre participantes** (linhas `ui-select`+`ui-input`, total/soma com `.limite` = valor ou 100%; destaca quando excede). Usado p/ pagamento (R$) e responsabilidade (%). |
 | `despesa-split.js` | `parseLista`, `totalPago`, `distribuicao`, `rotuloOrigem` | Helpers puros (Fase 2: algoritmo de acerto). |
 | `despesa-filtros` | `.categorias`; evento `filtrar` ({texto, categoria}) | Pesquisa por item + filtro por classificação (aplicado só na tabela). |
 | `category-badge` | `nome`, `cor` | Reutiliza `ui-badge`. |

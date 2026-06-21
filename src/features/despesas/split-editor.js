@@ -35,6 +35,14 @@ class SplitEditor extends BaseElement {
   get modo() {
     return this._modo || "valor";
   }
+  /** Limite da soma (valor da despesa, ou 100 no modo pct). */
+  set limite(v) {
+    this._limite = v === "" || v == null ? null : Number(v);
+    if (this.shadowRoot.childElementCount) this.atualizarTotal();
+  }
+  get limite() {
+    return this._limite == null ? null : this._limite;
+  }
 
   estilos() {
     return `
@@ -132,13 +140,16 @@ class SplitEditor extends BaseElement {
     const el = this.$("#total");
     if (!el) return;
     const soma = (this._itens || []).reduce((s, x) => s + (Number(x.valor) || 0), 0);
+    let lim = this._limite;
+    if (this.modo === "pct" && lim == null) lim = 100;
+    const excede = lim != null && soma - lim > 0.01;
     if (this.modo === "pct") {
-      el.textContent = "Soma: " + soma + "%";
-      el.classList.toggle("erro", (this._itens || []).length > 0 && Math.round(soma) !== 100);
+      el.textContent = `Soma: ${Math.round(soma * 100) / 100}% / ${lim}%`;
     } else {
-      el.textContent = "Total: " + moeda(soma);
-      el.classList.remove("erro");
+      el.textContent =
+        "Total: " + moeda(soma) + (this._limite != null ? " / " + moeda(this._limite) : "");
     }
+    el.classList.toggle("erro", excede);
   }
 
   emitirMudou() {

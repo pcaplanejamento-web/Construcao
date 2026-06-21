@@ -8,7 +8,7 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { data as fmtData } from "../../core/formatters.js";
+import { data as fmtData, moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { primeiroErro, obrigatorio, valorPositivo } from "../../core/validators.js";
 import { parseLista } from "./despesa-split.js";
@@ -16,6 +16,7 @@ import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
+import "../../components/ui-alert.js";
 import "./split-editor.js";
 
 class DespesaDetail extends BaseElement {
@@ -66,6 +67,7 @@ class DespesaDetail extends BaseElement {
     return `
       <ui-modal open title="Despesa">
         <div class="campos">
+          <ui-alert id="erro" tipo="erro"></ui-alert>
           <ui-input id="item" label="Item" value="${(d.item || "").replace(/"/g, "&quot;")}"></ui-input>
           <div class="linha">
             <ui-input id="valor" label="Valor (R$)" type="number" step="0.01" min="0" value="${d.valor || ""}"></ui-input>
@@ -118,10 +120,18 @@ class DespesaDetail extends BaseElement {
     if (pg) {
       pg.modo = "valor";
       pg.participantes = parts;
+      pg.limite = Number(this.$("#valor").value) || 0; // soma ≤ valor da despesa
       pg.itens = parseLista(this.despesa.pagamentos).map((p) => ({
         chave: p.chave,
         valor: Number(p.valor) || 0,
       }));
+    }
+    // Mantém o limite do pagamento sincronizado com o valor digitado.
+    const valInput = this.$("#valor");
+    if (valInput && pg) {
+      valInput.addEventListener("input", () => {
+        pg.limite = Number(valInput.value) || 0;
+      });
     }
     const rp = this.$("#responsaveis");
     if (rp) {
@@ -142,6 +152,8 @@ class DespesaDetail extends BaseElement {
   }
 
   async salvar() {
+    const alerta = this.$("#erro");
+    if (alerta) alerta.mensagem = "";
     const item = this.$("#item").value.trim();
     const valor = Number(this.$("#valor").value);
     const erro = primeiroErro(obrigatorio(item, "O item"), valorPositivo(valor));
@@ -156,6 +168,21 @@ class DespesaDetail extends BaseElement {
     const responsaveis = this.$("#responsaveis").itens
       .filter((x) => x.chave)
       .map((x) => ({ chave: x.chave, pct: Number(x.valor) || 0 }));
+
+    // Regras: soma dos pagamentos ≤ valor da despesa; soma das % ≤ 100.
+    const somaPag = pagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0);
+    const somaPct = responsaveis.reduce((s, r) => s + (Number(r.pct) || 0), 0);
+    if (somaPag - valor > 0.01) {
+      if (alerta)
+        alerta.mensagem = `A soma dos pagamentos (${moeda(somaPag)}) não pode passar do valor da despesa (${moeda(valor)}).`;
+      return;
+    }
+    if (somaPct - 100 > 0.01) {
+      if (alerta)
+        alerta.mensagem = `A soma das responsabilidades (${Math.round(somaPct * 100) / 100}%) não pode passar de 100%.`;
+      return;
+    }
+
     const dados = {
       item,
       valor,
