@@ -127,14 +127,25 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 | `contato-detail-view` | attr `id` (rota `#/contatos/:id`) | Página do contato: `ui-tabs` conforme o cargo — **Obras** (onde participa), **Fornecedores** (se Vendedor), **Equipe** (Pedreiro→superior+colegas / Mestre·Engenheiro→subordinados). |
 | `contato-form` | `.contato`; eventos `salvo`, `fechar` | Modal criar/editar. **Cargo** via `ui-select` (fixos+extras); campos condicionais: **Fornecedor** (só/obrigatório p/ Vendedor) e **Vínculo** Mestre/Engenheiro (só/obrigatório p/ Pedreiro), com `ui-alert`. |
 | `cargo-form` | `.cargo`; eventos `salvo`, `fechar` | Modal criar/editar **cargo extra** (nome). Os 6 obrigatórios são fixos. |
-| `cotacoes-view` | — | Rota `#/cotacoes`. Lista (tabela `clicavel`): descrição, qtd, classificação, obra, nº de ofertas, **melhor preço**, situação. |
+| `cotacoes-view` | — | Rota `#/cotacoes`. `ui-tabs` **[Cotações \| Orçamento]**: aba Cotações = tabela `clicavel` (item, classificação, qtd, subclassificação, obra, nº ofertas, **melhor preço**, situação); aba Orçamento = **grade de `orcamento-card`** (estilo Obras) + "+ Novo orçamento". |
 | `cotacao-form` | `.cotacao`; eventos `salvo`, `fechar` | Modal criar/editar: `ui-select` de **item*** (rótulo "nome · classificação") + badge da **classificação** (só leitura), quantidade, unidade, **Subclassificação**, **obra opcional**, status. |
 | `cotacao-detail-view` | attr `id` (rota `#/cotacoes/:id`) | **KPIs + 2 gráficos + comparativo**: faixa `<oferta-kpis>`, `<grafico-evolucao-precos>` e `<category-breakdown>` (reusado p/ comparar ofertas por contato), e a tabela de ofertas (contato, empresa, valor unit., **total** com destaque do menor preço, prazo, obs, **Criado em**); escolher/editar/excluir oferta; **Registrar como despesa**. |
 | `oferta-kpis` | `.resumo={num,menor,media,maior,economia}` | KPIs das ofertas em cartões com gradiente (reusa o estilo do `dashboard-summary`). |
 | `grafico-evolucao-precos` | `.historico`, `.cotacao`, `.contatos`, `.cores` | **Gráfico de linhas (SVG), uma linha por contato** — evolução do preço no tempo a partir do histórico; legenda por contato. |
-| `preco-form` | `.cotacaoId`, `.preco`; eventos `salvo`, `fechar` | Modal de oferta (**contato**, valor unitário*, prazo, observação). |
+| `preco-form` | `.cotacaoId`, `.preco`, `.orcamento`; eventos `salvo`, `fechar` | Modal de oferta (valor unitário*, prazo, observação). Modo **cotação**: escolhe o contato. Modo **orçamento** (`.orcamento`): contato **travado** (ofertante do orçamento) + seletor de **cotação** filtrado pela classificação do orçamento. |
 | `cotacao-despesa-form` | `.cotacao`, `.preco`, `.contatoNome`; eventos `registrado`, `fechar` | Banner flutuante: escolhe a **obra** + **Subclassificação** e lança a oferta como despesa via `dataStore.registrarDespesaOferta` — que **marca a oferta** ("Registrada", `despesa_id`) e **fecha a cotação**. A despesa herda `item_id`/classificação da cotação. |
 | `cotacao-util.js` | `totalOferta`, `melhorTotal`, `resumoOfertas`, `coresPorContato`, `PALETA_CONTATOS` | Funções puras (total = valor_unit × quantidade; menor total; resumo p/ KPIs; cor estável por contato). |
+
+**Orçamentos — `features/orcamentos/`** (container de ofertas de várias cotações)
+| Componente | Props/Eventos | Descrição |
+|------------|---------------|-----------|
+| `orcamento-card` | `.orcamento`; eventos `abrir`/`editar`/`remover` | Card quadrado (espelha `obra-card`): título (ou rótulo automático), badge do **tipo** (Material/Serviço), **Total** das ofertas + nº, fornecedor/contato + obra, log. |
+| `orcamento-form` | `.orcamento`; eventos `salvo`, `fechar` | Modal: título (opc), **tipo** (Material/Serviço), **fornecedor** (só Material), **ofertante** (Material → contatos do fornecedor; Serviço → qualquer), **obra** (opc). |
+| `orcamento-detail-view` | attr `id` (rota `#/orcamentos/:id`) | Cabeçalho (tipo, fornecedor/contato, obra) + resumo (nº · total) + tabela das ofertas (cotação, valor unit., total, prazo, obs, status); "+ Adicionar oferta" abre `preco-form` modo orçamento. |
+| `orcamento-util.js` | `rotuloOrcamento`, `totalOrcamento`, `colunasOrcamento`, `COR_CLASSIFICACAO` | Rótulo automático; soma dos totais das ofertas; colunas da tabela de orçamentos (abas de fornecedor/contato/obra). |
+
+> A **oferta é única** (`CotacaoPrecos`+`orcamento_id`): aparece na cotação E no orçamento.
+> As abas **Orçamentos** (fornecedor/contato/obra detail) usam `colunasOrcamento()`.
 
 > As tabelas de fornecedores, contatos, cotações e ofertas mostram a coluna
 > **"Criado em"** (campo `criado_em`); o detalhe da cotação mostra "Criada em …".

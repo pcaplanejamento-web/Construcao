@@ -1,8 +1,8 @@
 /**
- * <cotacoes-view> — Lista de cotações (rota #/cotacoes).
- *
- * Cada linha resume a necessidade + nº de ofertas + melhor preço. Clique na
- * linha abre o detalhe comparativo (#/cotacoes/:id). CRUD próprio do usuário.
+ * <cotacoes-view> — Rota #/cotacoes, com abas [Cotações | Orçamento].
+ *  - Cotações: tabela das necessidades (clique → detalhe comparativo).
+ *  - Orçamento: grade de cards (estilo Obras) dos orçamentos (containers de ofertas).
+ * CRUD próprio do usuário; lê do data-store (cache-first) e assina mudanças.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -11,12 +11,15 @@ import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { melhorTotal } from "./cotacao-util.js";
 import "../../components/ui-card.js";
+import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-empty-state.js";
 import "../despesas/category-badge.js";
 import "./cotacao-form.js";
+import "../orcamentos/orcamento-card.js";
+import "../orcamentos/orcamento-form.js";
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
 const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
@@ -31,6 +34,8 @@ class CotacoesView extends BaseElement {
         gap: var(--esp-3); flex-wrap: wrap; }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       p.sub { color: var(--cor-texto-suave); margin-top: var(--esp-2); }
+      .grid { display: grid; gap: var(--esp-4);
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
     `;
   }
 
@@ -40,23 +45,43 @@ class CotacoesView extends BaseElement {
         <div class="cabecalho">
           <div>
             <h1>Cotações</h1>
-            <p class="sub">Compare preços de contatos para cada necessidade.</p>
+            <p class="sub">Compare preços de contatos e agrupe ofertas em orçamentos.</p>
           </div>
         </div>
-        <ui-card title="Minhas cotações">
-          <ui-button slot="acoes" id="nova">+ Nova cotação</ui-button>
-          <div id="lista"></div>
-        </ui-card>
+        <ui-tabs id="abas">
+          <div slot="cotacoes">
+            <ui-card title="Minhas cotações">
+              <ui-button slot="acoes" id="nova">+ Nova cotação</ui-button>
+              <div id="lista"></div>
+            </ui-card>
+          </div>
+          <div slot="orcamento">
+            <ui-card title="Meus orçamentos">
+              <ui-button slot="acoes" id="novoOrc">+ Novo orçamento</ui-button>
+              <div id="listaOrc"></div>
+            </ui-card>
+          </div>
+        </ui-tabs>
       </div>
     `;
   }
 
   aoConectar() {
+    this.$("#abas").abas = [
+      { id: "cotacoes", rotulo: "Cotações", icone: "cotacao" },
+      { id: "orcamento", rotulo: "Orçamento", icone: "carteira" },
+    ];
     this.$("#nova").addEventListener("click", () => this.abrirForm(null));
+    this.$("#novoOrc").addEventListener("click", () => this.abrirOrcamentoForm(null));
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
 
   pintar() {
+    this.pintarCotacoes();
+    this.pintarOrcamentos();
+  }
+
+  pintarCotacoes() {
     const el = this.$("#lista");
     if (!el) return;
     if (!dataStore.carregado()) {
@@ -158,6 +183,36 @@ class CotacoesView extends BaseElement {
     el.replaceChildren(tabela);
   }
 
+  /* ----------------------------- Orçamento ---------------------------- */
+
+  pintarOrcamentos() {
+    const el = this.$("#listaOrc");
+    if (!el || !dataStore.carregado()) return;
+    const orcamentos = dataStore.orcamentos();
+    if (!orcamentos.length) {
+      el.innerHTML = `
+        <ui-empty-state icone="carteira" titulo="Nenhum orçamento"
+          texto="Crie um orçamento (Material ou Serviço) e agrupe ofertas de várias cotações.">
+          <ui-button slot="acao" id="vazioOrc">+ Criar orçamento</ui-button>
+        </ui-empty-state>`;
+      el.querySelector("#vazioOrc").addEventListener("click", () => this.abrirOrcamentoForm(null));
+      return;
+    }
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    orcamentos.forEach((o) => {
+      const card = document.createElement("orcamento-card");
+      card.orcamento = o;
+      card.addEventListener("abrir", (e) => {
+        location.hash = "#/orcamentos/" + e.detail.orcamento.id;
+      });
+      card.addEventListener("editar", (e) => this.abrirOrcamentoForm(e.detail.orcamento));
+      card.addEventListener("remover", (e) => this.removerOrcamento(e.detail.orcamento));
+      grid.appendChild(card);
+    });
+    el.replaceChildren(grid);
+  }
+
   abrirForm(cotacao) {
     const form = document.createElement("cotacao-form");
     form.cotacao = cotacao;
@@ -165,6 +220,25 @@ class CotacoesView extends BaseElement {
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", fechar);
     document.body.appendChild(form);
+  }
+
+  abrirOrcamentoForm(orcamento) {
+    const form = document.createElement("orcamento-form");
+    form.orcamento = orcamento;
+    const fechar = () => form.remove();
+    form.addEventListener("fechar", fechar);
+    form.addEventListener("salvo", fechar);
+    document.body.appendChild(form);
+  }
+
+  async removerOrcamento(orcamento) {
+    if (!confirm("Excluir o orçamento e suas ofertas?")) return;
+    try {
+      await dataStore.removerOrcamento(orcamento.id);
+      toastSucesso("Orçamento removido.");
+    } catch (e) {
+      notificarErro(e);
+    }
   }
 
   async remover(cotacao) {

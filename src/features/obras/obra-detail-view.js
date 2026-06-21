@@ -9,11 +9,13 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { colunasOrcamento } from "../orcamentos/orcamento-util.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-icon.js";
 import "../../components/ui-tabs.js";
+import "../../components/ui-data-table.js";
 import "../dashboard/dashboard-summary.js";
 import "../dashboard/category-breakdown.js";
 import "../dashboard/grafico-rosca.js";
@@ -100,6 +102,12 @@ class ObraDetailView extends BaseElement {
         <div slot="responsaveis">
           <obra-participantes obra-id="${this.obraId}" modo="responsaveis"></obra-participantes>
         </div>
+        <div slot="orcamentos">
+          <ui-card title="Orçamentos da obra">
+            <ui-data-table id="tabOrcamentos" fluido clicavel
+              empty-text="Nenhum orçamento vinculado a esta obra ainda."></ui-data-table>
+          </ui-card>
+        </div>
       </ui-tabs>
     `;
     alvo.querySelector("#abas").abas = [
@@ -107,7 +115,13 @@ class ObraDetailView extends BaseElement {
       { id: "despesas", rotulo: "Despesas", icone: "recibo" },
       { id: "participantes", rotulo: "Participantes da obra", icone: "usuario" },
       { id: "responsaveis", rotulo: "Responsáveis", icone: "seguranca" },
+      { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
     ];
+    this._tabOrcamentos = alvo.querySelector("#tabOrcamentos");
+    this._tabOrcamentos.columns = colunasOrcamento();
+    this._tabOrcamentos.addEventListener("linha", (e) => {
+      location.hash = "#/orcamentos/" + e.detail.linha.id;
+    });
     this._dash = alvo.querySelector("#dash");
     this._break = alvo.querySelector("#break");
     this._rosca = alvo.querySelector("#rosca");
@@ -148,6 +162,9 @@ class ObraDetailView extends BaseElement {
     this._mensal.despesas = despesas;
     this._tabela.categorias = categorias;
     this._tabela.participantes = dataStore.participantesDaObra(this.obraId);
+    this._tabOrcamentos.rows = dataStore
+      .orcamentos()
+      .filter((o) => String(o.obra_id) === String(this.obraId));
     this.aplicarFiltro();
 
     const sig = categorias.map((c) => c.id).join(",");

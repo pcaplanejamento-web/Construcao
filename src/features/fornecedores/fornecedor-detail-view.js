@@ -14,6 +14,7 @@ import { moeda } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta } from "../cotacoes/cotacao-util.js";
+import { colunasOrcamento } from "../orcamentos/orcamento-util.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -87,11 +88,18 @@ class FornecedorDetailView extends BaseElement {
               empty-text="Nenhuma oferta de contatos deste fornecedor ainda."></ui-data-table>
           </ui-card>
         </div>
+        <div slot="orcamentos" class="aba">
+          <ui-card title="Orçamentos deste fornecedor">
+            <ui-data-table id="tabOrcamentos" fluido clicavel
+              empty-text="Nenhum orçamento deste fornecedor ainda."></ui-data-table>
+          </ui-card>
+        </div>
       </ui-tabs>
     `;
     alvo.querySelector("#abas").abas = [
       { id: "contatos", rotulo: "Contatos", icone: "contato" },
       { id: "ofertas", rotulo: "Ofertas", icone: "cifrao" },
+      { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
     ];
 
     this._tabContatos = alvo.querySelector("#tabContatos");
@@ -131,6 +139,12 @@ class FornecedorDetailView extends BaseElement {
     ];
     this._tabOfertas.addEventListener("linha", (e) => {
       if (e.detail.linha._cotacaoId) location.hash = "#/cotacoes/" + e.detail.linha._cotacaoId;
+    });
+
+    this._tabOrcamentos = alvo.querySelector("#tabOrcamentos");
+    this._tabOrcamentos.columns = colunasOrcamento();
+    this._tabOrcamentos.addEventListener("linha", (e) => {
+      location.hash = "#/orcamentos/" + e.detail.linha.id;
     });
 
     alvo.querySelector("#novoContato").addEventListener("click", () =>
@@ -175,6 +189,11 @@ class FornecedorDetailView extends BaseElement {
     });
     ofertas.sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
     this._tabOfertas.rows = ofertas;
+
+    // Orçamentos deste fornecedor.
+    this._tabOrcamentos.rows = dataStore
+      .orcamentos()
+      .filter((o) => String(o.fornecedor_id) === String(f.id));
 
     this.pintarTopo();
   }

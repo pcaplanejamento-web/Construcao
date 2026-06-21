@@ -33,6 +33,7 @@ const ESTADO_VAZIO = {
   cotacoes: [], // módulo Compras (necessidades a cotar)
   precosPorCotacao: {}, // cotacaoId -> [oferta]
   historicoPorCotacao: {}, // cotacaoId -> [ponto de histórico de preço]
+  orcamentos: [], // módulo Compras (containers de ofertas)
   usuarios: [], // admin
 };
 
@@ -66,6 +67,7 @@ function persistir() {
       cotacoes: s.cotacoes,
       precosPorCotacao: s.precosPorCotacao,
       historicoPorCotacao: s.historicoPorCotacao,
+      orcamentos: s.orcamentos,
       usuarios: s.usuarios,
     };
     localStorage.setItem(chave, JSON.stringify({ versao: CACHE_VERSAO, dados }));
@@ -120,6 +122,7 @@ function _aplicarSnapshot(d) {
     cotacoes: d.cotacoes || [],
     precosPorCotacao: d.precosPorCotacao || {},
     historicoPorCotacao: d.historicoPorCotacao || {},
+    orcamentos: d.orcamentos || [],
     usuarios: d.usuarios || [],
   });
   persistir();
@@ -168,6 +171,19 @@ const cotacoes = () => store.get().cotacoes;
 const cotacao = (id) => store.get().cotacoes.find((c) => String(c.id) === String(id)) || null;
 const precosDaCotacao = (cotacaoId) => store.get().precosPorCotacao[cotacaoId] || [];
 const historicoDaCotacao = (cotacaoId) => store.get().historicoPorCotacao[cotacaoId] || [];
+const orcamentos = () => store.get().orcamentos;
+const orcamento = (id) => store.get().orcamentos.find((o) => String(o.id) === String(id)) || null;
+/** Ofertas de um orçamento: achata precosPorCotacao e filtra orcamento_id. */
+const ofertasDoOrcamento = (orcId) => {
+  const mapa = store.get().precosPorCotacao;
+  const out = [];
+  Object.keys(mapa).forEach((cotId) => {
+    (mapa[cotId] || []).forEach((p) => {
+      if (String(p.orcamento_id) === String(orcId)) out.push(p);
+    });
+  });
+  return out;
+};
 
 /* --------------------- Recalcular resumo local ----------------------- */
 
@@ -615,6 +631,46 @@ async function removerCotacao(id) {
   bus.emit(EVENTOS.COTACOES, { tipo: "removida" });
 }
 
+/* ----------------------- Mutações: orçamentos ------------------------ */
+
+async function criarOrcamento(dados) {
+  const r = await api.call("orcamentos.criar", dados);
+  const s = store.get();
+  store.set({ orcamentos: [r.orcamento, ...s.orcamentos] });
+  persistir();
+  bus.emit(EVENTOS.ORCAMENTOS, { tipo: "criado" });
+  return r.orcamento;
+}
+
+async function atualizarOrcamento(id, dados) {
+  const r = await api.call("orcamentos.atualizar", { id, ...dados });
+  const s = store.get();
+  store.set({
+    orcamentos: s.orcamentos.map((o) => (String(o.id) === String(id) ? r.orcamento : o)),
+  });
+  // O contato pode ter sido propagado às ofertas no servidor → refresh em 2º plano.
+  atualizarEmSegundoPlano();
+  persistir();
+  bus.emit(EVENTOS.ORCAMENTOS, { tipo: "atualizado" });
+  return r.orcamento;
+}
+
+async function removerOrcamento(id) {
+  await api.call("orcamentos.remover", { id });
+  const s = store.get();
+  // Remove o orçamento e desvincula/remove suas ofertas do cache local.
+  const precos = {};
+  Object.keys(s.precosPorCotacao).forEach((cotId) => {
+    precos[cotId] = (s.precosPorCotacao[cotId] || []).filter((p) => String(p.orcamento_id) !== String(id));
+  });
+  store.set({
+    orcamentos: s.orcamentos.filter((o) => String(o.id) !== String(id)),
+    precosPorCotacao: precos,
+  });
+  persistir();
+  bus.emit(EVENTOS.ORCAMENTOS, { tipo: "removido" });
+}
+
 /** Acrescenta um ponto ao histórico de uma cotação (write-through local). */
 function _appendHistorico(cotacaoId, ponto) {
   if (!ponto) return;
@@ -747,6 +803,7 @@ export const dataStore = {
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, itens, itensAtivos, item,
   cotacoes, cotacao, precosDaCotacao,
   historicoDaCotacao,
+  orcamentos, orcamento, ofertasDoOrcamento,
   // mutações
   criarObra, atualizarObra, removerObra,
   adicionarParticipante, removerParticipante, definirResponsavel,
@@ -759,5 +816,6 @@ export const dataStore = {
   criarItem, atualizarItem, removerItem,
   criarCotacao, atualizarCotacao, removerCotacao,
   adicionarPreco, atualizarPreco, removerPreco, escolherPreco, registrarDespesaOferta,
+  criarOrcamento, atualizarOrcamento, removerOrcamento,
   adminCriarUsuario, adminAtualizarUsuario,
 };

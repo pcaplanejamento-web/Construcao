@@ -11,6 +11,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { data as fmtData } from "../../core/formatters.js";
+import { colunasOrcamento } from "../orcamentos/orcamento-util.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -88,12 +89,19 @@ class ContatoDetailView extends BaseElement {
               empty-text="Nenhum integrante vinculado."></ui-data-table>
           </ui-card>
         </div>
+        <div slot="orcamentos">
+          <ui-card title="Ofertas e orçamentos">
+            <ui-data-table id="tabOrcamentos" fluido clicavel
+              empty-text="Este contato não tem orçamentos ainda."></ui-data-table>
+          </ui-card>
+        </div>
       </ui-tabs>
     `;
 
     const abas = [{ id: "obras", rotulo: "Obras", icone: "obra" }];
     if (c.fornecedor_id) abas.push({ id: "fornecedores", rotulo: "Fornecedores", icone: "fornecedor" });
     if (CARGOS_EQUIPE.indexOf(c.cargo) >= 0) abas.push({ id: "equipe", rotulo: "Equipe", icone: "usuario" });
+    abas.push({ id: "orcamentos", rotulo: "Ofertas e orçamentos", icone: "carteira" });
     alvo.querySelector("#abas").abas = abas;
 
     this._tabObras = alvo.querySelector("#tabObras");
@@ -126,6 +134,12 @@ class ContatoDetailView extends BaseElement {
     ];
     this._tabEquipe.addEventListener("linha", (e) => {
       location.hash = "#/contatos/" + e.detail.linha.id;
+    });
+
+    this._tabOrcamentos = alvo.querySelector("#tabOrcamentos");
+    this._tabOrcamentos.columns = colunasOrcamento();
+    this._tabOrcamentos.addEventListener("linha", (e) => {
+      location.hash = "#/orcamentos/" + e.detail.linha.id;
     });
 
     this._montado = true;
@@ -168,6 +182,11 @@ class ContatoDetailView extends BaseElement {
         .forEach((x) => equipe.push({ ...x, _papel: "Subordinado" }));
     }
     this._tabEquipe.rows = equipe;
+
+    // Orçamentos onde este contato é o ofertante.
+    this._tabOrcamentos.rows = dataStore
+      .orcamentos()
+      .filter((o) => String(o.contato_id) === String(c.id));
 
     this.pintarTopo();
   }

@@ -87,6 +87,12 @@ const ROTAS = {
   "cotacoes.escolherPreco": { fn: cotacoesEscolherPreco },
   "cotacoes.registrarDespesa": { fn: cotacoesRegistrarDespesa },
 
+  // Compras — Orçamentos (container de ofertas)
+  "orcamentos.listar": { fn: orcamentosListar },
+  "orcamentos.criar": { fn: orcamentosCriar },
+  "orcamentos.atualizar": { fn: orcamentosAtualizar },
+  "orcamentos.remover": { fn: orcamentosRemover },
+
   // Usuários (autenticado)
   "usuarios.listar": { fn: usuariosListar },
 

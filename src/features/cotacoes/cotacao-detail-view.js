@@ -11,6 +11,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda, numero, data as fmtData } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { abrirBannerVinculos, vinculosDaOferta } from "../shared/vinculos.js";
+import { rotuloOrcamento } from "../orcamentos/orcamento-util.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta, melhorTotal, resumoOfertas, coresPorContato } from "./cotacao-util.js";
 import "../../components/ui-card.js";
@@ -138,6 +139,16 @@ class CotacaoDetailView extends BaseElement {
       },
       { chave: "prazo_entrega", titulo: "Prazo", formato: (v) => v || "—" },
       { chave: "observacao", titulo: "Obs.", formato: (v) => v || "—" },
+      {
+        chave: "orcamento_id",
+        titulo: "Orçamento",
+        formato: (id) => {
+          const orc = id ? dataStore.orcamento(id) : null;
+          return orc
+            ? `<a href="#/orcamentos/${orc.id}">${rotuloOrcamento(orc)}</a>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`;
+        },
+      },
       ...colunasLog(),
       {
         chave: "escolhido",

@@ -1,8 +1,12 @@
 /**
- * <preco-form> — Modal para adicionar/editar uma OFERTA de um contato numa
- * cotação (valor unitário, prazo, observação).
+ * <preco-form> — Modal para adicionar/editar uma OFERTA (valor unitário, prazo,
+ * observação). Dois modos:
+ *  - Cotação (padrão): escolhe o contato (.cotacaoId fixo).
+ *  - Orçamento (.orcamento definido): o contato é TRAVADO (= ofertante do
+ *    orçamento) e o usuário escolhe uma COTAÇÃO (filtrada pela classificação do
+ *    orçamento). A oferta vira `orcamento_id` + a cotação escolhida.
  *
- * Propriedades: .cotacaoId (obrigatório), .preco (objeto p/ edição; ausente = nova)
+ * Propriedades: .cotacaoId, .preco (edição), .orcamento (modo orçamento)
  * Eventos: "salvo", "fechar". Auto-contido (chama o data-store).
  */
 import { BaseElement } from "../../components/base-element.js";
@@ -28,6 +32,13 @@ class PrecoForm extends BaseElement {
   get preco() {
     return this._preco || null;
   }
+  set orcamento(v) {
+    this._orcamento = v || null;
+    if (this.shadowRoot.childElementCount) this.renderizar();
+  }
+  get orcamento() {
+    return this._orcamento || null;
+  }
   get ehEdicao() {
     return !!(this.preco && this.preco.id);
   }
@@ -45,7 +56,31 @@ class PrecoForm extends BaseElement {
         color: var(--cor-texto); }
       textarea:focus { outline: none; border-color: var(--cor-primaria);
         box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
-      .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
+      .lido { padding: var(--esp-3); border: 1px solid var(--cor-borda);
+        border-radius: var(--raio-sm); background: var(--cor-superficie-2); color: var(--cor-texto); }
+      .lido small { color: var(--cor-texto-fraco); }
+    `;
+  }
+
+  /** Nome do item (ao vivo) de uma cotação. */
+  _nomeCotacao(c) {
+    if (!c) return "—";
+    return (c.item_id && (dataStore.item(c.item_id) || {}).nome) || c.descricao || "—";
+  }
+
+  _camposOrcamento() {
+    const orc = this.orcamento;
+    const p = this.preco || {};
+    const contato = dataStore.contatos().find((c) => String(c.id) === String(orc.contato_id)) || {};
+    const cotFixaNome = this.ehEdicao ? this._nomeCotacao(dataStore.cotacao(p.cotacao_id)) : "";
+    return `
+      ${
+        this.ehEdicao
+          ? `<div><label class="tx">Cotação</label><div class="lido">${cotFixaNome}</div></div>`
+          : `<ui-select id="cotacao" label="Cotação (item a ofertar)"></ui-select>`
+      }
+      <div><label class="tx">Contato (ofertante)</label>
+        <div class="lido">${contato.nome || "—"} <small>· definido pelo orçamento</small></div></div>
     `;
   }
 
@@ -55,7 +90,7 @@ class PrecoForm extends BaseElement {
     return `
       <ui-modal open title="${this.ehEdicao ? "Editar oferta" : "Adicionar oferta"}">
         <div class="campos">
-          <ui-select id="contato" label="Contato (quem ofertou)"></ui-select>
+          ${this.orcamento ? this._camposOrcamento() : `<ui-select id="contato" label="Contato (quem ofertou)"></ui-select>`}
           <div class="linha">
             <ui-input id="valor" label="Valor unitário (R$)" type="number" step="0.01" min="0"
               value="${esc(p.valor_unit)}" placeholder="0,00"></ui-input>
@@ -76,7 +111,11 @@ class PrecoForm extends BaseElement {
   }
 
   aposRender() {
-    this.preencherContatos();
+    if (this.orcamento) {
+      if (!this.ehEdicao) this.preencherCotacoes();
+    } else {
+      this.preencherContatos();
+    }
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
@@ -90,36 +129,70 @@ class PrecoForm extends BaseElement {
     const contatos = dataStore.contatosAtivos();
     sel.options = contatos.map((c) => ({
       value: c.id,
-      label: c.fornecedor_id && mapaForn[c.fornecedor_id]
-        ? `${c.nome} — ${mapaForn[c.fornecedor_id]}`
-        : c.nome,
+      label:
+        c.fornecedor_id && mapaForn[c.fornecedor_id]
+          ? `${c.nome} — ${mapaForn[c.fornecedor_id]}`
+          : c.nome,
     }));
     sel.value = (this.preco || {}).contato_id || (contatos[0] || {}).id || "";
   }
 
+  /** Cotações da MESMA classificação do orçamento (Material/Serviço). */
+  preencherCotacoes() {
+    const sel = this.$("#cotacao");
+    if (!sel) return;
+    const tipo = this.orcamento.tipo;
+    const cots = dataStore.cotacoes().filter((c) => String(c.classificacao) === String(tipo));
+    sel.setAttribute("placeholder", cots.length ? "Selecione a cotação" : `Nenhuma cotação de ${tipo}`);
+    sel.options = cots.map((c) => ({ value: c.id, label: this._nomeCotacao(c) }));
+    sel.value = "";
+  }
+
   async salvar() {
-    const contatoId = this.$("#contato").value;
     const valor = Number(this.$("#valor").value);
-    const erro = primeiroErro(obrigatorio(contatoId, "O contato"), valorPositivo(valor));
-    if (erro) {
-      if (!contatoId) this.$("#contato").setAttribute("error", "Selecione um contato.");
-      this.$("#valor").setAttribute("error", valorPositivo(valor));
-      return;
+    let cotacaoId;
+    let dados;
+
+    if (this.orcamento) {
+      cotacaoId = this.ehEdicao ? this.preco.cotacao_id : this.$("#cotacao").value;
+      const erroValor = valorPositivo(valor);
+      if (!this.ehEdicao && !cotacaoId) this.$("#cotacao").setAttribute("error", "Selecione a cotação.");
+      if (erroValor) this.$("#valor").setAttribute("error", erroValor);
+      if ((!this.ehEdicao && !cotacaoId) || erroValor) return;
+      dados = {
+        valor_unit: valor,
+        prazo_entrega: this.$("#prazo").value.trim(),
+        observacao: this.$("#observacao").value.trim(),
+      };
+      if (!this.ehEdicao) {
+        dados.contato_id = this.orcamento.contato_id;
+        dados.orcamento_id = this.orcamento.id;
+      }
+    } else {
+      const contatoId = this.$("#contato").value;
+      const erro = primeiroErro(obrigatorio(contatoId, "O contato"), valorPositivo(valor));
+      if (erro) {
+        if (!contatoId) this.$("#contato").setAttribute("error", "Selecione um contato.");
+        this.$("#valor").setAttribute("error", valorPositivo(valor));
+        return;
+      }
+      cotacaoId = this.cotacaoId;
+      dados = {
+        contato_id: contatoId,
+        valor_unit: valor,
+        prazo_entrega: this.$("#prazo").value.trim(),
+        observacao: this.$("#observacao").value.trim(),
+      };
     }
-    const dados = {
-      contato_id: contatoId,
-      valor_unit: valor,
-      prazo_entrega: this.$("#prazo").value.trim(),
-      observacao: this.$("#observacao").value.trim(),
-    };
+
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");
     try {
       if (this.ehEdicao) {
-        await dataStore.atualizarPreco(this.cotacaoId, this.preco.id, dados);
+        await dataStore.atualizarPreco(cotacaoId, this.preco.id, dados);
         toastSucesso("Oferta atualizada.");
       } else {
-        await dataStore.adicionarPreco(this.cotacaoId, dados);
+        await dataStore.adicionarPreco(cotacaoId, dados);
         toastSucesso("Oferta adicionada.");
       }
       this.emitir("salvo");

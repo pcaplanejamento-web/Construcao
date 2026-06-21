@@ -219,6 +219,25 @@ const SCHEMA = {
       "atualizado_em", // (append) data da última edição da oferta
       "autor_nome", // (append) quem criou a oferta
       "editor_nome", // (append) quem editou por último
+      "orcamento_id", // (append) FK → Orcamentos.id (vazio = oferta criada direto na cotação)
+    ],
+  },
+
+  ORCAMENTOS: {
+    aba: "Orcamentos", // container de ofertas (de várias cotações) de um ofertante
+    colunas: [
+      "id",
+      "usuario_id",
+      "obra_id", // opcional (vazio = orçamento geral)
+      "tipo", // Material | Serviço
+      "fornecedor_id", // obrigatório p/ Material (vazio p/ Serviço)
+      "contato_id", // o ofertante/vendedor (todas as ofertas do orçamento são dele)
+      "titulo", // opcional (rótulo automático como fallback)
+      "ativo",
+      "criado_em",
+      "atualizado_em",
+      "autor_nome",
+      "editor_nome",
     ],
   },
 

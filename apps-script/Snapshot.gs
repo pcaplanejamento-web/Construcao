@@ -121,6 +121,7 @@ function dadosSnapshot(data, sessao) {
     cotacoes: cotacoes,
     precosPorCotacao: precosPorCotacao,
     historicoPorCotacao: historicoPorCotacao,
+    orcamentos: listarOrcamentosUsuario(u.id),
     servidor_em: agoraIso(),
   };
 

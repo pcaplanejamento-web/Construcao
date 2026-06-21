@@ -166,11 +166,22 @@ para dono **e** colaboradores.
 | `cotacoes.criar` | `{ item_id, quantidade?, unidade?, categoria_id?, obra_id?, status? }` | `{ cotacao }` — **`item_id` obrigatório**; servidor deriva `descricao`(nome)+`classificacao`; `categoria_id` = subclassificação |
 | `cotacoes.atualizar` | `{ id, ...campos }` (`item_id` re-deriva descrição+classificação) | `{ cotacao }` |
 | `cotacoes.remover` | `{ id }` | `{ id }` (remove a cotação e suas ofertas) |
-| `cotacoes.adicionarPreco` | `{ cotacao_id, contato_id, valor_unit, prazo_entrega?, observacao? }` | `{ preco, historico }` (ponto inicial logado) |
+| `cotacoes.adicionarPreco` | `{ cotacao_id, contato_id, valor_unit, prazo_entrega?, observacao?, orcamento_id? }` | `{ preco, historico }`. Com `orcamento_id`, o `contato_id` é **forçado** ao ofertante do orçamento. |
 | `cotacoes.atualizarPreco` | `{ id, contato_id?, valor_unit?, prazo_entrega?, observacao? }` | `{ preco, historico }` (`historico` só se o valor mudou; senão `null`) |
-| `cotacoes.removerPreco` | `{ id }` | `{ id, cotacao_id }` (mantém o histórico) |
+| `cotacoes.removerPreco` | `{ id }` | `{ id, cotacao_id }` (mantém o histórico; **bloqueia** se registrada) |
 | `cotacoes.escolherPreco` | `{ id }` | `{ precos }` (marca a escolhida e desmarca as demais da cotação) |
 | `cotacoes.registrarDespesa` | `{ preco_id, obra_id, categoria_id? }` | `{ despesa, resumo, precos, cotacao }` |
+
+### Compras — Orçamentos (container de ofertas)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `orcamentos.listar` | `{}` | `{ orcamentos: [...] }` |
+| `orcamentos.criar` | `{ tipo, fornecedor_id?, contato_id, obra_id?, titulo? }` | `{ orcamento }` — Material exige `fornecedor_id` + `contato_id` (vendedor do fornecedor); Serviço exige só `contato_id` |
+| `orcamentos.atualizar` | `{ id, ...campos }` | `{ orcamento }` — se `contato_id` muda, **propaga** às ofertas |
+| `orcamentos.remover` | `{ id }` | `{ id }` — remove o orçamento + ofertas (cascade); **bloqueia** se alguma oferta virou despesa |
+
+> Snapshot inclui `orcamentos`. As ofertas do orçamento vêm em `precosPorCotacao`
+> (têm `cotacao_id`); o cliente as agrupa por `orcamento_id`.
 
 > **Registrar como despesa** (`cotacoes.registrarDespesa`): cria a despesa na obra
 > (item = descrição da cotação, valor = `valor_unit × quantidade`), **marca a

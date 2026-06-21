@@ -178,7 +178,13 @@ function cotacoesAdicionarPreco(data, sessao) {
   const cotacaoId = data && data.cotacao_id;
   _cotacaoDoUsuario(cotacaoId, sessao.usuario_id);
 
-  const contatoId = String((data && data.contato_id) || "");
+  // Oferta de orçamento: o contato é SEMPRE o ofertante do orçamento (forçado).
+  const orcamentoId = String((data && data.orcamento_id) || "");
+  let contatoId = String((data && data.contato_id) || "");
+  if (orcamentoId) {
+    const orc = _orcamentoDoUsuario(orcamentoId, sessao.usuario_id);
+    contatoId = String(orc.contato_id || "");
+  }
   if (!contatoId) lancar(ERRO.VALIDACAO, "Selecione o contato da oferta.");
   _contatoDoUsuario(contatoId, sessao.usuario_id);
 
@@ -200,6 +206,7 @@ function cotacoesAdicionarPreco(data, sessao) {
       atualizado_em: agora,
       autor_nome: nomeUsuario,
       editor_nome: nomeUsuario,
+      orcamento_id: orcamentoId,
     };
     repoInserir(SCHEMA.COTACAO_PRECOS, preco);
     const historico = _logPreco(preco); // ponto inicial da evolução

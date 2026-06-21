@@ -222,9 +222,34 @@ guarda só os **extras** criados pelo usuário (com log).
 | escolhido | boolean | a oferta escolhida (exclusiva por cotação) |
 | criado_em | ISO datetime | |
 | despesa_id | UUID | FK → Despesas.id (preenchido quando a oferta é **registrada como despesa**) |
+| atualizado_em / autor_nome / editor_nome | — | auditoria |
+| orcamento_id | UUID | **FK → Orcamentos.id** (vazio = oferta criada direto na cotação) |
 
 > Total de uma oferta = `valor_unit × quantidade` (calculado no cliente; não
 > persiste). Excluir uma cotação remove suas ofertas.
+
+> **Oferta única (cotação × orçamento):** a oferta é a MESMA linha. Quando criada
+> num orçamento, ganha `orcamento_id` (+ a cotação escolhida em `cotacao_id`), então
+> aparece tanto na cotação quanto no orçamento. O contato é o ofertante do orçamento.
+
+### Aba `Orcamentos` (container de ofertas)
+Agrupa ofertas de **várias cotações**, todas de um mesmo ofertante. **Material**
+(fornecedor + vendedor desse fornecedor) ou **Serviço** (qualquer contato). Obra opcional.
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| usuario_id | UUID | FK → Usuarios.id (dono) |
+| obra_id | UUID | FK → Obras.id (opcional) |
+| tipo | string | `Material` \| `Serviço` |
+| fornecedor_id | UUID | FK → Fornecedores.id (obrigatório p/ Material; vazio p/ Serviço) |
+| contato_id | UUID | FK → Contatos.id (o ofertante/vendedor) |
+| titulo | string | opcional (rótulo automático como fallback) |
+| ativo | boolean | |
+| criado_em / atualizado_em / autor_nome / editor_nome | — | auditoria |
+
+> Editar o `contato_id` do orçamento **propaga** às suas ofertas (CotacaoPrecos).
+> Excluir o orçamento remove suas ofertas (cascade); **bloqueia** se alguma virou despesa.
 
 ### Aba `CotacaoPrecoHistorico` (evolução de preço no tempo)
 Log append-only: grava 1 ponto quando uma oferta é **criada** e a cada **edição do
