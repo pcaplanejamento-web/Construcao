@@ -271,12 +271,28 @@ function _totalRealizado(despesa) {
 }
 
 /**
+ * "Quem pagou quanto" (pagamentos) DERIVADO das levas: soma o valor de cada leva
+ * por `pagador` (chave de participante). Mantém o acerto coerente com as levas.
+ */
+function _pagamentosDeLevas(levas) {
+  const por = {};
+  (levas || []).forEach(function (l) {
+    const ch = String((l && l.pagador) || "");
+    if (ch) por[ch] = (por[ch] || 0) + (Number(l.valor) || 0);
+  });
+  return Object.keys(por).map(function (ch) {
+    return { chave: ch, valor: por[ch] };
+  });
+}
+
+/**
  * despesas.lancarPagamento -> { despesa, resumo }.
  * Lança um pagamento PARCIAL (uma "leva") da despesa ao ofertante. Deriva o
  * recebedor da própria despesa: equipe → contato = LÍDER (mestre) + exige a
  * `distribuicao` entre integrantes; senão → o contato ofertante + a empresa.
- * Carimba data/autor no servidor (log). Valida Σrealizados + valor ≤ valor da
- * despesa e (equipe) Σdistribuicao ≤ valor da leva.
+ * Guarda também QUEM pagou (`pagador`, chave de participante) — de onde o
+ * "quem pagou quanto" (pagamentos) é derivado. Carimba data/autor no servidor.
+ * Valida Σrealizados + valor ≤ valor da despesa e (equipe) Σdistribuicao ≤ leva.
  */
 function despesasLancarPagamento(data, sessao) {
   const despesaId = data && data.despesa_id;
@@ -284,6 +300,8 @@ function despesasLancarPagamento(data, sessao) {
 
   const valor = Number(data && data.valor);
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
+  const pagador = String((data && data.pagador) || "");
+  if (!pagador) lancar(ERRO.VALIDACAO, "Selecione quem pagou.");
   const totalDespesa = Number(atual.valor) || 0;
   if (_totalRealizado(atual) + valor - totalDespesa > 0.01)
     lancar(ERRO.VALIDACAO, "O total pago não pode passar do valor da despesa.");
@@ -313,6 +331,7 @@ function despesasLancarPagamento(data, sessao) {
     id: novoId(),
     data: String((data && data.data) || agora.substring(0, 10)),
     valor: valor,
+    pagador: pagador, // quem pagou (chave de participante) → deriva pagamentos
     contato_id: contatoId,
     fornecedor_id: fornecedorId,
     distribuicao: distribuicao.map(function (d) {
@@ -330,6 +349,7 @@ function despesasLancarPagamento(data, sessao) {
     }, 0);
     const despesa = repoAtualizar(SCHEMA.DESPESAS, "id", despesaId, {
       pagamentos_realizados: JSON.stringify(lista),
+      pagamentos: JSON.stringify(_pagamentosDeLevas(lista)), // derivado das levas
       pago: somaTotal - totalDespesa >= -0.01, // quitada quando cobre o valor
       atualizado_em: agora,
       editor_nome: nome,
@@ -359,6 +379,7 @@ function despesasRemoverPagamento(data, sessao) {
     }, 0);
     const despesa = repoAtualizar(SCHEMA.DESPESAS, "id", despesaId, {
       pagamentos_realizados: JSON.stringify(lista),
+      pagamentos: JSON.stringify(_pagamentosDeLevas(lista)), // derivado das levas
       pago: somaTotal - totalDespesa >= -0.01,
       atualizado_em: agora,
       editor_nome: nome,

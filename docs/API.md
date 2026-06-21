@@ -92,7 +92,7 @@ para dono **e** colaboradores.
 | `despesas.criar` | `{ obra_id, item_id, valor, categoria_id?, data, observacao?, pago?, pagamentos?, responsaveis? }` | `{ despesa, resumo }` — **`item_id` obrigatório**. ⚠️ O front **não** usa mais esta action: despesas são criadas só por `cotacoes.registrarDespesa` (oferta). Mantida no servidor por segurança/legado. |
 | `despesas.atualizar` | `{ id, ...campos }` (`item_id` re-deriva nome+classificação; inclui `pagamentos`/`responsaveis`/**`recebidos`**) | `{ despesa, resumo }` |
 | `despesas.remover` | `{ id }` | `{ id, resumo }` |
-| `despesas.lancarPagamento` | `{ despesa_id, valor, data?, distribuicao? }` | `{ despesa, resumo }` — lança um pagamento **parcial (leva)** ao ofertante. Servidor deriva o recebedor (equipe → líder + exige `distribuicao`; senão contato ofertante + empresa) e carimba data/autor. Valida `Σrealizados+valor ≤ valor` e (equipe) `Σdistribuicao ≤ valor` |
+| `despesas.lancarPagamento` | `{ despesa_id, valor, pagador, data?, distribuicao? }` | `{ despesa, resumo }` — lança um pagamento **parcial (leva)** ao ofertante. `pagador` (chave de participante) é **obrigatório**; o servidor **deriva `pagamentos`** (quem pagou quanto → acerto) somando as levas por `pagador`. Deriva o recebedor (equipe → líder + exige `distribuicao`; senão contato ofertante + empresa) e carimba data/autor. Valida `Σrealizados+valor ≤ valor` e (equipe) `Σdistribuicao ≤ valor` |
 | `despesas.removerPagamento` | `{ despesa_id, lancamento_id }` | `{ despesa, resumo }` — remove uma leva lançada |
 
 > `pagamentos` = `[{chave, valor}]`, `responsaveis` = `[{chave, pct}]`

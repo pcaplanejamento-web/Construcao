@@ -2,11 +2,12 @@
  * <despesa-detail> — Banner (modal) com as informações completas de uma despesa.
  * Permite EDITAR e EXCLUIR aqui. A despesa nasce do REGISTRO de uma oferta:
  * quando tem `preco_id`, o Item/Valor/Ofertante/Empresa vêm da oferta (read-only).
- * O pagamento é por **lançamentos parciais (levas)**: status A pagar / Em pagamento
- * / Pago é derivado; equipe → cada leva desmembra entre integrantes. Pagamento
- * (quem pagou) / Responsabilidade / Recebido planejado / Subclassificação /
- * Observação seguem editáveis. Despesas legadas (sem `preco_id`) mantêm Item/Valor
- * editáveis. Reusa ui-modal/ui-input/ui-select/ui-button/split-editor.
+ * O pagamento é por **lançamentos parciais (levas)**: cada leva tem **quem pagou**
+ * (participante), valor e data; status A pagar / Em pagamento / Pago é derivado e o
+ * "quem pagou quanto" (acerto) é **derivado das levas** (não há editor manual).
+ * Equipe → cada leva desmembra entre integrantes. Responsabilidade / Recebido
+ * planejado / Subclassificação / Observação seguem editáveis. Despesas legadas (sem
+ * `preco_id`) mantêm Item/Valor editáveis. Reusa ui-modal/ui-input/ui-select/split-editor.
  *
  * Propriedades: .despesa, .categorias = [{id,nome,cor}]
  * Eventos: "fechar".
@@ -143,6 +144,7 @@ class DespesaDetail extends BaseElement {
             <div class="statuslinha" id="statusLinha"></div>
             <div id="listaPag"></div>
             <div class="lancar">
+              <ui-select id="pagPagador" label="Quem pagou"></ui-select>
               <div class="linha">
                 <ui-input id="pagValor" label="Valor a lançar (R$)" type="number" step="0.01" min="0" placeholder="0,00"></ui-input>
                 <ui-input id="pagData" label="Data" type="date" value="${hojeIso()}"></ui-input>
@@ -156,10 +158,6 @@ class DespesaDetail extends BaseElement {
             <label class="tx">Recebido por integrante — planejado (R$)</label>
             <split-editor id="recebidos"></split-editor>
           </div>` : ""}
-          <div class="secao">
-            <label class="tx">Pagamento — quem pagou quanto (R$)</label>
-            <split-editor id="pagamentos"></split-editor>
-          </div>
           <div class="secao">
             <label class="tx">Responsabilidade — % por participante (soma 100%)</label>
             <split-editor id="responsaveis"></split-editor>
@@ -201,6 +199,14 @@ class DespesaDetail extends BaseElement {
 
   /** Liga o mini-form de lançamento + pinta status e lista. */
   preencherPagamentos() {
+    // Quem pagou: participantes da obra (mesmas chaves do acerto).
+    const parts = dataStore.participantesDaObra(this.despesa.obra_id);
+    const selPag = this.$("#pagPagador");
+    if (selPag) {
+      selPag.setAttribute("placeholder", parts.length ? "Selecione quem pagou" : "Sem participantes");
+      selPag.options = parts.map((p) => ({ value: p.chave, label: p.nome }));
+      selPag.value = (parts[0] || {}).chave || "";
+    }
     const dist = this.$("#pagDist");
     if (dist && this.despesa.ofertante_equipe_id) {
       dist.modo = "valor";
@@ -247,16 +253,20 @@ class DespesaDetail extends BaseElement {
       cont.innerHTML = `<p class="muted">Nenhum pagamento lançado.</p>`;
       return;
     }
+    // Mapa chave→nome dos participantes (resolve o pagador da leva).
+    const nomePart = {};
+    dataStore.participantesDaObra(this.despesa.obra_id).forEach((p) => (nomePart[p.chave] = p.nome));
     cont.innerHTML = "";
     lista.forEach((p) => {
       const row = document.createElement("div");
       row.className = "lancamento";
+      const pagador = nomePart[p.pagador] || "—";
       const dist = parseLista(p.distribuicao)
         .map((x) => `${this._nomeChave(x.chave)}: ${moeda(x.valor)}`)
         .join(" · ");
       row.innerHTML = `<div class="lc-info">
           <strong>${moeda(p.valor)}</strong>
-          <small class="muted">${fmtData(p.data)} · por ${p.autor_nome || "—"}</small>
+          <small class="muted">${fmtData(p.data)} · pago por ${pagador}</small>
           ${dist ? `<small class="muted">${dist}</small>` : ""}
         </div>`;
       const btn = document.createElement("button");
@@ -272,6 +282,11 @@ class DespesaDetail extends BaseElement {
   async lancarPagamento() {
     const alerta = this.$("#erro");
     if (alerta) alerta.mensagem = "";
+    const pagador = this.$("#pagPagador") ? this.$("#pagPagador").value : "";
+    if (!pagador) {
+      if (alerta) alerta.mensagem = "Selecione quem pagou.";
+      return;
+    }
     const valorInp = this.$("#pagValor");
     const valor = Number(valorInp.value);
     if (!(valor > 0)) {
@@ -284,7 +299,7 @@ class DespesaDetail extends BaseElement {
       if (alerta) alerta.mensagem = `O valor (${moeda(valor)}) passa do que falta pagar (${moeda(resto)}).`;
       return;
     }
-    const dados = { valor, data: this.$("#pagData").value || hojeIso() };
+    const dados = { valor, pagador, data: this.$("#pagData").value || hojeIso() };
     const dist = this.$("#pagDist");
     if (dist && this.despesa.ofertante_equipe_id) {
       const distribuicao = dist.itens
@@ -347,11 +362,11 @@ class DespesaDetail extends BaseElement {
     return inp ? Number(inp.value) || 0 : Number(this.despesa.valor) || 0;
   }
 
-  /** Popula os editores de recebidos (R$), pagamento (R$) e responsabilidade (%). */
+  /** Popula os editores de recebido planejado (R$) e responsabilidade (%). */
   preencherSplits() {
     const parts = dataStore.participantesDaObra(this.despesa.obra_id);
 
-    // Recebido por integrante (só quando o ofertante é equipe).
+    // Recebido por integrante — planejado (só quando o ofertante é equipe).
     const rec = this.$("#recebidos");
     if (rec && this.despesa.ofertante_equipe_id) {
       rec.modo = "valor";
@@ -362,25 +377,10 @@ class DespesaDetail extends BaseElement {
         valor: Number(r.valor) || 0,
       }));
     }
-
-    const pg = this.$("#pagamentos");
-    if (pg) {
-      pg.modo = "valor";
-      pg.participantes = parts;
-      pg.limite = this.valorAtual(); // soma ≤ valor da despesa
-      pg.itens = parseLista(this.despesa.pagamentos).map((p) => ({
-        chave: p.chave,
-        valor: Number(p.valor) || 0,
-      }));
-    }
-    // Mantém o limite sincronizado com o valor digitado (modo legado).
+    // Mantém o limite do recebido sincronizado com o valor digitado (modo legado).
     const valInput = this.$("#valor");
-    if (valInput) {
-      valInput.addEventListener("input", () => {
-        const lim = Number(valInput.value) || 0;
-        if (pg) pg.limite = lim;
-        if (rec && this.despesa.ofertante_equipe_id) rec.limite = lim;
-      });
+    if (valInput && rec && this.despesa.ofertante_equipe_id) {
+      valInput.addEventListener("input", () => (rec.limite = Number(valInput.value) || 0));
     }
     const rp = this.$("#responsaveis");
     if (rp) {
@@ -427,20 +427,13 @@ class DespesaDetail extends BaseElement {
       classificacao = this.classificacao;
     }
 
-    const pagamentos = this.$("#pagamentos").itens
-      .filter((x) => x.chave && Number(x.valor) > 0)
-      .map((x) => ({ chave: x.chave, valor: Number(x.valor) || 0 }));
+    // "Quem pagou" (pagamentos) é DERIVADO das levas no servidor — não enviado aqui.
     const responsaveis = this.$("#responsaveis").itens
       .filter((x) => x.chave)
       .map((x) => ({ chave: x.chave, pct: Number(x.valor) || 0 }));
 
-    // Regras: soma dos pagamentos ≤ valor; soma das % ≤ 100.
-    const somaPag = pagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0);
+    // Regra: soma das % ≤ 100.
     const somaPct = responsaveis.reduce((s, r) => s + (Number(r.pct) || 0), 0);
-    if (somaPag - valor > 0.01) {
-      if (alerta) alerta.mensagem = `A soma dos pagamentos (${moeda(somaPag)}) não pode passar do valor da despesa (${moeda(valor)}).`;
-      return;
-    }
     if (somaPct - 100 > 0.01) {
       if (alerta) alerta.mensagem = `A soma das responsabilidades (${Math.round(somaPct * 100) / 100}%) não pode passar de 100%.`;
       return;
@@ -454,7 +447,6 @@ class DespesaDetail extends BaseElement {
       categoria_id: this.$("#categoria").value,
       data: this.$("#data").value || String(this.despesa.data || "").substring(0, 10),
       observacao: this.$("#observacao").value.trim(),
-      pagamentos,
       responsaveis,
     };
 

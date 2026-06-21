@@ -76,7 +76,7 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | atualizado_em | ISO datetime | data da última edição |
 | editor_nome | string | quem editou por último (desnormalizado) |
 | pago | boolean | marcada como paga? |
-| pagamentos | JSON | `[{chave, valor}]` — quem pagou quanto (participantes) |
+| pagamentos | JSON | `[{chave, valor}]` — quem pagou quanto (**derivado das levas** por `pagador`) |
 | responsaveis | JSON | `[{chave, pct}]` — de quem é a responsabilidade (% por participante) |
 | item_id | UUID | **FK → Itens.id (obrigatório p/ novas despesas)** |
 | classificacao | string | `Material` \| `Serviço` (desnormalizado de Itens.classificacao) |
@@ -85,7 +85,7 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | ofertante_contato_id | UUID | ofertante **contato** (XOR equipe) |
 | ofertante_equipe_id | UUID | ofertante **equipe** (XOR contato) |
 | recebidos | JSON | `[{chave, valor}]` — **planejado** por integrante da equipe (alvo) |
-| pagamentos_realizados | JSON | `[{id,data,valor,contato_id,fornecedor_id,distribuicao:[{chave,valor}],autor_nome,criado_em}]` — pagamentos **parciais (levas)** pagos ao ofertante |
+| pagamentos_realizados | JSON | `[{id,data,valor,**pagador**,contato_id,fornecedor_id,distribuicao:[{chave,valor}],autor_nome,criado_em}]` — pagamentos **parciais (levas)** pagos ao ofertante; `pagador` = quem pagou (chave de participante) |
 
 > **Despesa = registro de uma oferta (inteira).** Não há mais cadastro manual: a
 > despesa nasce de uma oferta (`preco_id`) e herda o **ofertante** (contato XOR
@@ -93,13 +93,15 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > uma equipe, `recebidos` é o **planejado** por integrante (chave `c:<contato_id>`).
 
 > **Pagamentos parciais (levas).** O pagamento ao ofertante é feito por
-> **lançamentos** em `pagamentos_realizados` (cada um com data + autor). O **status**
-> é derivado: 0 = **A pagar**, parcial = **Em pagamento**, total = **Pago** (substitui
-> o antigo checkbox `pago`, mantido só por compat). Equipe → cada leva desmembra entre
-> integrantes (`distribuicao`); o recebedor é o líder (mestre). O valor ainda **não
-> pago** vira **restos a pagar** (responsáveis, proporcional à %) e **saldo a receber**
-> (ofertante/empresa; equipe → por integrante = planejado − recebido). `pagamentos`
-> (quem pagou) e o **acerto** seguem independentes.
+> **lançamentos** em `pagamentos_realizados` (cada um com **quem pagou** (`pagador`,
+> participante) + valor + data + autor). O **status** é derivado: 0 = **A pagar**,
+> parcial = **Em pagamento**, total = **Pago** (substitui o antigo checkbox `pago`,
+> mantido só por compat). O **`pagamentos`** (quem pagou quanto → **acerto**) é
+> **derivado** das levas (soma por `pagador`) — fonte única, sem editor manual. Equipe
+> → cada leva desmembra entre integrantes (`distribuicao`); o recebedor é o líder
+> (mestre). O valor ainda **não pago** vira **restos a pagar** (responsáveis,
+> proporcional à %) e **saldo a receber** (ofertante/empresa; equipe → por integrante
+> = planejado − recebido).
 
 > **Item × Classificação × Subclassificação:** a despesa referencia um **item**
 > (`item_id`, obrigatório); o item carrega sua **classificação** (`classificacao`,
