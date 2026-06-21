@@ -97,12 +97,16 @@ class ObraDetailView extends BaseElement {
         <div slot="participantes">
           <obra-participantes obra-id="${this.obraId}"></obra-participantes>
         </div>
+        <div slot="responsaveis">
+          <obra-participantes obra-id="${this.obraId}" modo="responsaveis"></obra-participantes>
+        </div>
       </ui-tabs>
     `;
     alvo.querySelector("#abas").abas = [
       { id: "graficos", rotulo: "Gráficos", icone: "grafico" },
       { id: "despesas", rotulo: "Despesas", icone: "recibo" },
       { id: "participantes", rotulo: "Participantes da obra", icone: "usuario" },
+      { id: "responsaveis", rotulo: "Responsáveis", icone: "seguranca" },
     ];
     this._dash = alvo.querySelector("#dash");
     this._break = alvo.querySelector("#break");

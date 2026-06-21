@@ -73,9 +73,10 @@ sobem por `CustomEvent`**.
 | `obra-card` | `.obra`; eventos `abrir`, `editar`, `remover` | Cartão com barra de orçamento. |
 | `obra-form` | `.obra`; eventos `salvo`, `fechar` | Modal criar/editar obra (chama a API). |
 | `obra-share-form` | `.obra`; evento `fechar` | Modal (só dono): **link público** curto (gerar/copiar/abrir/desativar) + **log de acessos** + convidar usuários para colaboração. |
-| `obra-detail-view` | attr `id` (rota); — | **Coração do tempo real**: KPIs + `ui-tabs` (**Gráficos** / **Despesas** / **Participantes da obra**); dashboard + despesas (otimista + cache). |
-| `obra-participantes` | attr `obra-id` | Aba **Participantes da obra**: lista dono + usuários compartilhados + contatos (badge de origem); adiciona/remove contatos (`participante-form`). Lê `dataStore.participantesDaObra`. (Saldos/acerto: Fase 2.) |
+| `obra-detail-view` | attr `id` (rota); — | **Coração do tempo real**: KPIs + `ui-tabs` (**Gráficos** / **Despesas** / **Participantes da obra** / **Responsáveis**); dashboard + despesas (otimista + cache). |
+| `obra-participantes` | attr `obra-id`, `modo` (participantes\|responsaveis) | Aba de participantes com **acerto de contas**: colunas Pago/Devido/**Saldo** (a receber/a pagar) + painel **"quem deve a quem"** (`despesa-split.acerto`). modo `participantes`: todos + adicionar/remover contato; modo `responsaveis`: só os marcados + "Definir responsáveis". |
 | `participante-form` | `.obraId`; eventos `salvo`, `fechar` | Modal `ui-select` p/ adicionar um **contato** cadastrado como participante. |
+| `responsaveis-form` | `.obraId`; evento `fechar` | Modal p/ marcar, entre os participantes, quem são **responsáveis** (alterna o flag via `dataStore.definirResponsavel`). |
 | `publico-view` | attr `token` (rota `#/publico/:token`) | Visão **pública somente-leitura** (sem login): dashboard + itens + gasto por categoria. |
 
 ### Despesas — `features/despesas/`

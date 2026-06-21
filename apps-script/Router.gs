@@ -36,6 +36,7 @@ const ROTAS = {
   // Participantes da obra
   "participantes.listar": { fn: participantesListar },
   "participantes.adicionarContato": { fn: participantesAdicionarContato },
+  "participantes.definirResponsavel": { fn: participantesDefinirResponsavel },
   "participantes.remover": { fn: participantesRemover },
 
   // Despesas

@@ -93,7 +93,12 @@ para dono **e** colaboradores.
 |--------|--------|---------|
 | `participantes.listar` | `{ obra_id }` | `{ participantes:[{chave,tipo,ref_id,nome,email,origem,eh_responsavel}] }` (dono+compartilhados+contatos) |
 | `participantes.adicionarContato` | `{ obra_id, contato_id }` | `{ participante }` (idempotente) |
+| `participantes.definirResponsavel` | `{ obra_id, chave, eh_responsavel }` | `{ participantes }` (marca/desmarca responsável) |
 | `participantes.remover` | `{ id }` | `{ id }` (só contatos têm linha) |
+
+> **Acerto de contas** (cliente, `despesa-split.acerto`): por participante `pago` = Σ
+> pagamentos, `devido` = Σ valor×(pct/100), `saldo` = pago − devido; e `acertos`
+> pareados (quem deve a quem). Não há action de servidor — é derivado das despesas.
 
 ### Categorias
 | Action | `data` | Retorno |

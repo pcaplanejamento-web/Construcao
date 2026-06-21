@@ -114,6 +114,54 @@ function participantesAdicionarContato(data, sessao) {
   });
 }
 
+/**
+ * participantes.definirResponsavel -> { participantes }.
+ * Marca/desmarca um participante como responsável da obra. Para usuário derivado
+ * (sem linha), cria a linha quando marcado; para contato, alterna o flag.
+ */
+function participantesDefinirResponsavel(data, sessao) {
+  const obraId = data && data.obra_id;
+  _obraAcessivel(obraId, sessao.usuario_id);
+  const chave = String((data && data.chave) || "");
+  if (!chave) lancar(ERRO.VALIDACAO, "Participante inválido.");
+  const eh = (data && data.eh_responsavel) === true;
+  const tipo = chave.indexOf("c:") === 0 ? "contato" : "usuario";
+  const refId = chave.substring(2);
+
+  return comLock(function () {
+    const linha = repoEncontrar(SCHEMA.OBRA_PARTICIPANTES, function (p) {
+      return (
+        String(p.obra_id) === String(obraId) &&
+        p.tipo === tipo &&
+        String(p.ref_id) === String(refId)
+      );
+    });
+    if (linha) {
+      repoAtualizar(SCHEMA.OBRA_PARTICIPANTES, "id", linha.id, { eh_responsavel: eh });
+    } else if (eh) {
+      // Usuário derivado: cria a linha só para guardar o flag.
+      let nome = "";
+      if (tipo === "usuario") {
+        nome = (_mapaUsuarios()[refId] || {}).nome || "";
+      } else {
+        nome = (repoEncontrar(SCHEMA.CONTATOS, function (c) {
+          return String(c.id) === String(refId);
+        }) || {}).nome || "";
+      }
+      repoInserir(SCHEMA.OBRA_PARTICIPANTES, {
+        id: novoId(),
+        obra_id: obraId,
+        tipo: tipo,
+        ref_id: refId,
+        nome: nome,
+        eh_responsavel: true,
+        criado_em: agoraIso(),
+      });
+    }
+    return { participantes: listarParticipantesObra(obraId) };
+  });
+}
+
 /** participantes.remover -> { id } (remove a linha; só contatos têm linha). */
 function participantesRemover(data, sessao) {
   const id = data && data.id;

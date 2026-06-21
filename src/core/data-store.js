@@ -293,6 +293,16 @@ async function removerParticipante(obraId, id) {
   );
 }
 
+async function definirResponsavel(obraId, chave, ehResponsavel) {
+  const r = await api.call("participantes.definirResponsavel", {
+    obra_id: obraId,
+    chave,
+    eh_responsavel: ehResponsavel === true,
+  });
+  _setParticipantes(obraId, r.participantes || participantesDaObra(obraId));
+  return r.participantes;
+}
+
 /** Atualiza o link_token de uma obra no store (write-through). */
 function _setLinkObra(id, token) {
   const s = store.get();
@@ -668,7 +678,7 @@ export const dataStore = {
   historicoDaCotacao,
   // mutações
   criarObra, atualizarObra, removerObra,
-  adicionarParticipante, removerParticipante,
+  adicionarParticipante, removerParticipante, definirResponsavel,
   gerarLinkPublico, removerLinkPublico,
   adicionarDespesa, atualizarDespesa, removerDespesa,
   criarCategoria, atualizarCategoria, removerCategoria,

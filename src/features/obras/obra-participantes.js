@@ -1,22 +1,27 @@
 /**
- * <obra-participantes> — Aba "Participantes da obra" (dentro do detalhe da obra).
+ * <obra-participantes> — Aba "Participantes da obra" / "Responsáveis".
  *
- * Lista dono + usuários compartilhados + contatos adicionados. Permite adicionar
- * contatos (participante-form) e remover os contatos adicionados. Lê do
- * data-store (cache-first) e assina mudanças. (Saldos/acerto entram na Fase 2.)
+ * Lista dono + usuários compartilhados + contatos, com o ACERTO DE CONTAS:
+ * por participante mostra Pago, Devido e Saldo (a receber / a pagar) e um painel
+ * "quem deve a quem". Lê do data-store (cache-first) e assina mudanças.
  *
- * Atributo: obra-id
+ * Atributos: obra-id; modo ("participantes" | "responsaveis").
+ *  - participantes: mostra todos; adiciona/remove contatos.
+ *  - responsaveis: mostra só os marcados; botão p/ definir responsáveis.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
+import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { rotuloOrigem } from "../despesas/despesa-split.js";
+import { acerto, rotuloOrigem } from "../despesas/despesa-split.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-button.js";
+import "../../components/ui-icon.js";
 import "../../components/ui-empty-state.js";
 import "../despesas/category-badge.js";
 import "./participante-form.js";
+import "./responsaveis-form.js";
 
 const COR_ORIGEM = {
   dono: "var(--cor-primaria)",
@@ -28,63 +33,138 @@ class ObraParticipantes extends BaseElement {
   get obraId() {
     return this.getAttribute("obra-id");
   }
+  get modo() {
+    return this.getAttribute("modo") === "responsaveis" ? "responsaveis" : "participantes";
+  }
 
   estilos() {
     return `
       :host { display: block; }
-      .barra { display: flex; justify-content: flex-end; margin-bottom: var(--esp-4); }
+      .barra { display: flex; justify-content: space-between; align-items: center;
+        gap: var(--esp-3); margin-bottom: var(--esp-4); flex-wrap: wrap; }
+      .barra .dica { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
+      .grupos { display: flex; flex-direction: column; gap: var(--esp-5); }
+      .acertos { display: flex; flex-direction: column; gap: var(--esp-2); }
+      .acerto-item { display: flex; align-items: center; gap: var(--esp-2);
+        padding: var(--esp-3); border: 1px solid var(--cor-borda); border-radius: var(--raio-sm); }
+      .acerto-item .seta { color: var(--cor-texto-fraco); }
+      .acerto-item .valor { margin-left: auto; font-weight: var(--peso-semi); color: var(--cor-erro); }
+      .ok { color: var(--cor-sucesso); font-size: var(--fs-sm); display: flex;
+        align-items: center; gap: var(--esp-2); }
     `;
   }
 
   template() {
+    const resp = this.modo === "responsaveis";
     return `
-      <div class="barra"><ui-button id="add">+ Adicionar contato</ui-button></div>
-      <ui-card title="Participantes da obra"><div id="lista"></div></ui-card>
+      <div class="grupos">
+        <div>
+          <div class="barra">
+            <span class="dica">${
+              resp
+                ? "Responsáveis da obra (subconjunto dos participantes)."
+                : "Dono, usuários compartilhados e contatos da obra."
+            }</span>
+            <ui-button id="acao">${resp ? "Definir responsáveis" : "+ Adicionar contato"}</ui-button>
+          </div>
+          <ui-card title="${resp ? "Responsáveis" : "Participantes"} — acerto de contas">
+            <div id="lista"></div>
+          </ui-card>
+        </div>
+        <ui-card title="Quem deve a quem"><div id="acertos"></div></ui-card>
+      </div>
     `;
   }
 
   aoConectar() {
-    this.$("#add").addEventListener("click", () => this.abrirForm());
+    this.$("#acao").addEventListener("click", () => this.abrirAcao());
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
 
   pintar() {
-    const el = this.$("#lista");
-    if (!el) return;
-    const participantes = dataStore.participantesDaObra(this.obraId);
-    if (!participantes.length) {
-      el.innerHTML = `<ui-empty-state icone="usuario" titulo="Sem participantes"
-        texto="Compartilhe a obra com usuários ou adicione contatos."></ui-empty-state>`;
-      return;
+    const lista = this.$("#lista");
+    const painel = this.$("#acertos");
+    if (!lista) return;
+
+    const todos = dataStore.participantesDaObra(this.obraId);
+    const despesas = dataStore.despesas(this.obraId);
+    const { saldos, acertos } = acerto(despesas, todos);
+    const mapaSaldo = {};
+    saldos.forEach((s) => (mapaSaldo[s.chave] = s));
+
+    const visiveis =
+      this.modo === "responsaveis" ? todos.filter((p) => p.eh_responsavel) : todos;
+
+    if (!visiveis.length) {
+      lista.innerHTML = `<ui-empty-state icone="usuario"
+        titulo="${this.modo === "responsaveis" ? "Nenhum responsável" : "Sem participantes"}"
+        texto="${
+          this.modo === "responsaveis"
+            ? "Use o botão Definir responsáveis para escolher entre os participantes."
+            : "Compartilhe a obra com usuários ou adicione contatos."
+        }"></ui-empty-state>`;
+    } else {
+      const rows = visiveis.map((p) => {
+        const s = mapaSaldo[p.chave] || { pago: 0, devido: 0, saldo: 0 };
+        return { ...p, _pago: s.pago, _devido: s.devido, _saldo: s.saldo };
+      });
+      const tabela = document.createElement("ui-data-table");
+      tabela.setAttribute("fluido", "");
+      tabela.columns = [
+        { chave: "nome", titulo: "Participante" },
+        {
+          chave: "origem",
+          titulo: "Origem",
+          formato: (o) =>
+            `<category-badge nome="${rotuloOrigem(o)}" cor="${COR_ORIGEM[o] || "var(--cor-neutro)"}"></category-badge>`,
+        },
+        { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
+        { chave: "_devido", titulo: "Devido", alinhar: "dir", formato: (v) => moeda(v) },
+        {
+          chave: "_saldo",
+          titulo: "Saldo",
+          alinhar: "dir",
+          formato: (v) => this._saldoCelula(v),
+        },
+      ];
+      tabela.acoes = [
+        this.modo === "responsaveis"
+          ? { nome: "tirar", rotulo: "Tirar responsável", variant: "perigo" }
+          : { nome: "remover", rotulo: "Remover", variant: "perigo" },
+      ];
+      tabela.rows = rows;
+      tabela.addEventListener("acao", (e) => this.acao(e.detail.acao, e.detail.linha));
+      lista.replaceChildren(tabela);
     }
-    const tabela = document.createElement("ui-data-table");
-    tabela.setAttribute("fluido", "");
-    tabela.columns = [
-      { chave: "nome", titulo: "Participante" },
-      {
-        chave: "origem",
-        titulo: "Origem",
-        formato: (o) =>
-          `<category-badge nome="${rotuloOrigem(o)}" cor="${COR_ORIGEM[o] || "var(--cor-neutro)"}"></category-badge>`,
-      },
-      { chave: "email", titulo: "E-mail", formato: (v) => v || "—" },
-    ];
-    // Remover só vale para contatos adicionados (têm linha/id).
-    tabela.acoes = [{ nome: "remover", rotulo: "Remover", variant: "perigo" }];
-    tabela.rows = participantes;
-    tabela.addEventListener("acao", (e) => {
-      const p = e.detail.linha;
-      if (p.tipo !== "contato" || !p.id) {
-        toastSucesso("Dono e usuários compartilhados são participantes automáticos.");
-        return;
-      }
-      this.remover(p);
-    });
-    el.replaceChildren(tabela);
+
+    // Painel "quem deve a quem".
+    if (!acertos.length) {
+      painel.innerHTML = `<div class="ok"><ui-icon name="sucesso" size="16"></ui-icon> Sem pendências — tudo acertado.</div>`;
+    } else {
+      painel.innerHTML = `<div class="acertos">${acertos
+        .map(
+          (a) =>
+            `<div class="acerto-item"><span>${a.de_nome}</span>
+               <span class="seta">→</span><span>${a.para_nome}</span>
+               <span class="valor">${moeda(a.valor)}</span></div>`
+        )
+        .join("")}</div>`;
+    }
   }
 
-  abrirForm() {
-    const form = document.createElement("participante-form");
+  _saldoCelula(v) {
+    if (Math.abs(v) < 0.01) return `<span style="color:var(--cor-texto-fraco)">—</span>`;
+    const cor = v > 0 ? "var(--cor-sucesso)" : "var(--cor-erro)";
+    const rot = v > 0 ? "a receber" : "a pagar";
+    return `<strong style="color:${cor}">${moeda(Math.abs(v))}</strong>
+      <small style="color:var(--cor-texto-fraco)"> ${rot}</small>`;
+  }
+
+  /* ------------------------------ Ações -------------------------------- */
+
+  abrirAcao() {
+    const tag = this.modo === "responsaveis" ? "responsaveis-form" : "participante-form";
+    const form = document.createElement(tag);
     form.obraId = this.obraId;
     const fechar = () => form.remove();
     form.addEventListener("fechar", fechar);
@@ -92,7 +172,25 @@ class ObraParticipantes extends BaseElement {
     document.body.appendChild(form);
   }
 
-  async remover(p) {
+  acao(nome, p) {
+    if (nome === "tirar") return this.tirarResponsavel(p);
+    return this.removerContato(p);
+  }
+
+  async tirarResponsavel(p) {
+    try {
+      await dataStore.definirResponsavel(this.obraId, p.chave, false);
+      toastSucesso("Removido dos responsáveis.");
+    } catch (e) {
+      notificarErro(e);
+    }
+  }
+
+  async removerContato(p) {
+    if (p.tipo !== "contato" || !p.id) {
+      toastSucesso("Dono e usuários compartilhados são participantes automáticos.");
+      return;
+    }
     if (!confirm(`Remover "${p.nome}" dos participantes?`)) return;
     try {
       await dataStore.removerParticipante(this.obraId, p.id);
