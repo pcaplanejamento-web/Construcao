@@ -84,13 +84,12 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | fornecedor_id | UUID | **empresa** que recebe (fornecedor do contato ofertante; vazio p/ equipe) |
 | ofertante_contato_id | UUID | ofertante **contato** (XOR equipe) |
 | ofertante_equipe_id | UUID | ofertante **equipe** (XOR contato) |
-| recebidos | JSON | `[{chave, valor}]` — **planejado** por integrante da equipe (alvo) |
+| recebidos | JSON | _(legado/sem uso)_ — a distribuição por integrante vive nas **levas** (`pagamentos_realizados[].distribuicao`) |
 | pagamentos_realizados | JSON | `[{id,data,valor,**pagador**,contato_id,fornecedor_id,distribuicao:[{chave,valor}],autor_nome,criado_em}]` — pagamentos **parciais (levas)** pagos ao ofertante; `pagador` = quem pagou (chave de participante) |
 
 > **Despesa = registro de uma oferta (inteira).** Não há mais cadastro manual: a
 > despesa nasce de uma oferta (`preco_id`) e herda o **ofertante** (contato XOR
-> equipe) e a **empresa** (`fornecedor_id`, vazio p/ equipe). Quando o ofertante é
-> uma equipe, `recebidos` é o **planejado** por integrante (chave `c:<contato_id>`).
+> equipe) e a **empresa** (`fornecedor_id`, vazio p/ equipe).
 
 > **Pagamentos parciais (levas).** O pagamento ao ofertante é feito por
 > **lançamentos** em `pagamentos_realizados` (cada um com **quem pagou** (`pagador`,
@@ -98,10 +97,10 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > parcial = **Em pagamento**, total = **Pago** (substitui o antigo checkbox `pago`,
 > mantido só por compat). O **`pagamentos`** (quem pagou quanto → **acerto**) é
 > **derivado** das levas (soma por `pagador`) — fonte única, sem editor manual. Equipe
-> → cada leva desmembra entre integrantes (`distribuicao`); o recebedor é o líder
-> (mestre). O valor ainda **não pago** vira **restos a pagar** (responsáveis,
-> proporcional à %) e **saldo a receber** (ofertante/empresa; equipe → por integrante
-> = planejado − recebido).
+> → cada leva desmembra entre integrantes (`distribuicao`, o que cada um recebeu); o
+> recebedor é o líder (mestre). O valor ainda **não pago** vira **restos a pagar**
+> (responsáveis, proporcional à %) e **saldo a receber** (do ofertante: contato `c:` ou
+> equipe `e:`). O "recebido por integrante" é o somatório das `distribuicao` das levas.
 
 > **Item × Classificação × Subclassificação:** a despesa referencia um **item**
 > (`item_id`, obrigatório); o item carrega sua **classificação** (`classificacao`,
@@ -109,10 +108,9 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > Gráficos: rosca por `classificacao`, barras por `categoria_id`.
 
 > `chave` de participante = `u:<usuario_id>` ou `c:<contato_id>`. `pagamentos`/
-> `responsaveis`/`recebidos` são guardados como **JSON string** e devolvidos como
-> **arrays** ao cliente (o backend faz parse). Total pago = soma de `pagamentos[].valor`;
-> distribuição (Único/Distribuído) é derivada do nº de pagantes. `pagamentos` (quem
-> pagou) e o **acerto** "quem deve a quem" seguem independentes de ofertante/recebidos.
+> `responsaveis`/`pagamentos_realizados` são guardados como **JSON string** e devolvidos
+> como **arrays** ao cliente (o backend faz parse). `pagamentos` (quem pagou) e o
+> **acerto** "quem deve a quem" são **derivados das levas** (por `pagador`).
 
 > Auditoria: `criado_em`/`autor_nome` registram a adição; `atualizado_em`/
 > `editor_nome` a última edição. Nomes são desnormalizados para exibir sem

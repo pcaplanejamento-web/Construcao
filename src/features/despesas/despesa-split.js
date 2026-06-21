@@ -53,8 +53,7 @@ export function statusPagamento(despesa) {
  * Restos a pagar (responsáveis) e saldo a receber (ofertantes/empresas) de um
  * conjunto de despesas, a partir do valor AINDA NÃO PAGO (proporcional).
  *  - restoApagar[chave]  = Σ restoDespesa × (pct/100)   (por responsável)
- *  - saldoReceber[chave] = contato ofertante → +resto; equipe → por integrante
- *    = planejado(recebidos) − recebido(distribuição); + total da equipe (`e:`)
+ *  - saldoReceber[chave] = ofertante contato (`c:`) ou equipe (`e:`) → +resto
  *  - porFornecedor[fid]  = { total, pago, resto }        (empresas)
  * Retorna { porChave:{chave:{restoApagar,saldoReceber}}, porFornecedor }.
  */
@@ -80,20 +79,10 @@ export function restosESaldos(despesas) {
       f.resto += resto;
     }
     if (resto <= 0.01) return;
-    // Saldo a receber por contato/equipe (integrantes).
+    // Saldo a receber do ofertante: equipe (nível da equipe) ou contato.
     if (d.ofertante_equipe_id) {
-      const recebidoPorChave = {};
-      parseLista(d.pagamentos_realizados).forEach((p) => {
-        parseLista(p.distribuicao).forEach((x) => {
-          if (x && x.chave) recebidoPorChave[x.chave] = (recebidoPorChave[x.chave] || 0) + (Number(x.valor) || 0);
-        });
-      });
-      parseLista(d.recebidos).forEach((rc) => {
-        if (!rc || !rc.chave) return;
-        const falta = Math.max(0, (Number(rc.valor) || 0) - (recebidoPorChave[rc.chave] || 0));
-        if (falta > 0.01) saldoReceber[rc.chave] = (saldoReceber[rc.chave] || 0) + falta;
-      });
-      saldoReceber["e:" + d.ofertante_equipe_id] = (saldoReceber["e:" + d.ofertante_equipe_id] || 0) + resto;
+      const ch = "e:" + d.ofertante_equipe_id;
+      saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
     } else if (d.ofertante_contato_id) {
       const ch = "c:" + d.ofertante_contato_id;
       saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;

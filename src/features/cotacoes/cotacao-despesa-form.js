@@ -18,7 +18,6 @@ import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta } from "./cotacao-util.js";
 import { ofertanteNome } from "../orcamentos/orcamento-util.js";
-import { integrantesDaEquipe } from "../equipes/equipe-util.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-select.js";
@@ -95,10 +94,6 @@ class CotacaoDespesaForm extends BaseElement {
             <label class="tx">Responsabilidade — % por participante (soma 100%)</label>
             <split-editor id="responsaveis"></split-editor>
           </div>
-          <div class="secao" id="secaoRecebidos" hidden>
-            <label class="tx">Recebido por integrante (R$)</label>
-            <split-editor id="recebidos"></split-editor>
-          </div>
         </div>
         <div slot="rodape">
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
@@ -127,7 +122,6 @@ class CotacaoDespesaForm extends BaseElement {
       selObra.value = this.cotacao.obra_id || (dataStore.obras()[0] || {}).id || "";
       selObra.addEventListener("change", () => this.atualizarResponsaveis());
       this.pintarResumo();
-      this.atualizarRecebidos();
     }
     this.atualizarResponsaveis();
 
@@ -182,14 +176,12 @@ class CotacaoDespesaForm extends BaseElement {
     sel.removeAttribute("error");
     this._ofertaSel = null;
     this.pintarResumo();
-    this.atualizarRecebidos();
   }
 
   onOfertaSelecionada(precoId) {
     this._ofertaSel = (this._ofertasMap && this._ofertasMap[precoId]) || null;
     this.$("#oferta").removeAttribute("error");
     this.pintarResumo();
-    this.atualizarRecebidos();
   }
 
   /** Nome da empresa (fornecedor) do contato ofertante. */
@@ -229,24 +221,6 @@ class CotacaoDespesaForm extends BaseElement {
     ed.limite = 100;
   }
 
-  /** Editor de recebidos (R$ por integrante) — só quando o ofertante é equipe. */
-  atualizarRecebidos() {
-    const secao = this.$("#secaoRecebidos");
-    const ed = this.$("#recebidos");
-    if (!secao || !ed) return;
-    const { preco, cotacao } = this.ofertaAtual();
-    if (preco && preco.equipe_id) {
-      secao.removeAttribute("hidden");
-      ed.modo = "valor";
-      ed.participantes = integrantesDaEquipe(preco.equipe_id);
-      ed.limite = totalOferta(preco, cotacao);
-      ed.itens = []; // membros mudam por oferta — começa vazio
-    } else {
-      secao.setAttribute("hidden", "");
-      ed.itens = [];
-    }
-  }
-
   async confirmar() {
     const alerta = this.$("#erro");
     if (alerta) alerta.mensagem = "";
@@ -270,30 +244,17 @@ class CotacaoDespesaForm extends BaseElement {
       return;
     }
 
-    let recebidos = [];
-    if (preco.equipe_id) {
-      recebidos = this.$("#recebidos").itens
-        .filter((x) => x.chave && Number(x.valor) > 0)
-        .map((x) => ({ chave: x.chave, valor: Number(x.valor) || 0 }));
-      const total = totalOferta(preco, cotacao);
-      const somaRec = recebidos.reduce((s, r) => s + (Number(r.valor) || 0), 0);
-      if (somaRec - total > 0.01) {
-        if (alerta) alerta.mensagem = `A soma dos valores recebidos (${moeda(somaRec)}) não pode passar do valor da despesa (${moeda(total)}).`;
-        return;
-      }
-    }
-
     const btn = this.$("#confirmar");
     btn.setAttribute("loading", "");
     try {
       // Cria a despesa E marca a oferta como registrada + fecha a cotação (servidor).
+      // A distribuição por integrante (equipe) é feita depois, em cada leva de pagamento.
       await dataStore.registrarDespesaOferta(
         cotacao.id,
         preco.id,
         obraId,
         this.$("#categoria").value,
-        responsaveis,
-        recebidos
+        responsaveis
       );
       const obra = dataStore.obra(obraId) || {};
       toastSucesso(`Despesa lançada em "${obra.nome || "obra"}".`);

@@ -113,14 +113,7 @@ class EquipeDetailView extends BaseElement {
     this._tabDados = alvo.querySelector("#tabDados");
     this._tabDados.columns = [
       { chave: "_nome", titulo: "Integrante" },
-      { chave: "_planejado", titulo: "Planejado", alinhar: "dir", formato: (v) => moeda(v) },
       { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
-      {
-        chave: "_saldo",
-        titulo: "Saldo a receber",
-        alinhar: "dir",
-        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
-      },
     ];
 
     alvo.querySelector("#addObra").addEventListener("click", () => this.adicionarObra());
@@ -129,7 +122,7 @@ class EquipeDetailView extends BaseElement {
     this._montado = true;
   }
 
-  /** Dados financeiros da equipe: total/pago/resto + planejado/recebido por integrante. */
+  /** Dados financeiros da equipe: total/pago/resto + recebido por integrante (das levas). */
   montarDados(eq) {
     const despesasEq = dataStore
       .todasDespesas()
@@ -137,15 +130,11 @@ class EquipeDetailView extends BaseElement {
     let total = 0;
     let pago = 0;
     let resto = 0;
-    const planejado = {};
     const recebido = {};
     despesasEq.forEach((d) => {
       total += Number(d.valor) || 0;
       pago += totalRealizado(d);
       resto += restoDespesa(d);
-      parseLista(d.recebidos).forEach((r) => {
-        if (r && r.chave) planejado[r.chave] = (planejado[r.chave] || 0) + (Number(r.valor) || 0);
-      });
       parseLista(d.pagamentos_realizados).forEach((p) => {
         parseLista(p.distribuicao).forEach((x) => {
           if (x && x.chave) recebido[x.chave] = (recebido[x.chave] || 0) + (Number(x.valor) || 0);
@@ -153,12 +142,8 @@ class EquipeDetailView extends BaseElement {
       });
     });
     this._tabDados.rows = integrantesDaEquipe(eq.id)
-      .map((p) => {
-        const pl = planejado[p.chave] || 0;
-        const rc = recebido[p.chave] || 0;
-        return { _nome: p.nome, _planejado: pl, _recebido: rc, _saldo: Math.max(0, pl - rc) };
-      })
-      .filter((r) => r._planejado > 0.01 || r._recebido > 0.01);
+      .map((p) => ({ _nome: p.nome, _recebido: recebido[p.chave] || 0 }))
+      .filter((r) => r._recebido > 0.01);
     const resumo = this.shadowRoot.querySelector("#resumoEq");
     if (resumo) {
       resumo.innerHTML = `<span>Total ${moeda(total)}</span><span>· Pago ${moeda(pago)}</span><span>· Saldo a receber ${moeda(resto)}</span>`;

@@ -5,9 +5,9 @@
  * O pagamento é por **lançamentos parciais (levas)**: cada leva tem **quem pagou**
  * (participante), valor e data; status A pagar / Em pagamento / Pago é derivado e o
  * "quem pagou quanto" (acerto) é **derivado das levas** (não há editor manual).
- * Equipe → cada leva desmembra entre integrantes. Responsabilidade / Recebido
- * planejado / Subclassificação / Observação seguem editáveis. Despesas legadas (sem
- * `preco_id`) mantêm Item/Valor editáveis. Reusa ui-modal/ui-input/ui-select/split-editor.
+ * Equipe → cada leva desmembra entre integrantes (a distribuição vive só na leva).
+ * Responsabilidade / Subclassificação / Observação seguem editáveis. Despesas legadas
+ * (sem `preco_id`) mantêm Item/Valor editáveis. Reusa ui-modal/ui-input/ui-select/split-editor.
  *
  * Propriedades: .despesa, .categorias = [{id,nome,cor}]
  * Eventos: "fechar".
@@ -154,10 +154,6 @@ class DespesaDetail extends BaseElement {
               <ui-button id="lancarPag" variant="secundario" tamanho="sm">＋ Lançar pagamento</ui-button>
             </div>
           </div>
-          ${eqp ? `<div class="secao">
-            <label class="tx">Recebido por integrante — planejado (R$)</label>
-            <split-editor id="recebidos"></split-editor>
-          </div>` : ""}
           <div class="secao">
             <label class="tx">Responsabilidade — % por participante (soma 100%)</label>
             <split-editor id="responsaveis"></split-editor>
@@ -356,36 +352,13 @@ class DespesaDetail extends BaseElement {
     sel.removeAttribute("error");
   }
 
-  /** Valor da despesa (input no modo legado; fixo no modo oferta). */
-  valorAtual() {
-    const inp = this.$("#valor");
-    return inp ? Number(inp.value) || 0 : Number(this.despesa.valor) || 0;
-  }
 
-  /** Popula os editores de recebido planejado (R$) e responsabilidade (%). */
+  /** Popula o editor de responsabilidade (%). */
   preencherSplits() {
-    const parts = dataStore.participantesDaObra(this.despesa.obra_id);
-
-    // Recebido por integrante — planejado (só quando o ofertante é equipe).
-    const rec = this.$("#recebidos");
-    if (rec && this.despesa.ofertante_equipe_id) {
-      rec.modo = "valor";
-      rec.participantes = integrantesDaEquipe(this.despesa.ofertante_equipe_id);
-      rec.limite = this.valorAtual();
-      rec.itens = parseLista(this.despesa.recebidos).map((r) => ({
-        chave: r.chave,
-        valor: Number(r.valor) || 0,
-      }));
-    }
-    // Mantém o limite do recebido sincronizado com o valor digitado (modo legado).
-    const valInput = this.$("#valor");
-    if (valInput && rec && this.despesa.ofertante_equipe_id) {
-      valInput.addEventListener("input", () => (rec.limite = Number(valInput.value) || 0));
-    }
     const rp = this.$("#responsaveis");
     if (rp) {
       rp.modo = "pct";
-      rp.participantes = parts;
+      rp.participantes = dataStore.participantesDaObra(this.despesa.obra_id);
       rp.itens = parseLista(this.despesa.responsaveis).map((r) => ({
         chave: r.chave,
         valor: Number(r.pct) || 0,
@@ -449,20 +422,6 @@ class DespesaDetail extends BaseElement {
       observacao: this.$("#observacao").value.trim(),
       responsaveis,
     };
-
-    // Recebidos por integrante (só quando o ofertante é equipe).
-    const rec = this.$("#recebidos");
-    if (rec && this.despesa.ofertante_equipe_id) {
-      const recebidos = rec.itens
-        .filter((x) => x.chave && Number(x.valor) > 0)
-        .map((x) => ({ chave: x.chave, valor: Number(x.valor) || 0 }));
-      const somaRec = recebidos.reduce((s, r) => s + (Number(r.valor) || 0), 0);
-      if (somaRec - valor > 0.01) {
-        if (alerta) alerta.mensagem = `A soma dos valores recebidos (${moeda(somaRec)}) não pode passar do valor da despesa (${moeda(valor)}).`;
-        return;
-      }
-      dados.recebidos = recebidos;
-    }
 
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");
