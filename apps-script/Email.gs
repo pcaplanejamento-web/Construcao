@@ -5,7 +5,7 @@
  * Script Properties do projeto. Configure (Editor do Apps Script → Project
  * Settings → Script Properties), após verificar o domínio no Resend:
  *   - RESEND_API_KEY   = re_...               (a API key do Resend)
- *   - EMAIL_REMETENTE  = Dataobra <notificacoes@envios.dataobra.com.br>
+ *   - EMAIL_REMETENTE  = Dataobra <notificacoes@dattaobra.com.br>
  *   - EMAIL_TESTE      = seu@email.com         (só p/ testarEmailResend no editor)
  *
  * Uso interno (alertas/relatórios/link público):
@@ -17,7 +17,7 @@ function enviarEmailResend(para, assunto, html, opts) {
   const props = PropertiesService.getScriptProperties();
   const key = props.getProperty("RESEND_API_KEY");
   const remetente =
-    props.getProperty("EMAIL_REMETENTE") || "Dataobra <notificacoes@envios.dataobra.com.br>";
+    props.getProperty("EMAIL_REMETENTE") || "Dataobra <notificacoes@dattaobra.com.br>";
   if (!key) lancar(ERRO.VALIDACAO, "RESEND_API_KEY não configurada nas Script Properties.");
   const destino = String(para || "").trim();
   if (!destino) lancar(ERRO.VALIDACAO, "Destinatário do e-mail vazio.");
