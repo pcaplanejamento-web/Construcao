@@ -138,6 +138,19 @@ const SCHEMA = {
     colunas: ["id", "usuario_id", "nome", "criado_em", "atualizado_em"],
   },
 
+  ITENS: {
+    aba: "Itens", // catálogo de itens (cada um Material ou Serviço)
+    colunas: [
+      "id",
+      "usuario_id",
+      "nome",
+      "classificacao", // Material | Serviço
+      "ativo",
+      "criado_em",
+      "atualizado_em",
+    ],
+  },
+
   COTACOES: {
     aba: "Cotacoes",
     colunas: [
@@ -202,6 +215,9 @@ const STATUS_OBRA = ["ativa", "pausada", "concluida"];
 
 /** Status de cotação válidos. */
 const STATUS_COTACAO = ["aberta", "fechada"];
+
+/** Classificações de item (fixas). Toda despesa/item é Material ou Serviço. */
+const CLASSIFICACOES_ITEM = ["Material", "Serviço"];
 
 /** Cargos obrigatórios (fixos/built-in). A lógica condicional depende destes nomes. */
 const CARGOS_OBRIGATORIOS = [

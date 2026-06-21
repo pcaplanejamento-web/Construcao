@@ -100,6 +100,24 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 Categorias semente (`GLOBAL`) são criadas no bootstrap. A listagem de um usuário
 = categorias `GLOBAL` + as próprias.
 
+> **Na UI**, a entidade `Categorias` é exibida como **Subclassificação** (lista livre,
+> aba "Subclassificações" da página **Itens**). A estrutura da aba não mudou — só o rótulo.
+> As classificações fixas (Material/Serviço) ficam em `Itens.classificacao`, não aqui.
+
+## Aba `Itens` (catálogo)
+Cada item é classificado como **Material** ou **Serviço** (constante
+`CLASSIFICACOES_ITEM = ["Material","Serviço"]`). Despesas e cotações referenciarão
+um item (Fase 2). Por usuário.
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| usuario_id | UUID | FK → Usuarios.id (dono) |
+| nome | string | nome do item |
+| classificacao | string | `Material` \| `Serviço` (fixas) |
+| ativo | boolean | exclusão lógica (ativo=false) |
+| criado_em / atualizado_em | ISO datetime | |
+
 ## Módulo Compras
 
 Tudo é **por usuário** (`usuario_id` = dono). Cotações comparam ofertas de

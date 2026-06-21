@@ -44,7 +44,7 @@ A API é um **único Web App** do Apps Script. Um `doPost` despacha por `action`
 ### Estado inicial (cache-first)
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, participantesPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cargos:[...], cotacoes:[...], precosPorCotacao:{cotacaoId:[...]}, historicoPorCotacao:{cotacaoId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
+| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, participantesPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cargos:[...], itens:[...], cotacoes:[...], precosPorCotacao:{cotacaoId:[...]}, historicoPorCotacao:{cotacaoId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
 
 ### Obras (próprias + compartilhadas)
 Cada obra inclui `ehDono` (bool), `dono_nome`/`dono_email` e `total_gasto`.
@@ -135,6 +135,14 @@ para dono **e** colaboradores.
 | `cargos.criar` | `{ nome }` | `{ cargo }` (nome único; log de criação) |
 | `cargos.atualizar` | `{ id, nome }` | `{ cargo }` (só extras) |
 | `cargos.remover` | `{ id }` | `{ id }` (só extras) |
+
+### Itens (catálogo Material/Serviço)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `itens.listar` | `{}` | `{ itens:[{id,nome,classificacao,ativo,criado_em,atualizado_em}] }` (ativos, por nome) |
+| `itens.criar` | `{ nome, classificacao }` | `{ item }` (`classificacao` ∈ `Material`/`Serviço`; default `Material`) |
+| `itens.atualizar` | `{ id, nome?, classificacao? }` | `{ item }` |
+| `itens.remover` | `{ id }` | `{ id }` (remoção lógica, `ativo=false`) |
 
 ### Compras — Cotações + ofertas
 | Action | `data` | Retorno |

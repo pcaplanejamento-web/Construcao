@@ -29,6 +29,7 @@ const ESTADO_VAZIO = {
   fornecedores: [], // módulo Compras (empresas/lojas do usuário)
   contatos: [], // módulo Compras (pessoas do usuário)
   cargos: [], // cargos de contatos (fixos + extras do usuário)
+  itens: [], // catálogo de itens (cada um Material ou Serviço)
   cotacoes: [], // módulo Compras (necessidades a cotar)
   precosPorCotacao: {}, // cotacaoId -> [oferta]
   historicoPorCotacao: {}, // cotacaoId -> [ponto de histórico de preço]
@@ -61,6 +62,7 @@ function persistir() {
       fornecedores: s.fornecedores,
       contatos: s.contatos,
       cargos: s.cargos,
+      itens: s.itens,
       cotacoes: s.cotacoes,
       precosPorCotacao: s.precosPorCotacao,
       historicoPorCotacao: s.historicoPorCotacao,
@@ -114,6 +116,7 @@ function _aplicarSnapshot(d) {
     fornecedores: d.fornecedores || [],
     contatos: d.contatos || [],
     cargos: d.cargos || [],
+    itens: d.itens || [],
     cotacoes: d.cotacoes || [],
     precosPorCotacao: d.precosPorCotacao || {},
     historicoPorCotacao: d.historicoPorCotacao || {},
@@ -158,6 +161,8 @@ const fornecedoresAtivos = () => store.get().fornecedores.filter((f) => f.ativo 
 const contatos = () => store.get().contatos;
 const contatosAtivos = () => store.get().contatos.filter((c) => c.ativo !== false);
 const cargos = () => store.get().cargos;
+const itens = () => store.get().itens;
+const itensAtivos = () => store.get().itens.filter((i) => i.ativo !== false);
 const cotacoes = () => store.get().cotacoes;
 const cotacao = (id) => store.get().cotacoes.find((c) => String(c.id) === String(id)) || null;
 const precosDaCotacao = (cotacaoId) => store.get().precosPorCotacao[cotacaoId] || [];
@@ -538,6 +543,36 @@ async function removerCargo(id) {
   bus.emit(EVENTOS.CONTATOS, { tipo: "cargo-removido" });
 }
 
+/* -------------------------- Mutações: itens -------------------------- */
+
+async function criarItem(dados) {
+  const r = await api.call("itens.criar", dados);
+  const s = store.get();
+  store.set({ itens: [...s.itens, r.item] });
+  persistir();
+  bus.emit(EVENTOS.ITENS, { tipo: "criado" });
+  return r.item;
+}
+
+async function atualizarItem(id, dados) {
+  const r = await api.call("itens.atualizar", { id, ...dados });
+  const s = store.get();
+  store.set({
+    itens: s.itens.map((i) => (String(i.id) === String(id) ? r.item : i)),
+  });
+  persistir();
+  bus.emit(EVENTOS.ITENS, { tipo: "atualizado" });
+  return r.item;
+}
+
+async function removerItem(id) {
+  await api.call("itens.remover", { id });
+  const s = store.get();
+  store.set({ itens: s.itens.filter((i) => String(i.id) !== String(id)) });
+  persistir();
+  bus.emit(EVENTOS.ITENS, { tipo: "removido" });
+}
+
 /* ----------------------- Mutações: cotações -------------------------- */
 
 async function criarCotacao(dados) {
@@ -708,7 +743,8 @@ export const dataStore = {
   // getters
   usuario, config, categorias, usuarios, obras, obra, despesas, resumo, categoriasDaObra,
   participantesDaObra,
-  fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, cotacoes, cotacao, precosDaCotacao,
+  fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, itens, itensAtivos,
+  cotacoes, cotacao, precosDaCotacao,
   historicoDaCotacao,
   // mutações
   criarObra, atualizarObra, removerObra,
@@ -719,6 +755,7 @@ export const dataStore = {
   criarFornecedor, atualizarFornecedor, removerFornecedor,
   criarContato, atualizarContato, removerContato,
   criarCargo, atualizarCargo, removerCargo,
+  criarItem, atualizarItem, removerItem,
   criarCotacao, atualizarCotacao, removerCotacao,
   adicionarPreco, atualizarPreco, removerPreco, escolherPreco, registrarDespesaOferta,
   adminCriarUsuario, adminAtualizarUsuario,

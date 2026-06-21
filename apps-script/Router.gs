@@ -70,6 +70,12 @@ const ROTAS = {
   "cargos.atualizar": { fn: cargosAtualizar },
   "cargos.remover": { fn: cargosRemover },
 
+  // Itens (catálogo Material/Serviço)
+  "itens.listar": { fn: itensListar },
+  "itens.criar": { fn: itensCriar },
+  "itens.atualizar": { fn: itensAtualizar },
+  "itens.remover": { fn: itensRemover },
+
   // Compras — Cotações + ofertas
   "cotacoes.listar": { fn: cotacoesListar },
   "cotacoes.criar": { fn: cotacoesCriar },

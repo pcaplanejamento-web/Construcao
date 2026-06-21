@@ -34,7 +34,7 @@ sobem por `CustomEvent`**.
 |------------|---------------|-----------|
 | `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Altura de viewport fixa: o conteúdo rola no `main` → **sidebar com altura constante** em todas as telas. Esconde header/sidebar no login. |
 | `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky): marca, **botão sanduíche** (recolhe no desktop / drawer no mobile), **alternador de tema** (sol/lua), chip do usuário → `#/perfil`, Sair. Ícones via `ui-icon`. |
-| `app-sidebar` | attr `aberto` (drawer mobile), `recolhido` (régua de ícones no desktop); evento `navegou` | Menu lateral em abas (Obras, Fornecedores, Contatos, Cotações, Classificações, Administração via `role-guard`, Perfil). `template()` itera o array `ITENS`. Ao recolher, os rótulos somem e o ícone fica no mesmo lugar; altura sempre 100% do conteúdo. Preferência persistida. |
+| `app-sidebar` | attr `aberto` (drawer mobile), `recolhido` (régua de ícones no desktop); evento `navegou` | Menu lateral em abas (Obras, Fornecedores, Contatos, Cotações, Itens, Administração via `role-guard`, Perfil). `template()` itera o array `ITENS`. Ao recolher, os rótulos somem e o ícone fica no mesmo lugar; altura sempre 100% do conteúdo. Preferência persistida. |
 | `app-loader` | attr `texto` | Tela de carregamento inicial (overlay) exibida enquanto o snapshot carrega. |
 | `role-guard` | attr `role="admin"\|"usuario"` | Mostra/oculta o slot conforme o papel (UX). |
 
@@ -90,11 +90,12 @@ sobem por `CustomEvent`**.
 | `despesa-filtros` | `.categorias`; evento `filtrar` ({texto, categoria}) | Pesquisa por item + filtro por classificação (aplicado só na tabela). |
 | `category-badge` | `nome`, `cor` | Reutiliza `ui-badge`. |
 
-### Classificações — `features/categorias/`
+### Itens — `features/itens/` (+ `features/categorias/categoria-form.js`)
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `categorias-view` | — | Rota `#/categorias`. Cada usuário cria/edita/remove suas classificações; mostra as globais como referência. Reusa `ui-data-table` + `category-badge`. |
-| `categoria-form` | `.categoria`; eventos `salvo`, `fechar` | Modal criar/editar classificação (nome + cor). Emite `EVENTOS.CATEGORIAS`. |
+| `itens-view` | — | Rota `#/itens`. `ui-tabs`: **Itens** (catálogo; tabela com badge Material/Serviço; CRUD via `item-form`) e **Subclassificações** (as categorias livres: minhas com CRUD + padrão como referência, reusa `categoria-form`). |
+| `item-form` | `.item`; eventos `salvo`, `fechar` | Modal criar/editar item (nome + `ui-select` Classificação Material/Serviço). Emite `EVENTOS.ITENS`. Espelha `categoria-form`. |
+| `categoria-form` | `.categoria`; eventos `salvo`, `fechar` | Modal criar/editar **subclassificação** (nome + cor). Emite `EVENTOS.CATEGORIAS`. |
 
 > Ao criar/editar uma classificação, `EVENTOS.CATEGORIAS` faz a `obra-detail-view`
 > recarregar as categorias (atualiza o select de despesa e os rótulos da tabela).
