@@ -17,6 +17,9 @@ const ROTAS = {
   // Estado inicial completo (carregamento único + cache no cliente)
   "dados.snapshot": { fn: dadosSnapshot },
 
+  // E-mail do app (Resend) — teste envia só para o próprio e-mail do usuário.
+  "email.teste": { fn: emailTeste },
+
   // Obras
   "obras.listar": { fn: obrasListar },
   "obras.obter": { fn: obrasObter },

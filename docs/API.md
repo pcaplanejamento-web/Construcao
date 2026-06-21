@@ -204,6 +204,18 @@ para dono **e** colaboradores.
 > A antiga validação "Pedreiro → superior" foi **removida** de `contatos.*`;
 > o Pedreiro agora é organizado por Equipes. Snapshot inclui `equipes`.
 
+### E-mail do app (Resend)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `email.teste` | `{}` | `{ ok, id, para }` — envia um e-mail de teste **só para o próprio e-mail** do usuário logado |
+
+> **Envio** (`Email.gs` → `enviarEmailResend(para, assunto, html)`): chama a API do Resend
+> via `UrlFetchApp`. A **chave nunca fica no código/frontend** — vem das **Script Properties**:
+> `RESEND_API_KEY`, `EMAIL_REMETENTE` (ex.: `Dataobra <notificacoes@envios.dataobra.com.br>`),
+> `EMAIL_TESTE` (só p/ `testarEmailResend()` no editor). Domínio de envio recomendado:
+> subdomínio `envios.dataobra.com.br` (isola SPF/DKIM/DMARC da caixa pessoal). Helper interno
+> reutilizável por futuros alertas/relatórios/link público.
+
 > **Registrar como despesa** (`cotacoes.registrarDespesa`): **único** caminho para
 > criar uma despesa (não há mais cadastro manual). Cria a despesa na obra (item =
 > descrição da cotação, valor = `valor_unit × quantidade` — oferta **inteira**),
