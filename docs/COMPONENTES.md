@@ -120,7 +120,7 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `fornecedores-view` | — | Rota `#/fornecedores`. CRUD de fornecedores (nome, telefone, e-mail, classificação). Linha **clicável** → abre a página do fornecedor. Reusa `ui-data-table` + `category-badge`. |
+| `fornecedores-view` | — | Rota `#/fornecedores`. `ui-tabs` **[Fornecedores \| Classificação]**. **Fornecedores**: CRUD (nome, telefone, e-mail, classificação); linha **clicável** → página do fornecedor. **Classificação**: gerencia a entidade `categoria` (a MESMA "subclassificação" dos itens — o fornecedor usa `categoria_id` como Classificação), espelhando a aba Subclassificações de itens (reusa `categoria-form` + `dataStore.*Categoria` + banner `vinculosDaSubclassificacao`). |
 | `fornecedor-detail-view` | attr `id` (rota `#/fornecedores/:id`) | Página do fornecedor: cabeçalho + `ui-tabs` com **Contatos**, **Ofertas**, **Orçamentos** e **Dados** (por obra: **Recebido / Saldo a receber**; clique → obra). |
 | `fornecedor-form` | `.fornecedor`; eventos `salvo`, `fechar` | Modal criar/editar (nome*, telefone, e-mail, cnpj, classificação, observação). |
 | `contatos-view` | — | Rota `#/contatos`. `ui-tabs`: **Contatos** (tabela clicável), **Equipes** (grade de `equipe-card` + "+ Nova equipe") e **Cargos** (fixos + extras, CRUD via `cargo-form`). |
