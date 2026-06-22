@@ -433,8 +433,17 @@ async function removerDespesa(obraId, id) {
   try {
     const r = await api.call("despesas.remover", { id });
     _setDespesasObra(obraId, despesas(obraId), r.resumo);
+    // Reverte o registro: oferta desvinculada + cotação reaberta (se houver).
+    if (r.preco) _mesclarOferta(r.preco);
+    if (r.cotacao) {
+      const s = store.get();
+      store.set({
+        cotacoes: s.cotacoes.map((c) => (String(c.id) === String(r.cotacao.id) ? r.cotacao : c)),
+      });
+    }
     persistir();
     bus.emit(EVENTOS.DESPESAS, { tipo: "removida", obra_id: obraId });
+    if (r.preco) bus.emit(EVENTOS.COTACOES, { tipo: "desvinculada" });
   } catch (e) {
     _setDespesasObra(obraId, backup);
     throw e;

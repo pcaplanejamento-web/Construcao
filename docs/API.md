@@ -91,7 +91,7 @@ para dono **e** colaboradores.
 | `despesas.resumo` | `{ obra_id }` | `{ total, qtd, orcamento, saldo, por_subclassificacao:[{categoria_id,nome,cor,total}], por_classificacao:[{nome,cor,total}], por_categoria (alias de por_subclassificacao) }` |
 | `despesas.criar` | `{ obra_id, item_id, valor, categoria_id?, data, observacao?, pago?, pagamentos?, responsaveis? }` | `{ despesa, resumo }` — **`item_id` obrigatório**. ⚠️ O front **não** usa mais esta action: despesas são criadas só por `cotacoes.registrarDespesa` (oferta). Mantida no servidor por segurança/legado. |
 | `despesas.atualizar` | `{ id, ...campos }` (`item_id` re-deriva nome+classificação; inclui `responsaveis`; `pagamentos` é derivado das levas, não enviado) | `{ despesa, resumo }` |
-| `despesas.remover` | `{ id }` | `{ id, resumo }` |
+| `despesas.remover` | `{ id }` | `{ id, resumo, preco, cotacao }` — se a despesa veio de uma **oferta** (`preco_id`), **reverte o registro**: desvincula a oferta (`despesa_id=""`, `escolhido=false`) e **reabre a cotação** (`status="aberta"`), devolvendo a oferta/cotação atualizadas (`preco`/`cotacao`; `null` se não havia). |
 | `despesas.lancarPagamento` | `{ despesa_id, valor, pagador, data?, distribuicao? }` | `{ despesa, resumo }` — lança um pagamento **parcial (leva)** ao ofertante. `pagador` (chave de participante) é **obrigatório**; o servidor **deriva `pagamentos`** (quem pagou quanto → acerto) somando as levas por `pagador`. Deriva o recebedor (equipe → líder + exige `distribuicao`; senão contato ofertante + empresa) e carimba data/autor. Valida `Σrealizados+valor ≤ valor` e (equipe) `Σdistribuicao ≤ valor` |
 | `despesas.removerPagamento` | `{ despesa_id, lancamento_id }` | `{ despesa, resumo }` — remove uma leva lançada |
 

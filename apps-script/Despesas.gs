@@ -249,16 +249,43 @@ function despesasAtualizar(data, sessao) {
   });
 }
 
-/** despesas.remover -> { id, resumo }. */
+/** despesas.remover -> { id, resumo, preco, cotacao }. Reverte o registro: ao
+ * excluir uma despesa vinda de OFERTA, desvincula a oferta (limpa despesa_id +
+ * escolhido) e REABRE a cotação — deixando-a disponível p/ novo registro. */
 function despesasRemover(data, sessao) {
   const id = data && data.id;
   const atual = _despesaAcessivel(id, sessao.usuario_id);
 
   return comLock(function () {
     repoRemover(SCHEMA.DESPESAS, "id", id);
+
+    // Reverte o que cotacoesRegistrarDespesa fez na oferta de origem.
+    let preco = null;
+    let cotacao = null;
+    const precoId = String(atual.preco_id || "");
+    if (precoId) {
+      const p = repoEncontrar(SCHEMA.COTACAO_PRECOS, function (x) {
+        return String(x.id) === String(precoId);
+      });
+      if (p && String(p.despesa_id || "") === String(id)) {
+        preco = repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", precoId, {
+          despesa_id: "",
+          escolhido: false,
+        });
+        if (String(p.cotacao_id || "")) {
+          cotacao = repoAtualizar(SCHEMA.COTACOES, "id", p.cotacao_id, {
+            status: "aberta",
+            atualizado_em: agoraIso(),
+          });
+        }
+      }
+    }
+
     return {
       id: id,
       resumo: _calcularResumo(atual.obra_id, sessao.usuario_id),
+      preco: preco,
+      cotacao: cotacao,
     };
   });
 }

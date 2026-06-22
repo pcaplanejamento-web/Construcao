@@ -310,6 +310,9 @@ cotação e/ou orçamento. `cotacao_id` e `orcamento_id` são **opcionais**.
 > ofertas, as colunas **Obra** e **Status** (A pagar/Em pagamento/Pago) são **derivadas**
 > da despesa vinculada; a coluna **Despesa** mostra o id dela. Qualquer tabela de ofertas
 > tem a ação **Registrar** (abre o banner único Registrar Despesa → escolhe a obra).
+> **Excluir a despesa reverte o registro:** desvincula a oferta (`despesa_id=""`,
+> `escolhido=false`) e reabre a cotação (`status="aberta"`) — a oferta fica disponível
+> para novo registro.
 
 > **Oferta única (cotação × orçamento):** a oferta é a MESMA linha. Quando criada
 > num orçamento, ganha `orcamento_id` (+ a cotação escolhida em `cotacao_id`), então
