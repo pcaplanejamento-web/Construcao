@@ -16,6 +16,7 @@ import { moeda } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { balancos } from "../despesas/despesa-split.js";
+import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { colunasOferta } from "../orcamentos/orcamento-util.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import "../../components/ui-card.js";
@@ -115,7 +116,8 @@ class FornecedorDetailView extends BaseElement {
 
     this._tabContatos = alvo.querySelector("#tabContatos");
     this._tabContatos.columns = [
-      { chave: "nome", titulo: "Contato" },
+      { chave: "nome", titulo: "Contato", formato: (v) => avatarNomeHtml(v) },
+      { chave: "telefone", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },
       { chave: "cargo", titulo: "Cargo", formato: (v) => v || "—" },
       { chave: "telefone", titulo: "Telefone", formato: (v) => v || "—" },
       { chave: "email", titulo: "E-mail", formato: (v) => v || "—" },
@@ -221,6 +223,7 @@ class FornecedorDetailView extends BaseElement {
         </div>
       </div>
       <div class="acoes-topo">
+        ${whatsappBtnHtml(f.telefone, 42)}
         <ui-button id="editarForn" variant="secundario">Editar fornecedor</ui-button>
       </div>
     `;

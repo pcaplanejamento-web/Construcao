@@ -14,6 +14,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { balancos } from "../despesas/despesa-split.js";
+import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { colunasOferta } from "../orcamentos/orcamento-util.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
@@ -45,6 +46,7 @@ class ContatoDetailView extends BaseElement {
       #conteudo { display: flex; flex-direction: column; gap: var(--esp-5); }
       .topo { display: flex; align-items: flex-start; justify-content: space-between;
         gap: var(--esp-3); flex-wrap: wrap; }
+      .acoes-topo { display: flex; gap: var(--esp-2); flex-wrap: wrap; align-items: center; }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm);
         display: flex; gap: var(--esp-2); flex-wrap: wrap; align-items: center; margin-top: var(--esp-1); }
@@ -129,7 +131,8 @@ class ContatoDetailView extends BaseElement {
 
     this._tabForn = alvo.querySelector("#tabForn");
     this._tabForn.columns = [
-      { chave: "nome", titulo: "Fornecedor" },
+      { chave: "nome", titulo: "Fornecedor", formato: (v) => avatarNomeHtml(v) },
+      { chave: "telefone", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },
       { chave: "telefone", titulo: "Telefone", formato: (v) => v || "—" },
       { chave: "email", titulo: "E-mail", formato: (v) => v || "—" },
       { chave: "cnpj", titulo: "CNPJ", formato: (v) => v || "—" },
@@ -238,7 +241,10 @@ class ContatoDetailView extends BaseElement {
           ${partes.length ? `<span>${partes.join(" · ")}</span>` : ""}
         </div>
       </div>
-      <div><ui-button id="editar" variant="secundario">Editar contato</ui-button></div>
+      <div class="acoes-topo">
+        ${whatsappBtnHtml(c.telefone, 42)}
+        <ui-button id="editar" variant="secundario">Editar contato</ui-button>
+      </div>
     `;
     topo.querySelector("#editar").addEventListener("click", () => this.editar());
   }

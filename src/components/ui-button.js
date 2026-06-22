@@ -40,9 +40,11 @@ class UiButton extends BaseElement {
         white-space: nowrap;
       }
       button:disabled { opacity: .6; cursor: not-allowed; }
-      /* Animação de clique (padrão p/ TODOS os botões): afunda rápido ao pressionar,
-         dando a sensação tátil do clique. Sobrepõe o translateY do hover. */
-      button:not(:disabled):active { transform: scale(.96); transition-duration: 60ms; }
+      /* Animação de clique (padrão p/ TODOS os botões): afunda rápido e a sombra
+         "fecha" (vira um halo curto e mais escuro), dando a sensação tátil do
+         pressionar. Sobrepõe o translateY/sombra do hover. */
+      button:not(:disabled):active { transform: scale(.96); transition-duration: 80ms;
+        box-shadow: 0 1px 3px rgba(16, 24, 40, .12), 0 2px 8px -2px rgba(16, 24, 40, .22); }
       :host([tamanho="sm"]) button { height: 34px; font-size: var(--fs-sm); padding: 0 var(--esp-3); }
 
       .primario { background: var(--grad-primaria); color: #fff;

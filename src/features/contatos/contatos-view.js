@@ -9,7 +9,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { abrirBannerVinculos, vinculosDoContato, vinculosDoCargo } from "../shared/vinculos.js";
-import { avatarNomeHtml, corAvatar } from "../shared/avatar.js";
+import { avatarNomeHtml, corAvatar, whatsappBtnHtml } from "../shared/avatar.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -134,6 +134,7 @@ class ContatosView extends BaseElement {
         titulo: "Contato",
         formato: (v) => avatarNomeHtml(v),
       },
+      { chave: "telefone", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },
       {
         chave: "cargo",
         titulo: "Cargo",

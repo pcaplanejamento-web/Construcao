@@ -16,7 +16,7 @@ import {
   vinculosDoFornecedor,
   vinculosDaSubclassificacao,
 } from "../shared/vinculos.js";
-import { avatarNomeHtml } from "../shared/avatar.js";
+import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -116,6 +116,7 @@ class FornecedoresView extends BaseElement {
         titulo: "Fornecedor",
         formato: (v) => avatarNomeHtml(v),
       },
+      { chave: "telefone", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },
       { chave: "telefone", titulo: "Telefone", formato: (v) => v || "—" },
       { chave: "email", titulo: "E-mail", formato: (v) => v || "—" },
       {

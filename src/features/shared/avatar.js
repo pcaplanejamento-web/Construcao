@@ -37,3 +37,19 @@ export function avatarNomeHtml(nome) {
     nome || "—"
   }</span></span>`;
 }
+
+/**
+ * Botão de WhatsApp do contato/fornecedor — acompanha o nome em todo o sistema.
+ * Sem telefone → cinza opaco e inativo. Retorna HTML (link/`<a>`), sem componente
+ * novo. `onclick` para no clique (não dispara o clique da linha em tabelas).
+ */
+export function whatsappBtnHtml(telefone, tam = 38) {
+  const base = `width:${tam}px;height:${tam}px;flex:none;border-radius:var(--raio-md);display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box`;
+  const icone = `<ui-icon name="whatsapp" size="18"></ui-icon>`;
+  const num = String(telefone || "").replace(/\D/g, "");
+  if (!num) {
+    return `<span title="Sem telefone cadastrado" onclick="event.stopPropagation()" style="${base};background:var(--cor-superficie-2);border:1px solid var(--cor-borda);color:var(--cor-texto-fraco);opacity:.5;cursor:not-allowed">${icone}</span>`;
+  }
+  const tel = num.length <= 11 ? "55" + num : num; // assume Brasil quando sem DDI
+  return `<a href="https://wa.me/${tel}" target="_blank" rel="noopener" title="Abrir no WhatsApp" onclick="event.stopPropagation()" style="${base};background:rgba(37,211,102,.14);border:1px solid rgba(37,211,102,.4);color:#1fa855;text-decoration:none">${icone}</a>`;
+}
