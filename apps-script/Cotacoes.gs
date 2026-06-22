@@ -219,6 +219,10 @@ function cotacoesAdicionarPreco(data, sessao) {
       editor_nome: nomeUsuario,
       orcamento_id: orcamentoId,
       equipe_id: equipeId,
+      // Quantitativo e desconto PRÓPRIOS da oferta (vazios = comportamento legado).
+      quantidade: Number(data && data.quantidade) > 0 ? Number(data.quantidade) : "",
+      valor_unit_desconto:
+        Number(data && data.valor_unit_desconto) > 0 ? Number(data.valor_unit_desconto) : "",
     };
     repoInserir(SCHEMA.COTACAO_PRECOS, preco);
     const historico = _logPreco(preco); // ponto inicial da evolução
@@ -248,6 +252,11 @@ function cotacoesAtualizarPreco(data, sessao) {
   if (data.prazo_entrega !== undefined)
     patch.prazo_entrega = String(data.prazo_entrega);
   if (data.observacao !== undefined) patch.observacao = String(data.observacao);
+  if (data.quantidade !== undefined)
+    patch.quantidade = Number(data.quantidade) > 0 ? Number(data.quantidade) : "";
+  if (data.valor_unit_desconto !== undefined)
+    patch.valor_unit_desconto =
+      Number(data.valor_unit_desconto) > 0 ? Number(data.valor_unit_desconto) : "";
   patch.atualizado_em = agoraIso();
   patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
@@ -312,8 +321,15 @@ function cotacoesRegistrarDespesa(data, sessao) {
   if (!obraId) lancar(ERRO.VALIDACAO, "Selecione a obra.");
   _obraAcessivel(obraId, sessao.usuario_id);
 
-  const qtd = Number(cotacao.quantidade) > 0 ? Number(cotacao.quantidade) : 1;
-  const valor = (Number(preco.valor_unit) || 0) * qtd;
+  // Quantidade e valor unitário PRÓPRIOS da oferta (fallback ao legado da cotação).
+  // Valor FINAL = unitário com desconto (se houver) × quantidade.
+  const qtd = Number(preco.quantidade) > 0
+    ? Number(preco.quantidade)
+    : (Number(cotacao.quantidade) > 0 ? Number(cotacao.quantidade) : 1);
+  const unit = Number(preco.valor_unit_desconto) > 0
+    ? Number(preco.valor_unit_desconto)
+    : (Number(preco.valor_unit) || 0);
+  const valor = unit * qtd;
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Valor da oferta inválido.");
   const item = String(cotacao.descricao || "").trim() || "Cotação";
 
@@ -335,7 +351,18 @@ function cotacoesRegistrarDespesa(data, sessao) {
     ofertanteNome = contato.nome || "";
     fornecedorId = String(contato.fornecedor_id || "");
   }
-  const categoriaId = String((data && data.categoria_id) || cotacao.categoria_id || "");
+  // Subclassificação HERDADA do item (definida na criação do item); fallback à cotação.
+  let itemCat = null;
+  if (String(cotacao.item_id || "")) {
+    try {
+      itemCat = _itemPorId(String(cotacao.item_id), sessao.usuario_id);
+    } catch (e) {
+      itemCat = null;
+    }
+  }
+  const categoriaId = String(
+    (itemCat && itemCat.categoria_id) || (data && data.categoria_id) || cotacao.categoria_id || ""
+  );
 
   // Responsabilidade (% por participante). A distribuição por integrante (equipe)
   // é feita depois, em cada leva de pagamento — não no registro.

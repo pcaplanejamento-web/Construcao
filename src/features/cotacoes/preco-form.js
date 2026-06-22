@@ -94,8 +94,14 @@ class PrecoForm extends BaseElement {
         <div class="campos">
           ${this.orcamento ? this._camposOrcamento() : `<ui-select id="contato" label="Contato (quem ofertou)"></ui-select>`}
           <div class="linha">
+            <ui-input id="quantidade" label="Quantidade" type="number" step="0.01" min="0"
+              value="${esc(p.quantidade)}" placeholder="Ex.: 10"></ui-input>
             <ui-input id="valor" label="Valor unitário (R$)" type="number" step="0.01" min="0"
               value="${esc(p.valor_unit)}" placeholder="0,00"></ui-input>
+          </div>
+          <div class="linha">
+            <ui-input id="desconto" label="Valor unit. com desconto (R$)" type="number" step="0.01" min="0"
+              value="${esc(p.valor_unit_desconto)}" placeholder="opcional"></ui-input>
             <ui-input id="prazo" label="Prazo de entrega" value="${esc(p.prazo_entrega)}"
               placeholder="Ex.: 5 dias"></ui-input>
           </div>
@@ -152,6 +158,8 @@ class PrecoForm extends BaseElement {
 
   async salvar() {
     const valor = Number(this.$("#valor").value);
+    const qtd = this.$("#quantidade").value;
+    const desconto = this.$("#desconto").value;
     let cotacaoId;
     let dados;
 
@@ -161,8 +169,14 @@ class PrecoForm extends BaseElement {
       if (!this.ehEdicao && !cotacaoId) this.$("#cotacao").setAttribute("error", "Selecione a cotação.");
       if (erroValor) this.$("#valor").setAttribute("error", erroValor);
       if ((!this.ehEdicao && !cotacaoId) || erroValor) return;
+      if (Number(desconto) > 0 && Number(desconto) > valor) {
+        this.$("#desconto").setAttribute("error", "Não pode ser maior que o valor unitário.");
+        return;
+      }
       dados = {
         valor_unit: valor,
+        quantidade: qtd,
+        valor_unit_desconto: desconto,
         prazo_entrega: this.$("#prazo").value.trim(),
         observacao: this.$("#observacao").value.trim(),
       };
@@ -178,10 +192,16 @@ class PrecoForm extends BaseElement {
         this.$("#valor").setAttribute("error", valorPositivo(valor));
         return;
       }
+      if (Number(desconto) > 0 && Number(desconto) > valor) {
+        this.$("#desconto").setAttribute("error", "Não pode ser maior que o valor unitário.");
+        return;
+      }
       cotacaoId = this.cotacaoId;
       dados = {
         contato_id: contatoId,
         valor_unit: valor,
+        quantidade: qtd,
+        valor_unit_desconto: desconto,
         prazo_entrega: this.$("#prazo").value.trim(),
         observacao: this.$("#observacao").value.trim(),
       };

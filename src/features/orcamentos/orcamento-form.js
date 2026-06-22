@@ -25,6 +25,14 @@ class OrcamentoForm extends BaseElement {
   get orcamento() {
     return this._orcamento || null;
   }
+  /** Quando definido, o orçamento nasce VINCULADO a esta obra (campo travado). */
+  set obraFixaId(v) {
+    this._obraFixaId = v || "";
+    if (this.shadowRoot.childElementCount) this.renderizar();
+  }
+  get obraFixaId() {
+    return this._obraFixaId || "";
+  }
   get ehEdicao() {
     return !!(this.orcamento && this.orcamento.id);
   }
@@ -34,6 +42,11 @@ class OrcamentoForm extends BaseElement {
       .campos { display: flex; flex-direction: column; gap: var(--esp-4); }
       .linha { display: flex; gap: var(--esp-3); }
       .linha > * { flex: 1; }
+      label.tx { font-size: var(--fs-sm); font-weight: var(--peso-medio);
+        color: var(--cor-texto-suave); margin-bottom: var(--esp-1); display: block; }
+      .lido { padding: var(--esp-3); border: 1px solid var(--cor-borda);
+        border-radius: var(--raio-sm); background: var(--cor-superficie-2); color: var(--cor-texto); }
+      .lido small { color: var(--cor-texto-fraco); }
     `;
   }
 
@@ -50,7 +63,12 @@ class OrcamentoForm extends BaseElement {
             <ui-select id="fornecedor" label="Fornecedor"></ui-select>
           </div>
           <ui-select id="contato" label="Ofertante (contato; ou equipe no Serviço)"></ui-select>
-          <ui-select id="obra" label="Obra (opcional)"></ui-select>
+          ${
+            this.obraFixaId
+              ? `<div><label class="tx">Obra (vinculada)</label>
+                   <div class="lido">${esc((dataStore.obra(this.obraFixaId) || {}).nome || "—")} <small>· vinculada a esta obra, não pode ser alterada</small></div></div>`
+              : `<ui-select id="obra" label="Obra (opcional)"></ui-select>`
+          }
         </div>
         <div slot="rodape">
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
@@ -73,10 +91,12 @@ class OrcamentoForm extends BaseElement {
     selForn.value = o.fornecedor_id || "";
 
     const selObra = this.$("#obra");
-    selObra.options = [{ value: "", label: "— Nenhuma (geral) —" }].concat(
-      dataStore.obras().map((ob) => ({ value: ob.id, label: ob.nome }))
-    );
-    selObra.value = o.obra_id || "";
+    if (selObra) {
+      selObra.options = [{ value: "", label: "— Nenhuma (geral) —" }].concat(
+        dataStore.obras().map((ob) => ({ value: ob.id, label: ob.nome }))
+      );
+      selObra.value = o.obra_id || "";
+    }
 
     this.preencherContatos();
     this.atualizarVisibilidade();
@@ -146,7 +166,7 @@ class OrcamentoForm extends BaseElement {
       fornecedor_id: fornecedorId,
       contato_id: contatoId,
       equipe_id: equipeId,
-      obra_id: this.$("#obra").value,
+      obra_id: this.obraFixaId || (this.$("#obra") ? this.$("#obra").value : ""),
     };
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");

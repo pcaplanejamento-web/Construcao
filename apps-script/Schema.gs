@@ -231,6 +231,8 @@ const SCHEMA = {
       "editor_nome", // (append) quem editou por último
       "orcamento_id", // (append) FK → Orcamentos.id (vazio = oferta criada direto na cotação)
       "equipe_id", // (append) FK → Equipes.id (ofertante equipe; senão contato_id)
+      "quantidade", // (append) quantitativo PRÓPRIO da oferta (vazio = usa cotacao.quantidade)
+      "valor_unit_desconto", // (append) valor unitário com desconto (vazio = sem desconto → usa valor_unit)
     ],
   },
 

@@ -1,23 +1,25 @@
 /**
- * <cotacao-despesa-form> — Modal para REGISTRAR uma oferta como DESPESA. A
+ * <cotacao-despesa-form> — Modal para REGISTRAR despesa(s) a partir de ofertas. A
  * despesa nasce SEMPRE de uma oferta (inteira). Dois modos (mesmo componente):
  *  • oferta-fixa: `.cotacao`+`.preco` definidos (a partir da cotação/orçamento);
  *    o usuário escolhe a OBRA.
- *  • obra-fixa: `.obraFixaId` definido (a partir da obra); o usuário escolhe a
- *    OFERTA (abas Material/Serviço + ofertas ainda não registradas).
+ *  • obra-fixa: `.obraFixaId` definido (a partir da obra). Aqui o usuário escolhe
+ *    O QUE registrar: uma OFERTA avulsa (abas Material/Serviço) ou um ORÇAMENTO
+ *    COMPLETO da obra (todas as ofertas ainda não registradas viram despesas).
  *
- * Em ambos: Subclassificação + Responsabilidade (% por participante) e — quando
- * o ofertante é uma EQUIPE — quanto cada integrante recebeu. A despesa guarda o
- * ofertante (contato/equipe) e a empresa (fornecedor) da oferta.
+ * A SUBCLASSIFICAÇÃO não é mais escolhida aqui — ela é herdada do ITEM (definida
+ * na criação do item; o servidor a aplica). O valor da despesa = valor final
+ * (unitário com desconto, se houver) × quantidade da oferta.
  *
- * Eventos: "registrado" ({ obra_id }), "fechar". Reusa dataStore.registrarDespesaOferta.
+ * Eventos: "registrado" ({ obra_id }), "fechar". Reusa registrarDespesaOferta /
+ * registrarOrcamentoCompleto do data-store.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { totalOferta } from "./cotacao-util.js";
-import { ofertanteNome } from "../orcamentos/orcamento-util.js";
+import { totalOferta, qtdOferta, unitFinalOferta } from "./cotacao-util.js";
+import { ofertanteNome, rotuloOrcamento } from "../orcamentos/orcamento-util.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-select.js";
@@ -78,10 +80,16 @@ class CotacaoDespesaForm extends BaseElement {
   }
 
   template() {
-    const titulo = this.modoObra ? "Registrar oferta" : "Registrar como despesa";
+    const titulo = this.modoObra ? "Registrar Despesa" : "Registrar como despesa";
     const topo = this.modoObra
-      ? `<ui-tabs id="abas"></ui-tabs>
-         <ui-select id="oferta" label="Oferta"></ui-select>`
+      ? `<ui-select id="modoReg" label="O que registrar?"></ui-select>
+         <div id="secOferta">
+           <ui-tabs id="abas"></ui-tabs>
+           <ui-select id="oferta" label="Oferta"></ui-select>
+         </div>
+         <div id="secOrcamento" hidden>
+           <ui-select id="orcamento" label="Orçamento (registra todas as ofertas)"></ui-select>
+         </div>`
       : `<ui-select id="obra" label="Obra"></ui-select>`;
     return `
       <ui-modal open title="${titulo}">
@@ -89,7 +97,6 @@ class CotacaoDespesaForm extends BaseElement {
           <ui-alert id="erro" tipo="erro"></ui-alert>
           ${topo}
           <div class="resumo" id="resumo" hidden></div>
-          <ui-select id="categoria" label="Subclassificação"></ui-select>
           <div class="secao">
             <label class="tx">Responsabilidade — % por participante (soma 100%)</label>
             <split-editor id="responsaveis"></split-editor>
@@ -104,18 +111,22 @@ class CotacaoDespesaForm extends BaseElement {
   }
 
   aposRender() {
-    // Subclassificação (comum aos dois modos).
-    const selCat = this.$("#categoria");
-    selCat.options = [{ value: "", label: "— Sem subclassificação —" }].concat(
-      dataStore.categoriasItem().map((c) => ({ value: c.id, label: c.nome }))
-    );
-    selCat.value = this.modoObra ? "" : this.cotacao.categoria_id || "";
-
     if (this.modoObra) {
+      const selModo = this.$("#modoReg");
+      selModo.options = [
+        { value: "oferta", label: "Uma oferta" },
+        { value: "orcamento", label: "Orçamento completo" },
+      ];
+      selModo.value = "oferta";
+      selModo.addEventListener("change", () => this.alternarModoReg());
+
       this.$("#abas").abas = CLASSIFICACOES.map((c) => ({ id: c, rotulo: c, icone: "tag" }));
       this.$("#abas").addEventListener("mudar", () => this.preencherOfertas());
       this.preencherOfertas();
       this.$("#oferta").addEventListener("change", (e) => this.onOfertaSelecionada(e.detail.value));
+
+      this.preencherOrcamentos();
+      this.$("#orcamento").addEventListener("change", (e) => this.onOrcamentoSelecionado(e.detail.value));
     } else {
       const selObra = this.$("#obra");
       selObra.options = dataStore.obras().map((o) => ({ value: o.id, label: o.nome }));
@@ -161,7 +172,7 @@ class CotacaoDespesaForm extends BaseElement {
   rotuloOferta(o) {
     const nome = (o.cotacao.item_id && (dataStore.item(o.cotacao.item_id) || {}).nome) || o.cotacao.descricao || "Cotação";
     const ofert = ofertanteNome(o.preco.contato_id, o.preco.equipe_id);
-    return `${nome} · ${ofert} · ${moeda(totalOferta(o.preco, o.cotacao))}`;
+    return `${nome} · ${qtdOferta(o.preco, o.cotacao)}× · ${ofert} · ${moeda(totalOferta(o.preco, o.cotacao))}`;
   }
 
   preencherOfertas() {
@@ -184,6 +195,48 @@ class CotacaoDespesaForm extends BaseElement {
     this.pintarResumo();
   }
 
+  get modoRegistro() {
+    return (this.$("#modoReg") && this.$("#modoReg").value) || "oferta";
+  }
+
+  /** Alterna entre registrar uma oferta avulsa ou o orçamento completo. */
+  alternarModoReg() {
+    const ehOrc = this.modoRegistro === "orcamento";
+    if (this.$("#secOferta")) this.$("#secOferta").hidden = ehOrc;
+    if (this.$("#secOrcamento")) this.$("#secOrcamento").hidden = !ehOrc;
+    this.pintarResumo();
+  }
+
+  /** Ofertas do orçamento ainda não registradas como despesa. */
+  ofertasNaoRegDoOrcamento(orcId) {
+    return dataStore.ofertasDoOrcamento(orcId).filter((p) => !p.despesa_id);
+  }
+
+  /** Orçamentos desta obra que ainda têm ofertas a registrar. */
+  preencherOrcamentos() {
+    const sel = this.$("#orcamento");
+    if (!sel) return;
+    const lista = dataStore
+      .orcamentos()
+      .filter((o) => String(o.obra_id) === String(this._obraFixaId))
+      .filter((o) => this.ofertasNaoRegDoOrcamento(o.id).length);
+    this._orcMap = {};
+    lista.forEach((o) => (this._orcMap[o.id] = o));
+    sel.setAttribute(
+      "placeholder",
+      lista.length ? "Selecione um orçamento" : "Nenhum orçamento com ofertas a registrar"
+    );
+    sel.options = lista.map((o) => ({ value: o.id, label: rotuloOrcamento(o) }));
+    sel.value = "";
+    this._orcSel = null;
+  }
+
+  onOrcamentoSelecionado(orcId) {
+    this._orcSel = (this._orcMap && this._orcMap[orcId]) || null;
+    this.$("#orcamento").removeAttribute("error");
+    this.pintarResumo();
+  }
+
   /** Nome da empresa (fornecedor) do contato ofertante. */
   empresaDoContato(contatoId) {
     const c = dataStore.contatos().find((x) => String(x.id) === String(contatoId));
@@ -194,6 +247,32 @@ class CotacaoDespesaForm extends BaseElement {
   pintarResumo() {
     const box = this.$("#resumo");
     if (!box) return;
+
+    // Modo orçamento completo: lista as ofertas e o total a registrar.
+    if (this.modoObra && this.modoRegistro === "orcamento") {
+      const orc = this._orcSel;
+      if (!orc) {
+        box.setAttribute("hidden", "");
+        return;
+      }
+      const ofertas = this.ofertasNaoRegDoOrcamento(orc.id);
+      const total = ofertas.reduce((s, p) => s + totalOferta(p, dataStore.cotacao(p.cotacao_id)), 0);
+      const linhas = ofertas
+        .map((p) => {
+          const c = dataStore.cotacao(p.cotacao_id) || {};
+          const nome = (c.item_id && (dataStore.item(c.item_id) || {}).nome) || c.descricao || "Item";
+          return `<small>${nome} · ${qtdOferta(p, c)}× · ${moeda(totalOferta(p, c))}</small>`;
+        })
+        .join("");
+      box.removeAttribute("hidden");
+      box.innerHTML = `
+        <span class="item">${rotuloOrcamento(orc)}</span>
+        ${linhas}
+        <span class="val">${moeda(total)} · ${ofertas.length} despesa(s)</span>`;
+      return;
+    }
+
+    // Modo oferta avulsa / oferta-fixa.
     const { preco, cotacao } = this.ofertaAtual();
     if (!preco || !preco.id) {
       box.setAttribute("hidden", "");
@@ -201,6 +280,9 @@ class CotacaoDespesaForm extends BaseElement {
     }
     box.removeAttribute("hidden");
     const total = totalOferta(preco, cotacao);
+    const qtd = qtdOferta(preco, cotacao);
+    const unit = unitFinalOferta(preco);
+    const temDesc = Number(preco.valor_unit_desconto) > 0;
     const itemNome = (cotacao.item_id && (dataStore.item(cotacao.item_id) || {}).nome) || cotacao.descricao || "";
     const ofert = ofertanteNome(preco.contato_id, preco.equipe_id);
     const empresa = preco.equipe_id ? "" : this.empresaDoContato(preco.contato_id);
@@ -208,6 +290,7 @@ class CotacaoDespesaForm extends BaseElement {
       <span class="item">${itemNome}</span>
       ${cotacao.classificacao ? `<category-badge nome="${cotacao.classificacao}" cor="${COR_CLASSIFICACAO[cotacao.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
       <span class="val">${moeda(total)}</span>
+      <small>Qtd: ${qtd} × ${moeda(unit)}${temDesc ? " (com desconto)" : ""}</small>
       <small>Ofertante: ${ofert}${empresa ? " · Empresa: " + empresa : ""}</small>
     `;
   }
@@ -229,12 +312,8 @@ class CotacaoDespesaForm extends BaseElement {
       if (this.$("#obra")) this.$("#obra").setAttribute("error", "Selecione uma obra.");
       return;
     }
-    const { preco, cotacao } = this.ofertaAtual();
-    if (!preco || !preco.id) {
-      if (this.$("#oferta")) this.$("#oferta").setAttribute("error", "Selecione uma oferta.");
-      return;
-    }
 
+    // Responsabilidade (% por participante) — aplicada à(s) despesa(s) geradas.
     const responsaveis = this.$("#responsaveis").itens
       .filter((x) => x.chave)
       .map((x) => ({ chave: x.chave, pct: Number(x.valor) || 0 }));
@@ -244,18 +323,46 @@ class CotacaoDespesaForm extends BaseElement {
       return;
     }
 
+    const ehOrc = this.modoObra && this.modoRegistro === "orcamento";
     const btn = this.$("#confirmar");
+
+    // --- Orçamento completo: todas as ofertas não registradas viram despesas. ---
+    if (ehOrc) {
+      const orc = this._orcSel;
+      if (!orc) {
+        if (this.$("#orcamento")) this.$("#orcamento").setAttribute("error", "Selecione um orçamento.");
+        return;
+      }
+      const ofertas = this.ofertasNaoRegDoOrcamento(orc.id);
+      if (!ofertas.length) {
+        if (alerta) alerta.mensagem = "Este orçamento não tem ofertas a registrar.";
+        return;
+      }
+      btn.setAttribute("loading", "");
+      try {
+        const r = await dataStore.registrarOrcamentoCompleto(orc.id, obraId, responsaveis);
+        const obra = dataStore.obra(obraId) || {};
+        toastSucesso(`${r.total} despesa(s) lançada(s) em "${obra.nome || "obra"}".`);
+        this.emitir("registrado", { obra_id: obraId });
+        this.emitir("fechar");
+      } catch (e) {
+        notificarErro(e);
+        btn.removeAttribute("loading");
+      }
+      return;
+    }
+
+    // --- Uma oferta (avulsa ou fixa). ---
+    const { preco, cotacao } = this.ofertaAtual();
+    if (!preco || !preco.id) {
+      if (this.$("#oferta")) this.$("#oferta").setAttribute("error", "Selecione uma oferta.");
+      return;
+    }
     btn.setAttribute("loading", "");
     try {
       // Cria a despesa E marca a oferta como registrada + fecha a cotação (servidor).
-      // A distribuição por integrante (equipe) é feita depois, em cada leva de pagamento.
-      await dataStore.registrarDespesaOferta(
-        cotacao.id,
-        preco.id,
-        obraId,
-        this.$("#categoria").value,
-        responsaveis
-      );
+      // A subclassificação é herdada do item; "" deixa o servidor resolvê-la.
+      await dataStore.registrarDespesaOferta(cotacao.id, preco.id, obraId, "", responsaveis);
       const obra = dataStore.obra(obraId) || {};
       toastSucesso(`Despesa lançada em "${obra.nome || "obra"}".`);
       this.emitir("registrado", { obra_id: obraId });

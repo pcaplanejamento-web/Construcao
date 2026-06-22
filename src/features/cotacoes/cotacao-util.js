@@ -1,13 +1,31 @@
 /**
  * cotacao-util.js — Cálculos puros do módulo de cotações (reuso entre a lista e
- * o detalhe). O total de uma oferta = valor unitário × quantidade da cotação;
- * quando a quantidade não é informada (0), compara-se o valor unitário direto.
+ * o detalhe). Cada OFERTA tem dados próprios: quantidade, valor unitário e valor
+ * unitário com desconto. O total final = unitário com desconto (se houver) ×
+ * quantidade. Quando a oferta não tem quantidade própria, herda a da cotação.
  */
 
-/** Total de uma oferta para a cotação dada. */
+/** Quantidade da oferta: própria (preço) ou herdada da cotação; mínimo 1. */
+export function qtdOferta(preco, cotacao) {
+  const q = Number((preco || {}).quantidade);
+  if (q > 0) return q;
+  return Number((cotacao || {}).quantidade) || 1;
+}
+
+/** Valor unitário FINAL (com desconto se houver; senão o cheio). */
+export function unitFinalOferta(preco) {
+  const d = Number((preco || {}).valor_unit_desconto);
+  return d > 0 ? d : Number((preco || {}).valor_unit) || 0;
+}
+
+/** Total FINAL de uma oferta = unitário final × quantidade (base da comparação). */
 export function totalOferta(preco, cotacao) {
-  const qtd = Number((cotacao || {}).quantidade) || 1;
-  return (Number((preco || {}).valor_unit) || 0) * qtd;
+  return unitFinalOferta(preco) * qtdOferta(preco, cotacao);
+}
+
+/** Total SEM desconto (valor unitário cheio × quantidade) — p/ a coluna "Total". */
+export function totalOfertaCheio(preco, cotacao) {
+  return (Number((preco || {}).valor_unit) || 0) * qtdOferta(preco, cotacao);
 }
 
 /** Menor total entre as ofertas (ou null se não houver ofertas). */

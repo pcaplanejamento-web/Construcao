@@ -7,7 +7,7 @@
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
-import { totalOferta } from "../cotacoes/cotacao-util.js";
+import { totalOferta, totalOfertaCheio, qtdOferta } from "../cotacoes/cotacao-util.js";
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
 export const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
@@ -62,10 +62,30 @@ export function colunasOferta() {
     },
     { chave: "contato_id", titulo: "Ofertante", formato: (id, l) => ofertanteNome(l.contato_id, l.equipe_id) },
     { chave: "contato_id", titulo: "Empresa", formato: (id, l) => (l.equipe_id ? _fraco("—") : empresaNome(id) || _fraco("—")) },
+    {
+      chave: "quantidade",
+      titulo: "Qtd",
+      alinhar: "dir",
+      formato: (v, linha) => String(qtdOferta(linha, dataStore.cotacao(linha.cotacao_id))),
+    },
     { chave: "valor_unit", titulo: "Valor unit.", alinhar: "dir", formato: (v) => moeda(v) },
+    {
+      chave: "valor_unit_desconto",
+      titulo: "Unit. c/ desc.",
+      alinhar: "dir",
+      secundaria: true,
+      formato: (v) => (Number(v) > 0 ? moeda(v) : _fraco("—")),
+    },
     {
       chave: "valor_unit",
       titulo: "Total",
+      alinhar: "dir",
+      secundaria: true,
+      formato: (v, linha) => moeda(totalOfertaCheio(linha, dataStore.cotacao(linha.cotacao_id))),
+    },
+    {
+      chave: "valor_unit",
+      titulo: "Total c/ desc.",
       alinhar: "dir",
       formato: (v, linha) => moeda(totalOferta(linha, dataStore.cotacao(linha.cotacao_id))),
     },

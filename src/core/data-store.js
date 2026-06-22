@@ -842,6 +842,22 @@ async function registrarDespesaOferta(cotacaoId, precoId, obraId, categoriaId, r
   return r;
 }
 
+/**
+ * Registra o ORÇAMENTO COMPLETO: todas as ofertas ainda não registradas viram
+ * despesas na obra (reusa registrarDespesaOferta por oferta — sequencial, pois
+ * cada registro fecha sua cotação). A subclassificação vem do item (servidor) e a
+ * mesma responsabilidade é aplicada a todas. Retorna { total, despesas }.
+ */
+async function registrarOrcamentoCompleto(orcId, obraId, responsaveis) {
+  const ofertas = ofertasDoOrcamento(orcId).filter((p) => !String(p.despesa_id || ""));
+  const despesasCriadas = [];
+  for (const oferta of ofertas) {
+    const r = await registrarDespesaOferta(oferta.cotacao_id, oferta.id, obraId, "", responsaveis);
+    despesasCriadas.push(r.despesa);
+  }
+  return { total: despesasCriadas.length, despesas: despesasCriadas };
+}
+
 /* ----------------------- Mutações: admin ----------------------------- */
 
 async function adminCriarUsuario(dados) {
@@ -892,6 +908,7 @@ export const dataStore = {
   criarItem, atualizarItem, removerItem,
   criarCotacao, atualizarCotacao, removerCotacao,
   adicionarPreco, atualizarPreco, removerPreco, escolherPreco, registrarDespesaOferta,
+  registrarOrcamentoCompleto,
   criarOrcamento, atualizarOrcamento, removerOrcamento,
   criarEquipe, atualizarEquipe, removerEquipe,
   adminCriarUsuario, adminAtualizarUsuario,

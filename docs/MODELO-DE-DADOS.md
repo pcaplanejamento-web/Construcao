@@ -291,9 +291,13 @@ guarda só os **extras** criados pelo usuário (com log).
 | atualizado_em / autor_nome / editor_nome | — | auditoria |
 | orcamento_id | UUID | **FK → Orcamentos.id** (vazio = oferta criada direto na cotação) |
 | equipe_id | UUID | **FK → Equipes.id** — quando o ofertante do orçamento é uma equipe (Serviço); senão usa `contato_id` |
+| quantidade | number | (append) quantitativo **próprio** da oferta; vazio = usa `cotacao.quantidade` (legado) |
+| valor_unit_desconto | number | (append) valor unitário **com desconto**; vazio = sem desconto → usa `valor_unit` |
 
-> Total de uma oferta = `valor_unit × quantidade` (calculado no cliente; não
-> persiste). Excluir uma cotação remove suas ofertas.
+> **Valor final** de uma oferta = `(valor_unit_desconto || valor_unit) × (quantidade
+> || cotacao.quantidade || 1)` — base da comparação de cotações e do valor da despesa
+> (calculado no cliente e no servidor; o total **cheio** = `valor_unit × qtd`). Campos
+> novos vazios = comportamento legado. Excluir uma cotação remove suas ofertas.
 
 > **Oferta única (cotação × orçamento):** a oferta é a MESMA linha. Quando criada
 > num orçamento, ganha `orcamento_id` (+ a cotação escolhida em `cotacao_id`), então

@@ -13,7 +13,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda, numero } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { colunasLog } from "../../core/audit-columns.js";
-import { totalOferta } from "../cotacoes/cotacao-util.js";
+import { totalOferta, totalOfertaCheio, qtdOferta } from "../cotacoes/cotacao-util.js";
 import { rotuloOrcamento, totalOrcamento, ofertanteNome, COR_CLASSIFICACAO } from "./orcamento-util.js";
 import { abrirBannerVinculos, vinculosDaOferta } from "../shared/vinculos.js";
 import "../../components/ui-card.js";
@@ -98,10 +98,31 @@ class OrcamentoDetailView extends BaseElement {
         titulo: "Cotação",
         formato: (id) => this._nomeCotacao(dataStore.cotacao(id)),
       },
+      {
+        chave: "quantidade",
+        titulo: "Qtd",
+        alinhar: "dir",
+        formato: (v, linha) => String(qtdOferta(linha, dataStore.cotacao(linha.cotacao_id))),
+      },
       { chave: "valor_unit", titulo: "Valor unit.", alinhar: "dir", formato: (v) => moeda(v) },
+      {
+        chave: "valor_unit_desconto",
+        titulo: "Unit. c/ desc.",
+        alinhar: "dir",
+        secundaria: true,
+        formato: (v) =>
+          Number(v) > 0 ? moeda(v) : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+      },
       {
         chave: "valor_unit",
         titulo: "Total",
+        alinhar: "dir",
+        secundaria: true,
+        formato: (v, linha) => moeda(totalOfertaCheio(linha, dataStore.cotacao(linha.cotacao_id))),
+      },
+      {
+        chave: "valor_unit",
+        titulo: "Total c/ desc.",
         alinhar: "dir",
         formato: (v, linha) => moeda(totalOferta(linha, dataStore.cotacao(linha.cotacao_id))),
       },

@@ -27,6 +27,7 @@ import "../dashboard/category-breakdown.js";
 import "../dashboard/grafico-rosca.js";
 import "../dashboard/grafico-mensal.js";
 import "../cotacoes/cotacao-despesa-form.js";
+import "../orcamentos/orcamento-form.js";
 import "../despesas/despesa-table.js";
 import "../despesas/despesa-detail.js";
 import "../despesas/despesa-filtros.js";
@@ -99,7 +100,7 @@ class ObraDetailView extends BaseElement {
         </div>
         <div slot="despesas" class="despesas-aba">
           <ui-card title="Despesas">
-            <ui-button slot="acoes" id="addDespesa">+ Registrar oferta</ui-button>
+            <ui-button slot="acoes" id="addDespesa">+ Registrar Despesa</ui-button>
             <despesa-filtros id="filtros"></despesa-filtros>
             <despesa-table id="tabela"></despesa-table>
           </ui-card>
@@ -112,6 +113,7 @@ class ObraDetailView extends BaseElement {
         </div>
         <div slot="orcamentos">
           <ui-card title="Orçamentos da obra">
+            <ui-button slot="acoes" id="addOrc">+ Novo orçamento</ui-button>
             <div id="gradeOrc"></div>
           </ui-card>
         </div>
@@ -152,6 +154,7 @@ class ObraDetailView extends BaseElement {
     this._filtro = { texto: "", categoria: "" };
 
     alvo.querySelector("#addDespesa").addEventListener("click", () => this.abrirDespesaForm());
+    alvo.querySelector("#addOrc").addEventListener("click", () => this.abrirOrcamentoForm());
     this._filtros.addEventListener("filtrar", (e) => {
       this._filtro = e.detail;
       this.aplicarFiltro();
@@ -257,6 +260,16 @@ class ObraDetailView extends BaseElement {
     const fechar = () => form.remove();
     form.addEventListener("fechar", fechar);
     form.addEventListener("registrado", fechar);
+    document.body.appendChild(form);
+  }
+
+  /** Abre o modal para criar um orçamento JÁ VINCULADO a esta obra (campo travado). */
+  abrirOrcamentoForm() {
+    const form = document.createElement("orcamento-form");
+    form.obraFixaId = this.obraId;
+    const fechar = () => form.remove();
+    form.addEventListener("fechar", fechar);
+    form.addEventListener("salvo", () => this.sincronizar());
     document.body.appendChild(form);
   }
 
