@@ -89,14 +89,10 @@ class PrecoForm extends BaseElement {
     return null;
   }
 
-  /** Id do item TRAVADO (edição ou via cotação); "" se livre. */
+  /** Id do item TRAVADO: só ao CRIAR a partir de uma cotação (item da cotação).
+   * Na EDIÇÃO tudo é editável — o item vira select pré-preenchido. */
   itemTravadoId() {
-    if (this.ehEdicao) {
-      const p = this.preco;
-      if (p.item_id) return String(p.item_id);
-      const c = p.cotacao_id ? dataStore.cotacao(p.cotacao_id) : null;
-      return c && c.item_id ? String(c.item_id) : "";
-    }
+    if (this.ehEdicao) return "";
     const ctx = this.cotacaoCtx();
     return ctx && ctx.item_id ? String(ctx.item_id) : "";
   }
