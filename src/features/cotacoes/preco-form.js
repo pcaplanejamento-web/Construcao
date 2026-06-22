@@ -1,28 +1,33 @@
 /**
- * <preco-form> — Banner ÚNICO "Criar oferta" (reusado em todo lugar que cria
- * ofertas). A oferta é independente: nasce de um ITEM (define classificação +
- * subclassificação) e pode vincular-se a uma cotação e/ou orçamento.
+ * <preco-form> — Banner ÚNICO da OFERTA (criar / editar / ver detalhes — tudo no
+ * mesmo componente). A oferta é independente: nasce de um ITEM (define
+ * classificação + subclassificação) e pode vincular-se a uma cotação e/ou orçamento.
  *
- * Contexto (props):
- *  - avulsa (nenhuma): escolhe item, ofertante, fornecedor.
- *  - `.cotacao` ou `.cotacaoId`: item TRAVADO (= item da cotação); vincula à cotação.
- *  - `.orcamento`: ofertante + fornecedor herdados do orçamento e TRAVADOS; vincula a ele.
- *  - `.preco`: edição (item travado).
- * Regras pela classificação do item — Material: fornecedor obrigatório, ofertante
- * opcional; Serviço: ofertante obrigatório, fornecedor opcional. Prazo obrigatório.
+ * Contexto (props) — define o que fica TRAVADO:
+ *  - avulsa (nenhuma): escolhe item (select), ofertante, fornecedor.
+ *  - `.cotacao`/`.cotacaoId`: item = o da cotação (card, não editável); vincula à cotação.
+ *  - `.orcamento`: ofertante + fornecedor herdados e travados; vincula a ele.
+ *  - `.preco`: edição (item vira CARD não editável; demais campos editáveis).
+ *  - `.somenteLeitura`: só visualização (ex.: aberto pela despesa) — nada editável.
+ * Regras: Material → fornecedor obrigatório; Serviço → ofertante obrigatório. Prazo
+ * obrigatório. O ITEM é sempre apresentado como CARD clicável → banner de detalhes
+ * do item (exceto na CRIAÇÃO sem cotação, em que é um select para escolher).
  *
- * Eventos: "salvo", "fechar". Auto-contido (chama o data-store).
+ * Eventos: "salvo", "fechar". Helper `abrirOferta(oferta, opcoes)` abre o banner.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { ofertanteNome } from "../orcamentos/orcamento-util.js";
+import { moeda } from "../../core/formatters.js";
+import { ofertanteNome, COR_CLASSIFICACAO } from "../orcamentos/orcamento-util.js";
+import { totalOferta, totalOfertaCheio, qtdOferta } from "./cotacao-util.js";
 import { valorPositivo } from "../../core/validators.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
+import "../despesas/category-badge.js";
 
 class PrecoForm extends BaseElement {
   set cotacaoId(v) {
@@ -52,12 +57,24 @@ class PrecoForm extends BaseElement {
   get orcamento() {
     return this._orcamento || null;
   }
+  /** Só visualização (aberto pela despesa) — nada editável. */
+  set somenteLeitura(v) {
+    this._somenteLeitura = !!v;
+    if (this.shadowRoot.childElementCount) this.renderizar();
+  }
+  get somenteLeitura() {
+    return !!this._somenteLeitura;
+  }
   get ehEdicao() {
     return !!(this.preco && this.preco.id);
   }
-  /** Ofertante/fornecedor vêm travados do orçamento (só ao criar). */
+  /** Ofertante/fornecedor travados quando aberto pelo ORÇAMENTO (criar ou editar). */
   get ehOrcTravado() {
-    return !!this.orcamento && !this.ehEdicao;
+    return !!this.orcamento;
+  }
+  /** Item é um SELECT só ao CRIAR sem cotação (precisa escolher). Senão é card. */
+  itemPrecisaSelect() {
+    return !this.somenteLeitura && !this.ehEdicao && !this.cotacaoCtx();
   }
 
   estilos() {
@@ -78,6 +95,16 @@ class PrecoForm extends BaseElement {
       .lido small { color: var(--cor-texto-fraco); }
       .info { font-size: var(--fs-sm); color: var(--cor-texto-suave); }
       .info b { color: var(--cor-texto); }
+      .resumo { background: var(--cor-superficie-2); border-radius: var(--raio-sm);
+        padding: var(--esp-3) var(--esp-4); display: flex; flex-direction: column; gap: 4px; }
+      .resumo.clicavel { cursor: pointer; border: 1px solid var(--cor-borda);
+        transition: border-color var(--transicao), background var(--transicao); }
+      .resumo.clicavel:hover { border-color: var(--cor-primaria); background: var(--cor-primaria-suave); }
+      .resumo .item { font-weight: var(--peso-semi); font-size: var(--fs-lg); }
+      .resumo small { color: var(--cor-texto-suave); }
+      .ro-row { display: flex; justify-content: space-between; gap: var(--esp-4);
+        padding: var(--esp-2) 0; border-bottom: 1px solid var(--cor-divisor); }
+      .ro-row .k { color: var(--cor-texto-suave); }
     `;
   }
 
@@ -85,24 +112,25 @@ class PrecoForm extends BaseElement {
   cotacaoCtx() {
     if (this._cotacao) return this._cotacao;
     if (this._cotacaoId) return dataStore.cotacao(this._cotacaoId);
-    if (this.ehEdicao && this.preco.cotacao_id) return dataStore.cotacao(this.preco.cotacao_id);
+    if (this.preco && this.preco.cotacao_id) return dataStore.cotacao(this.preco.cotacao_id);
     return null;
   }
 
-  /** Id do item TRAVADO: só ao CRIAR a partir de uma cotação (item da cotação).
-   * Na EDIÇÃO tudo é editável — o item vira select pré-preenchido. */
-  itemTravadoId() {
-    if (this.ehEdicao) return "";
+  /** Item efetivo da oferta (próprio ou herdado da cotação). */
+  itemResolvidoId() {
+    const p = this.preco || {};
+    if (p.item_id) return String(p.item_id);
     const ctx = this.cotacaoCtx();
     return ctx && ctx.item_id ? String(ctx.item_id) : "";
   }
 
-  /** Item efetivo (travado ou selecionado). */
+  /** Item usado ao salvar (do select quando criando sem cotação; senão o resolvido). */
   itemAtualId() {
-    const trav = this.itemTravadoId();
-    if (trav) return trav;
-    const sel = this.$("#item");
-    return sel ? String(sel.value || "") : "";
+    if (this.itemPrecisaSelect()) {
+      const sel = this.$("#item");
+      return sel ? String(sel.value || "") : "";
+    }
+    return this.itemResolvidoId();
   }
 
   _fornNome(id) {
@@ -110,34 +138,100 @@ class PrecoForm extends BaseElement {
     return (dataStore.fornecedores().find((f) => String(f.id) === String(id)) || {}).nome || "";
   }
 
+  /** Card de PRÉVIA do ITEM (clicável → detalhes do item). */
+  itemCardHtml(item) {
+    if (!item) return `<small>Item não definido</small>`;
+    const sub = item.categoria_id
+      ? (dataStore.categorias().find((c) => String(c.id) === String(item.categoria_id)) || {}).nome
+      : "";
+    return `
+      <span class="item">${item.nome}</span>
+      ${item.classificacao ? `<category-badge nome="${item.classificacao}" cor="${COR_CLASSIFICACAO[item.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
+      ${sub ? `<small>Subclassificação: ${sub}</small>` : ""}`;
+  }
+
+  /** Banner com os detalhes do ITEM (reusa ui-modal; sem componente novo). */
+  abrirDetalheItem(item) {
+    if (!item) return;
+    const sub = item.categoria_id
+      ? (dataStore.categorias().find((c) => String(c.id) === String(item.categoria_id)) || {}).nome
+      : "—";
+    const linha = (k, v) =>
+      `<div style="display:flex;justify-content:space-between;gap:var(--esp-4);padding:var(--esp-2) 0;border-bottom:1px solid var(--cor-divisor)"><span style="color:var(--cor-texto-suave)">${k}</span><span style="text-align:right">${v}</span></div>`;
+    const modal = document.createElement("ui-modal");
+    modal.setAttribute("open", "");
+    modal.setAttribute("title", "Detalhes do item");
+    modal.innerHTML = `<div style="display:flex;flex-direction:column">
+      ${linha("Nome", item.nome || "—")}
+      ${linha("Classificação", item.classificacao || "—")}
+      ${linha("Subclassificação", sub || "—")}
+      <div style="margin-top:var(--esp-3)"><a href="/itens/${item.id}">Abrir página do item →</a></div>
+    </div>`;
+    modal.addEventListener("fechar", () => modal.remove());
+    document.body.appendChild(modal);
+  }
+
+  /** Linhas só-leitura com os campos da oferta (informações completas). */
+  camposRoHtml() {
+    const p = this.preco || {};
+    const cot = this.cotacaoCtx();
+    const linha = (k, v) => `<div class="ro-row"><span class="k">${k}</span><span>${v}</span></div>`;
+    const empresa = this._fornNome(p.fornecedor_id);
+    const temDesc = Number(p.valor_unit_desconto) > 0;
+    let html = linha("Ofertante", ofertanteNome(p.contato_id, p.equipe_id) || "—");
+    html += linha("Fornecedor", empresa || "—");
+    html += linha("Quantidade", String(qtdOferta(p, cot)));
+    html += linha("Valor unitário", moeda(p.valor_unit || 0));
+    if (temDesc) html += linha("Valor unit. c/ desconto", moeda(p.valor_unit_desconto));
+    html += linha("Total", moeda(totalOfertaCheio(p, cot)));
+    html += linha("Total c/ desconto", moeda(totalOferta(p, cot)));
+    html += linha("Prazo de entrega", p.prazo_entrega || "—");
+    if (p.observacao) html += linha("Observação", p.observacao);
+    return html;
+  }
+
   template() {
     const p = this.preco || {};
     const esc = (v) => String(v == null ? "" : v).replace(/"/g, "&quot;");
-    const travId = this.itemTravadoId();
-    const itemTravado = travId ? dataStore.item(travId) : null;
+    const ro = this.somenteLeitura;
+    const titulo = ro ? "Detalhes da oferta" : this.ehEdicao ? "Editar oferta" : "Criar oferta";
+
+    const blocoItem = this.itemPrecisaSelect()
+      ? `<ui-select id="item" label="Item (define a classificação)"></ui-select>
+         <div class="info" id="classInfo"></div>`
+      : `<div><label class="tx">Item</label>
+           <div class="resumo clicavel" id="itemCard" title="Ver detalhes do item"></div></div>`;
+
+    // Layout SÓ-LEITURA: card do item + campos como linhas (sem editar).
+    if (ro) {
+      return `
+        <ui-modal open title="${titulo}">
+          <div class="campos">
+            ${blocoItem}
+            <div id="detRo"></div>
+          </div>
+          <div slot="rodape">
+            <ui-button id="cancelar" variant="secundario">Fechar</ui-button>
+          </div>
+        </ui-modal>
+      `;
+    }
+
     const orc = this.orcamento;
-
-    const blocoItem = travId
-      ? `<div><label class="tx">Item</label>
-           <div class="lido">${(itemTravado || {}).nome || "—"}</div></div>`
-      : `<ui-select id="item" label="Item (define a classificação)"></ui-select>`;
-
     const blocoOfertante = this.ehOrcTravado
       ? `<div><label class="tx">Ofertante</label>
            <div class="lido">${ofertanteNome(orc.contato_id, orc.equipe_id)} <small>· definido pelo orçamento</small></div></div>`
       : `<ui-select id="ofertante" label="Ofertante (contato ou grupo)"></ui-select>`;
-
     const blocoFornecedor = this.ehOrcTravado
       ? `<div><label class="tx">Fornecedor</label>
            <div class="lido">${this._fornNome(orc.fornecedor_id) || "—"} <small>· definido pelo orçamento</small></div></div>`
       : `<ui-select id="fornecedor" label="Fornecedor"></ui-select>`;
 
     return `
-      <ui-modal open title="${this.ehEdicao ? "Editar oferta" : "Criar oferta"}">
+      <ui-modal open title="${titulo}">
         <div class="campos">
           <ui-alert id="erro" tipo="erro"></ui-alert>
           ${blocoItem}
-          <div class="info" id="classInfo"></div>
           ${blocoOfertante}
           ${blocoFornecedor}
           <div class="linha">
@@ -167,13 +261,29 @@ class PrecoForm extends BaseElement {
 
   aposRender() {
     const p = this.preco || {};
-    // Item (quando livre). Pré-preenche com o item próprio OU o da cotação (legado).
+
+    // Card do item (clicável → detalhes do item).
+    const itemCard = this.$("#itemCard");
+    if (itemCard) {
+      const item = dataStore.item(this.itemResolvidoId());
+      itemCard.innerHTML = this.itemCardHtml(item);
+      if (item) itemCard.addEventListener("click", () => this.abrirDetalheItem(item));
+    }
+
+    this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
+    this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
+
+    // Modo só-leitura: pinta as linhas e encerra (sem controles editáveis).
+    if (this.somenteLeitura) {
+      if (this.$("#detRo")) this.$("#detRo").innerHTML = this.camposRoHtml();
+      return;
+    }
+
+    // Item (select) — só ao criar sem cotação.
     const selItem = this.$("#item");
     if (selItem) {
-      const ctx = this.cotacaoCtx();
-      const resolvidoId = p.item_id || (ctx && ctx.item_id) || "";
       let itens = dataStore.itensAtivos();
-      // Garante que o item atual da oferta apareça na lista (mesmo se inativo).
+      const resolvidoId = this.itemResolvidoId();
       if (resolvidoId && !itens.some((i) => String(i.id) === String(resolvidoId))) {
         const it = dataStore.item(resolvidoId);
         if (it) itens = [it, ...itens];
@@ -199,7 +309,6 @@ class PrecoForm extends BaseElement {
       selForn.options = [{ value: "", label: "— Nenhum —" }].concat(
         dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
       );
-      // Fornecedor próprio, ou do contato ofertante.
       let fid = p.fornecedor_id || "";
       if (!fid && p.contato_id) {
         const ct = dataStore.contatos().find((x) => String(x.id) === String(p.contato_id));
@@ -207,7 +316,7 @@ class PrecoForm extends BaseElement {
       }
       selForn.value = fid;
     }
-    // Quantidade: própria da oferta OU a da cotação (legado), p/ não abrir vazia.
+    // Quantidade: própria ou da cotação (legado), p/ não abrir vazia.
     const selQtd = this.$("#quantidade");
     if (selQtd && !String(selQtd.value || "")) {
       const ctx = this.cotacaoCtx();
@@ -216,12 +325,10 @@ class PrecoForm extends BaseElement {
     }
 
     this.atualizarClasse();
-    this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
-    this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
   }
 
-  /** Atualiza o texto de classificação/subclassificação do item efetivo. */
+  /** Texto de classificação/subclassificação do item (só no modo select). */
   atualizarClasse() {
     const box = this.$("#classInfo");
     if (!box) return;
@@ -261,7 +368,6 @@ class PrecoForm extends BaseElement {
     const item = dataStore.item(itemId) || {};
     const ehMaterial = String(item.classificacao) === "Material";
 
-    // Ofertante (contato XOR equipe).
     let contatoId = "";
     let equipeId = "";
     if (this.ehOrcTravado) {
@@ -273,14 +379,12 @@ class PrecoForm extends BaseElement {
       else if (v.indexOf("e:") === 0) equipeId = v.slice(2);
     }
 
-    // Fornecedor.
     let fornecedorId = this.ehOrcTravado
       ? String(this.orcamento.fornecedor_id || "")
       : this.$("#fornecedor")
       ? this.$("#fornecedor").value || ""
       : "";
 
-    // Regras por classificação.
     if (ehMaterial && !fornecedorId) {
       if (this.$("#fornecedor")) this.$("#fornecedor").setAttribute("error", "Material exige um fornecedor.");
       return;
@@ -318,7 +422,6 @@ class PrecoForm extends BaseElement {
       prazo_entrega: prazo,
       observacao: this.$("#observacao").value.trim(),
     };
-    // Vínculos (só ao criar): cotação e/ou orçamento de contexto.
     if (!this.ehEdicao) {
       const ctx = this.cotacaoCtx();
       if (ctx) dados.cotacao_id = ctx.id;
@@ -346,3 +449,20 @@ class PrecoForm extends BaseElement {
 }
 
 customElements.define("preco-form", PrecoForm);
+
+/**
+ * Abre o banner ÚNICO da oferta (criar/editar/ver). `opcoes`:
+ * { somenteLeitura?, cotacao?, orcamento? }. Usado ao CLICAR numa oferta.
+ */
+export function abrirOferta(oferta, opcoes = {}) {
+  if (!oferta) return;
+  const form = document.createElement("preco-form");
+  form.preco = oferta;
+  if (opcoes.somenteLeitura) form.somenteLeitura = true;
+  if (opcoes.cotacao) form.cotacao = opcoes.cotacao;
+  if (opcoes.orcamento) form.orcamento = opcoes.orcamento;
+  const fechar = () => form.remove();
+  form.addEventListener("fechar", fechar);
+  form.addEventListener("salvo", fechar);
+  document.body.appendChild(form);
+}

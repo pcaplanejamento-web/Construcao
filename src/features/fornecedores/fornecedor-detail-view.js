@@ -19,6 +19,7 @@ import { balancos } from "../despesas/despesa-split.js";
 import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { colunasOferta } from "../orcamentos/orcamento-util.js";
 import { abrirRegistrarDespesa } from "../cotacoes/cotacao-despesa-form.js";
+import { abrirOferta } from "../cotacoes/preco-form.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
@@ -133,14 +134,14 @@ class FornecedorDetailView extends BaseElement {
       else this.removerContato(e.detail.linha);
     });
 
-    // Ofertas: tabela PADRÃO de ofertas + ação "Registrar" (banner único).
+    // Ofertas: tabela PADRÃO; clique → banner único da oferta; ação "Registrar".
     this._tabOfertas = alvo.querySelector("#tabOfertas");
-    this._tabOfertas.removeAttribute("clicavel");
     this._tabOfertas.columns = colunasOferta();
     this._tabOfertas.acoes = [{ nome: "registrar", rotulo: "Registrar" }];
     this._tabOfertas.addEventListener("acao", (e) => {
       if (e.detail.acao === "registrar") abrirRegistrarDespesa(e.detail.linha);
     });
+    this._tabOfertas.addEventListener("linha", (e) => abrirOferta(e.detail.linha));
 
     this._gradeOrc = alvo.querySelector("#gradeOrc");
 

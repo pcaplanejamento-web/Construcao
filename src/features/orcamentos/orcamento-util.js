@@ -11,7 +11,6 @@ import { totalOferta, totalOfertaCheio, qtdOferta, unitFinalOferta } from "../co
 import { statusPagamento } from "../despesas/despesa-split.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-empty-state.js";
-import "../../components/ui-modal.js";
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
 export const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
@@ -258,29 +257,6 @@ export function previaOfertaHtml(oferta) {
     <span class="val">${moeda(total)}</span>
     <small>Qtd: ${qtd} × ${moeda(unit)}${temDesc ? " (com desconto)" : ""}</small>
     <small>Ofertante: ${ofert}${empresa ? " · Empresa: " + empresa : ""}</small>`;
-}
-
-/** Banner (ui-modal) com TODAS as informações da oferta (reusa as colunas padrão). */
-export function abrirDetalheOferta(oferta) {
-  if (!oferta) return;
-  const linhas = colunasOferta()
-    .map((c) => {
-      const conteudo = c.formato
-        ? c.formato(oferta[c.chave], oferta)
-        : oferta[c.chave] == null
-        ? "—"
-        : String(oferta[c.chave]);
-      return `<div style="display:flex;justify-content:space-between;gap:var(--esp-4);padding:var(--esp-2) 0;border-bottom:1px solid var(--cor-divisor)">
-        <span style="color:var(--cor-texto-suave)">${c.titulo}</span>
-        <span style="text-align:right;min-width:0">${conteudo}</span></div>`;
-    })
-    .join("");
-  const modal = document.createElement("ui-modal");
-  modal.setAttribute("open", "");
-  modal.setAttribute("title", "Detalhes da oferta");
-  modal.innerHTML = `<div style="display:flex;flex-direction:column">${linhas}</div>`;
-  modal.addEventListener("fechar", () => modal.remove());
-  document.body.appendChild(modal);
 }
 
 /** Colunas da tabela de orçamentos (abas de fornecedor/contato/obra). */

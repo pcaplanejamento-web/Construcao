@@ -18,7 +18,8 @@ import { data as fmtData, moeda, hojeIso } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { valorPositivo } from "../../core/validators.js";
 import { parseLista, statusPagamento, totalRealizado, restoDespesa } from "./despesa-split.js";
-import { ofertanteNome, previaOfertaHtml, abrirDetalheOferta } from "../orcamentos/orcamento-util.js";
+import { ofertanteNome, previaOfertaHtml } from "../orcamentos/orcamento-util.js";
+import { abrirOferta } from "../cotacoes/preco-form.js";
 import { integrantesDaEquipe } from "../equipes/equipe-util.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
@@ -183,7 +184,8 @@ class DespesaDetail extends BaseElement {
       const box = this.$("#ofertaBox");
       if (oferta && box) {
         box.innerHTML = previaOfertaHtml(oferta);
-        box.addEventListener("click", () => abrirDetalheOferta(oferta));
+        // Banner ÚNICO da oferta em modo só-leitura (edita-se a oferta na origem).
+        box.addEventListener("click", () => abrirOferta(oferta, { somenteLeitura: true }));
       }
     }
     this.preencherSplits();

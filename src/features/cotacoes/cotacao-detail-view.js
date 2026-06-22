@@ -29,6 +29,7 @@ import "./grafico-evolucao-precos.js";
 import "./cotacao-form.js";
 import "./preco-form.js";
 import { abrirRegistrarDespesa } from "./cotacao-despesa-form.js";
+import { abrirOferta } from "./preco-form.js";
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
 const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
@@ -124,10 +125,10 @@ class CotacaoDetailView extends BaseElement {
     this._tabela = alvo.querySelector("#tabela");
     // Tabela PADRÃO de ofertas (mesmas colunas em todo o sistema).
     this._tabela.columns = colunasOferta();
+    this._tabela.setAttribute("clicavel", "");
     this._tabela.acoes = [
       { nome: "registrar", rotulo: "Registrar" },
       { nome: "escolher", rotulo: "Escolher" },
-      { nome: "editar", rotulo: "Editar" },
       { nome: "remover", rotulo: "Excluir", variant: "perigo" },
     ];
     this._tabela.addEventListener("acao", (e) => {
@@ -135,9 +136,10 @@ class CotacaoDetailView extends BaseElement {
       const preco = e.detail.linha;
       if (acao === "registrar") abrirRegistrarDespesa(preco);
       else if (acao === "escolher") this.escolher(preco);
-      else if (acao === "editar") this.abrirPrecoForm(preco);
       else this.removerPreco(preco);
     });
+    // Clique na oferta → banner único (a cotação trava o item).
+    this._tabela.addEventListener("linha", (e) => abrirOferta(e.detail.linha, { cotacao: this._cotacao }));
     this._montado = true;
   }
 

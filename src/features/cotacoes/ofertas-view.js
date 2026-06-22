@@ -6,6 +6,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { montarTabelaOfertas } from "../orcamentos/orcamento-util.js";
+import { abrirOferta } from "./preco-form.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
@@ -54,14 +55,10 @@ class OfertasView extends BaseElement {
       return;
     }
     montarTabelaOfertas(el, dataStore.todasOfertas(), {
-      acoes: [
-        { nome: "editar", rotulo: "Editar" },
-        { nome: "remover", rotulo: "Excluir", variant: "perigo" },
-      ],
-      onAcao: (acao, linha) => {
-        if (acao === "editar") this.abrirForm(linha);
-        else this.remover(linha);
-      },
+      clicavel: true,
+      onLinha: (oferta) => abrirOferta(oferta), // clique na oferta → banner único
+      acoes: [{ nome: "remover", rotulo: "Excluir", variant: "perigo" }],
+      onAcao: (acao, linha) => this.remover(linha),
       vazio: "Crie ofertas para comparar preços e montar orçamentos.",
     });
   }

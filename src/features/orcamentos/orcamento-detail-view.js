@@ -24,6 +24,7 @@ import "../../components/ui-data-table.js";
 import "../despesas/category-badge.js";
 import "../cotacoes/preco-form.js";
 import { abrirRegistrarDespesa } from "../cotacoes/cotacao-despesa-form.js";
+import { abrirOferta } from "../cotacoes/preco-form.js";
 import "./orcamento-form.js";
 
 class OrcamentoDetailView extends BaseElement {
@@ -95,16 +96,17 @@ class OrcamentoDetailView extends BaseElement {
     this._tabela = alvo.querySelector("#tabela");
     // Tabela PADRÃO de ofertas (mesmas colunas em todo o sistema).
     this._tabela.columns = colunasOferta();
+    this._tabela.setAttribute("clicavel", "");
     this._tabela.acoes = [
       { nome: "registrar", rotulo: "Registrar" },
-      { nome: "editar", rotulo: "Editar" },
       { nome: "remover", rotulo: "Excluir", variant: "perigo" },
     ];
     this._tabela.addEventListener("acao", (e) => {
       if (e.detail.acao === "registrar") abrirRegistrarDespesa(e.detail.linha);
-      else if (e.detail.acao === "editar") this.abrirPrecoForm(e.detail.linha);
       else this.removerPreco(e.detail.linha);
     });
+    // Clique na oferta → banner único (o orçamento trava ofertante/fornecedor).
+    this._tabela.addEventListener("linha", (e) => abrirOferta(e.detail.linha, { orcamento: this._orcamento }));
     alvo.querySelector("#addOferta").addEventListener("click", () => this.abrirPrecoForm(null));
     this._montado = true;
   }
