@@ -195,6 +195,7 @@ Despesas e cotações **referenciam um item** (`item_id`, obrigatório). Por usu
 | ativo | boolean | exclusão lógica (ativo=false) |
 | criado_em / atualizado_em | ISO datetime | auditoria |
 | autor_nome / editor_nome | string | quem criou / editou (desnormalizado) |
+| categoria_id | UUID | (append) **Subclassificação** (FK → Categorias tipo `item`) — **obrigatória na criação**. Só alterável aqui (no item) → propaga p/ oferta → despesa. |
 
 ## Módulo Compras
 

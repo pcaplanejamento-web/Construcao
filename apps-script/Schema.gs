@@ -190,6 +190,7 @@ const SCHEMA = {
       // Auditoria (append):
       "autor_nome", // quem criou (desnormalizado)
       "editor_nome", // quem editou por último
+      "categoria_id", // (append) SUBclassificação do item (obrigatória na criação)
     ],
   },
 

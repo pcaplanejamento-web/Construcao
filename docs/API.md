@@ -165,8 +165,8 @@ para dono **e** colaboradores.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `itens.listar` | `{}` | `{ itens:[{id,nome,classificacao,ativo,criado_em,atualizado_em,autor_nome,editor_nome}] }` (ativos, por nome) |
-| `itens.criar` | `{ nome, classificacao }` | `{ item }` (`classificacao` ∈ `Material`/`Serviço`; default `Material`; grava `autor_nome`) |
-| `itens.atualizar` | `{ id, nome?, classificacao? }` | `{ item }` |
+| `itens.criar` | `{ nome, classificacao, categoria_id }` | `{ item }` (`classificacao` ∈ `Material`/`Serviço`; **`categoria_id` = subclassificação OBRIGATÓRIA**; grava `autor_nome`) |
+| `itens.atualizar` | `{ id, nome?, classificacao?, categoria_id? }` | `{ item }` (`categoria_id` não pode ficar vazio) |
 | `itens.remover` | `{ id }` | `{ id }` (remoção lógica, `ativo=false`) |
 
 ### Compras — Cotações + ofertas

@@ -53,6 +53,8 @@ function itensListar(data, sessao) {
 function itensCriar(data, sessao) {
   const nome = String((data && data.nome) || "").trim();
   if (!nome) lancar(ERRO.VALIDACAO, "Informe o nome do item.");
+  const categoriaId = String((data && data.categoria_id) || "");
+  if (!categoriaId) lancar(ERRO.VALIDACAO, "Selecione a subclassificação do item.");
 
   return comLock(function () {
     const agora = agoraIso();
@@ -67,6 +69,7 @@ function itensCriar(data, sessao) {
       atualizado_em: agora,
       autor_nome: nomeUsuario,
       editor_nome: nomeUsuario,
+      categoria_id: categoriaId, // SUBclassificação (obrigatória na criação)
     };
     repoInserir(SCHEMA.ITENS, item);
     return { item: item };
@@ -85,6 +88,11 @@ function itensAtualizar(data, sessao) {
     patch.nome = nome;
   }
   if (data.classificacao !== undefined) patch.classificacao = _classificacaoValida(data.classificacao);
+  if (data.categoria_id !== undefined) {
+    const c = String(data.categoria_id || "");
+    if (!c) lancar(ERRO.VALIDACAO, "Selecione a subclassificação do item.");
+    patch.categoria_id = c;
+  }
   if (data.ativo !== undefined) patch.ativo = data.ativo === true;
   patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 

@@ -215,7 +215,10 @@ export function montarTabelaOfertas(el, ofertas, opcoes = {}) {
   if (opcoes.clicavel) tabela.setAttribute("clicavel", "");
   tabela.columns = colunasOferta();
   // Ação PADRÃO "Registrar" (abre o banner único Registrar Despesa) + ações da view.
-  tabela.acoes = [{ nome: "registrar", rotulo: "Registrar" }, ...(opcoes.acoes || [])];
+  // `semRegistrar` = tabela só-leitura (ex.: dentro da despesa — edita-se a oferta, não aqui).
+  tabela.acoes = opcoes.semRegistrar
+    ? opcoes.acoes || []
+    : [{ nome: "registrar", rotulo: "Registrar" }, ...(opcoes.acoes || [])];
   tabela.rows = lista;
   if (opcoes.onLinha) tabela.addEventListener("linha", (e) => opcoes.onLinha(e.detail.linha));
   tabela.addEventListener("acao", (e) => {

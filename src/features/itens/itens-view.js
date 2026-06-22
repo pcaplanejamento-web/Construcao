@@ -109,6 +109,16 @@ class ItensView extends BaseElement {
         formato: (v) =>
           `<category-badge nome="${v || "—"}" cor="${COR_CLASSIFICACAO[v] || "var(--cor-neutro)"}"></category-badge>`,
       },
+      {
+        chave: "categoria_id",
+        titulo: "Subclassificação",
+        formato: (id) => {
+          const c = id ? dataStore.categorias().find((x) => String(x.id) === String(id)) : null;
+          return c
+            ? `<category-badge nome="${c.nome}" cor="${c.cor || "var(--cor-neutro)"}"></category-badge>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`;
+        },
+      },
       ...colunasLog(),
     ];
     tabela.acoes = [

@@ -18,7 +18,7 @@ import { data as fmtData, moeda, hojeIso } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { valorPositivo } from "../../core/validators.js";
 import { parseLista, statusPagamento, totalRealizado, restoDespesa } from "./despesa-split.js";
-import { ofertanteNome } from "../orcamentos/orcamento-util.js";
+import { ofertanteNome, montarTabelaOfertas } from "../orcamentos/orcamento-util.js";
 import { integrantesDaEquipe } from "../equipes/equipe-util.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
@@ -41,8 +41,8 @@ class DespesaDetail extends BaseElement {
     return this._despesa || {};
   }
   set categorias(v) {
+    // Mantido por compat (a subclassificação não é mais editada aqui — vem do item).
     this._categorias = Array.isArray(v) ? v : [];
-    if (this.shadowRoot.childElementCount) this.preencherCategorias();
   }
   get categorias() {
     return this._categorias || [];
@@ -104,19 +104,12 @@ class DespesaDetail extends BaseElement {
       d.editor_nome && d.atualizado_em && String(d.atualizado_em) !== String(d.criado_em);
     const dataVal = d.data ? String(d.data).substring(0, 10) : "";
 
-    // Item/Valor: read-only (oferta) ou editáveis (legado).
+    // Item/Valor: da OFERTA (read-only — edita-se a oferta, não a despesa) ou editáveis (legado).
     let topo;
     if (this.travado) {
-      const nomeItem = (d.item_id && (dataStore.item(d.item_id) || {}).nome) || d.item || "—";
-      const ofert = ofertanteNome(d.ofertante_contato_id, d.ofertante_equipe_id);
-      const empresa = this.empresaNome(d.fornecedor_id);
       topo = `
-        <div class="resumo">
-          <span class="item">${nomeItem}</span>
-          ${d.classificacao ? `<category-badge nome="${d.classificacao}" cor="${COR_CLASSIFICACAO[d.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
-          <span class="val">${moeda(d.valor || 0)}</span>
-          <small>Ofertante: ${ofert}${empresa ? " · Empresa: " + empresa : ""}</small>
-        </div>
+        <label class="tx">Oferta de origem</label>
+        <div id="ofertaBox"></div>
         <ui-input id="data" label="Data" type="date" value="${dataVal}"></ui-input>`;
     } else {
       topo = `
@@ -134,7 +127,6 @@ class DespesaDetail extends BaseElement {
         <div class="campos">
           <ui-alert id="erro" tipo="erro"></ui-alert>
           ${topo}
-          <ui-select id="categoria" label="Subclassificação"></ui-select>
           <div>
             <label class="tx">Observação</label>
             <textarea id="observacao" placeholder="Detalhes (opcional)">${d.observacao || ""}</textarea>
@@ -181,8 +173,11 @@ class DespesaDetail extends BaseElement {
       this.$("#abas").setAttribute("ativo", inicial);
       this.$("#abas").addEventListener("mudar", () => this.preencherItens());
       this.preencherItens();
+    } else {
+      // Componente PADRÃO da oferta (só-leitura): para editar, edita-se a oferta.
+      const oferta = dataStore.todasOfertas().find((o) => String(o.id) === String(d.preco_id));
+      if (oferta) montarTabelaOfertas(this.$("#ofertaBox"), [oferta], { semRegistrar: true });
     }
-    this.preencherCategorias();
     this.preencherSplits();
     this.preencherPagamentos();
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
@@ -366,16 +361,6 @@ class DespesaDetail extends BaseElement {
     }
   }
 
-  preencherCategorias() {
-    const sel = this.$("#categoria");
-    if (!sel) return;
-    // Subclassificação é opcional → 1ª opção vazia.
-    sel.options = [{ value: "", label: "Sem subclassificação" }].concat(
-      this.categorias.map((c) => ({ value: c.id, label: c.nome }))
-    );
-    sel.value = this.despesa.categoria_id || "";
-  }
-
   async salvar() {
     const alerta = this.$("#erro");
     if (alerta) alerta.mensagem = "";
@@ -417,7 +402,7 @@ class DespesaDetail extends BaseElement {
       classificacao,
       item: itemNome, // nome denormalizado p/ exibição otimista
       valor,
-      categoria_id: this.$("#categoria").value,
+      // Subclassificação NÃO é editada aqui — vem do item (só alterável no item).
       data: this.$("#data").value || String(this.despesa.data || "").substring(0, 10),
       observacao: this.$("#observacao").value.trim(),
       responsaveis,

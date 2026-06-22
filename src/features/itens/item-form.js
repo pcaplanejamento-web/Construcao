@@ -45,6 +45,7 @@ class ItemForm extends BaseElement {
             value="${(i.nome || "").replace(/"/g, "&quot;")}"
             placeholder="Ex.: Cimento CP-II"></ui-input>
           <ui-select id="classificacao" label="Classificação"></ui-select>
+          <ui-select id="categoria" label="Subclassificação"></ui-select>
         </div>
         <div slot="rodape">
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
@@ -60,6 +61,13 @@ class ItemForm extends BaseElement {
     sel.options = CLASSIFICACOES.map((c) => ({ value: c, label: c }));
     sel.value = i.classificacao || CLASSIFICACOES[0];
 
+    // Subclassificação (obrigatória) — pool de itens (categoria tipo "item").
+    const selCat = this.$("#categoria");
+    selCat.options = [{ value: "", label: "Selecione a subclassificação" }].concat(
+      dataStore.categoriasItem().map((c) => ({ value: c.id, label: c.nome }))
+    );
+    selCat.value = i.categoria_id || "";
+
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
@@ -74,15 +82,21 @@ class ItemForm extends BaseElement {
     }
     this.$("#nome").removeAttribute("error");
     const classificacao = this.$("#classificacao").value || CLASSIFICACOES[0];
+    const categoriaId = this.$("#categoria").value;
+    if (!categoriaId) {
+      this.$("#categoria").setAttribute("error", "Selecione a subclassificação.");
+      return;
+    }
+    this.$("#categoria").removeAttribute("error");
 
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");
     try {
       if (this.ehEdicao) {
-        await dataStore.atualizarItem(this.item.id, { nome, classificacao });
+        await dataStore.atualizarItem(this.item.id, { nome, classificacao, categoria_id: categoriaId });
         toastSucesso("Item atualizado.");
       } else {
-        await dataStore.criarItem({ nome, classificacao });
+        await dataStore.criarItem({ nome, classificacao, categoria_id: categoriaId });
         toastSucesso("Item criado.");
       }
       this.emitir("salvo");
