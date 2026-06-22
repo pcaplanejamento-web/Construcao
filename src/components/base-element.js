@@ -15,7 +15,8 @@ const RESET = `
   /* Títulos com line-height justo: o topo visível do texto fica colado na borda
      do box, então o vão header→título == a distância padrão (--esp-tela), sem
      o "leading" alto herdado (1.5) empurrar o texto para baixo. */
-  h1, h2, h3, h4, h5, h6 { line-height: 1.2; }
+  h1, h2, h3, h4, h5, h6 { line-height: 1.2;
+    font-family: var(--fonte-titulo); letter-spacing: -0.025em; }
   :host { font-family: var(--fonte-base); }
   [hidden] { display: none !important; }
 `;

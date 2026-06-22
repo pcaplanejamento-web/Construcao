@@ -52,18 +52,20 @@ class UiDataTable extends BaseElement {
       .wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
       th, td { padding: var(--esp-3) var(--esp-3); text-align: left;
-        border-bottom: 1px solid var(--cor-borda); white-space: nowrap;
+        border-bottom: 1px solid var(--cor-divisor); white-space: nowrap;
         vertical-align: middle; }
       /* fluido: só as CÉLULAS quebram/preenchem; os títulos de coluna nunca quebram. */
       :host([fluido]) table { table-layout: auto; }
       :host([fluido]) td { white-space: normal; }
       /* clicavel: linha clicável (abre detalhe) */
       :host([clicavel]) tbody tr { cursor: pointer; }
-      th { color: var(--cor-texto-suave); font-weight: var(--peso-semi);
-        font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .03em; }
+      th { color: var(--cor-texto-fraco); font-weight: var(--peso-semi);
+        font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
       tr:last-child td { border-bottom: none; }
       tbody tr:hover { background: var(--cor-superficie-2); }
       .dir { text-align: right; }
+      /* Valores monetários/numéricos à direita em Space Grotesk. */
+      td.dir { font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
       .acoes { display: flex; gap: var(--esp-2); justify-content: flex-end; }
       .btn-acao {
         border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);

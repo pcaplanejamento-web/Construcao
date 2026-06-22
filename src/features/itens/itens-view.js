@@ -23,7 +23,7 @@ import "./item-form.js";
 import "../categorias/categoria-form.js";
 
 /** Cor do badge por classificação (espelha as cores padrão do sistema). */
-const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
+const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
 
 class ItensView extends BaseElement {
   estilos() {

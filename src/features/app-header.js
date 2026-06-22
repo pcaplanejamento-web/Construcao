@@ -30,7 +30,7 @@ class AppHeader extends BaseElement {
         border-bottom: 1px solid var(--cor-borda);
       }
       .barra { display: flex; align-items: center; gap: var(--esp-3);
-        padding: var(--esp-3) var(--esp-5) var(--esp-3) 0; } /* esq.=0: o marca-bloco controla o gutter (alinha com a sidebar) */
+        height: 70px; padding: 0 var(--esp-5) 0 0; } /* esq.=0: o marca-bloco controla o gutter (alinha com a sidebar) */
       /* Cluster logo+marca+menu com gaps IGUAIS (--esp-2 entre logo/texto e
          texto/menu); largura natural do conteúdo. padding-left = --esp-5 alinha o
          logo com a coluna de ícones da sidebar. A largura do nav (app-sidebar.js)
@@ -42,24 +42,25 @@ class AppHeader extends BaseElement {
         padding: 8px; border-radius: var(--raio-sm); }
       .menu-btn:hover { background: var(--cor-superficie-2); }
       .marca { display: flex; align-items: center; gap: var(--esp-2);
+        font-family: var(--fonte-titulo); letter-spacing: -.02em;
         font-weight: var(--peso-forte); color: var(--cor-primaria); font-size: var(--fs-lg);
         text-decoration: none; }
       .marca img { height: 32px; width: auto; display: block; }
       .cresce { flex: 1; }
       .icone-btn { display: inline-flex; align-items: center; justify-content: center;
-        width: 38px; height: 38px; border: 1px solid var(--cor-borda-forte);
+        width: 40px; height: 40px; border: 1px solid var(--cor-borda-forte);
         background: var(--cor-superficie); color: var(--cor-texto-suave);
-        border-radius: var(--raio-sm); }
+        border-radius: var(--raio-md); }
       .icone-btn:hover { background: var(--cor-superficie-2); }
       .chip { display: flex; align-items: center; gap: var(--esp-2);
         text-decoration: none; color: var(--cor-texto); padding: 4px 10px 4px 4px;
         border: 1px solid var(--cor-borda); border-radius: var(--raio-completo);
         transition: var(--transicao); }
       .chip:hover { background: var(--cor-superficie-2); text-decoration: none; }
-      .avatar { width: 30px; height: 30px; border-radius: 50%;
-        background: var(--cor-primaria); color: #fff; display: flex;
+      .avatar { width: 32px; height: 32px; border-radius: 10px;
+        background: var(--grad-primaria); color: #fff; display: flex;
         align-items: center; justify-content: center; font-size: var(--fs-xs);
-        font-weight: var(--peso-forte); }
+        font-weight: var(--peso-forte); font-family: var(--fonte-titulo); }
       .nome { font-size: var(--fs-sm); font-weight: var(--peso-medio); }
       .papel { font-size: var(--fs-xs); color: var(--cor-texto-fraco); }
       .sair { border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);

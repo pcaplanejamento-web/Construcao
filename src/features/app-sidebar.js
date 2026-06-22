@@ -38,16 +38,17 @@ class AppSidebar extends BaseElement {
       .backdrop { display: none; }
       /* padding-top = --esp-tela: alinha o topo do 1º item com o topo do
          conteúdo (KPIs), que usa a MESMA distância padrão do header. */
-      nav { display: flex; flex-direction: column; gap: var(--esp-1);
-        width: 195px; padding: var(--esp-tela) var(--esp-3) var(--esp-4); /* = largura natural do cluster do app-header (logo+Dattaobra+menu); mantém o sanduíche no limite direito */
+      nav { display: flex; flex-direction: column; gap: var(--esp-2);
+        width: 250px; padding: var(--esp-tela) var(--esp-3) var(--esp-4);
         background: var(--cor-superficie); border-right: 1px solid var(--cor-borda);
         height: 100%; overflow: hidden; transition: width .2s ease; }
       a { display: flex; align-items: center; gap: var(--esp-3);
-        padding: var(--esp-3) var(--esp-3); border-radius: var(--raio-sm);
+        min-height: 48px; padding: 0 var(--esp-3); border-radius: var(--raio-md);
         color: var(--cor-texto-suave); text-decoration: none;
         font-weight: var(--peso-medio); font-size: var(--fs-sm); }
-      a:hover { background: var(--cor-superficie-2); text-decoration: none; }
-      a.ativo { color: var(--cor-primaria); background: var(--cor-primaria-suave); }
+      a:hover { background: var(--cor-divisor); text-decoration: none; }
+      a.ativo { color: var(--cor-primaria-escura); background: var(--cor-primaria-suave);
+        font-weight: var(--peso-semi); }
       a ui-icon { color: inherit; flex: none; } /* ícone nunca encolhe */
       .rotulo { white-space: nowrap; overflow: hidden; max-width: 160px; opacity: 1;
         transition: opacity .15s ease, max-width .2s ease; }

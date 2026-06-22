@@ -11,13 +11,13 @@ sobem por `CustomEvent`**.
 
 | Componente | Atributos / Propriedades | Eventos | Descrição |
 |------------|--------------------------|---------|-----------|
-| `ui-button` | `variant`, `loading`, `disabled`, `tamanho`, `full` | `click` (nativo) | Botão. Slot = conteúdo. |
+| `ui-button` | `variant`, `loading`, `disabled`, `tamanho`, `full` | `click` (nativo) | Botão. Slot = conteúdo. Primário = **gradiente** `--grad-primaria` + sombra colorida + lift no hover; raio `--raio-md`. |
 | `ui-input` | `label`, `name`, `type`, `value`, `placeholder`, `error`, `required`, `step`, `min`; prop `.value` | `input`, `change`, `enter` | Campo com rótulo e erro. |
 | `ui-select` | `label`, `name`, `value`, `placeholder`, `error`; prop `.options=[{value,label}]`, `.value` | `change` | Lista suspensa. |
 | `ui-modal` | `open`, `title`; slots: default, `rodape` | `fechar` | Diálogo overlay (X, backdrop, Esc). |
 | `ui-toast` / `toast-host` | `tipo`, `message` | — | Notificações; host ouve o `event-bus`. |
 | `ui-card` | `title`; slots: default, `acoes` | — | Cartão de superfície. **Padrão:** o botão de adicionar da tabela vai no `slot="acoes"` (cabeçalho, colado à direita); título longo **quebra** mantendo o botão à direita. |
-| `ui-data-table` | `.columns` (`{chave,titulo,formato?,alinhar?,largura?,secundaria?}`; `largura`=min-width opcional ex. "280px"; **`secundaria:true`**=coluna some no **mobile (≤820px)**), `.rows`, `.acoes`; attrs `empty-text`, `fluido` (só as **células** quebram/preenchem — os **títulos nunca quebram**), `clicavel` (linha clicável) | `acao` ({acao,linha}), `linha` ({linha}) | Tabela genérica orientada a dados. |
+| `ui-data-table` | `.columns` (`{chave,titulo,formato?,alinhar?,largura?,secundaria?}`; `largura`=min-width opcional ex. "280px"; **`secundaria:true`**=coluna some no **mobile (≤820px)**), `.rows`, `.acoes`; attrs `empty-text`, `fluido` (só as **células** quebram/preenchem — os **títulos nunca quebram**), `clicavel` (linha clicável) | `acao` ({acao,linha}), `linha` ({linha}) | Tabela genérica orientada a dados. Cabeçalho 11px maiúsculo; linhas separadas por `--cor-divisor`; células `.dir` (valores) em **Space Grotesk 700**. A 1ª coluna pode trazer avatar de iniciais via `formato` (ex.: `fornecedores-view`, `contatos-view`). |
 | `ui-icon` | `name`, `size` | — | Biblioteca de ícones padrão (SVG `currentColor`). Sem emoji. Inclui `fornecedor`, `contato`, `cotacao` (módulo Compras), `email`, `usuarios`, `seta-direita` (login). |
 | `ui-alert` | `tipo` (erro\|aviso\|info\|sucesso), `message`; prop `.mensagem` | — | **Componente PADRÃO de mensagem de erro/alerta inline.** Some quando sem `message`. Usar sempre que houver mensagem de erro de validação numa tela/form. |
 | `ui-tabs` | `.abas=[{id,rotulo,icone}]`, attr `ativo`; evento `mudar` | Abas com slots nomeados (`slot="<id>"`); mostra só a aba ativa. A aba ativa muda **apenas a cor** (texto + ícone via `currentColor`) e a barra inferior — sem alterar `font-weight`/tamanho (evita reflow/deslocamento). |

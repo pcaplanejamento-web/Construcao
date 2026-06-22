@@ -127,9 +127,32 @@ class ContatosView extends BaseElement {
     const tabela = document.createElement("ui-data-table");
     tabela.setAttribute("fluido", "");
     tabela.setAttribute("clicavel", "");
+    const PALETA = ["#0d9488", "#6366f1", "#f59e0b", "#8b5cf6", "#e11d48", "#0ea5e9"];
     tabela.columns = [
-      { chave: "nome", titulo: "Contato" },
-      { chave: "cargo", titulo: "Cargo", formato: (v) => v || "—" },
+      {
+        chave: "nome",
+        titulo: "Contato",
+        formato: (v) => {
+          const nome = String(v || "?");
+          const p = nome.trim().split(/\s+/).filter(Boolean);
+          const ini = ((p.length === 1 ? (p[0] || "?").slice(0, 2) : p[0][0] + p[p.length - 1][0]) || "?").toUpperCase();
+          let h = 0;
+          for (let i = 0; i < nome.length; i++) h = (h * 31 + nome.charCodeAt(i)) >>> 0;
+          const cor = PALETA[h % PALETA.length];
+          return `<span style="display:inline-flex;align-items:center;gap:10px">
+            <span style="width:34px;height:34px;flex:none;border-radius:10px;background:${cor};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:var(--fonte-titulo);font-weight:700;font-size:12px">${ini}</span>
+            <span style="font-weight:600">${v || "—"}</span>
+          </span>`;
+        },
+      },
+      {
+        chave: "cargo",
+        titulo: "Cargo",
+        formato: (v) =>
+          v
+            ? `<span style="display:inline-flex;padding:2px 10px;border-radius:999px;font-size:var(--fs-xs);font-weight:600;background:var(--cor-superficie-2);color:var(--cor-texto-suave);border:1px solid var(--cor-borda)">${v}</span>`
+            : "—",
+      },
       {
         chave: "fornecedor_id",
         titulo: "Empresa",

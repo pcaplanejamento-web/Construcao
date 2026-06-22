@@ -29,19 +29,20 @@ class ObraCard extends BaseElement {
       :host { display: block; }
       .card {
         background: var(--cor-superficie); border: 1px solid var(--cor-borda);
-        border-radius: var(--raio-lg); box-shadow: var(--sombra-sm);
+        border-radius: var(--raio-lg); box-shadow: var(--sombra-md);
         padding: var(--esp-5); cursor: pointer; transition: var(--transicao);
         display: flex; flex-direction: column; gap: var(--esp-3); height: 100%;
       }
-      .card:hover { box-shadow: var(--sombra-md); transform: translateY(-2px); }
+      .card:hover { box-shadow: var(--sombra-lg); transform: translateY(-2px); }
       .topo { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--esp-2); }
       h3 { font-size: var(--fs-lg); font-weight: var(--peso-semi); }
       .end { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
       .valores { display: flex; justify-content: space-between; font-size: var(--fs-sm); }
       .valores .rotulo { color: var(--cor-texto-suave); }
+      .valores span:last-child { font-family: var(--fonte-titulo); font-weight: var(--peso-semi); }
       .gasto { font-weight: var(--peso-semi); }
       .barra { height: 8px; background: var(--cor-borda); border-radius: var(--raio-completo); overflow: hidden; }
-      .barra > div { height: 100%; background: var(--cor-primaria); transition: width .3s; }
+      .barra > div { height: 100%; background: var(--grad-primaria); transition: width .3s; }
       .barra > div.estouro { background: var(--cor-erro); }
       .acoes { display: flex; gap: var(--esp-2); margin-top: auto; }
       .acoes button {
@@ -50,7 +51,7 @@ class ObraCard extends BaseElement {
         color: var(--cor-texto-suave);
       }
       .acoes button:hover { background: var(--cor-superficie-2); }
-      .acoes button.perigo { color: var(--cor-erro); }
+      .acoes button.perigo { color: var(--cor-erro); border-color: var(--cor-erro-suave); }
       .dono { font-size: var(--fs-xs); color: var(--cor-texto-fraco);
         display: flex; align-items: center; gap: var(--esp-1); }
       .log { font-size: var(--fs-xs); color: var(--cor-texto-fraco);

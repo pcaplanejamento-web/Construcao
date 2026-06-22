@@ -44,6 +44,7 @@ class DashboardSummary extends BaseElement {
       .rotulo { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .05em;
         font-weight: var(--peso-semi); opacity: .9; position: relative; z-index: 1; }
       .valor { font-size: var(--fs-2xl); font-weight: var(--peso-forte); line-height: 1.1;
+        font-family: var(--fonte-titulo); letter-spacing: -.02em;
         position: relative; z-index: 1; }
       .dica { font-size: var(--fs-xs); opacity: .85; position: relative; z-index: 1; }
     `;

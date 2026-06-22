@@ -21,7 +21,7 @@ class UiCard extends BaseElement {
          altura definida, ex.: grade de gráficos) — corpo flexível e rolável. */
       .card {
         background: var(--cor-superficie); border: 1px solid var(--cor-borda);
-        border-radius: var(--raio-lg); box-shadow: var(--sombra-sm);
+        border-radius: var(--raio-lg); box-shadow: var(--sombra-md);
         overflow: hidden; display: flex; flex-direction: column; height: 100%;
       }
       header {

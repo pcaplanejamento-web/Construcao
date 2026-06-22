@@ -10,7 +10,7 @@ import { colunasLog } from "../../core/audit-columns.js";
 import { totalOferta } from "../cotacoes/cotacao-util.js";
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
-export const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
+export const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
 
 /** Nome do ofertante: equipe (se houver) ou contato. Usado em orçamento e oferta. */
 export function ofertanteNome(contatoId, equipeId) {

@@ -27,7 +27,7 @@ class UiButton extends BaseElement {
       button {
         font-weight: var(--peso-semi);
         border: 1px solid transparent;
-        border-radius: var(--raio-sm);
+        border-radius: var(--raio-md);
         padding: 0 var(--esp-4);
         height: 42px;
         display: inline-flex;
@@ -41,8 +41,9 @@ class UiButton extends BaseElement {
       button:disabled { opacity: .6; cursor: not-allowed; }
       :host([tamanho="sm"]) button { height: 34px; font-size: var(--fs-sm); padding: 0 var(--esp-3); }
 
-      .primario { background: var(--cor-primaria); color: #fff; }
-      .primario:not(:disabled):hover { background: var(--cor-primaria-escura); }
+      .primario { background: var(--grad-primaria); color: #fff;
+        box-shadow: 0 8px 18px -10px rgba(5, 150, 105, .6); }
+      .primario:not(:disabled):hover { filter: brightness(1.04); transform: translateY(-1px); }
       .secundario { background: var(--cor-superficie); color: var(--cor-texto); border-color: var(--cor-borda-forte); }
       .secundario:not(:disabled):hover { background: var(--cor-superficie-2); }
       .perigo { background: var(--cor-erro); color: #fff; }

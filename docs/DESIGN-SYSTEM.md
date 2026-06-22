@@ -5,11 +5,14 @@ Referência visual do sistema. As regras estão nos princípios 13–19 de
 dos valores é [`src/styles/tokens.css`](../src/styles/tokens.css).
 
 ## Fonte
-- **Padrão:** stack do sistema, em `--fonte-base` (`-apple-system, "Segoe UI",
-  Roboto, …`). Mono em `--fonte-mono`.
-- Componentes herdam a fonte do `:host` (definida no `RESET` de
-  [`base-element.js`](../src/components/base-element.js)) — **nunca** declarar
-  `font-family` fixa.
+- **Corpo/labels/tabelas:** **Plus Jakarta Sans** em `--fonte-base`.
+  **Títulos, números e valores monetários:** **Space Grotesk** em `--fonte-titulo`
+  (com `letter-spacing: -0.025em`). Importadas no `index.html` via Google Fonts,
+  com fallback do sistema. Mono em `--fonte-mono`. **Nunca** Inter/Roboto/Arial.
+- Componentes herdam `--fonte-base` no `:host` e `--fonte-titulo` nos `h1..h6`
+  (ambos no `RESET` de [`base-element.js`](../src/components/base-element.js)).
+  Para número/valor que **não** seja heading (ex.: célula monetária, KPI),
+  declarar `font-family: var(--fonte-titulo)` no elemento.
 - Tamanhos: `--fs-xs … --fs-3xl`. `--fs-2xl` (títulos) é fluido com `clamp()`.
 
 ## Ícones — `<ui-icon>`
@@ -30,14 +33,21 @@ Para um ícone novo, adicione o path ao registro `ICONES` em
 - **Semânticas:** `--cor-sucesso`, `--cor-erro`, `--cor-aviso`, `--cor-info`,
   `--cor-roxo` (admin), `--cor-neutro` (genérico/sem categoria) — cada uma com
   variante `*-suave` para fundos.
-- **Superfície/texto/borda:** `--cor-fundo`, `--cor-superficie`,
-  `--cor-superficie-2`, `--cor-borda`, `--cor-borda-forte`, `--cor-texto`,
-  `--cor-texto-suave`, `--cor-texto-fraco`. `--cor-overlay` para modais/drawer.
+- **Superfície/texto/borda:** `--cor-fundo` (#f3f5f8), `--cor-superficie`,
+  `--cor-superficie-2`, `--cor-borda` (#eef1f4, cards/estrutura), `--cor-borda-forte`
+  (#e2e8f0, inputs/botões), `--cor-divisor` (#f1f5f9, linhas de tabela),
+  `--cor-texto`, `--cor-texto-suave` (#64748b), `--cor-texto-fraco`.
+  `--cor-overlay` para modais/drawer.
 - **Regra:** chrome usa sempre `var(--cor-*)`. Cores de categoria escolhidas
   pelo usuário são **dados** (hex), não chrome.
-- **Gradientes de KPI:** `--grad-azul`, `--grad-verde`, `--grad-laranja`,
-  `--grad-roxo`, `--grad-vermelho` — usados nos cartões de `dashboard-summary`
-  (texto branco; iguais nos dois temas).
+- **Gradiente da marca:** `--grad-primaria` (`#0d9488→#059669`) — botões primários,
+  barra de progresso da obra, avatares.
+- **Gradientes de KPI:** `--grad-azul` (TOTAL GASTO, indigo), `--grad-laranja`
+  (ORÇAMENTO, âmbar), `--grad-verde` (SALDO, esmeralda), `--grad-roxo` (DESPESAS,
+  violeta), `--grad-vermelho` (saldo estourado) — `dashboard-summary` (texto branco).
+- **Pills (classificação, via `ui-badge`/`color-mix`):** Material `#1d4ed8`,
+  Serviço `#6d28d9` (`COR_CLASSIFICACAO`); status/obra usam as semânticas
+  (A pagar→aviso, Ativa→sucesso).
 
 ## Tema claro/escuro
 - Conjunto claro em `:root`; escuro aplicado por `@media (prefers-color-scheme:
@@ -64,8 +74,10 @@ direita→conteúdo, em qualquer largura (e acompanha quando a sidebar recolhe).
 Usar sempre em telas/abas novas.
 
 ## Raio, sombra, camadas
-`--raio-sm/md/lg/completo`; `--sombra-sm/md/lg` (tonalizadas no escuro);
-`--z-nav/modal/toast`; transição padrão `--transicao`.
+`--raio-sm`(8) `--raio-md`(12, botões/inputs) `--raio-lg`(20, cards) `--raio-completo`(999);
+`--sombra-sm/md/lg` (tonalizadas no escuro). **Card** usa `--sombra-md` (duas camadas:
+contorno suave + halo difuso). `--z-nav/modal/toast`; transição padrão `--transicao`.
+Botões/cards sobem 1–3px no hover (`translateY`) com `--transicao`.
 
 ## Breakpoints (proporcionalidade)
 Convenção (CSS não aceita `var()` em `@media`): **sm 600 · md 900 · lg 1100**.

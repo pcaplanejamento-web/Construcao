@@ -43,7 +43,7 @@ class UiTabs extends BaseElement {
       button { display: inline-flex; align-items: center; gap: var(--esp-2);
         background: none; border: none; cursor: pointer; padding: var(--esp-3) var(--esp-4);
         font-size: var(--fs-sm); font-weight: var(--peso-medio); color: var(--cor-texto-suave);
-        border-bottom: 2px solid transparent; margin-bottom: -1px; }
+        border-bottom: 2.5px solid transparent; margin-bottom: -1px; }
       button:hover { color: var(--cor-texto); }
       /* Ativo: muda APENAS a cor (texto + ícone via currentColor) e a barra
          inferior. Sem alterar font-weight/size → não há reflow nem deslocamento. */

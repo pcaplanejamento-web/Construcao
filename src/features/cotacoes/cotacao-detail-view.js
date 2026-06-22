@@ -30,7 +30,7 @@ import "./preco-form.js";
 import "./cotacao-despesa-form.js";
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
-const COR_CLASSIFICACAO = { Material: "#2563eb", "Serviço": "#7c3aed" };
+const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
 
 class CotacaoDetailView extends BaseElement {
   constructor() {

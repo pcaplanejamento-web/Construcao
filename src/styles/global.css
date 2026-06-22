@@ -29,8 +29,10 @@ app-shell:not(:defined) {
 }
 
 .titulo-pagina {
+  font-family: var(--fonte-titulo);
   font-size: var(--fs-2xl);
   font-weight: var(--peso-forte);
+  letter-spacing: -0.025em;
   margin-bottom: var(--esp-2);
 }
 
