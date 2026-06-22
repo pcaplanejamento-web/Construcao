@@ -40,6 +40,7 @@ class EquipeDetailView extends BaseElement {
       :host { display: block; }
       .area { padding: var(--esp-tela); display: flex; flex-direction: column; gap: var(--esp-5); }
       .voltar { align-self: flex-start; display: inline-flex; align-items: center; gap: var(--esp-1); color: var(--cor-primaria); font-size: var(--fs-sm); font-weight: var(--peso-semi); }
+      #conteudo { display: flex; flex-direction: column; gap: var(--esp-5); }
       .topo { display: flex; align-items: flex-start; justify-content: space-between;
         gap: var(--esp-3); flex-wrap: wrap; }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }

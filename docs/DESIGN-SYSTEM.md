@@ -75,8 +75,9 @@ Usar sempre em telas/abas novas.
 
 **Link de retorno (`.voltar`)** — padrão nas detail-views: `inline-flex` teal
 (`var(--cor-primaria)`), `font-weight: var(--peso-semi)`, `align-self: flex-start`.
-Fica entre os irmãos da `.area` (flex-column, `gap: var(--esp-5)`), então tem o
-**mesmo espaçamento acima e abaixo** automaticamente — sem `margin` avulso.
+Nas detail-views o conteúdo vive em `#conteudo`, que é **flex-column com
+`gap: var(--esp-5)`** — então o back link (e os demais blocos) têm o **mesmo
+espaçamento (24px) acima e abaixo** automaticamente, sem `margin` avulso.
 
 ## Raio, sombra, camadas
 `--raio-sm`(8) `--raio-md`(12, botões/inputs) `--raio-lg`(20, cards) `--raio-completo`(999);
