@@ -11,7 +11,7 @@ sobem por `CustomEvent`**.
 
 | Componente | Atributos / Propriedades | Eventos | Descrição |
 |------------|--------------------------|---------|-----------|
-| `ui-button` | `variant`, `loading`, `disabled`, `tamanho`, `full` | `click` (nativo) | Botão. Slot = conteúdo. Variantes: `primario` (**gradiente** `--grad-primaria` + sombra colorida), `secundario` (branco + sombra leve), `tonal` (verde-claro/`--cor-primaria-suave` — ações suaves, ex.: Editar), `perigo` (vermelho sólido), `perigo-contorno` (outline vermelho — ex.: ícone excluir), `fantasma`. Lift no hover; raio `--raio-md`. |
+| `ui-button` | `variant`, `loading`, `disabled`, `tamanho`, `full` | `click` (nativo) | Botão. Slot = conteúdo. Variantes: `primario` (**gradiente** `--grad-primaria` + sombra colorida), `secundario` (branco + sombra leve), `tonal` (verde-claro/`--cor-primaria-suave` — ações suaves, ex.: Editar), `perigo` (vermelho sólido), `perigo-contorno` (outline vermelho — ex.: ícone excluir), `fantasma`. Lift no hover; **animação de clique** (afunda ~4% no `:active`, padrão p/ todos); raio `--raio-md`. |
 | `ui-input` | `label`, `name`, `type`, `value`, `placeholder`, `error`, `required`, `step`, `min`; prop `.value` | `input`, `change`, `enter` | Campo com rótulo e erro. |
 | `ui-select` | `label`, `name`, `value`, `placeholder`, `error`; prop `.options=[{value,label}]`, `.value` | `change` | Lista suspensa. |
 | `ui-modal` | `open`, `title`; slots: default, `rodape` | `fechar` | Diálogo overlay (X, backdrop, Esc). |
@@ -182,7 +182,7 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 | Helper | Onde | O que faz |
 |--------|------|-----------|
 | `colunasLog()` | [core/audit-columns.js](../src/core/audit-columns.js) | Devolve as 2 colunas padrão de **log** (Criado em + autor / Atualizado em + editor) para qualquer `ui-data-table`. Usado por itens/fornecedores/contatos/cotações + detalhes; `obra-card` mostra o log no rodapé; `users-table` mostra Criado em/por. |
-| `avatar.js` | [features/shared/avatar.js](../src/features/shared/avatar.js) | **Avatar único** de contato/fornecedor (iniciais, círculo, cor estável por nome). `avatarNomeHtml(nome)` (avatar + nome) e `avatarHtml(nome,tam)`/`corAvatar(nome)`/`iniciais(nome)`. Fonte ÚNICA usada em `contatos-view`/`fornecedores-view` (e onde houver nome de contato/fornecedor) — **sem duplicar** o markup. |
+| `avatar.js` | [features/shared/avatar.js](../src/features/shared/avatar.js) | **Avatar único** de contato/fornecedor (iniciais, círculo, cor estável por nome). `avatarNomeHtml(nome)` (avatar + nome) e `avatarHtml(nome,tam)`/`corAvatar(nome)`/`iniciais(nome)`. Fonte ÚNICA do avatar em TODO o sistema — usado no `app-header` (chip do usuário), `contatos-view`, `fornecedores-view`, participantes/responsáveis e fornecedores da obra (`obra-participantes`, `obra-detail-view`) e membros/“quem pagou” de equipe (`equipe-detail-view`). **Sem duplicar** markup (o `.avatar` inline do header foi eliminado). |
 | `vinculos.js` | [features/shared/vinculos.js](../src/features/shared/vinculos.js) | `vinculosDoItem/Fornecedor/Contato/Subclassificacao/Cargo/Oferta(...)` calculam os vínculos pelo store; `abrirBannerVinculos({titulo,grupos,aoExcluir})` abre um **banner** (compõe `ui-modal`+`ui-alert`+`ui-data-table`+`ui-button`) listando onde está vinculado (linhas clicáveis → navegam) e **bloqueia a exclusão**; sem vínculos, executa `aoExcluir` (com confirmação). |
 
 > **Valores ao vivo:** as tabelas resolvem o nome ATUAL da entidade vinculada pelo

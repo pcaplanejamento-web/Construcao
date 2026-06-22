@@ -14,6 +14,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { acerto, rotuloOrigem, balancos } from "../despesas/despesa-split.js";
+import { avatarNomeHtml } from "../shared/avatar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-button.js";
@@ -106,7 +107,7 @@ class ObraParticipantes extends BaseElement {
       const tabela = document.createElement("ui-data-table");
       tabela.setAttribute("fluido", "");
       tabela.columns = [
-        { chave: "nome", titulo: "Participante" },
+        { chave: "nome", titulo: "Participante", formato: (v) => avatarNomeHtml(v) },
         {
           chave: "origem",
           titulo: "Origem",

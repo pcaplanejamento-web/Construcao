@@ -14,6 +14,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { parseLista, totalRealizado, restoDespesa } from "../despesas/despesa-split.js";
+import { avatarNomeHtml } from "../shared/avatar.js";
 import { liderNome } from "./equipe-util.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
@@ -113,7 +114,7 @@ class EquipeDetailView extends BaseElement {
 
     this._tabMembros = alvo.querySelector("#tabMembros");
     this._tabMembros.columns = [
-      { chave: "_nome", titulo: "Contato" },
+      { chave: "_nome", titulo: "Contato", formato: (v) => avatarNomeHtml(v) },
       { chave: "_cargo", titulo: "Cargo", formato: (v) => v || "—" },
     ];
     this._tabMembros.acoes = [{ nome: "remover", rotulo: "Remover", variant: "perigo" }];
@@ -127,7 +128,7 @@ class EquipeDetailView extends BaseElement {
       { chave: "_data", titulo: "Data", formato: (v) => fmtData(v) },
       { chave: "_obra", titulo: "Obra" },
       { chave: "_item", titulo: "Item", largura: "180px" },
-      { chave: "_pagou", titulo: "Quem pagou" },
+      { chave: "_pagou", titulo: "Quem pagou", formato: (v) => (v ? avatarNomeHtml(v) : "—") },
       {
         chave: "_dataPgto",
         titulo: "Data do pagamento",

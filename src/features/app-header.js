@@ -12,14 +12,8 @@ import { BaseElement } from "../components/base-element.js";
 import { auth } from "../core/auth-store.js";
 import { tema } from "../core/theme.js";
 import { bus, EVENTOS } from "../core/event-bus.js";
+import { avatarHtml } from "./shared/avatar.js";
 import "../components/ui-icon.js";
-
-function iniciais(nome) {
-  const partes = String(nome || "").trim().split(/\s+/).filter(Boolean);
-  if (!partes.length) return "?";
-  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
-  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
-}
 
 class AppHeader extends BaseElement {
   estilos() {
@@ -57,10 +51,6 @@ class AppHeader extends BaseElement {
         border: 1px solid var(--cor-borda); border-radius: var(--raio-completo);
         transition: var(--transicao); }
       .chip:hover { background: var(--cor-superficie-2); text-decoration: none; }
-      .avatar { width: 32px; height: 32px; border-radius: 10px;
-        background: var(--grad-primaria); color: #fff; display: flex;
-        align-items: center; justify-content: center; font-size: var(--fs-xs);
-        font-weight: var(--peso-forte); font-family: var(--fonte-titulo); }
       .nome { font-size: var(--fs-sm); font-weight: var(--peso-medio); }
       .papel { font-size: var(--fs-xs); color: var(--cor-texto-fraco); }
       .sair { border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
@@ -103,7 +93,7 @@ class AppHeader extends BaseElement {
         <span class="cresce"></span>
         <button class="icone-btn" id="tema" aria-label="Alternar tema claro/escuro"><ui-icon name="${iconeTema}"></ui-icon></button>
         <a class="chip" href="/perfil" title="Meu perfil">
-          <span class="avatar">${iniciais(u.nome)}</span>
+          ${avatarHtml(u.nome, 32)}
           <span>
             <span class="nome">${u.nome || ""}</span>
             <span class="papel">${u.role === "admin" ? "Administrador" : "Usuário"}</span>

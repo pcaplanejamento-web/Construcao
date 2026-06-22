@@ -13,6 +13,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { balancos } from "../despesas/despesa-split.js";
+import { avatarNomeHtml } from "../shared/avatar.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
 import "../../components/ui-card.js";
@@ -269,7 +270,7 @@ class ObraDetailView extends BaseElement {
       if (d.fornecedor_id) qtd[d.fornecedor_id] = (qtd[d.fornecedor_id] || 0) + 1;
     });
     tab.columns = [
-      { chave: "_nome", titulo: "Fornecedor" },
+      { chave: "_nome", titulo: "Fornecedor", formato: (v) => avatarNomeHtml(v) },
       { chave: "_qtd", titulo: "Despesas", alinhar: "dir" },
       { chave: "_total", titulo: "Total", alinhar: "dir", formato: (v) => moeda(v) },
       { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
