@@ -128,7 +128,7 @@ class DespesaTable extends BaseElement {
             : `<span style="color:var(--cor-texto-fraco)">—</span>`;
         },
       },
-      { chave: "valor", titulo: "Valor", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
       {
         chave: "pagamentos_realizados",
         titulo: "Status",
@@ -144,6 +144,8 @@ class DespesaTable extends BaseElement {
         titulo: "Pagamento",
         alinhar: "dir",
         secundaria: true,
+        moeda: true,
+        valorNum: (linha) => totalPago(linha),
         formato: (_, linha) => {
           const t = totalPago(linha);
           return t > 0 ? moeda(t) : `<span style="color:var(--cor-texto-fraco)">—</span>`;
@@ -196,6 +198,11 @@ class DespesaTable extends BaseElement {
     );
     tabela.addEventListener("linha", (e) =>
       this.emitir("abrir", { despesa: e.detail.linha })
+    );
+    // Exclusão em massa: a tabela confirma e emite as linhas; repassa à obra-detail.
+    tabela.setAttribute("excluir-massa", "");
+    tabela.addEventListener("excluir-massa", (e) =>
+      this.emitir("excluir-massa", { despesas: e.detail.linhas })
     );
     this.atualizarTabela();
   }

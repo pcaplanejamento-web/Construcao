@@ -162,6 +162,7 @@ class ObraDetailView extends BaseElement {
     this._tabela.addEventListener("abrir", (e) => this.abrirBanner(e.detail.despesa));
     this._tabela.addEventListener("editar", (e) => this.abrirBanner(e.detail.despesa));
     this._tabela.addEventListener("remover", (e) => this.remover(e.detail.despesa));
+    this._tabela.addEventListener("excluir-massa", (e) => this.removerMassa(e.detail.despesas));
 
     this._montado = true;
   }
@@ -319,6 +320,16 @@ class ObraDetailView extends BaseElement {
     if (!confirm(`Excluir a despesa "${despesa.item}"?`)) return;
     try {
       await dataStore.removerDespesa(this.obraId, despesa.id);
+    } catch (e) {
+      notificarErro(e);
+    }
+  }
+
+  /** Exclusão em massa (a tabela já confirmou) — remove cada selecionada. */
+  async removerMassa(despesas) {
+    try {
+      for (const d of despesas || []) await dataStore.removerDespesa(this.obraId, d.id);
+      toastSucesso(`${(despesas || []).length} despesa(s) excluída(s).`);
     } catch (e) {
       notificarErro(e);
     }

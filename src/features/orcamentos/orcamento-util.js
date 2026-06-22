@@ -146,12 +146,16 @@ export function colunasOferta() {
       titulo: "Total",
       alinhar: "dir",
       secundaria: true,
+      moeda: true,
+      valorNum: (linha) => totalOfertaCheio(linha, dataStore.cotacao(linha.cotacao_id)),
       formato: (v, linha) => moeda(totalOfertaCheio(linha, dataStore.cotacao(linha.cotacao_id))),
     },
     {
       chave: "valor_unit",
       titulo: "Total c/ desc.",
       alinhar: "dir",
+      moeda: true,
+      valorNum: (linha) => totalOferta(linha, dataStore.cotacao(linha.cotacao_id)),
       formato: (v, linha) => _verde(moeda(totalOferta(linha, dataStore.cotacao(linha.cotacao_id)))),
     },
     { chave: "prazo_entrega", titulo: "Prazo", formato: (v) => v || "—" },
@@ -220,6 +224,10 @@ export function montarTabelaOfertas(el, ofertas, opcoes = {}) {
     ? opcoes.acoes || []
     : [{ nome: "registrar", rotulo: "Registrar" }, ...(opcoes.acoes || [])];
   tabela.rows = lista;
+  if (opcoes.excluirMassa) {
+    tabela.setAttribute("excluir-massa", "");
+    tabela.addEventListener("excluir-massa", (e) => opcoes.excluirMassa(e.detail.linhas));
+  }
   if (opcoes.onLinha) tabela.addEventListener("linha", (e) => opcoes.onLinha(e.detail.linha));
   tabela.addEventListener("acao", (e) => {
     const { acao, linha } = e.detail;

@@ -59,6 +59,7 @@ class OfertasView extends BaseElement {
       onLinha: (oferta) => abrirOferta(oferta), // clique na oferta → banner único
       acoes: [{ nome: "remover", rotulo: "Excluir", variant: "perigo" }],
       onAcao: (acao, linha) => this.remover(linha),
+      excluirMassa: (linhas) => this.removerMassa(linhas),
       vazio: "Crie ofertas para comparar preços e montar orçamentos.",
     });
   }
@@ -77,6 +78,16 @@ class OfertasView extends BaseElement {
     try {
       await dataStore.removerPreco(oferta.cotacao_id || "", oferta.id);
       toastSucesso("Oferta excluída.");
+    } catch (e) {
+      notificarErro(e);
+    }
+  }
+
+  /** Exclusão em massa (a tabela já confirmou) — remove cada oferta selecionada. */
+  async removerMassa(linhas) {
+    try {
+      for (const of of linhas || []) await dataStore.removerPreco(of.cotacao_id || "", of.id);
+      toastSucesso(`${(linhas || []).length} oferta(s) excluída(s).`);
     } catch (e) {
       notificarErro(e);
     }

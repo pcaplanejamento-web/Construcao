@@ -1,22 +1,31 @@
 /**
- * <ui-data-table> — Tabela genérica orientada a dados (primitivo).
+ * <ui-data-table> — Tabela/data-grid genérica (primitivo). Além de exibir dados,
+ * faz internamente: seleção de linhas, ordenação/filtro por coluna (dropdown
+ * `ui-coluna-menu` no cabeçalho), linha de TOTAIS e soma dos selecionados.
  *
  * Propriedades:
- *   .columns = [{ chave, titulo, formato?(valor,linha)=>string, alinhar?, largura?, secundaria? }]
- *     largura: CSS length opcional → min-width da coluna (ex.: "200px"); só onde definida.
- *     secundaria: true → coluna some no mobile (≤820px); use p/ tabelas largas.
- *   .rows    = [ objeto, ... ]
- *   .acoes   = [{ nome, rotulo, variant? }]  // botões por linha (opcional)
- * Atributo: empty-text (texto quando não há linhas)
- * Evento: "acao" ({ acao, linha }) ao clicar num botão de ação.
+ *   .columns = [{ chave, titulo, formato?(valor,linha)=>string, alinhar?, largura?,
+ *                 secundaria?, moeda?, valorNum?(linha)=>number }]
+ *     moeda: true   → entra no somatório (linha de Total + soma dos selecionados).
+ *     valorNum      → número a somar (p/ colunas com total derivado; default Number(linha[chave])).
+ *     largura/secundaria/alinhar/formato: como antes.
+ *   .rows  = [ objeto, ... ]
+ *   .acoes = [{ nome, rotulo, variant? }]
+ * Atributos: empty-text, fluido, clicavel, excluir-massa (mostra "Excluir selecionadas").
+ * Eventos: "acao" ({acao,linha}), "linha" ({linha}), "selecao" ({linhas}),
+ *          "excluir-massa" ({linhas}).
  *
- * Não conhece o domínio: quem usa fornece colunas e formatadores.
+ * Não conhece o domínio: quem usa fornece colunas/formatadores e (opcional) liga
+ * `excluir-massa` ao seu remove. Ordenação/filtro/seleção são estado interno e
+ * PERSISTEM quando `.rows` é re-atribuído (refresh em 2º plano não perde o filtro).
  */
 import { BaseElement } from "./base-element.js";
+import { moeda } from "../core/formatters.js";
+import "./ui-coluna-menu.js";
 
 class UiDataTable extends BaseElement {
   static get observedAttributes() {
-    return ["empty-text", "fluido", "clicavel"];
+    return ["empty-text", "fluido", "clicavel", "excluir-massa"];
   }
 
   set columns(v) {
@@ -45,108 +54,311 @@ class UiDataTable extends BaseElement {
     if (this.shadowRoot.childElementCount) this.renderizar();
   }
 
+  /* ----------------------- Estado de ordenar/filtrar/selecionar -------------- */
+  get _ordem() {
+    return this.__ordem || null;
+  } // { col: idx, dir: 'asc'|'desc' }
+  set _ordem(v) {
+    this.__ordem = v;
+  }
+  get _filtros() {
+    if (!this.__filtros) this.__filtros = {};
+    return this.__filtros;
+  } // { idx: Set<texto> }
+  get _sel() {
+    if (!this.__sel) this.__sel = new Set();
+    return this.__sel;
+  } // Set<linha (objeto)>
+
+  /* ----------------------------- Helpers de valor ---------------------------- */
+  _texto(c, linha) {
+    const v = c.formato ? c.formato(linha[c.chave], linha) : linha[c.chave];
+    return String(v == null ? "" : v)
+      .replace(/<[^>]*>/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  _num(c, linha) {
+    const n = c.valorNum ? c.valorNum(linha) : linha[c.chave];
+    return Number(n) || 0;
+  }
+  _temMoeda() {
+    return this.columns.some((c) => c.moeda);
+  }
+
+  /** Valores distintos (textos exibidos) de uma coluna — p/ o dropdown. */
+  _distintos(i) {
+    const c = this.columns[i];
+    const vistos = new Set();
+    const out = [];
+    this.rows.forEach((l) => {
+      const t = this._texto(c, l);
+      if (!vistos.has(t)) {
+        vistos.add(t);
+        out.push(l);
+      }
+    });
+    out.sort((a, b) =>
+      c.moeda ? this._num(c, a) - this._num(c, b) : this._texto(c, a).localeCompare(this._texto(c, b))
+    );
+    return out.map((l) => this._texto(c, l));
+  }
+
+  /** Linhas visíveis (filtro + ordenação) como [{ linha, i }] (i = índice original). */
+  _visiveis() {
+    let arr = this.rows.map((linha, i) => ({ linha, i }));
+    Object.keys(this._filtros).forEach((idx) => {
+      const c = this.columns[idx];
+      if (!c) return;
+      const permitidos = this._filtros[idx];
+      arr = arr.filter((o) => permitidos.has(this._texto(c, o.linha)));
+    });
+    if (this._ordem && this.columns[this._ordem.col]) {
+      const c = this.columns[this._ordem.col];
+      const dir = this._ordem.dir === "desc" ? -1 : 1;
+      arr.sort((a, b) => {
+        const r = c.moeda
+          ? this._num(c, a.linha) - this._num(c, b.linha)
+          : this._texto(c, a.linha).localeCompare(this._texto(c, b.linha), "pt", { numeric: true });
+        return r * dir;
+      });
+    }
+    return arr;
+  }
+
   estilos() {
     return `
       :host { display: block; }
-      /* Rola horizontalmente quando as colunas não cabem (sem espremer textos). */
-      .wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      /* Área rolável com altura limitada: cabeçalho e totais ficam fixos (sticky)
+         e a barra de rolagem horizontal fica sempre na base da tabela. */
+      .wrap { overflow: auto; max-height: 70vh; -webkit-overflow-scrolling: touch; }
       table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
       th, td { padding: var(--esp-3) var(--esp-3); text-align: left;
-        border-bottom: 1px solid var(--cor-divisor); white-space: nowrap;
-        vertical-align: middle; }
-      /* fluido: só as CÉLULAS quebram/preenchem; os títulos de coluna nunca quebram. */
+        border-bottom: 1px solid var(--cor-divisor); white-space: nowrap; vertical-align: middle; }
       :host([fluido]) table { table-layout: auto; }
       :host([fluido]) td { white-space: normal; }
-      /* clicavel: linha clicável (abre detalhe) */
       :host([clicavel]) tbody tr { cursor: pointer; }
       th { color: var(--cor-texto-fraco); font-weight: var(--peso-semi);
         font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
-      tr:last-child td { border-bottom: none; }
+      thead th { position: sticky; top: 0; z-index: 3; background: var(--cor-superficie); }
+      tbody tr:last-child td { border-bottom: none; }
       tbody tr:hover { background: var(--cor-superficie-2); }
       .dir { text-align: right; }
-      /* Valores monetários/numéricos à direita em Space Grotesk. */
       td.dir { font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
+      /* Coluna inicial de seleção: fixa à esquerda. */
+      .sel { width: 36px; text-align: center; position: sticky; left: 0;
+        background: var(--cor-superficie); z-index: 2; }
+      thead th.sel { z-index: 4; }
+      input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cor-primaria); cursor: pointer; }
+      .th-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none;
+        font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
+        cursor: pointer; padding: 0; }
+      .th-btn:hover { color: var(--cor-primaria); }
+      .th-btn .seta { font-size: 10px; opacity: .6; }
+      .th-btn.ativo { color: var(--cor-primaria); }
       .acoes { display: flex; gap: var(--esp-2); justify-content: flex-end; }
-      .btn-acao {
-        border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
-        border-radius: var(--raio-sm); padding: 4px 10px; font-size: var(--fs-xs);
-        color: var(--cor-texto-suave);
-      }
+      .btn-acao { border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
+        border-radius: var(--raio-sm); padding: 4px 10px; font-size: var(--fs-xs); color: var(--cor-texto-suave); }
       .btn-acao:hover { background: var(--cor-superficie-2); }
       .btn-acao.perigo { color: var(--cor-erro); border-color: var(--cor-erro-suave); }
+      /* Linha de TOTAIS: fixa na base da área da tabela. */
+      tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--cor-superficie);
+        border-top: 2px solid var(--cor-borda); font-family: var(--fonte-titulo);
+        font-weight: var(--peso-forte); }
+      tfoot td.sel { z-index: 3; }
+      tfoot .rotulo { font-family: var(--fonte-base); font-weight: var(--peso-semi);
+        color: var(--cor-texto-suave); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+      /* Barra de seleção (análise dos selecionados). */
+      .selbar { display: flex; align-items: center; gap: var(--esp-3); flex-wrap: wrap;
+        padding: var(--esp-2) var(--esp-3); margin-bottom: var(--esp-2);
+        background: var(--cor-primaria-suave); border: 1px solid var(--cor-primaria);
+        border-radius: var(--raio-sm); font-size: var(--fs-sm); }
+      .selbar .n { font-weight: var(--peso-semi); color: var(--cor-primaria-escura); }
+      .selbar .somas { display: flex; gap: var(--esp-3); flex-wrap: wrap; flex: 1; }
+      .selbar .soma b { font-family: var(--fonte-titulo); }
+      .selbar .excluir { margin-left: auto; border: 1px solid var(--cor-erro-suave);
+        background: var(--cor-superficie); color: var(--cor-erro); border-radius: var(--raio-sm);
+        padding: 4px 12px; font-size: var(--fs-xs); cursor: pointer; }
       .vazio { padding: var(--esp-6); text-align: center; color: var(--cor-texto-fraco); }
-      /* Colunas marcadas secundárias somem no mobile (essenciais permanecem). */
       @media (max-width: 820px) { th.sec, td.sec { display: none; } }
     `;
   }
 
   template() {
     const cols = this.columns;
-    const linhas = this.rows;
     const acoes = this.acoes;
     const temAcoes = acoes.length > 0;
+    const temMoeda = this._temMoeda();
 
-    if (!linhas.length) {
+    // Poda a seleção para linhas ainda presentes.
+    this.__sel = new Set([...this._sel].filter((l) => this.rows.includes(l)));
+
+    if (!this.rows.length) {
       const txt = this.getAttribute("empty-text") || "Nenhum registro.";
       return `<div class="vazio">${txt}</div>`;
     }
 
-    // Largura opcional (min-width) + classe da coluna (alinhamento/secundária).
-    const estiloCol = (c) => (c.largura ? ` style="min-width:${c.largura}"` : "");
-    const classeCol = (c) => [c.alinhar === "dir" ? "dir" : "", c.secundaria ? "sec" : ""].filter(Boolean).join(" ");
+    const estilo = (c) => (c.largura ? ` style="min-width:${c.largura}"` : "");
+    const classe = (c) => [c.alinhar === "dir" ? "dir" : "", c.secundaria ? "sec" : ""].filter(Boolean).join(" ");
+    const ativa = (i) => (this._ordem && this._ordem.col === i) || this._filtros[i];
 
     const cabecalho =
+      `<th class="sel"><input type="checkbox" id="selTodos"></th>` +
       cols
         .map(
-          (c) =>
-            `<th class="${classeCol(c)}"${estiloCol(c)}>${c.titulo}</th>`
+          (c, i) =>
+            `<th class="${classe(c)}"${estilo(c)}><button class="th-btn ${ativa(i) ? "ativo" : ""}" data-col="${i}">${c.titulo}${ativa(i) ? " •" : ""} <span class="seta">▾</span></button></th>`
         )
-        .join("") + (temAcoes ? "<th></th>" : "");
+        .join("") +
+      (temAcoes ? "<th></th>" : "");
 
-    const corpo = linhas
-      .map((linha, idx) => {
+    const corpo = this._visiveis()
+      .map(({ linha, i }) => {
+        const marcada = this._sel.has(linha);
+        const sel = `<td class="sel"><input type="checkbox" class="rowsel" data-i="${i}" ${marcada ? "checked" : ""}></td>`;
         const celulas = cols
           .map((c) => {
-            const bruto = linha[c.chave];
-            const valor = c.formato ? c.formato(bruto, linha) : bruto;
-            return `<td class="${classeCol(c)}"${estiloCol(c)}>${
-              valor == null ? "" : valor
-            }</td>`;
+            const v = c.formato ? c.formato(linha[c.chave], linha) : linha[c.chave];
+            return `<td class="${classe(c)}"${estilo(c)}>${v == null ? "" : v}</td>`;
           })
           .join("");
         const botoes = temAcoes
           ? `<td><div class="acoes">${acoes
               .map(
                 (a) =>
-                  `<button class="btn-acao ${
-                    a.variant || ""
-                  }" data-acao="${a.nome}" data-idx="${idx}">${a.rotulo}</button>`
+                  `<button class="btn-acao ${a.variant || ""}" data-acao="${a.nome}" data-idx="${i}">${a.rotulo}</button>`
               )
               .join("")}</div></td>`
           : "";
-        return `<tr data-idx="${idx}">${celulas}${botoes}</tr>`;
+        return `<tr data-idx="${i}">${sel}${celulas}${botoes}</tr>`;
       })
       .join("");
 
-    return `<div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${corpo}</tbody></table></div>`;
+    // Linha de TOTAIS (soma das colunas monetárias das linhas visíveis).
+    let rodape = "";
+    if (temMoeda) {
+      const vis = this._visiveis().map((o) => o.linha);
+      let primeira = true;
+      const cels = cols
+        .map((c) => {
+          if (c.moeda) {
+            const soma = vis.reduce((s, l) => s + this._num(c, l), 0);
+            primeira = false;
+            return `<td class="dir">${moeda(soma)}</td>`;
+          }
+          const cel = primeira ? `<td class="rotulo">Total</td>` : `<td></td>`;
+          primeira = false;
+          return cel;
+        })
+        .join("");
+      rodape = `<tfoot><tr><td class="sel"></td>${cels}${temAcoes ? "<td></td>" : ""}</tr></tfoot>`;
+    }
+
+    const selbar = this._sel.size ? this._selbarHtml() : "";
+
+    return `${selbar}<div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${corpo}</tbody>${rodape}</table></div>`;
+  }
+
+  _selbarHtml() {
+    const selecionadas = [...this._sel];
+    const somas = this.columns
+      .filter((c) => c.moeda)
+      .map((c) => {
+        const soma = selecionadas.reduce((s, l) => s + this._num(c, l), 0);
+        return `<span class="soma">${c.titulo}: <b>${moeda(soma)}</b></span>`;
+      })
+      .join("");
+    const excluir = this.hasAttribute("excluir-massa")
+      ? `<button class="excluir" id="excluirMassa">Excluir selecionadas</button>`
+      : "";
+    return `<div class="selbar"><span class="n">${selecionadas.length} selecionada(s)</span><div class="somas">${somas}</div>${excluir}</div>`;
   }
 
   aposRender() {
+    // Ações por linha.
     this.$$(".btn-acao").forEach((btn) => {
       btn.addEventListener("click", (e) => {
-        e.stopPropagation(); // não dispara o clique da linha
-        const idx = Number(btn.dataset.idx);
-        this.emitir("acao", { acao: btn.dataset.acao, linha: this.rows[idx] });
+        e.stopPropagation();
+        this.emitir("acao", { acao: btn.dataset.acao, linha: this.rows[Number(btn.dataset.idx)] });
       });
     });
+    // Clique na linha (se clicavel) — ignora cliques na coluna de seleção/ações.
     if (this.hasAttribute("clicavel")) {
       this.$$("tbody tr").forEach((tr) => {
-        tr.addEventListener("click", () => {
-          const idx = Number(tr.dataset.idx);
-          this.emitir("linha", { linha: this.rows[idx] });
+        tr.addEventListener("click", (e) => {
+          if (e.target.closest(".sel, .btn-acao")) return;
+          this.emitir("linha", { linha: this.rows[Number(tr.dataset.idx)] });
         });
       });
     }
+    // Seleção por linha.
+    this.$$(".rowsel").forEach((cb) => {
+      cb.addEventListener("click", (e) => e.stopPropagation());
+      cb.addEventListener("change", () => {
+        const linha = this.rows[Number(cb.dataset.i)];
+        if (cb.checked) this._sel.add(linha);
+        else this._sel.delete(linha);
+        this.emitir("selecao", { linhas: [...this._sel] });
+        this.renderizar();
+      });
+    });
+    // Selecionar todos (visíveis).
+    const selTodos = this.$("#selTodos");
+    if (selTodos) {
+      const vis = this._visiveis().map((o) => o.linha);
+      selTodos.checked = vis.length > 0 && vis.every((l) => this._sel.has(l));
+      selTodos.addEventListener("change", () => {
+        if (selTodos.checked) vis.forEach((l) => this._sel.add(l));
+        else vis.forEach((l) => this._sel.delete(l));
+        this.emitir("selecao", { linhas: [...this._sel] });
+        this.renderizar();
+      });
+    }
+    // Excluir selecionadas em massa.
+    const btnExcluir = this.$("#excluirMassa");
+    if (btnExcluir) {
+      btnExcluir.addEventListener("click", () => {
+        const linhas = [...this._sel];
+        if (!linhas.length) return;
+        if (!confirm(`Excluir ${linhas.length} item(ns) selecionado(s)?`)) return;
+        this.__sel = new Set();
+        this.emitir("excluir-massa", { linhas });
+      });
+    }
+    // Cabeçalho → dropdown de ordenar/filtrar.
+    this.$$(".th-btn").forEach((btn) => {
+      btn.addEventListener("click", () => this._abrirMenu(Number(btn.dataset.col), btn));
+    });
+  }
+
+  _abrirMenu(col, anchorEl) {
+    const c = this.columns[col];
+    if (!c) return;
+    const menu = document.createElement("ui-coluna-menu");
+    menu.coluna = c;
+    menu.valores = this._distintos(col);
+    menu.estado = {
+      ordem: this._ordem && this._ordem.col === col ? this._ordem.dir : null,
+      selecionados: this._filtros[col] || null,
+    };
+    menu.ancora = anchorEl.getBoundingClientRect();
+    const fechar = () => menu.remove();
+    menu.addEventListener("fechar", fechar);
+    menu.addEventListener("aplicar", (e) => {
+      const { ordem, selecionados } = e.detail;
+      this._ordem = ordem ? { col, dir: ordem } : this._ordem && this._ordem.col === col ? null : this._ordem;
+      if (selecionados) this._filtros[col] = selecionados;
+      else delete this._filtros[col];
+      fechar();
+      this.renderizar();
+    });
+    menu.addEventListener("remover", () => {
+      if (this._ordem && this._ordem.col === col) this._ordem = null;
+      delete this._filtros[col];
+      fechar();
+      this.renderizar();
+    });
+    document.body.appendChild(menu);
   }
 }
 
