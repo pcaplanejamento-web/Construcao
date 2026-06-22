@@ -85,8 +85,7 @@ detecta o link pela classe `voltar`. O **texto** também reflete o destino real 
 
 **Cache de estado da página** (enquanto logado): ao sair e voltar, a página reabre no
 mesmo estado. **Rolagem** — o `router.js` memoriza o `scrollTop` do outlet por rota e
-restaura ao voltar. **Aba ativa** — o `ui-tabs` lembra a aba por rota (sessionStorage). **Busca/filtro** —
-o `despesa-filtros` salva texto + classificação por rota e reaplica ao voltar.
+restaura ao voltar. **Aba ativa** — o `ui-tabs` lembra a aba por rota (sessionStorage).
 Padrão universal: estado de UI persiste por rota → o usuário continua de onde saiu.
 Nas detail-views o conteúdo vive em `#conteudo`, que é **flex-column com
 `gap: var(--esp-5)`** — então o back link (e os demais blocos) têm o **mesmo

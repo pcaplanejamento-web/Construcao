@@ -22,6 +22,7 @@
 import { BaseElement } from "./base-element.js";
 import { moeda } from "../core/formatters.js";
 import "./ui-coluna-menu.js";
+import "./ui-busca.js";
 
 class UiDataTable extends BaseElement {
   static get observedAttributes() {
@@ -113,6 +114,9 @@ class UiDataTable extends BaseElement {
       const permitidos = this._filtros[idx];
       arr = arr.filter((o) => permitidos.has(this._texto(c, o.linha)));
     });
+    // Busca global (qualquer coluna) — campo da <ui-busca> no cabeçalho.
+    const q = this._buscaTexto || "";
+    if (q) arr = arr.filter((o) => this.columns.some((c) => this._texto(c, o.linha).toLowerCase().includes(q)));
     if (this._ordem && this.columns[this._ordem.col]) {
       const c = this.columns[this._ordem.col];
       const dir = this._ordem.dir === "desc" ? -1 : 1;
@@ -129,9 +133,13 @@ class UiDataTable extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
+      /* Container relativo p/ a <ui-busca> ficar sobreposta ao cabeçalho (sem deslocar nada). */
+      .grade { position: relative; }
+      .busca-tabela { position: absolute; top: 6px; right: 8px; z-index: 6; }
       /* Área rolável com altura limitada: cabeçalho e totais ficam fixos (sticky)
          e a barra de rolagem horizontal fica sempre na base da tabela. */
       .wrap { overflow: auto; max-height: 70vh; -webkit-overflow-scrolling: touch; }
+      .sem-result td { text-align: center; color: var(--cor-texto-fraco); padding: var(--esp-5); }
       table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
       th, td { padding: var(--esp-3) var(--esp-3); text-align: left;
         border-bottom: 1px solid var(--cor-divisor); white-space: nowrap; vertical-align: middle; }
@@ -188,7 +196,6 @@ class UiDataTable extends BaseElement {
     const cols = this.columns;
     const acoes = this.acoes;
     const temAcoes = acoes.length > 0;
-    const temMoeda = this._temMoeda();
 
     // Poda a seleção para linhas ainda presentes.
     this.__sel = new Set([...this._sel].filter((l) => this.rows.includes(l)));
@@ -212,7 +219,27 @@ class UiDataTable extends BaseElement {
         .join("") +
       (temAcoes ? "<th></th>" : "");
 
-    const corpo = this._visiveis()
+    const selbar = this._sel.size ? this._selbarHtml() : "";
+
+    return `${selbar}<div class="grade">
+      <ui-busca class="busca-tabela" id="buscaTabela" placeholder="Pesquisar na tabela..."></ui-busca>
+      <div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${this._corpoHtml()}</tbody>${this._rodapeHtml()}</table></div>
+    </div>`;
+  }
+
+  /** HTML do corpo (tbody) — linhas visíveis (filtro + busca + ordenação). */
+  _corpoHtml() {
+    const cols = this.columns;
+    const acoes = this.acoes;
+    const temAcoes = acoes.length > 0;
+    const estilo = (c) => (c.largura ? ` style="min-width:${c.largura}"` : "");
+    const classe = (c) => [c.alinhar === "dir" ? "dir" : "", c.secundaria ? "sec" : ""].filter(Boolean).join(" ");
+    const vis = this._visiveis();
+    if (!vis.length) {
+      const span = cols.length + 1 + (temAcoes ? 1 : 0);
+      return `<tr class="sem-result"><td colspan="${span}">Nenhum resultado para a pesquisa.</td></tr>`;
+    }
+    return vis
       .map(({ linha, i }) => {
         const marcada = this._sel.has(linha);
         const sel = `<td class="sel"><input type="checkbox" class="rowsel" data-i="${i}" ${marcada ? "checked" : ""}></td>`;
@@ -233,30 +260,28 @@ class UiDataTable extends BaseElement {
         return `<tr data-idx="${i}">${sel}${celulas}${botoes}</tr>`;
       })
       .join("");
+  }
 
-    // Linha de TOTAIS (soma das colunas monetárias das linhas visíveis).
-    let rodape = "";
-    if (temMoeda) {
-      const vis = this._visiveis().map((o) => o.linha);
-      let primeira = true;
-      const cels = cols
-        .map((c) => {
-          if (c.moeda) {
-            const soma = vis.reduce((s, l) => s + this._num(c, l), 0);
-            primeira = false;
-            return `<td class="dir">${moeda(soma)}</td>`;
-          }
-          const cel = primeira ? `<td class="rotulo">Total</td>` : `<td></td>`;
+  /** HTML do rodapé (tfoot) — soma das colunas monetárias das linhas visíveis. */
+  _rodapeHtml() {
+    if (!this._temMoeda() || !this.rows.length) return "";
+    const cols = this.columns;
+    const temAcoes = this.acoes.length > 0;
+    const vis = this._visiveis().map((o) => o.linha);
+    let primeira = true;
+    const cels = cols
+      .map((c) => {
+        if (c.moeda) {
+          const soma = vis.reduce((s, l) => s + this._num(c, l), 0);
           primeira = false;
-          return cel;
-        })
-        .join("");
-      rodape = `<tfoot><tr><td class="sel"></td>${cels}${temAcoes ? "<td></td>" : ""}</tr></tfoot>`;
-    }
-
-    const selbar = this._sel.size ? this._selbarHtml() : "";
-
-    return `${selbar}<div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${corpo}</tbody>${rodape}</table></div>`;
+          return `<td class="dir">${moeda(soma)}</td>`;
+        }
+        const cel = primeira ? `<td class="rotulo">Total</td>` : `<td></td>`;
+        primeira = false;
+        return cel;
+      })
+      .join("");
+    return `<tfoot><tr><td class="sel"></td>${cels}${temAcoes ? "<td></td>" : ""}</tr></tfoot>`;
   }
 
   _selbarHtml() {
@@ -275,41 +300,16 @@ class UiDataTable extends BaseElement {
   }
 
   aposRender() {
-    // Ações por linha.
-    this.$$(".btn-acao").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.emitir("acao", { acao: btn.dataset.acao, linha: this.rows[Number(btn.dataset.idx)] });
-      });
-    });
-    // Clique na linha (se clicavel) — ignora cliques na coluna de seleção/ações.
-    if (this.hasAttribute("clicavel")) {
-      this.$$("tbody tr").forEach((tr) => {
-        tr.addEventListener("click", (e) => {
-          if (e.target.closest(".sel, .btn-acao")) return;
-          this.emitir("linha", { linha: this.rows[Number(tr.dataset.idx)] });
-        });
-      });
-    }
-    // Seleção por linha.
-    this.$$(".rowsel").forEach((cb) => {
-      cb.addEventListener("click", (e) => e.stopPropagation());
-      cb.addEventListener("change", () => {
-        const linha = this.rows[Number(cb.dataset.i)];
-        if (cb.checked) this._sel.add(linha);
-        else this._sel.delete(linha);
-        this.emitir("selecao", { linhas: [...this._sel] });
-        this.renderizar();
-      });
-    });
+    this._ligarLinhas();
     // Selecionar todos (visíveis).
     const selTodos = this.$("#selTodos");
     if (selTodos) {
       const vis = this._visiveis().map((o) => o.linha);
       selTodos.checked = vis.length > 0 && vis.every((l) => this._sel.has(l));
       selTodos.addEventListener("change", () => {
-        if (selTodos.checked) vis.forEach((l) => this._sel.add(l));
-        else vis.forEach((l) => this._sel.delete(l));
+        const visiveis = this._visiveis().map((o) => o.linha);
+        if (selTodos.checked) visiveis.forEach((l) => this._sel.add(l));
+        else visiveis.forEach((l) => this._sel.delete(l));
         this.emitir("selecao", { linhas: [...this._sel] });
         this.renderizar();
       });
@@ -329,6 +329,61 @@ class UiDataTable extends BaseElement {
     this.$$(".th-btn").forEach((btn) => {
       btn.addEventListener("click", () => this._abrirMenu(Number(btn.dataset.col), btn));
     });
+    // Busca global: atualiza só o corpo (preserva foco/texto da <ui-busca>).
+    const busca = this.$("#buscaTabela");
+    if (busca) {
+      if (this._buscaTexto) busca.definir(this._buscaTexto); // restaura após re-render
+      busca.addEventListener("buscar", (e) => {
+        this._buscaTexto = (e.detail.texto || "").toLowerCase();
+        this._atualizarCorpo();
+      });
+    }
+  }
+
+  /** Liga eventos das linhas do tbody (ações, clique, seleção). Reusado pela busca. */
+  _ligarLinhas() {
+    this.$$(".btn-acao").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.emitir("acao", { acao: btn.dataset.acao, linha: this.rows[Number(btn.dataset.idx)] });
+      });
+    });
+    if (this.hasAttribute("clicavel")) {
+      this.$$("tbody tr").forEach((tr) => {
+        tr.addEventListener("click", (e) => {
+          if (e.target.closest(".sel, .btn-acao")) return;
+          this.emitir("linha", { linha: this.rows[Number(tr.dataset.idx)] });
+        });
+      });
+    }
+    this.$$(".rowsel").forEach((cb) => {
+      cb.addEventListener("click", (e) => e.stopPropagation());
+      cb.addEventListener("change", () => {
+        const linha = this.rows[Number(cb.dataset.i)];
+        if (cb.checked) this._sel.add(linha);
+        else this._sel.delete(linha);
+        this.emitir("selecao", { linhas: [...this._sel] });
+        this.renderizar();
+      });
+    });
+  }
+
+  /** Re-renderiza SÓ o corpo/rodapé (busca) sem recriar a <ui-busca> nem o cabeçalho. */
+  _atualizarCorpo() {
+    const table = this.shadowRoot.querySelector("table");
+    const tbody = table && table.querySelector("tbody");
+    if (!tbody) return;
+    tbody.innerHTML = this._corpoHtml();
+    const tfootAntigo = table.querySelector("tfoot");
+    if (tfootAntigo) tfootAntigo.remove();
+    const rodape = this._rodapeHtml();
+    if (rodape) table.insertAdjacentHTML("beforeend", rodape);
+    const selTodos = this.$("#selTodos");
+    if (selTodos) {
+      const vis = this._visiveis().map((o) => o.linha);
+      selTodos.checked = vis.length > 0 && vis.every((l) => this._sel.has(l));
+    }
+    this._ligarLinhas();
   }
 
   _abrirMenu(col, anchorEl) {

@@ -42,8 +42,8 @@ class UiColunaMenu extends BaseElement {
       :host { position: fixed; inset: 0; z-index: var(--z-modal, 1000); }
       .backdrop { position: fixed; inset: 0; }
       .painel { position: fixed; width: 300px; max-width: calc(100vw - 16px);
-        background: var(--cor-superficie); border: 1px solid var(--cor-borda);
-        border-radius: var(--raio-md); box-shadow: var(--sombra-lg);
+        background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-top: 2px solid var(--cor-primaria);
+        border-radius: 0 0 var(--raio-md) var(--raio-md); box-shadow: var(--sombra-lg);
         display: flex; flex-direction: column; max-height: min(70vh, 460px); }
       .ordem { display: flex; gap: var(--esp-2); padding: var(--esp-3); }
       .ord { flex: 1; border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
@@ -51,12 +51,6 @@ class UiColunaMenu extends BaseElement {
         color: var(--cor-texto-suave); cursor: pointer; }
       .ord.ativo { border-color: var(--cor-primaria); color: var(--cor-primaria);
         background: var(--cor-primaria-suave); font-weight: var(--peso-semi); }
-      .abas { display: flex; align-items: center; gap: var(--esp-2);
-        padding: 0 var(--esp-3) var(--esp-2); }
-      .aba { font-size: var(--fs-sm); font-weight: var(--peso-semi); }
-      .aba.off { color: var(--cor-texto-fraco); }
-      .aba.on { color: var(--cor-texto); }
-      .sep { color: var(--cor-borda); }
       .busca { margin: 0 var(--esp-3) var(--esp-2); padding: var(--esp-2) var(--esp-3);
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
         font-family: inherit; font-size: var(--fs-sm); background: var(--cor-superficie); color: var(--cor-texto); }
@@ -64,7 +58,7 @@ class UiColunaMenu extends BaseElement {
       .todos { display: flex; align-items: center; gap: var(--esp-2);
         padding: var(--esp-2) var(--esp-3); border-bottom: 1px solid var(--cor-divisor); font-size: var(--fs-sm); }
       .lista { overflow-y: auto; padding: var(--esp-2) var(--esp-3); display: flex;
-        flex-direction: column; gap: var(--esp-1); flex: 1; }
+        flex-direction: column; gap: var(--esp-1); flex: 1; min-height: 0; max-height: 220px; }
       .item { display: flex; align-items: center; gap: var(--esp-2); font-size: var(--fs-sm);
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .vazio-lista { color: var(--cor-texto-fraco); font-size: var(--fs-sm); padding: var(--esp-2); }
@@ -83,11 +77,6 @@ class UiColunaMenu extends BaseElement {
         <div class="ordem">
           <button class="ord ${o === "asc" ? "ativo" : ""}" data-ord="asc">↑ Crescente</button>
           <button class="ord ${o === "desc" ? "ativo" : ""}" data-ord="desc">↓ Decrescente</button>
-        </div>
-        <div class="abas">
-          <span class="aba off">Condições</span>
-          <span class="sep">|</span>
-          <span class="aba on">Valores</span>
         </div>
         <input id="busca" class="busca" placeholder="Filtro" />
         <label class="todos"><input type="checkbox" id="todos" /> <b>Selecionar Todos</b></label>
@@ -174,8 +163,9 @@ class UiColunaMenu extends BaseElement {
     const p = this.$(".painel");
     if (!r || !p) return;
     const w = 300;
+    // Colado ao tópico: alinhado à esquerda do cabeçalho e SEM espaço (borda-topo encosta no th).
     const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
-    const top = Math.max(8, Math.min(r.bottom + 4, window.innerHeight - 470));
+    const top = Math.max(8, Math.min(r.bottom, window.innerHeight - 470));
     p.style.left = left + "px";
     p.style.top = top + "px";
   }

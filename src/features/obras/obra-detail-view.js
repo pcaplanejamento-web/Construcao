@@ -30,7 +30,6 @@ import "../cotacoes/cotacao-despesa-form.js";
 import "../orcamentos/orcamento-form.js";
 import "../despesas/despesa-table.js";
 import "../despesas/despesa-detail.js";
-import "../despesas/despesa-filtros.js";
 import "./obra-form.js";
 import "./obra-share-form.js";
 import "./obra-participantes.js";
@@ -101,7 +100,6 @@ class ObraDetailView extends BaseElement {
         <div slot="despesas" class="despesas-aba">
           <ui-card title="Despesas">
             <ui-button slot="acoes" id="addDespesa">+ Registrar Despesa</ui-button>
-            <despesa-filtros id="filtros"></despesa-filtros>
             <despesa-table id="tabela"></despesa-table>
           </ui-card>
         </div>
@@ -150,15 +148,9 @@ class ObraDetailView extends BaseElement {
     this._rosca = alvo.querySelector("#rosca");
     this._mensal = alvo.querySelector("#mensal");
     this._tabela = alvo.querySelector("#tabela");
-    this._filtros = alvo.querySelector("#filtros");
-    this._filtro = { texto: "", categoria: "" };
 
     alvo.querySelector("#addDespesa").addEventListener("click", () => this.abrirDespesaForm());
     alvo.querySelector("#addOrc").addEventListener("click", () => this.abrirOrcamentoForm());
-    this._filtros.addEventListener("filtrar", (e) => {
-      this._filtro = e.detail;
-      this.aplicarFiltro();
-    });
     this._tabela.addEventListener("abrir", (e) => this.abrirBanner(e.detail.despesa));
     this._tabela.addEventListener("editar", (e) => this.abrirBanner(e.detail.despesa));
     this._tabela.addEventListener("remover", (e) => this.remover(e.detail.despesa));
@@ -194,26 +186,10 @@ class ObraDetailView extends BaseElement {
     );
     montarGradeEquipes(this._gradeEquipes, dataStore.equipesDaObra(this.obraId));
     this.montarFornecedores(despesas);
-    this.aplicarFiltro();
-
-    const sig = categorias.map((c) => c.id).join(",");
-    if (sig !== this._catSig) {
-      this._catSig = sig;
-      this._filtros.categorias = categorias;
-    }
+    // Tabela recebe TODAS as despesas; busca (campo da tabela) e filtro de
+    // Classificação (dropdown do tópico) acontecem dentro da própria tabela.
+    this._tabela.despesas = despesas;
     this.pintarTopo();
-  }
-
-  /** Aplica pesquisa (item) + filtro (classificação) à tabela; KPIs ficam no total. */
-  aplicarFiltro() {
-    const f = this._filtro || { texto: "", categoria: "" };
-    const texto = (f.texto || "").toLowerCase();
-    const filtradas = (this._despesas || []).filter((d) => {
-      const okTexto = !texto || String(d.item || "").toLowerCase().includes(texto);
-      const okCat = !f.categoria || String(d.categoria_id) === String(f.categoria);
-      return okTexto && okCat;
-    });
-    this._tabela.despesas = filtradas;
   }
 
   pintarTopo() {
