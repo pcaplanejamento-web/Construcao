@@ -82,6 +82,10 @@ Estilo: `inline-flex` teal (`var(--cor-primaria)`), **negrito** (`--peso-forte`)
 onde veio); se entrou direto (link/refresh), vai ao `href` (pai habitual). O router
 detecta o link pela classe `voltar`. O **texto** também reflete o destino real via
 `rotuloVoltar(fallback)` (rótulo da página anterior, ou do pai habitual se entrou direto).
+
+**Cache de estado da página** (enquanto logado): ao sair e voltar, a página reabre no
+mesmo estado. **Rolagem** — o `router.js` memoriza o `scrollTop` do outlet por rota e
+restaura ao voltar. **Aba ativa** — o `ui-tabs` lembra a aba por rota (sessionStorage).
 Nas detail-views o conteúdo vive em `#conteudo`, que é **flex-column com
 `gap: var(--esp-5)`** — então o back link (e os demais blocos) têm o **mesmo
 espaçamento (24px) acima e abaixo** automaticamente, sem `margin` avulso.

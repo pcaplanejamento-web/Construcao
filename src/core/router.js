@@ -59,6 +59,7 @@ export function criarRouter(outlet) {
   let _navegouInterno = false;
   let _atual = null; // caminho renderizado atualmente
   let _anterior = null; // caminho anterior (de onde o usuário veio)
+  const _scroll = {}; // posição de rolagem por caminho (restaura ao voltar)
 
   /** Converte "/obras/:id" em { regex, params: ["id"], ... }. */
   function compilar(caminho) {
@@ -161,7 +162,13 @@ export function criarRouter(outlet) {
       _anterior = _atual;
       _atual = caminho;
     }
+    // Captura a rolagem salva ANTES de renderizar (o render reseta scrollTop→0,
+    // cujo evento sobrescreveria o valor salvo se lido depois).
+    const y = _scroll[caminho] || 0;
     renderizar(rota.tag, params);
+    requestAnimationFrame(() => {
+      outlet.scrollTop = y;
+    });
     // Avisa quem marca navegação ativa (ex.: app-sidebar) — substitui hashchange.
     window.dispatchEvent(new CustomEvent("rotamudou", { detail: { caminho } }));
   }
@@ -189,6 +196,10 @@ export function criarRouter(outlet) {
     }
     window.addEventListener("popstate", resolver);
     document.addEventListener("click", onClickGlobal);
+    // Memoriza a rolagem da página atual continuamente (restaurada ao voltar).
+    outlet.addEventListener("scroll", () => {
+      if (_atual) _scroll[_atual] = outlet.scrollTop;
+    });
     resolver();
   }
 

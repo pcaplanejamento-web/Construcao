@@ -31,8 +31,22 @@ class UiTabs extends BaseElement {
   get abas() {
     return this._abas || [];
   }
+  // Chave de cache da aba ativa: por rota + assinatura das abas (não colide com
+  // abas de outro conjunto na mesma rota, ex.: modais/forms).
+  _chaveCache() {
+    return "aba:" + (location.pathname || "/") + "#" + this.abas.map((a) => a.id).join(",");
+  }
   get ativo() {
-    return this.getAttribute("ativo") || (this.abas[0] || {}).id || "";
+    const attr = this.getAttribute("ativo");
+    if (attr) return attr;
+    // Restaura a aba ativa salva (estado da página ao voltar).
+    try {
+      const s = sessionStorage.getItem(this._chaveCache());
+      if (s && this.abas.some((a) => a.id === s)) return s;
+    } catch (e) {
+      /* sessionStorage indisponível */
+    }
+    return (this.abas[0] || {}).id || "";
   }
 
   estilos() {
@@ -71,6 +85,11 @@ class UiTabs extends BaseElement {
     this.$$("button").forEach((b) =>
       b.addEventListener("click", () => {
         if (b.dataset.id === this.ativo) return;
+        try {
+          sessionStorage.setItem(this._chaveCache(), b.dataset.id); // lembra a aba (estado da página)
+        } catch (e) {
+          /* sessionStorage indisponível */
+        }
         this.setAttribute("ativo", b.dataset.id); // dispara re-render
         this.emitir("mudar", { id: b.dataset.id });
       })
