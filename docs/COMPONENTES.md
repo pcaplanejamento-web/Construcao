@@ -11,7 +11,7 @@ sobem por `CustomEvent`**.
 
 | Componente | Atributos / Propriedades | Eventos | Descrição |
 |------------|--------------------------|---------|-----------|
-| `ui-button` | `variant`, `loading`, `disabled`, `tamanho`, `full` | `click` (nativo) | Botão. Slot = conteúdo. Primário = **gradiente** `--grad-primaria` + sombra colorida + lift no hover; raio `--raio-md`. |
+| `ui-button` | `variant`, `loading`, `disabled`, `tamanho`, `full` | `click` (nativo) | Botão. Slot = conteúdo. Variantes: `primario` (**gradiente** `--grad-primaria` + sombra colorida), `secundario` (branco + sombra leve), `tonal` (verde-claro/`--cor-primaria-suave` — ações suaves, ex.: Editar), `perigo` (vermelho sólido), `perigo-contorno` (outline vermelho — ex.: ícone excluir), `fantasma`. Lift no hover; raio `--raio-md`. |
 | `ui-input` | `label`, `name`, `type`, `value`, `placeholder`, `error`, `required`, `step`, `min`; prop `.value` | `input`, `change`, `enter` | Campo com rótulo e erro. |
 | `ui-select` | `label`, `name`, `value`, `placeholder`, `error`; prop `.options=[{value,label}]`, `.value` | `change` | Lista suspensa. |
 | `ui-modal` | `open`, `title`; slots: default, `rodape` | `fechar` | Diálogo overlay (X, backdrop, Esc). |
@@ -71,7 +71,7 @@ sobem por `CustomEvent`**.
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
 | `obras-list-view` | — | Rota `/obras`. Grid de cartões + criar/editar/excluir. |
-| `obra-card` | `.obra`; eventos `abrir`, `editar`, `remover` | Cartão com barra de orçamento. |
+| `obra-card` | `.obra`; eventos `abrir`, `editar`, `remover` | Cartão com barra de orçamento (gradiente). Ações via `ui-button`: Editar (`tonal`), Compartilhar (`secundario`), Excluir (`perigo-contorno`, ícone). |
 | `obra-form` | `.obra`; eventos `salvo`, `fechar` | Modal criar/editar obra (chama a API). |
 | `obra-share-form` | `.obra`; evento `fechar` | Modal (só dono): **link público** curto (gerar/copiar/abrir/desativar) + **log de acessos** + convidar usuários para colaboração. |
 | `financeiro-view` | — (rota `/financeiro`) | **Painel consolidado** entre todas as obras (compõe KPIs inline + `ui-tabs` + `ui-data-table`; reusa `despesa-split.balancos`). KPIs Total/Pago/Em aberto/Em pagamento; abas **A receber** (por destinatário real: Empresa p/ Material, Equipe/Contato p/ Serviço — sem dupla contagem), **A pagar** (por responsável), **Em aberto** (despesas com resto; clique → obra). 100% derivado. |

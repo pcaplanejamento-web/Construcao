@@ -8,6 +8,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { moeda, percentual, data as fmtData } from "../../core/formatters.js";
 import "../../components/ui-badge.js";
 import "../../components/ui-icon.js";
+import "../../components/ui-button.js";
 
 const STATUS_INFO = {
   ativa: { rotulo: "Ativa", cor: "var(--cor-sucesso)" },
@@ -46,13 +47,8 @@ class ObraCard extends BaseElement {
       .barra > div { height: 100%; background: var(--grad-primaria); transition: width .3s; }
       .barra > div.estouro { background: var(--cor-erro); }
       .acoes { display: flex; gap: var(--esp-2); margin-top: auto; }
-      .acoes button {
-        flex: 1; border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
-        border-radius: var(--raio-sm); padding: 6px; font-size: var(--fs-xs);
-        color: var(--cor-texto-suave);
-      }
-      .acoes button:hover { background: var(--cor-superficie-2); }
-      .acoes button.perigo { color: var(--cor-erro); border-color: var(--cor-erro-suave); }
+      .acoes ui-button { flex: 1; }
+      .acoes ui-button#remover { flex: none; } /* ícone de excluir: largura fixa */
       .dono { font-size: var(--fs-xs); color: var(--cor-texto-fraco);
         display: flex; align-items: center; gap: var(--esp-1); }
       .log { font-size: var(--fs-xs); color: var(--cor-texto-fraco);
@@ -108,9 +104,9 @@ class ObraCard extends BaseElement {
         ${
           ehDono
             ? `<div class="acoes">
-                 <button id="editar">Editar</button>
-                 <button id="compartilhar">Compartilhar</button>
-                 <button id="remover" class="perigo">Excluir</button>
+                 <ui-button variant="tonal" id="editar">Editar</ui-button>
+                 <ui-button variant="secundario" id="compartilhar">Compartilhar</ui-button>
+                 <ui-button variant="perigo-contorno" id="remover" title="Excluir"><ui-icon name="excluir" size="16"></ui-icon></ui-button>
                </div>`
             : ""
         }

@@ -2,7 +2,8 @@
  * <ui-button> — Botão reutilizável (primitivo, sem regra de negócio).
  *
  * Atributos:
- *   variant: "primario" | "secundario" | "perigo" | "fantasma" (padrão primario)
+ *   variant: "primario" | "secundario" | "tonal" | "perigo" | "perigo-contorno"
+ *            | "fantasma" (padrão primario)
  *   loading: booleano (mostra spinner e desabilita)
  *   disabled: booleano
  *   tamanho: "sm" | "md" (padrão md)
@@ -44,10 +45,18 @@ class UiButton extends BaseElement {
       .primario { background: var(--grad-primaria); color: #fff;
         box-shadow: 0 8px 18px -10px rgba(5, 150, 105, .6); }
       .primario:not(:disabled):hover { filter: brightness(1.04); transform: translateY(-1px); }
-      .secundario { background: var(--cor-superficie); color: var(--cor-texto); border-color: var(--cor-borda-forte); }
-      .secundario:not(:disabled):hover { background: var(--cor-superficie-2); }
+      .secundario { background: var(--cor-superficie); color: var(--cor-texto);
+        border-color: var(--cor-borda-forte); box-shadow: var(--sombra-sm); }
+      .secundario:not(:disabled):hover { background: var(--cor-superficie-2); transform: translateY(-1px); }
+      /* tonal: ação suave (ex.: Editar) — fundo verde-claro + texto verde-escuro */
+      .tonal { background: var(--cor-primaria-suave); color: var(--cor-primaria-escura); }
+      .tonal:not(:disabled):hover { filter: brightness(.97); transform: translateY(-1px); }
       .perigo { background: var(--cor-erro); color: #fff; }
       .perigo:not(:disabled):hover { filter: brightness(.95); }
+      /* perigo-contorno: destrutivo discreto (ex.: ícone excluir) — outline vermelho */
+      .perigo-contorno { background: var(--cor-superficie); color: var(--cor-erro);
+        border-color: var(--cor-erro-suave); }
+      .perigo-contorno:not(:disabled):hover { background: var(--cor-erro-suave); }
       .fantasma { background: transparent; color: var(--cor-primaria); }
       .fantasma:not(:disabled):hover { background: var(--cor-primaria-suave); }
 

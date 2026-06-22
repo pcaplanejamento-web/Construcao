@@ -73,6 +73,11 @@ direita→conteúdo, em qualquer largura (e acompanha quando a sidebar recolhe).
 (`* { margin: 0 }`) p/ o 1º componente ficar exatamente a `--esp-tela` do header.
 Usar sempre em telas/abas novas.
 
+**Link de retorno (`.voltar`)** — padrão nas detail-views: `inline-flex` teal
+(`var(--cor-primaria)`), `font-weight: var(--peso-semi)`, `align-self: flex-start`.
+Fica entre os irmãos da `.area` (flex-column, `gap: var(--esp-5)`), então tem o
+**mesmo espaçamento acima e abaixo** automaticamente — sem `margin` avulso.
+
 ## Raio, sombra, camadas
 `--raio-sm`(8) `--raio-md`(12, botões/inputs) `--raio-lg`(20, cards) `--raio-completo`(999);
 `--sombra-sm/md/lg` (tonalizadas no escuro). **Card** usa `--sombra-md` (duas camadas:
