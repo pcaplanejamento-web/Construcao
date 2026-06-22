@@ -8,6 +8,7 @@
  * - Por usuário: chama a API de compartilhamento (colaboração).
  */
 import { BaseElement } from "../../components/base-element.js";
+import { urlAbsoluta } from "../../core/router.js";
 import { api } from "../../core/api-client.js";
 import { dataStore } from "../../core/data-store.js";
 import { data as fmtData } from "../../core/formatters.js";
@@ -26,9 +27,9 @@ class ObraShareForm extends BaseElement {
     return this._obra || null;
   }
 
-  /** URL pública (limpa) a partir do token. */
+  /** URL pública (limpa) a partir do token — respeita o caminho-base da implantação. */
   _url(token) {
-    return `${location.origin}/publico/${token}`;
+    return urlAbsoluta(`/publico/${token}`);
   }
 
   estilos() {

@@ -1,7 +1,8 @@
 name: Deploy GitHub Pages
 
-# Publica o frontend estático (raiz do repositório) no GitHub Pages a cada push
-# na main. Em Settings → Pages, defina a origem como "GitHub Actions".
+# Publica SÓ o frontend (dist/, via scripts/build-site.sh) no GitHub Pages a cada
+# push na main — o backend (apps-script/), docs/ e test/ ficam de fora, então o
+# código do servidor NÃO vai ao ar. Em Settings → Pages, a origem é "GitHub Actions".
 
 on:
   push:
@@ -30,10 +31,13 @@ jobs:
       - name: Configurar Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload do artefato (raiz)
+      - name: Build (somente frontend + fallback SPA)
+        run: bash scripts/build-site.sh
+
+      - name: Upload do artefato (dist/ — somente frontend)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "."
+          path: "dist"
 
       - name: Deploy
         id: deployment

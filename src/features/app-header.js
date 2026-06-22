@@ -70,7 +70,7 @@ class AppHeader extends BaseElement {
   }
 
   template() {
-    const logoImg = `<img src="/src/assets/dattaobra.png" alt="" onerror="this.style.display='none'" />`;
+    const logoImg = `<img src="src/assets/dattaobra.png" alt="" onerror="this.style.display='none'" />`;
     // Modo SOMENTE LEITURA (link público, sem sessão): mesma marca, sem
     // menu/usuário/sair — apenas o selo "Somente leitura".
     if (!auth.estaAutenticado()) {

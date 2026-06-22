@@ -93,7 +93,7 @@ class LoginView extends BaseElement {
   }
 
   template() {
-    const logo = `<img src="/src/assets/dattaobra.png" alt="Dattaobra" />`;
+    const logo = `<img src="src/assets/dattaobra.png" alt="Dattaobra" />`;
     const feat = (icone, tit, desc) => `
       <div class="feat">
         <div class="ic"><ui-icon name="${icone}" size="20"></ui-icon></div>

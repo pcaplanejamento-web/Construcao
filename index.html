@@ -5,8 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Sistema de Gestão de Obras — cadastre obras e acompanhe despesas em tempo real." />
     <meta name="theme-color" content="#0d9488" />
+
+    <!-- Caminho-base da implantação. Raiz ("/") no domínio próprio (Cloudflare) e
+         "/Construcao/" quando servido pelo GitHub Pages (página de projeto). Tem
+         de vir ANTES de qualquer CSS/asset para que os caminhos relativos (e os
+         relativos dentro dos Shadow DOMs) resolvam no prefixo correto. -->
+    <script>
+      document.write(
+        '<base href="' +
+          (location.hostname.endsWith("github.io") ? "/Construcao/" : "/") +
+          '">'
+      );
+    </script>
+
     <title>Dattaobra</title>
-    <link rel="icon" type="image/png" href="/src/assets/dattaobra.png" />
+    <link rel="icon" type="image/png" href="src/assets/dattaobra.png" />
 
     <!-- Fontes: Space Grotesk (títulos/números) + Plus Jakarta Sans (corpo) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -26,9 +39,9 @@
     </script>
 
     <!-- Estilos globais (fora do Shadow DOM): tokens, reset e layout -->
-    <link rel="stylesheet" href="/src/styles/tokens.css" />
-    <link rel="stylesheet" href="/src/styles/reset.css" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
+    <link rel="stylesheet" href="src/styles/tokens.css" />
+    <link rel="stylesheet" href="src/styles/reset.css" />
+    <link rel="stylesheet" href="src/styles/global.css" />
   </head>
   <body>
     <!-- O app-shell é o único elemento de UI montado diretamente no HTML.
@@ -45,6 +58,6 @@
     </noscript>
 
     <!-- Ponto de entrada da aplicação. type="module" habilita ES Modules. -->
-    <script type="module" src="/src/app.js"></script>
+    <script type="module" src="src/app.js"></script>
   </body>
 </html>

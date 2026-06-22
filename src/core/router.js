@@ -21,9 +21,20 @@
 import { auth } from "./auth-store.js";
 import { toastAviso } from "./event-bus.js";
 
+// Caminho-base da implantação: vazio ("") no domínio próprio (Cloudflare, na
+// raiz) e "/Construcao" no GitHub Pages (página de projeto). Vem do <base href>
+// definido no index.html, então o mesmo código serve a raiz e o subcaminho.
+// Toda navegação interna usa rotas SEM o base (ex.: "/obras"); o roteador
+// adiciona/remove o BASE ao falar com a History API e com location.pathname.
+export const BASE = new URL(document.baseURI).pathname.replace(/\/+$/, "");
+/** URL absoluta de uma rota interna, respeitando o base (links compartilháveis). */
+export function urlAbsoluta(caminho) {
+  return location.origin + BASE + caminho;
+}
+
 // Navegação programática global (ligada ao router ativo em iniciar()). Antes do
 // boot cai num pushState simples — não deve ocorrer na prática.
-let _navegar = (caminho) => history.pushState({}, "", caminho);
+let _navegar = (caminho) => history.pushState({}, "", BASE + caminho);
 export function irPara(caminho) {
   _navegar(caminho);
 }
@@ -79,14 +90,17 @@ export function criarRouter(outlet) {
     return apiRouter;
   }
 
+  // Rota interna atual = pathname SEM o caminho-base da implantação.
   function rotaAtual() {
-    return location.pathname || "/";
+    let p = location.pathname || "/";
+    if (BASE && p.startsWith(BASE)) p = p.slice(BASE.length) || "/";
+    return p;
   }
 
   function navegar(caminho) {
     if (rotaAtual() === caminho) resolver();
     else {
-      history.pushState({}, "", caminho);
+      history.pushState({}, "", BASE + caminho);
       _navegouInterno = true;
       resolver();
     }
@@ -192,7 +206,7 @@ export function criarRouter(outlet) {
     _rotuloVoltar = rotuloVoltarInterno; // liga rotuloVoltar() a este router
     // Compat: links antigos com #/rota (bookmarks, links públicos) → /rota.
     if (location.hash.startsWith("#/")) {
-      history.replaceState({}, "", location.hash.slice(1));
+      history.replaceState({}, "", BASE + location.hash.slice(1));
     }
     window.addEventListener("popstate", resolver);
     document.addEventListener("click", onClickGlobal);
