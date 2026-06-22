@@ -8,6 +8,7 @@
  *  - Ofertas / Orçamentos.
  * Lê do data-store (cache-first). Espelha fornecedor-detail-view.
  */
+import { rotuloVoltar } from "../../core/router.js";
 import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -72,7 +73,7 @@ class ContatoDetailView extends BaseElement {
     const c = this._buscar();
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
-      <a class="voltar" href="/contatos"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>Contatos</span></a>
+      <a class="voltar" href="/contatos"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>${rotuloVoltar("/contatos")}</span></a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="obras">

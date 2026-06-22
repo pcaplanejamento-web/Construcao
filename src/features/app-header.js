@@ -81,7 +81,7 @@ class AppHeader extends BaseElement {
     return `
       <div class="barra">
         <div class="marca-bloco">
-          <a class="marca" href="/obras"><img src="/src/assets/dattaobra.png" alt="Dattaobra" /> Dattaobra</a>
+          <a class="marca" href="/obras"><img src="/src/assets/dattaobra.png" alt="" onerror="this.style.display='none'" /> Dattaobra</a>
           <button class="menu-btn" id="menu" aria-label="Abrir menu"><ui-icon name="menu"></ui-icon></button>
         </div>
         <span class="cresce"></span>

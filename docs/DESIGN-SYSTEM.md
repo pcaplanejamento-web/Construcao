@@ -80,7 +80,8 @@ Estilo: `inline-flex` teal (`var(--cor-primaria)`), **negrito** (`--peso-forte`)
 (inclusive no hover), `align-self: flex-start`. Comportamento **voltar inteligente**
 (em `router.js`): se o usuário chegou navegando no app, volta à página ANTERIOR (de
 onde veio); se entrou direto (link/refresh), vai ao `href` (pai habitual). O router
-detecta o link pela classe `voltar`.
+detecta o link pela classe `voltar`. O **texto** também reflete o destino real via
+`rotuloVoltar(fallback)` (rótulo da página anterior, ou do pai habitual se entrou direto).
 Nas detail-views o conteúdo vive em `#conteudo`, que é **flex-column com
 `gap: var(--esp-5)`** — então o back link (e os demais blocos) têm o **mesmo
 espaçamento (24px) acima e abaixo** automaticamente, sem `margin` avulso.

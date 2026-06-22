@@ -6,6 +6,7 @@
  * a oferta, editar/excluir ofertas e REGISTRAR a escolhida como despesa.
  * Lê do data-store (cache-first) e assina mudanças.
  */
+import { rotuloVoltar } from "../../core/router.js";
 import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -95,7 +96,7 @@ class CotacaoDetailView extends BaseElement {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
       <oferta-kpis id="kpis"></oferta-kpis>
-      <a class="voltar" href="/cotacoes"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>Cotações</span></a>
+      <a class="voltar" href="/cotacoes"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>${rotuloVoltar("/cotacoes")}</span></a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="graficos" class="graficos">

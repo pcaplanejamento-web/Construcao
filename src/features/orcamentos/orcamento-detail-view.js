@@ -6,6 +6,7 @@
  * preco-form em modo orçamento (cotação filtrada pelo tipo, contato travado).
  * Lê do data-store (cache-first) e assina mudanças. Espelha cotacao-detail-view.
  */
+import { rotuloVoltar } from "../../core/router.js";
 import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -82,7 +83,7 @@ class OrcamentoDetailView extends BaseElement {
   montarConteudo() {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
-      <a class="voltar" href="/cotacoes"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>Cotações</span></a>
+      <a class="voltar" href="/cotacoes"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>${rotuloVoltar("/cotacoes")}</span></a>
       <div class="topo" id="topo"></div>
       <ui-card title="Ofertas do orçamento">
         <ui-button slot="acoes" id="addOferta">+ Adicionar oferta</ui-button>

@@ -10,6 +10,7 @@
  * Reusa ui-tabs, ui-card, ui-data-table, category-badge, item-form, formatters,
  * melhorTotal (cotacao-util) e os tokens --grad-* (mesmo estilo de oferta-kpis).
  */
+import { rotuloVoltar } from "../../core/router.js";
 import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -114,7 +115,7 @@ class ItemDetailView extends BaseElement {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
       <div class="kpis" id="kpis"></div>
-      <a class="voltar" href="/itens"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>Itens</span></a>
+      <a class="voltar" href="/itens"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>${rotuloVoltar("/itens")}</span></a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="despesas" class="aba">

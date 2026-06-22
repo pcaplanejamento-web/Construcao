@@ -28,11 +28,37 @@ export function irPara(caminho) {
   _navegar(caminho);
 }
 
+// Rótulos das rotas (para o texto do link "voltar" refletir o destino real).
+const ROTULOS = {
+  "/obras": "Minhas obras",
+  "/financeiro": "Financeiro",
+  "/fornecedores": "Fornecedores",
+  "/contatos": "Contatos",
+  "/cotacoes": "Cotações",
+  "/itens": "Itens",
+  "/perfil": "Meu perfil",
+  "/admin": "Administração",
+};
+function rotuloDaRota(caminho) {
+  if (!caminho) return "Voltar";
+  if (ROTULOS[caminho]) return ROTULOS[caminho];
+  const base = "/" + (caminho.split("/")[1] || "");
+  return ROTULOS[base] || "Voltar";
+}
+// Texto do link "voltar": destino real (página anterior se houve navegação
+// interna; senão o pai habitual = fallback). Ligado ao router em iniciar().
+let _rotuloVoltar = (fallback) => rotuloDaRota(fallback);
+export function rotuloVoltar(fallback) {
+  return _rotuloVoltar(fallback);
+}
+
 export function criarRouter(outlet) {
   const rotas = [];
   // Houve navegação interna (pushState) nesta sessão da aba? Define se o link
   // "voltar" retorna à página anterior (de onde o usuário veio) ou ao pai habitual.
   let _navegouInterno = false;
+  let _atual = null; // caminho renderizado atualmente
+  let _anterior = null; // caminho anterior (de onde o usuário veio)
 
   /** Converte "/obras/:id" em { regex, params: ["id"], ... }. */
   function compilar(caminho) {
@@ -73,6 +99,11 @@ export function criarRouter(outlet) {
   function voltar(fallback) {
     if (_navegouInterno) history.back();
     else navegar(fallback || "/");
+  }
+
+  /** Texto do link "voltar": rótulo do destino real (anterior ou pai habitual). */
+  function rotuloVoltarInterno(fallback) {
+    return _navegouInterno && _anterior ? rotuloDaRota(_anterior) : rotuloDaRota(fallback);
   }
 
   function casar(caminho) {
@@ -124,6 +155,12 @@ export function criarRouter(outlet) {
       return;
     }
 
+    // Memória de navegação ANTES de renderizar — a view lê o "anterior" correto
+    // ao montar (ex.: texto do link "voltar" = rótulo da página de onde veio).
+    if (caminho !== _atual) {
+      _anterior = _atual;
+      _atual = caminho;
+    }
     renderizar(rota.tag, params);
     // Avisa quem marca navegação ativa (ex.: app-sidebar) — substitui hashchange.
     window.dispatchEvent(new CustomEvent("rotamudou", { detail: { caminho } }));
@@ -145,6 +182,7 @@ export function criarRouter(outlet) {
 
   function iniciar() {
     _navegar = navegar; // liga irPara() a este router
+    _rotuloVoltar = rotuloVoltarInterno; // liga rotuloVoltar() a este router
     // Compat: links antigos com #/rota (bookmarks, links públicos) → /rota.
     if (location.hash.startsWith("#/")) {
       history.replaceState({}, "", location.hash.slice(1));

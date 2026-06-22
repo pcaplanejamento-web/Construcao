@@ -71,7 +71,7 @@ sobem por `CustomEvent`**.
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
 | `obras-list-view` | — | Rota `/obras`. Grid de cartões + criar/editar/excluir. |
-| `obra-card` | `.obra`; eventos `abrir`, `editar`, `remover` | Cartão com barra de orçamento (gradiente). Ações via `ui-button`: Editar (`tonal`), Compartilhar (`secundario`), Excluir (`perigo-contorno`, ícone). |
+| `obra-card` | `.obra`; eventos `abrir`, `editar`, `remover` | Cartão com barra de orçamento (gradiente). **Altura fixa** (só varia na horizontal): título trava em 2 linhas (line-clamp). Ações via `ui-button`: Editar (`tonal`), Compartilhar (`secundario`), Excluir (`perigo-contorno`, ícone). |
 | `obra-form` | `.obra`; eventos `salvo`, `fechar` | Modal criar/editar obra (chama a API). |
 | `obra-share-form` | `.obra`; evento `fechar` | Modal (só dono): **link público** curto (gerar/copiar/abrir/desativar) + **log de acessos** + convidar usuários para colaboração. |
 | `financeiro-view` | — (rota `/financeiro`) | **Painel consolidado** entre todas as obras (compõe KPIs inline + `ui-tabs` + `ui-data-table`; reusa `despesa-split.balancos`). KPIs Total/Pago/Em aberto/Em pagamento; abas **A receber** (por destinatário real: Empresa p/ Material, Equipe/Contato p/ Serviço — sem dupla contagem), **A pagar** (por responsável), **Em aberto** (despesas com resto; clique → obra). 100% derivado. |
@@ -182,6 +182,7 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 | Helper | Onde | O que faz |
 |--------|------|-----------|
 | `colunasLog()` | [core/audit-columns.js](../src/core/audit-columns.js) | Devolve as 2 colunas padrão de **log** (Criado em + autor / Atualizado em + editor) para qualquer `ui-data-table`. Usado por itens/fornecedores/contatos/cotações + detalhes; `obra-card` mostra o log no rodapé; `users-table` mostra Criado em/por. |
+| `avatar.js` | [features/shared/avatar.js](../src/features/shared/avatar.js) | **Avatar único** de contato/fornecedor (iniciais, círculo, cor estável por nome). `avatarNomeHtml(nome)` (avatar + nome) e `avatarHtml(nome,tam)`/`corAvatar(nome)`/`iniciais(nome)`. Fonte ÚNICA usada em `contatos-view`/`fornecedores-view` (e onde houver nome de contato/fornecedor) — **sem duplicar** o markup. |
 | `vinculos.js` | [features/shared/vinculos.js](../src/features/shared/vinculos.js) | `vinculosDoItem/Fornecedor/Contato/Subclassificacao/Cargo/Oferta(...)` calculam os vínculos pelo store; `abrirBannerVinculos({titulo,grupos,aoExcluir})` abre um **banner** (compõe `ui-modal`+`ui-alert`+`ui-data-table`+`ui-button`) listando onde está vinculado (linhas clicáveis → navegam) e **bloqueia a exclusão**; sem vínculos, executa `aoExcluir` (com confirmação). |
 
 > **Valores ao vivo:** as tabelas resolvem o nome ATUAL da entidade vinculada pelo

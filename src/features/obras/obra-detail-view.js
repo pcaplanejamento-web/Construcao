@@ -6,6 +6,7 @@
  * filhos por propriedade. A edição de um item é feita no BANNER <despesa-detail>
  * (clique na linha ou em Editar), não mais no formulário de adição.
  */
+import { rotuloVoltar } from "../../core/router.js";
 import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -87,7 +88,7 @@ class ObraDetailView extends BaseElement {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
       <dashboard-summary id="dash"></dashboard-summary>
-      <a class="voltar" href="/obras"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>Minhas obras</span></a>
+      <a class="voltar" href="/obras"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>${rotuloVoltar("/obras")}</span></a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="graficos" class="graficos">

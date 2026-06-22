@@ -37,7 +37,11 @@ class ObraCard extends BaseElement {
       }
       .card:hover { box-shadow: var(--sombra-lg); transform: translateY(-2px); }
       .topo { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--esp-2); }
-      h3 { font-size: var(--fs-lg); font-weight: var(--peso-semi); }
+      /* Título com altura fixa de 2 linhas (clamp): o card não cresce
+         verticalmente com nomes longos — só varia na horizontal (grid). */
+      h3 { font-size: var(--fs-lg); font-weight: var(--peso-semi);
+        display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+        line-clamp: 2; overflow: hidden; min-height: calc(2 * 1.2em); }
       .end { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
       .valores { display: flex; justify-content: space-between; font-size: var(--fs-sm); }
       .valores .rotulo { color: var(--cor-texto-suave); }

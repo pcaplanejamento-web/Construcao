@@ -8,6 +8,7 @@
  * Lê do data-store (cache-first) e assina mudanças. Reusa ui-tabs, ui-card,
  * ui-data-table, category-badge, contato-form e totalOferta (cotacao-util).
  */
+import { rotuloVoltar } from "../../core/router.js";
 import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -76,7 +77,7 @@ class FornecedorDetailView extends BaseElement {
   montarConteudo() {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
-      <a class="voltar" href="/fornecedores"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>Fornecedores</span></a>
+      <a class="voltar" href="/fornecedores"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>${rotuloVoltar("/fornecedores")}</span></a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="contatos" class="aba">

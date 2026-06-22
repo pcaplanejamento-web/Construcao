@@ -16,6 +16,7 @@ import {
   vinculosDoFornecedor,
   vinculosDaSubclassificacao,
 } from "../shared/vinculos.js";
+import { avatarNomeHtml } from "../shared/avatar.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -113,14 +114,7 @@ class FornecedoresView extends BaseElement {
       {
         chave: "nome",
         titulo: "Fornecedor",
-        formato: (v) => {
-          const p = String(v || "?").trim().split(/\s+/).filter(Boolean);
-          const ini = ((p.length === 1 ? (p[0] || "?").slice(0, 2) : p[0][0] + p[p.length - 1][0]) || "?").toUpperCase();
-          return `<span style="display:inline-flex;align-items:center;gap:10px">
-            <span style="width:34px;height:34px;flex:none;border-radius:10px;background:var(--grad-primaria);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:var(--fonte-titulo);font-weight:700;font-size:12px">${ini}</span>
-            <span style="font-weight:600">${v || "—"}</span>
-          </span>`;
-        },
+        formato: (v) => avatarNomeHtml(v),
       },
       { chave: "telefone", titulo: "Telefone", formato: (v) => v || "—" },
       { chave: "email", titulo: "E-mail", formato: (v) => v || "—" },
