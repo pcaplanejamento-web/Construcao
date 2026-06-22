@@ -32,8 +32,8 @@ sobem por `CustomEvent`**.
 ### Shell e navegação
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Altura de viewport fixa: o conteúdo rola no `main` → **sidebar com altura constante** em todas as telas. Esconde header/sidebar no login. |
-| `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky). **Marca-bloco** com gaps iguais (logo↔texto == texto↔sanduíche): **logo** `src/assets/dattaobra.png` (transparente) + texto **"Dattaobra"** (link → `/obras`) + **botão sanduíche** (recolhe no desktop / drawer no mobile). O logo alinha com a coluna de ícones da sidebar e a largura do `nav` da sidebar (195px) é igualada a este cluster → o sanduíche encosta no limite direito da sidebar. À direita: **alternador de tema** (sol/lua), chip do usuário → `/perfil`, Sair. Ícones via `ui-icon`. |
+| `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Altura de viewport fixa: o conteúdo rola no `main` → **sidebar com altura constante** em todas as telas. No login esconde header+sidebar; na rota pública (`/publico/*`) mostra o header (somente-leitura) **sem** sidebar. |
+| `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky). **Marca-bloco** com gaps iguais (logo↔texto == texto↔sanduíche): **logo** `src/assets/dattaobra.png` (transparente) + texto **"Dattaobra"** (link → `/obras`) + **botão sanduíche** (recolhe no desktop / drawer no mobile). O logo alinha com a coluna de ícones da sidebar e a largura do `nav` da sidebar (195px) é igualada a este cluster → o sanduíche encosta no limite direito da sidebar. À direita: **alternador de tema** (sol/lua), chip do usuário → `/perfil`, Sair. Ícones via `ui-icon`. **Modo somente-leitura** (link público, sem sessão): o MESMO componente renderiza só a marca + selo "Somente leitura" (sem menu/usuário/sair). |
 | `app-sidebar` | attr `aberto` (drawer mobile), `recolhido` (régua de ícones no desktop); evento `navegou` | Menu lateral em abas (Obras, Fornecedores, Contatos, Cotações, Itens, Administração via `role-guard`, Perfil). `template()` itera o array `ITENS`. Ao recolher, os rótulos somem e o ícone fica no mesmo lugar; altura sempre 100% do conteúdo. Preferência persistida. |
 | `app-loader` | attr `texto` | Overlay de carregamento usado **só no boot sem cache** (refresh já logado). No fluxo de **login**, o carregamento acontece na própria tela de login (não há overlay). |
 | `role-guard` | attr `role="admin"\|"usuario"` | Mostra/oculta o slot conforme o papel (UX). |
@@ -51,8 +51,8 @@ sobem por `CustomEvent`**.
 > O reset do Shadow DOM ([base-element.js](../src/components/base-element.js)) zera
 > margens (`* { margin: 0 }`, espelhando `reset.css`), então o 1º componente fica
 > exatamente a `--esp-tela` do header em TODA tela (com ou sem KPIs).
-> **Toda tela/aba nova deve seguir esse padrão.** Exceção: `publico-view` (página
-> pública sem menu) permanece centralizada.
+> **Toda tela/aba nova deve seguir esse padrão** — inclusive a `publico-view`, que
+> usa o `app-header` padrão (somente-leitura) e a mesma `--esp-tela` no conteúdo.
 
 ### Autenticação — `features/auth/`
 | Componente | Props/Eventos | Descrição |
@@ -79,7 +79,7 @@ sobem por `CustomEvent`**.
 | `obra-participantes` | attr `obra-id`, `modo` (participantes\|responsaveis) | Aba de participantes (modelo paga ↔ recebe): colunas **Pago · Recebido · Saldo a pagar · Saldo a receber** (`despesa-split.balancos`) + painel **"quem deve a quem"** (`despesa-split.acerto`). modo `participantes`: todos + adicionar/remover; modo `responsaveis`: só os marcados. |
 | `participante-form` | `.obraId`; eventos `salvo`, `fechar` | Modal `ui-select` p/ adicionar um **contato** cadastrado como participante. |
 | `responsaveis-form` | `.obraId`; evento `fechar` | Modal p/ marcar, entre os participantes, quem são **responsáveis** (alterna o flag via `dataStore.definirResponsavel`). |
-| `publico-view` | attr `token` (rota `/publico/:token`) | Visão **pública somente-leitura** (sem login): dashboard + itens + gasto por categoria. |
+| `publico-view` | attr `token` (rota `/publico/:token`) | Visão **pública somente-leitura** (sem login): dashboard + itens + gasto por categoria. **Sem header próprio** — usa o `app-header` padrão (modo somente-leitura) montado pelo `app-shell`, que mostra o header (sem sidebar) também nas rotas `/publico/*`. |
 
 ### Despesas — `features/despesas/`
 | Componente | Props/Eventos | Descrição |

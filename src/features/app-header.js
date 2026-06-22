@@ -67,6 +67,10 @@ class AppHeader extends BaseElement {
         color: var(--cor-texto-suave); border-radius: var(--raio-sm);
         padding: 6px 12px; font-size: var(--fs-sm); }
       .sair:hover { background: var(--cor-superficie-2); }
+      .somente-leitura { display: inline-flex; align-items: center; gap: 6px;
+        font-size: var(--fs-sm); color: var(--cor-texto-suave);
+        border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-completo);
+        padding: 6px 14px; margin-right: var(--esp-5); }
       @media (max-width: 820px) {
         .papel { display: none; }
         /* no mobile a sidebar é drawer: o cluster vira compacto (sem trancar 230px). */
@@ -76,12 +80,24 @@ class AppHeader extends BaseElement {
   }
 
   template() {
+    const logoImg = `<img src="/src/assets/dattaobra.png" alt="" onerror="this.style.display='none'" />`;
+    // Modo SOMENTE LEITURA (link público, sem sessão): mesma marca, sem
+    // menu/usuário/sair — apenas o selo "Somente leitura".
+    if (!auth.estaAutenticado()) {
+      return `
+        <div class="barra">
+          <div class="marca-bloco"><span class="marca">${logoImg} Dattaobra</span></div>
+          <span class="cresce"></span>
+          <span class="somente-leitura"><ui-icon name="olho" size="14"></ui-icon> Somente leitura</span>
+        </div>
+      `;
+    }
     const u = auth.usuario() || {};
     const iconeTema = tema.efetivo() === "escuro" ? "sol" : "lua";
     return `
       <div class="barra">
         <div class="marca-bloco">
-          <a class="marca" href="/obras"><img src="/src/assets/dattaobra.png" alt="" onerror="this.style.display='none'" /> Dattaobra</a>
+          <a class="marca" href="/obras">${logoImg} Dattaobra</a>
           <button class="menu-btn" id="menu" aria-label="Abrir menu"><ui-icon name="menu"></ui-icon></button>
         </div>
         <span class="cresce"></span>
@@ -104,9 +120,13 @@ class AppHeader extends BaseElement {
   }
 
   aposRender() {
-    this.$("#menu").addEventListener("click", () => this.emitir("toggle-sidebar"));
-    this.$("#tema").addEventListener("click", () => tema.alternar());
-    this.$("#sair").addEventListener("click", () => auth.logout());
+    // No modo somente-leitura esses controles não existem — guardas evitam erro.
+    const menu = this.$("#menu");
+    if (menu) menu.addEventListener("click", () => this.emitir("toggle-sidebar"));
+    const btnTema = this.$("#tema");
+    if (btnTema) btnTema.addEventListener("click", () => tema.alternar());
+    const btnSair = this.$("#sair");
+    if (btnSair) btnSair.addEventListener("click", () => auth.logout());
   }
 }
 

@@ -71,15 +71,19 @@ class AppShell extends BaseElement {
   }
 
   refletirAuth() {
-    // Header/sidebar aparecem só nas telas internas: autenticado E fora das
-    // rotas públicas (/login, /publico/...). Durante o carregamento pós-login a
-    // rota ainda é /login, então ficam ocultos até o conteúdo interno renderizar.
+    // Header: nas telas internas (autenticado) E na pública (modo somente-leitura,
+    // mesmo componente) — some apenas no login. Sidebar: só nas telas internas.
+    // Durante o carregamento pós-login a rota ainda é /login, então ficam ocultos
+    // até o conteúdo interno renderizar.
     const path = location.pathname || "/";
-    const rotaPublica = path === "/login" || path.startsWith("/publico");
-    const mostrar = auth.estaAutenticado() && !rotaPublica;
-    this.$("#hdr").hidden = !mostrar;
-    this.$("#sb").hidden = !mostrar;
-    if (!mostrar) this.$("#sb").removeAttribute("aberto");
+    const ehLogin = path === "/login";
+    const ehPublico = path.startsWith("/publico");
+    const autenticado = auth.estaAutenticado();
+    const mostrarHeader = !ehLogin && (autenticado || ehPublico);
+    const mostrarSidebar = autenticado && !ehLogin && !ehPublico;
+    this.$("#hdr").hidden = !mostrarHeader;
+    this.$("#sb").hidden = !mostrarSidebar;
+    if (!mostrarSidebar) this.$("#sb").removeAttribute("aberto");
   }
 }
 

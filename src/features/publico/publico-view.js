@@ -26,16 +26,8 @@ class PublicoView extends BaseElement {
 
   estilos() {
     return `
-      :host { display: block; min-height: 100vh; background: var(--cor-fundo); }
-      .topo { background: var(--cor-superficie); border-bottom: 1px solid var(--cor-borda);
-        padding: var(--esp-3) var(--esp-5); display: flex; align-items: center; gap: var(--esp-2); }
-      .marca { display: flex; align-items: center; gap: var(--esp-2);
-        font-weight: var(--peso-forte); color: var(--cor-primaria); }
-      .somente-leitura { margin-left: auto; display: flex; align-items: center; gap: 6px;
-        font-size: var(--fs-xs); color: var(--cor-texto-suave);
-        border: 1px solid var(--cor-borda); border-radius: var(--raio-completo); padding: 4px 10px; }
-      .area { max-width: 1100px; margin: 0 auto; padding: var(--esp-5);
-        display: flex; flex-direction: column; gap: var(--esp-5); }
+      :host { display: block; }
+      .area { padding: var(--esp-tela); display: flex; flex-direction: column; gap: var(--esp-5); }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm);
         display: flex; align-items: center; gap: var(--esp-1); }
@@ -46,13 +38,7 @@ class PublicoView extends BaseElement {
   }
 
   template() {
-    return `
-      <div class="topo">
-        <span class="marca"><ui-icon name="obra" size="20"></ui-icon> Gestão de Obras</span>
-        <span class="somente-leitura"><ui-icon name="olho" size="14"></ui-icon> Somente leitura</span>
-      </div>
-      <div class="area" id="conteudo"><ui-spinner centro text="Carregando..."></ui-spinner></div>
-    `;
+    return `<div class="area" id="conteudo"><ui-spinner centro text="Carregando..."></ui-spinner></div>`;
   }
 
   aoConectar() {
