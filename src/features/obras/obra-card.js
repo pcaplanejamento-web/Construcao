@@ -30,7 +30,8 @@ class ObraCard extends BaseElement {
       .card {
         background: var(--cor-superficie); border: 1px solid var(--cor-borda);
         border-radius: var(--raio-lg); box-shadow: var(--sombra-md);
-        padding: var(--esp-5); cursor: pointer; transition: var(--transicao);
+        padding: var(--esp-5); cursor: pointer;
+        transition: box-shadow var(--transicao), transform var(--transicao);
         display: flex; flex-direction: column; gap: var(--esp-3); height: 100%;
       }
       .card:hover { box-shadow: var(--sombra-lg); transform: translateY(-2px); }

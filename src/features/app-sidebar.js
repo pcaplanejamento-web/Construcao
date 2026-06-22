@@ -38,8 +38,11 @@ class AppSidebar extends BaseElement {
       .backdrop { display: none; }
       /* padding-top = --esp-tela: alinha o topo do 1º item com o topo do
          conteúdo (KPIs), que usa a MESMA distância padrão do header. */
+      /* Largura = cluster do app-header (logo + "Dattaobra" + menu): o ícone do
+         item alinha com o logo (à esq.) e a borda direita do nav encosta no
+         sanduíche (à dir.). Manter proporcional a esse cluster. */
       nav { display: flex; flex-direction: column; gap: var(--esp-2);
-        width: 250px; padding: var(--esp-tela) var(--esp-3) var(--esp-4);
+        width: 195px; padding: var(--esp-tela) var(--esp-3) var(--esp-4);
         background: var(--cor-superficie); border-right: 1px solid var(--cor-borda);
         height: 100%; overflow: hidden; transition: width .2s ease; }
       a { display: flex; align-items: center; gap: var(--esp-3);

@@ -77,7 +77,10 @@ Usar sempre em telas/abas novas.
 `--raio-sm`(8) `--raio-md`(12, botões/inputs) `--raio-lg`(20, cards) `--raio-completo`(999);
 `--sombra-sm/md/lg` (tonalizadas no escuro). **Card** usa `--sombra-md` (duas camadas:
 contorno suave + halo difuso). `--z-nav/modal/toast`; transição padrão `--transicao`.
-Botões/cards sobem 1–3px no hover (`translateY`) com `--transicao`.
+Botões/cards sobem 1–3px no hover (`translateY`) com `--transicao`. **Transições
+sempre escopadas** às propriedades animadas (ex.: `transition: box-shadow, transform`)
+— **nunca `transition: all`**, senão o card anima largura no reflow (sidebar
+recolher) e as cores no troca de tema (efeito "bugado").
 
 ## Breakpoints (proporcionalidade)
 Convenção (CSS não aceita `var()` em `@media`): **sm 600 · md 900 · lg 1100**.
