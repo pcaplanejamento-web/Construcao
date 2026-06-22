@@ -17,6 +17,7 @@ import {
   vinculosDaSubclassificacao,
 } from "../shared/vinculos.js";
 import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
+import { editarEmMassa } from "../shared/edicao-massa.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -142,6 +143,31 @@ class FornecedoresView extends BaseElement {
     tabela.addEventListener("acao", (e) => {
       if (e.detail.acao === "editar") this.abrirForm(e.detail.linha);
       else this.remover(e.detail.linha);
+    });
+    tabela.setAttribute("editar-massa", "");
+    tabela.setAttribute("excluir-massa", "");
+    tabela.addEventListener("editar-massa", (e) =>
+      editarEmMassa(e.detail.linhas, {
+        criarForm: (ref) => {
+          const f = document.createElement("fornecedor-form");
+          f.fornecedor = ref;
+          return f;
+        },
+        reler: (ref) => dataStore.fornecedores().find((x) => String(x.id) === String(ref.id)),
+        aplicar: (l, diff) => dataStore.atualizarFornecedor(l.id, diff),
+      })
+    );
+    tabela.addEventListener("excluir-massa", async (e) => {
+      let ok = 0;
+      for (const l of e.detail.linhas || []) {
+        try {
+          await dataStore.removerFornecedor(l.id);
+          ok++;
+        } catch (err) {
+          notificarErro(err);
+        }
+      }
+      if (ok) toastSucesso(`${ok} fornecedor(es) excluído(s).`);
     });
     el.replaceChildren(tabela);
   }

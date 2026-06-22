@@ -14,6 +14,7 @@ import { moeda, numero, data as fmtData } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { abrirBannerVinculos, vinculosDaOferta } from "../shared/vinculos.js";
 import { rotuloOrcamento, ofertanteNome, colunasOferta } from "../orcamentos/orcamento-util.js";
+import { editarEmMassa } from "../shared/edicao-massa.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta, melhorTotal, resumoOfertas, coresPorContato } from "./cotacao-util.js";
 import "../../components/ui-card.js";
@@ -140,6 +141,20 @@ class CotacaoDetailView extends BaseElement {
     });
     // Clique na oferta → banner único (a cotação trava o item).
     this._tabela.addEventListener("linha", (e) => abrirOferta(e.detail.linha, { cotacao: this._cotacao }));
+    // Edição em massa: reusa o preco-form; campos alterados valem p/ todas.
+    this._tabela.setAttribute("editar-massa", "");
+    this._tabela.addEventListener("editar-massa", (e) =>
+      editarEmMassa(e.detail.linhas, {
+        criarForm: (ref) => {
+          const f = document.createElement("preco-form");
+          f.preco = ref;
+          f.cotacao = this._cotacao;
+          return f;
+        },
+        reler: (ref) => dataStore.todasOfertas().find((o) => String(o.id) === String(ref.id)),
+        aplicar: (l, diff) => dataStore.atualizarOferta(l.id, diff),
+      })
+    );
     // Exclusão em massa (a tabela já confirmou).
     this._tabela.setAttribute("excluir-massa", "");
     this._tabela.addEventListener("excluir-massa", async (e) => {

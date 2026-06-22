@@ -10,6 +10,7 @@ import { dataStore } from "../../core/data-store.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { abrirBannerVinculos, vinculosDoContato, vinculosDoCargo } from "../shared/vinculos.js";
 import { avatarNomeHtml, corAvatar, whatsappBtnHtml } from "../shared/avatar.js";
+import { editarEmMassa } from "../shared/edicao-massa.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -161,6 +162,31 @@ class ContatosView extends BaseElement {
     tabela.addEventListener("acao", (e) => {
       if (e.detail.acao === "editar") this.abrirForm(e.detail.linha);
       else this.remover(e.detail.linha);
+    });
+    tabela.setAttribute("editar-massa", "");
+    tabela.setAttribute("excluir-massa", "");
+    tabela.addEventListener("editar-massa", (e) =>
+      editarEmMassa(e.detail.linhas, {
+        criarForm: (ref) => {
+          const f = document.createElement("contato-form");
+          f.contato = ref;
+          return f;
+        },
+        reler: (ref) => dataStore.contatos().find((x) => String(x.id) === String(ref.id)),
+        aplicar: (l, diff) => dataStore.atualizarContato(l.id, diff),
+      })
+    );
+    tabela.addEventListener("excluir-massa", async (e) => {
+      let ok = 0;
+      for (const l of e.detail.linhas || []) {
+        try {
+          await dataStore.removerContato(l.id);
+          ok++;
+        } catch (err) {
+          notificarErro(err);
+        }
+      }
+      if (ok) toastSucesso(`${ok} contato(s) excluído(s).`);
     });
     el.replaceChildren(tabela);
   }

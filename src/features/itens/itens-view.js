@@ -12,6 +12,7 @@ import { dataStore } from "../../core/data-store.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { abrirBannerVinculos, vinculosDoItem, vinculosDaSubclassificacao } from "../shared/vinculos.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { editarEmMassa } from "../shared/edicao-massa.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
@@ -132,6 +133,31 @@ class ItensView extends BaseElement {
     tabela.addEventListener("acao", (e) => {
       if (e.detail.acao === "editar") this.abrirItemForm(e.detail.linha);
       else this.removerItem(e.detail.linha);
+    });
+    tabela.setAttribute("editar-massa", "");
+    tabela.setAttribute("excluir-massa", "");
+    tabela.addEventListener("editar-massa", (e) =>
+      editarEmMassa(e.detail.linhas, {
+        criarForm: (ref) => {
+          const f = document.createElement("item-form");
+          f.item = ref;
+          return f;
+        },
+        reler: (ref) => dataStore.item(ref.id),
+        aplicar: (l, diff) => dataStore.atualizarItem(l.id, diff),
+      })
+    );
+    tabela.addEventListener("excluir-massa", async (e) => {
+      let ok = 0;
+      for (const l of e.detail.linhas || []) {
+        try {
+          await dataStore.removerItem(l.id);
+          ok++;
+        } catch (err) {
+          notificarErro(err);
+        }
+      }
+      if (ok) toastSucesso(`${ok} item(ns) excluído(s).`);
     });
     el.replaceChildren(tabela);
   }

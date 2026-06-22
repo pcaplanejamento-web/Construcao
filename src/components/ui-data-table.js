@@ -11,13 +11,16 @@
  *     largura/secundaria/alinhar/formato: como antes.
  *   .rows  = [ objeto, ... ]
  *   .acoes = [{ nome, rotulo, variant? }]
- * Atributos: empty-text, fluido, clicavel, excluir-massa (mostra "Excluir selecionadas").
+ * Atributos: empty-text, fluido, clicavel, editar-massa, excluir-massa.
+ *   A COLUNA DE SELEÇÃO só aparece quando há `editar-massa` e/ou `excluir-massa`
+ *   (a seleção serve às operações em massa; tabelas só-leitura não a mostram).
+ *   `editar-massa` → botão "Editar selecionadas"; `excluir-massa` → "Excluir selecionadas".
  * Eventos: "acao" ({acao,linha}), "linha" ({linha}), "selecao" ({linhas}),
- *          "excluir-massa" ({linhas}).
+ *          "editar-massa" ({linhas}), "excluir-massa" ({linhas}).
  *
  * Não conhece o domínio: quem usa fornece colunas/formatadores e (opcional) liga
- * `excluir-massa` ao seu remove. Ordenação/filtro/seleção são estado interno e
- * PERSISTEM quando `.rows` é re-atribuído (refresh em 2º plano não perde o filtro).
+ * `editar-massa`/`excluir-massa` ao seu form/remove. Ordenação/filtro/seleção são
+ * estado interno e PERSISTEM quando `.rows` é re-atribuído (refresh não perde o filtro).
  */
 import { BaseElement } from "./base-element.js";
 import { moeda } from "../core/formatters.js";
@@ -26,7 +29,12 @@ import "./ui-busca.js";
 
 class UiDataTable extends BaseElement {
   static get observedAttributes() {
-    return ["empty-text", "fluido", "clicavel", "excluir-massa"];
+    return ["empty-text", "fluido", "clicavel", "editar-massa", "excluir-massa"];
+  }
+
+  /** A seleção (e a barra de ações em massa) só existe em tabelas editáveis/excluíveis. */
+  _temSelecao() {
+    return this.hasAttribute("editar-massa") || this.hasAttribute("excluir-massa");
   }
 
   set columns(v) {
@@ -184,6 +192,11 @@ class UiDataTable extends BaseElement {
       .selbar .n { font-weight: var(--peso-semi); color: var(--cor-primaria-escura); }
       .selbar .somas { display: flex; gap: var(--esp-3); flex-wrap: wrap; flex: 1; }
       .selbar .soma b { font-family: var(--fonte-titulo); }
+      .selbar .editar { margin-left: auto; border: 1px solid var(--cor-primaria);
+        background: var(--cor-primaria); color: #fff; border-radius: var(--raio-sm);
+        padding: 4px 12px; font-size: var(--fs-xs); cursor: pointer; font-weight: var(--peso-semi); }
+      .selbar .editar:hover { background: var(--cor-primaria-escura); }
+      .selbar .editar + .excluir { margin-left: 0; }
       .selbar .excluir { margin-left: auto; border: 1px solid var(--cor-erro-suave);
         background: var(--cor-superficie); color: var(--cor-erro); border-radius: var(--raio-sm);
         padding: 4px 12px; font-size: var(--fs-xs); cursor: pointer; }
@@ -209,8 +222,9 @@ class UiDataTable extends BaseElement {
     const classe = (c) => [c.alinhar === "dir" ? "dir" : "", c.secundaria ? "sec" : ""].filter(Boolean).join(" ");
     const ativa = (i) => (this._ordem && this._ordem.col === i) || this._filtros[i];
 
+    const temSel = this._temSelecao();
     const cabecalho =
-      `<th class="sel"><input type="checkbox" id="selTodos"></th>` +
+      (temSel ? `<th class="sel"><input type="checkbox" id="selTodos"></th>` : "") +
       cols
         .map(
           (c, i) =>
@@ -232,17 +246,20 @@ class UiDataTable extends BaseElement {
     const cols = this.columns;
     const acoes = this.acoes;
     const temAcoes = acoes.length > 0;
+    const temSel = this._temSelecao();
     const estilo = (c) => (c.largura ? ` style="min-width:${c.largura}"` : "");
     const classe = (c) => [c.alinhar === "dir" ? "dir" : "", c.secundaria ? "sec" : ""].filter(Boolean).join(" ");
     const vis = this._visiveis();
     if (!vis.length) {
-      const span = cols.length + 1 + (temAcoes ? 1 : 0);
+      const span = cols.length + (temSel ? 1 : 0) + (temAcoes ? 1 : 0);
       return `<tr class="sem-result"><td colspan="${span}">Nenhum resultado para a pesquisa.</td></tr>`;
     }
     return vis
       .map(({ linha, i }) => {
         const marcada = this._sel.has(linha);
-        const sel = `<td class="sel"><input type="checkbox" class="rowsel" data-i="${i}" ${marcada ? "checked" : ""}></td>`;
+        const sel = temSel
+          ? `<td class="sel"><input type="checkbox" class="rowsel" data-i="${i}" ${marcada ? "checked" : ""}></td>`
+          : "";
         const celulas = cols
           .map((c) => {
             const v = c.formato ? c.formato(linha[c.chave], linha) : linha[c.chave];
@@ -281,7 +298,7 @@ class UiDataTable extends BaseElement {
         return cel;
       })
       .join("");
-    return `<tfoot><tr><td class="sel"></td>${cels}${temAcoes ? "<td></td>" : ""}</tr></tfoot>`;
+    return `<tfoot><tr>${this._temSelecao() ? '<td class="sel"></td>' : ""}${cels}${temAcoes ? "<td></td>" : ""}</tr></tfoot>`;
   }
 
   _selbarHtml() {
@@ -293,10 +310,13 @@ class UiDataTable extends BaseElement {
         return `<span class="soma">${c.titulo}: <b>${moeda(soma)}</b></span>`;
       })
       .join("");
+    const editar = this.hasAttribute("editar-massa")
+      ? `<button class="editar" id="editarMassa">Editar selecionadas</button>`
+      : "";
     const excluir = this.hasAttribute("excluir-massa")
       ? `<button class="excluir" id="excluirMassa">Excluir selecionadas</button>`
       : "";
-    return `<div class="selbar"><span class="n">${selecionadas.length} selecionada(s)</span><div class="somas">${somas}</div>${excluir}</div>`;
+    return `<div class="selbar"><span class="n">${selecionadas.length} selecionada(s)</span><div class="somas">${somas}</div>${editar}${excluir}</div>`;
   }
 
   aposRender() {
@@ -312,6 +332,14 @@ class UiDataTable extends BaseElement {
         else visiveis.forEach((l) => this._sel.delete(l));
         this.emitir("selecao", { linhas: [...this._sel] });
         this.renderizar();
+      });
+    }
+    // Editar selecionadas em massa — abre o form de edição (a view decide).
+    const btnEditar = this.$("#editarMassa");
+    if (btnEditar) {
+      btnEditar.addEventListener("click", () => {
+        const linhas = [...this._sel];
+        if (linhas.length) this.emitir("editar-massa", { linhas });
       });
     }
     // Excluir selecionadas em massa.

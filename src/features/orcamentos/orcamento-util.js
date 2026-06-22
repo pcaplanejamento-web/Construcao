@@ -224,6 +224,10 @@ export function montarTabelaOfertas(el, ofertas, opcoes = {}) {
     ? opcoes.acoes || []
     : [{ nome: "registrar", rotulo: "Registrar" }, ...(opcoes.acoes || [])];
   tabela.rows = lista;
+  if (opcoes.editarMassa) {
+    tabela.setAttribute("editar-massa", "");
+    tabela.addEventListener("editar-massa", (e) => opcoes.editarMassa(e.detail.linhas));
+  }
   if (opcoes.excluirMassa) {
     tabela.setAttribute("excluir-massa", "");
     tabela.addEventListener("excluir-massa", (e) => opcoes.excluirMassa(e.detail.linhas));

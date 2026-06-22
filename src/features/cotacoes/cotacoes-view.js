@@ -10,6 +10,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda, numero } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { editarEmMassa } from "../shared/edicao-massa.js";
 import { melhorTotal } from "./cotacao-util.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
@@ -163,6 +164,31 @@ class CotacoesView extends BaseElement {
     tabela.addEventListener("acao", (e) => {
       if (e.detail.acao === "editar") this.abrirForm(e.detail.linha);
       else this.remover(e.detail.linha);
+    });
+    tabela.setAttribute("editar-massa", "");
+    tabela.setAttribute("excluir-massa", "");
+    tabela.addEventListener("editar-massa", (e) =>
+      editarEmMassa(e.detail.linhas, {
+        criarForm: (ref) => {
+          const f = document.createElement("cotacao-form");
+          f.cotacao = ref;
+          return f;
+        },
+        reler: (ref) => dataStore.cotacao(ref.id),
+        aplicar: (l, diff) => dataStore.atualizarCotacao(l.id, diff),
+      })
+    );
+    tabela.addEventListener("excluir-massa", async (e) => {
+      let ok = 0;
+      for (const l of e.detail.linhas || []) {
+        try {
+          await dataStore.removerCotacao(l.id);
+          ok++;
+        } catch (err) {
+          notificarErro(err);
+        }
+      }
+      if (ok) toastSucesso(`${ok} cotação(ões) excluída(s).`);
     });
     el.replaceChildren(tabela);
   }

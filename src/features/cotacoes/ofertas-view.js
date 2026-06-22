@@ -7,6 +7,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { montarTabelaOfertas } from "../orcamentos/orcamento-util.js";
 import { abrirOferta } from "./preco-form.js";
+import { editarEmMassa } from "../shared/edicao-massa.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
@@ -59,8 +60,22 @@ class OfertasView extends BaseElement {
       onLinha: (oferta) => abrirOferta(oferta), // clique na oferta → banner único
       acoes: [{ nome: "remover", rotulo: "Excluir", variant: "perigo" }],
       onAcao: (acao, linha) => this.remover(linha),
+      editarMassa: (linhas) => this.editarMassa(linhas),
       excluirMassa: (linhas) => this.removerMassa(linhas),
       vazio: "Crie ofertas para comparar preços e montar orçamentos.",
+    });
+  }
+
+  /** Edição em massa: abre o MESMO preco-form; campos alterados valem p/ todas. */
+  editarMassa(linhas) {
+    editarEmMassa(linhas, {
+      criarForm: (ref) => {
+        const f = document.createElement("preco-form");
+        f.preco = ref;
+        return f;
+      },
+      reler: (ref) => dataStore.todasOfertas().find((o) => String(o.id) === String(ref.id)),
+      aplicar: (l, diff) => dataStore.atualizarOferta(l.id, diff),
     });
   }
 

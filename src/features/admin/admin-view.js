@@ -7,6 +7,7 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
+import { editarEmMassa } from "../shared/edicao-massa.js";
 import "../../components/ui-button.js";
 import "../../components/ui-card.js";
 import "../../components/ui-spinner.js";
@@ -59,6 +60,20 @@ class AdminView extends BaseElement {
     tabela.usuarios = dataStore.usuarios();
     tabela.addEventListener("editar", (e) => this.abrirUserForm(e.detail.usuario));
     tabela.addEventListener("config", (e) => this.abrirConfig(e.detail.usuario));
+    tabela.addEventListener("editar-massa", (e) =>
+      editarEmMassa(e.detail.usuarios, {
+        criarForm: (ref) => {
+          const f = document.createElement("user-form");
+          f.usuario = ref;
+          return f;
+        },
+        reler: (ref) => dataStore.usuarios().find((u) => String(u.id) === String(ref.id)),
+        // adminAtualizarUsuario recebe o objeto inteiro; preserva nome/role/ativo + diff.
+        aplicar: (l, diff) =>
+          dataStore.adminAtualizarUsuario({ id: l.id, nome: l.nome, role: l.role, ativo: l.ativo, ...diff }),
+        ignorar: ["email", "criado_por", "novaSenha"],
+      })
+    );
     alvo.replaceChildren(tabela);
   }
 

@@ -63,6 +63,9 @@ class UsersTable extends BaseElement {
     t.addEventListener("acao", (e) =>
       this.emitir(e.detail.acao, { usuario: e.detail.linha })
     );
+    // Edição em massa (sem exclusão de usuários).
+    t.setAttribute("editar-massa", "");
+    t.addEventListener("editar-massa", (e) => this.emitir("editar-massa", { usuarios: e.detail.linhas }));
     this.atualizar();
   }
 
