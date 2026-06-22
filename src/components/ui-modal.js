@@ -83,6 +83,15 @@ class UiModal extends BaseElement {
         document.removeEventListener("keydown", this._escHandler)
       );
     }
+    // Navegar (trocar de rota) fecha o modal — comportamento comum de SPA: um link
+    // interno (ex.: "abrir página do item") não deixa banners flutuantes sobrepostos.
+    if (!this._rotaHandler) {
+      this._rotaHandler = () => {
+        if (this.hasAttribute("open")) fechar();
+      };
+      window.addEventListener("rotamudou", this._rotaHandler);
+      this.aoLimpar(() => window.removeEventListener("rotamudou", this._rotaHandler));
+    }
   }
 }
 
