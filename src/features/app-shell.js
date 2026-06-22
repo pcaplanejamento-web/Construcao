@@ -41,6 +41,12 @@ class AppShell extends BaseElement {
   aoConectar() {
     this.refletirAuth();
     this.aoLimpar(bus.on(EVENTOS.AUTH, () => this.refletirAuth()));
+    // Reage também à troca de rota: no login, o AUTH dispara ANTES de carregar
+    // os dados e navegar; gatear pela rota evita o header surgir sozinho sobre a
+    // tela de login (header/sidebar aparecem junto com o conteúdo interno).
+    const onRota = () => this.refletirAuth();
+    window.addEventListener("rotamudou", onRota);
+    this.aoLimpar(() => window.removeEventListener("rotamudou", onRota));
 
     const hdr = this.$("#hdr");
     const sb = this.$("#sb");
@@ -65,10 +71,15 @@ class AppShell extends BaseElement {
   }
 
   refletirAuth() {
-    const autenticado = auth.estaAutenticado();
-    this.$("#hdr").hidden = !autenticado;
-    this.$("#sb").hidden = !autenticado;
-    if (!autenticado) this.$("#sb").removeAttribute("aberto");
+    // Header/sidebar aparecem só nas telas internas: autenticado E fora das
+    // rotas públicas (/login, /publico/...). Durante o carregamento pós-login a
+    // rota ainda é /login, então ficam ocultos até o conteúdo interno renderizar.
+    const path = location.pathname || "/";
+    const rotaPublica = path === "/login" || path.startsWith("/publico");
+    const mostrar = auth.estaAutenticado() && !rotaPublica;
+    this.$("#hdr").hidden = !mostrar;
+    this.$("#sb").hidden = !mostrar;
+    if (!mostrar) this.$("#sb").removeAttribute("aberto");
   }
 }
 
