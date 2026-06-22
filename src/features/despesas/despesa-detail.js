@@ -18,7 +18,7 @@ import { data as fmtData, moeda, hojeIso } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { valorPositivo } from "../../core/validators.js";
 import { parseLista, statusPagamento, totalRealizado, restoDespesa } from "./despesa-split.js";
-import { ofertanteNome, montarTabelaOfertas } from "../orcamentos/orcamento-util.js";
+import { ofertanteNome, previaOfertaHtml, abrirDetalheOferta } from "../orcamentos/orcamento-util.js";
 import { integrantesDaEquipe } from "../equipes/equipe-util.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
@@ -68,6 +68,9 @@ class DespesaDetail extends BaseElement {
         box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
       .resumo { background: var(--cor-superficie-2); border-radius: var(--raio-sm);
         padding: var(--esp-3) var(--esp-4); display: flex; flex-direction: column; gap: 4px; }
+      .resumo.clicavel { cursor: pointer; border: 1px solid var(--cor-borda);
+        transition: border-color var(--transicao), background var(--transicao); }
+      .resumo.clicavel:hover { border-color: var(--cor-primaria); background: var(--cor-primaria-suave); }
       .resumo .item { font-weight: var(--peso-semi); }
       .resumo .val { font-size: var(--fs-lg); font-weight: var(--peso-forte);
         color: var(--cor-primaria); }
@@ -109,7 +112,7 @@ class DespesaDetail extends BaseElement {
     if (this.travado) {
       topo = `
         <label class="tx">Oferta de origem</label>
-        <div id="ofertaBox"></div>
+        <div class="resumo clicavel" id="ofertaBox" title="Ver detalhes da oferta"></div>
         <ui-input id="data" label="Data" type="date" value="${dataVal}"></ui-input>`;
     } else {
       topo = `
@@ -174,9 +177,14 @@ class DespesaDetail extends BaseElement {
       this.$("#abas").addEventListener("mudar", () => this.preencherItens());
       this.preencherItens();
     } else {
-      // Componente PADRÃO da oferta (só-leitura): para editar, edita-se a oferta.
+      // Card de PRÉVIA da oferta (o mesmo do banner Registrar Despesa); clique →
+      // banner com as informações completas. Para EDITAR, edita-se a oferta.
       const oferta = dataStore.todasOfertas().find((o) => String(o.id) === String(d.preco_id));
-      if (oferta) montarTabelaOfertas(this.$("#ofertaBox"), [oferta], { semRegistrar: true });
+      const box = this.$("#ofertaBox");
+      if (oferta && box) {
+        box.innerHTML = previaOfertaHtml(oferta);
+        box.addEventListener("click", () => abrirDetalheOferta(oferta));
+      }
     }
     this.preencherSplits();
     this.preencherPagamentos();

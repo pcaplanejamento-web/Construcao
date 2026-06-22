@@ -19,7 +19,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, toastAviso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta, qtdOferta, unitFinalOferta } from "./cotacao-util.js";
-import { ofertanteNome, rotuloOrcamento } from "../orcamentos/orcamento-util.js";
+import { ofertanteNome, rotuloOrcamento, previaOfertaHtml } from "../orcamentos/orcamento-util.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-select.js";
@@ -272,33 +272,16 @@ class CotacaoDespesaForm extends BaseElement {
       return;
     }
 
-    // Modo oferta avulsa / oferta-fixa.
+    // Modo oferta avulsa / oferta-fixa — MESMO card de prévia da oferta (helper único).
     const { preco, cotacao } = this.ofertaAtual();
     if (!preco || !preco.id) {
       box.setAttribute("hidden", "");
       return;
     }
     box.removeAttribute("hidden");
-    const total = totalOferta(preco, cotacao);
-    const qtd = qtdOferta(preco, cotacao);
-    const unit = unitFinalOferta(preco);
-    const temDesc = Number(preco.valor_unit_desconto) > 0;
-    // Item próprio da oferta (fallback à cotação, p/ ofertas avulsas/sem cotação).
-    const itemObj =
-      (preco.item_id && dataStore.item(preco.item_id)) ||
-      (cotacao.item_id && dataStore.item(cotacao.item_id)) ||
-      null;
-    const itemNome = (itemObj && itemObj.nome) || cotacao.descricao || "";
-    const classif = (itemObj && itemObj.classificacao) || cotacao.classificacao || "";
-    const ofert = ofertanteNome(preco.contato_id, preco.equipe_id);
-    const empresa = preco.equipe_id ? "" : this.empresaDoContato(preco.contato_id);
-    box.innerHTML = `
-      <span class="item">${itemNome}</span>
-      ${classif ? `<category-badge nome="${classif}" cor="${COR_CLASSIFICACAO[classif] || "var(--cor-neutro)"}"></category-badge>` : ""}
-      <span class="val">${moeda(total)}</span>
-      <small>Qtd: ${qtd} × ${moeda(unit)}${temDesc ? " (com desconto)" : ""}</small>
-      <small>Ofertante: ${ofert}${empresa ? " · Empresa: " + empresa : ""}</small>
-    `;
+    // Garante o vínculo da cotação (oferta-fixa pode receber a cotação separada).
+    const ofertaParaPrevia = preco.cotacao_id || !cotacao || !cotacao.id ? preco : { ...preco, cotacao_id: cotacao.id };
+    box.innerHTML = previaOfertaHtml(ofertaParaPrevia);
   }
 
   /** Editor de responsabilidade (% por participante da obra resolvida). */

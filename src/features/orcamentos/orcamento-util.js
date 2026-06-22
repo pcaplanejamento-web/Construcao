@@ -7,10 +7,11 @@
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
-import { totalOferta, totalOfertaCheio, qtdOferta } from "../cotacoes/cotacao-util.js";
+import { totalOferta, totalOfertaCheio, qtdOferta, unitFinalOferta } from "../cotacoes/cotacao-util.js";
 import { statusPagamento } from "../despesas/despesa-split.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-empty-state.js";
+import "../../components/ui-modal.js";
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
 export const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
@@ -230,6 +231,56 @@ export function montarTabelaOfertas(el, ofertas, opcoes = {}) {
     if (opcoes.onAcao) opcoes.onAcao(acao, linha);
   });
   el.replaceChildren(tabela);
+}
+
+/**
+ * Card de PRÉVIA da oferta (o MESMO usado no banner Registrar Despesa). Retorna o
+ * conteúdo interno — o chamador o envolve num `<div class="resumo">`.
+ */
+export function previaOfertaHtml(oferta) {
+  const o = oferta || {};
+  const cot = o.cotacao_id ? dataStore.cotacao(o.cotacao_id) : null;
+  const itemObj =
+    (o.item_id && dataStore.item(o.item_id)) ||
+    (cot && cot.item_id && dataStore.item(cot.item_id)) ||
+    null;
+  const itemNome = (itemObj && itemObj.nome) || (cot && cot.descricao) || "—";
+  const classif = (itemObj && itemObj.classificacao) || (cot && cot.classificacao) || "";
+  const qtd = qtdOferta(o, cot);
+  const unit = unitFinalOferta(o);
+  const total = totalOferta(o, cot);
+  const temDesc = Number(o.valor_unit_desconto) > 0;
+  const ofert = ofertanteNome(o.contato_id, o.equipe_id);
+  const empresa = o.equipe_id ? "" : _fornecedorOferta(o);
+  return `
+    <span class="item">${itemNome}</span>
+    ${classif ? `<category-badge nome="${classif}" cor="${COR_CLASSIFICACAO[classif] || "var(--cor-neutro)"}"></category-badge>` : ""}
+    <span class="val">${moeda(total)}</span>
+    <small>Qtd: ${qtd} × ${moeda(unit)}${temDesc ? " (com desconto)" : ""}</small>
+    <small>Ofertante: ${ofert}${empresa ? " · Empresa: " + empresa : ""}</small>`;
+}
+
+/** Banner (ui-modal) com TODAS as informações da oferta (reusa as colunas padrão). */
+export function abrirDetalheOferta(oferta) {
+  if (!oferta) return;
+  const linhas = colunasOferta()
+    .map((c) => {
+      const conteudo = c.formato
+        ? c.formato(oferta[c.chave], oferta)
+        : oferta[c.chave] == null
+        ? "—"
+        : String(oferta[c.chave]);
+      return `<div style="display:flex;justify-content:space-between;gap:var(--esp-4);padding:var(--esp-2) 0;border-bottom:1px solid var(--cor-divisor)">
+        <span style="color:var(--cor-texto-suave)">${c.titulo}</span>
+        <span style="text-align:right;min-width:0">${conteudo}</span></div>`;
+    })
+    .join("");
+  const modal = document.createElement("ui-modal");
+  modal.setAttribute("open", "");
+  modal.setAttribute("title", "Detalhes da oferta");
+  modal.innerHTML = `<div style="display:flex;flex-direction:column">${linhas}</div>`;
+  modal.addEventListener("fechar", () => modal.remove());
+  document.body.appendChild(modal);
 }
 
 /** Colunas da tabela de orçamentos (abas de fornecedor/contato/obra). */
