@@ -39,7 +39,8 @@ class EquipeDetailView extends BaseElement {
     return `
       :host { display: block; }
       .area { padding: var(--esp-tela); display: flex; flex-direction: column; gap: var(--esp-5); }
-      .voltar { align-self: flex-start; display: inline-flex; align-items: center; gap: var(--esp-1); color: var(--cor-primaria); font-size: var(--fs-sm); font-weight: var(--peso-semi); }
+      .voltar { align-self: flex-start; display: inline-flex; align-items: center; gap: var(--esp-2); color: var(--cor-primaria); font-size: var(--fs-md); font-weight: var(--peso-forte); text-decoration: none; }
+      .voltar:hover { text-decoration: none; color: var(--cor-primaria-escura); }
       #conteudo { display: flex; flex-direction: column; gap: var(--esp-5); }
       .topo { display: flex; align-items: flex-start; justify-content: space-between;
         gap: var(--esp-3); flex-wrap: wrap; }
@@ -70,7 +71,7 @@ class EquipeDetailView extends BaseElement {
   montarConteudo() {
     const alvo = this.$("#conteudo");
     alvo.innerHTML = `
-      <a class="voltar" href="/contatos">← Contatos</a>
+      <a class="voltar" href="/contatos"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>Contatos</span></a>
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="obras">

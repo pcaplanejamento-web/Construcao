@@ -30,6 +30,9 @@ export function irPara(caminho) {
 
 export function criarRouter(outlet) {
   const rotas = [];
+  // Houve navegação interna (pushState) nesta sessão da aba? Define se o link
+  // "voltar" retorna à página anterior (de onde o usuário veio) ou ao pai habitual.
+  let _navegouInterno = false;
 
   /** Converte "/obras/:id" em { regex, params: ["id"], ... }. */
   function compilar(caminho) {
@@ -57,8 +60,19 @@ export function criarRouter(outlet) {
     if (rotaAtual() === caminho) resolver();
     else {
       history.pushState({}, "", caminho);
+      _navegouInterno = true;
       resolver();
     }
+  }
+
+  /**
+   * Voltar do link "← X": se o usuário chegou aqui navegando dentro do app,
+   * retorna à página ANTERIOR (de onde veio — mesmo que não seja a habitual);
+   * se entrou direto (link/refresh), vai ao pai habitual (fallback = href).
+   */
+  function voltar(fallback) {
+    if (_navegouInterno) history.back();
+    else navegar(fallback || "/");
   }
 
   function casar(caminho) {
@@ -125,7 +139,8 @@ export function criarRouter(outlet) {
     if (a.target && a.target !== "_self") return;
     if (a.hasAttribute("download")) return;
     e.preventDefault();
-    navegar(href);
+    if (a.classList.contains("voltar")) voltar(href);
+    else navegar(href);
   }
 
   function iniciar() {

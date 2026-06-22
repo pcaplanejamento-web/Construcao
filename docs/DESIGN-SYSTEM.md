@@ -73,8 +73,14 @@ direita→conteúdo, em qualquer largura (e acompanha quando a sidebar recolhe).
 (`* { margin: 0 }`) p/ o 1º componente ficar exatamente a `--esp-tela` do header.
 Usar sempre em telas/abas novas.
 
-**Link de retorno (`.voltar`)** — padrão nas detail-views: `inline-flex` teal
-(`var(--cor-primaria)`), `font-weight: var(--peso-semi)`, `align-self: flex-start`.
+**Link de retorno (`.voltar`)** — padrão nas detail-views: `<a class="voltar"
+href="<pai habitual>"><ui-icon name="seta-esquerda"></ui-icon><span>Texto</span></a>`.
+Estilo: `inline-flex` teal (`var(--cor-primaria)`), **negrito** (`--peso-forte`),
+`font-size: var(--fs-md)`, `gap: var(--esp-2)` (seta↔texto), **sem underline**
+(inclusive no hover), `align-self: flex-start`. Comportamento **voltar inteligente**
+(em `router.js`): se o usuário chegou navegando no app, volta à página ANTERIOR (de
+onde veio); se entrou direto (link/refresh), vai ao `href` (pai habitual). O router
+detecta o link pela classe `voltar`.
 Nas detail-views o conteúdo vive em `#conteudo`, que é **flex-column com
 `gap: var(--esp-5)`** — então o back link (e os demais blocos) têm o **mesmo
 espaçamento (24px) acima e abaixo** automaticamente, sem `margin` avulso.
