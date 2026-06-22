@@ -140,6 +140,20 @@ class CotacaoDetailView extends BaseElement {
     });
     // Clique na oferta → banner único (a cotação trava o item).
     this._tabela.addEventListener("linha", (e) => abrirOferta(e.detail.linha, { cotacao: this._cotacao }));
+    // Exclusão em massa (a tabela já confirmou).
+    this._tabela.setAttribute("excluir-massa", "");
+    this._tabela.addEventListener("excluir-massa", async (e) => {
+      let ok = 0;
+      for (const p of e.detail.linhas || []) {
+        try {
+          await dataStore.removerPreco(this.cotacaoId, p.id);
+          ok++;
+        } catch (err) {
+          notificarErro(err);
+        }
+      }
+      if (ok) toastSucesso(`${ok} oferta(s) excluída(s).`);
+    });
     this._montado = true;
   }
 

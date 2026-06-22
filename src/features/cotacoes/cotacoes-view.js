@@ -135,6 +135,8 @@ class CotacoesView extends BaseElement {
         chave: "id",
         titulo: "Melhor preço",
         alinhar: "dir",
+        moeda: true,
+        valorNum: (linha) => melhorTotal(dataStore.precosDaCotacao(linha.id), linha) || 0,
         formato: (id, linha) => {
           const min = melhorTotal(dataStore.precosDaCotacao(id), linha);
           return min == null ? "—" : moeda(min);

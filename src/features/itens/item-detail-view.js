@@ -163,7 +163,7 @@ class ItemDetailView extends BaseElement {
             ? `<category-badge nome="${this._mapaCat[id].nome}" cor="${this._mapaCat[id].cor}"></category-badge>`
             : `<span style="color:var(--cor-texto-fraco)">—</span>`,
       },
-      { chave: "valor", titulo: "Valor", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
       {
         chave: "pago",
         titulo: "Pago",
@@ -196,6 +196,8 @@ class ItemDetailView extends BaseElement {
         chave: "id",
         titulo: "Melhor preço",
         alinhar: "dir",
+        moeda: true,
+        valorNum: (linha) => melhorTotal(dataStore.precosDaCotacao(linha.id), linha) || 0,
         formato: (id, linha) => {
           const min = melhorTotal(dataStore.precosDaCotacao(id), linha);
           return min == null ? "—" : moeda(min);
@@ -219,7 +221,7 @@ class ItemDetailView extends BaseElement {
     this._tabObras.columns = [
       { chave: "nome", titulo: "Obra" },
       { chave: "qtd", titulo: "Despesas", alinhar: "dir", formato: (v) => numero(v) },
-      { chave: "valor", titulo: "Valor gasto", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "valor", titulo: "Valor gasto", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
     ];
     this._tabObras.addEventListener("linha", (e) => {
       irPara("/obras/" + e.detail.linha.id);

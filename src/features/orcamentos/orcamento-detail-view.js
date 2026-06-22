@@ -107,6 +107,20 @@ class OrcamentoDetailView extends BaseElement {
     });
     // Clique na oferta → banner único (o orçamento trava ofertante/fornecedor).
     this._tabela.addEventListener("linha", (e) => abrirOferta(e.detail.linha, { orcamento: this._orcamento }));
+    // Exclusão em massa (a tabela já confirmou).
+    this._tabela.setAttribute("excluir-massa", "");
+    this._tabela.addEventListener("excluir-massa", async (e) => {
+      let ok = 0;
+      for (const p of e.detail.linhas || []) {
+        try {
+          await dataStore.removerPreco(p.cotacao_id || "", p.id);
+          ok++;
+        } catch (err) {
+          notificarErro(err);
+        }
+      }
+      if (ok) toastSucesso(`${ok} oferta(s) excluída(s).`);
+    });
     alvo.querySelector("#addOferta").addEventListener("click", () => this.abrirPrecoForm(null));
     this._montado = true;
   }

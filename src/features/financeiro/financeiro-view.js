@@ -87,22 +87,22 @@ class FinanceiroView extends BaseElement {
     this._tabReceber.columns = [
       { chave: "_nome", titulo: "Destinatário" },
       { chave: "_tipo", titulo: "Tipo", formato: (v) => `<category-badge nome="${v}" cor="var(--cor-info)"></category-badge>` },
-      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
-      { chave: "_saldo", titulo: "Saldo a receber", alinhar: "dir", formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`) },
+      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "_saldo", titulo: "Saldo a receber", alinhar: "dir", moeda: true, formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`) },
     ];
     this._tabPagar = this.$("#tabPagar");
     this._tabPagar.columns = [
       { chave: "_nome", titulo: "Responsável" },
-      { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
-      { chave: "_saldo", titulo: "Saldo a pagar", alinhar: "dir", formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-erro)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`) },
+      { chave: "_pago", titulo: "Pago", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "_saldo", titulo: "Saldo a pagar", alinhar: "dir", moeda: true, formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-erro)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`) },
     ];
     this._tabAberto = this.$("#tabAberto");
     this._tabAberto.columns = [
       { chave: "_obra", titulo: "Obra" },
       { chave: "_item", titulo: "Item", largura: "180px" },
-      { chave: "_valor", titulo: "Valor", alinhar: "dir", formato: (v) => moeda(v) },
-      { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
-      { chave: "_resto", titulo: "Resto", alinhar: "dir", formato: (v) => `<strong style="color:var(--cor-aviso)">${moeda(v)}</strong>` },
+      { chave: "_valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "_pago", titulo: "Pago", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "_resto", titulo: "Resto", alinhar: "dir", moeda: true, formato: (v) => `<strong style="color:var(--cor-aviso)">${moeda(v)}</strong>` },
       { chave: "_status", titulo: "Status", formato: (v) => `<category-badge nome="${v}" cor="${COR_STATUS[v] || "var(--cor-neutro)"}"></category-badge>` },
     ];
     this._tabAberto.addEventListener("linha", (e) => {

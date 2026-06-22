@@ -286,12 +286,13 @@ class ObraDetailView extends BaseElement {
     tab.columns = [
       { chave: "_nome", titulo: "Fornecedor", formato: (v) => avatarNomeHtml(v) },
       { chave: "_qtd", titulo: "Despesas", alinhar: "dir" },
-      { chave: "_total", titulo: "Total", alinhar: "dir", formato: (v) => moeda(v) },
-      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "_total", titulo: "Total", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
       {
         chave: "_resto",
         titulo: "Saldo a receber",
         alinhar: "dir",
+        moeda: true,
         formato: (v) =>
           v > 0.01
             ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>`

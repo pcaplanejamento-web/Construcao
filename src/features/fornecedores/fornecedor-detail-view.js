@@ -149,11 +149,12 @@ class FornecedorDetailView extends BaseElement {
     this._tabDados = alvo.querySelector("#tabDados");
     this._tabDados.columns = [
       { chave: "_obra", titulo: "Obra" },
-      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
       {
         chave: "_resto",
         titulo: "Saldo a receber",
         alinhar: "dir",
+        moeda: true,
         formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
       },
     ];

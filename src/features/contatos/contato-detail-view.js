@@ -160,18 +160,20 @@ class ContatoDetailView extends BaseElement {
     this._tabDados = alvo.querySelector("#tabDados");
     this._tabDados.columns = [
       { chave: "_obra", titulo: "Obra" },
-      { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
-      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "_pago", titulo: "Pago", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
       {
         chave: "_pagar",
         titulo: "Saldo a pagar",
         alinhar: "dir",
+        moeda: true,
         formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-erro)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
       },
       {
         chave: "_receber",
         titulo: "Saldo a receber",
         alinhar: "dir",
+        moeda: true,
         formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
       },
     ];

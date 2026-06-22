@@ -134,11 +134,12 @@ class EquipeDetailView extends BaseElement {
         titulo: "Data do pagamento",
         formato: (v) => (v && v.length ? v.map((d) => fmtData(d)).join(" · ") : `<span style="color:var(--cor-texto-fraco)">—</span>`),
       },
-      { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "_pago", titulo: "Pago", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
       {
         chave: "_resto",
         titulo: "Saldo a receber",
         alinhar: "dir",
+        moeda: true,
         formato: (v) =>
           v > 0.01
             ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>`

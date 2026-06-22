@@ -32,7 +32,7 @@ function _despesasComObra(pred) {
 const COL_DESPESA = [
   { chave: "_obra", titulo: "Obra", formato: (v) => v || "—" },
   { chave: "item", titulo: "Item", formato: (v, l) => nomeItem(l) },
-  { chave: "valor", titulo: "Valor", alinhar: "dir", formato: (v) => moeda(v) },
+  { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
 ];
 const COL_COTACAO = [
   { chave: "descricao", titulo: "Cotação", formato: (v, l) => nomeItem(l) },

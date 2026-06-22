@@ -95,7 +95,7 @@ class PublicoView extends BaseElement {
             ? `<category-badge nome="${nome}" cor="${linha.categoria_cor || ""}"></category-badge>`
             : `<span style="color:var(--cor-texto-fraco)">—</span>`,
       },
-      { chave: "valor", titulo: "Valor", alinhar: "dir", formato: (v) => moeda(v) },
+      { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
     ];
     tabela.rows = d.despesas || [];
   }

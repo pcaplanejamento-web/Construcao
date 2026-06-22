@@ -114,12 +114,13 @@ class ObraParticipantes extends BaseElement {
           formato: (o) =>
             `<category-badge nome="${rotuloOrigem(o)}" cor="${COR_ORIGEM[o] || "var(--cor-neutro)"}"></category-badge>`,
         },
-        { chave: "_pago", titulo: "Pago", alinhar: "dir", formato: (v) => moeda(v) },
-        { chave: "_recebido", titulo: "Recebido", alinhar: "dir", formato: (v) => moeda(v) },
+        { chave: "_pago", titulo: "Pago", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+        { chave: "_recebido", titulo: "Recebido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
         {
           chave: "_saldoApagar",
           titulo: "Saldo a pagar",
           alinhar: "dir",
+          moeda: true,
           formato: (v) =>
             v > 0.01
               ? `<strong style="color:var(--cor-erro)">${moeda(v)}</strong>`
@@ -129,6 +130,7 @@ class ObraParticipantes extends BaseElement {
           chave: "_saldoReceber",
           titulo: "Saldo a receber",
           alinhar: "dir",
+          moeda: true,
           formato: (v) =>
             v > 0.01
               ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>`
