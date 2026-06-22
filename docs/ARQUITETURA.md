@@ -59,10 +59,13 @@ preflight e falharia. Por isso:
 
 ## Carregamento único, cache e layout
 
-- **Carregamento inicial:** no boot, `app.js` mostra `<app-loader>` e chama
-  `dataStore.inicializar()` → uma única requisição `dados.snapshot` traz todo o
-  estado do usuário. Em recargas seguintes, `dataStore.restaurarCache()` pinta a
-  UI **instantânea** a partir do localStorage e atualiza em 2º plano.
+- **Carregamento inicial:** no boot **sem cache**, `app.js` mostra `<app-loader>`
+  e chama `dataStore.inicializar()` → uma única requisição `dados.snapshot` traz
+  todo o estado do usuário. Em recargas seguintes, `dataStore.restaurarCache()`
+  pinta a UI **instantânea** a partir do localStorage e atualiza em 2º plano.
+- **Carregamento após login:** acontece NA própria tela de login — o botão do
+  `login-form` fica em loading enquanto `app.js` carrega o snapshot (sem overlay);
+  ao terminar, navega para o sistema e a `login-view` é substituída.
 - **Cache-first:** as views leem do `data-store` (sem recarregar a cada
   navegação). Trocar de aba é instantâneo.
 - **Write-through:** mutações chamam a API, atualizam o store e persistem o
@@ -89,4 +92,7 @@ O Apps Script não tem websockets. O acompanhamento ao vivo é obtido por:
 - Login cria um token UUID gravado na aba `Sessoes` (expira em 12h) e espelhado
   no `CacheService` (validação rápida sem ler a planilha).
 - `auth.me` revalida a sessão no boot do SPA.
+- **"Manter-me conectado"** (checkbox do login): marcado → token em `localStorage`
+  (persiste entre sessões, padrão); desmarcado → `sessionStorage` (some ao fechar a
+  aba). O `auth-store` infere a origem no boot e o `logout` limpa ambos.
 - Um trigger diário (`limparSessoesExpiradas`) remove sessões vencidas.

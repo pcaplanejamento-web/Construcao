@@ -101,7 +101,13 @@ async function iniciar() {
 
   bus.on(EVENTOS.AUTH, async ({ autenticado }) => {
     if (autenticado) {
-      await carregarDados(true);
+      // O carregamento acontece NA tela de login (o botão fica em loading até
+      // os dados chegarem) — por isso NÃO mostramos o overlay <app-loader> aqui.
+      try {
+        await dataStore.inicializar();
+      } catch (e) {
+        notificarErro(e);
+      }
       router.navegar(CONFIG.ROTA_INICIAL);
     } else {
       dataStore.limparCache();

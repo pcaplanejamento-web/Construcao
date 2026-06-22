@@ -18,7 +18,7 @@ sobem por `CustomEvent`**.
 | `ui-toast` / `toast-host` | `tipo`, `message` | — | Notificações; host ouve o `event-bus`. |
 | `ui-card` | `title`; slots: default, `acoes` | — | Cartão de superfície. **Padrão:** o botão de adicionar da tabela vai no `slot="acoes"` (cabeçalho, colado à direita); título longo **quebra** mantendo o botão à direita. |
 | `ui-data-table` | `.columns` (`{chave,titulo,formato?,alinhar?,largura?,secundaria?}`; `largura`=min-width opcional ex. "280px"; **`secundaria:true`**=coluna some no **mobile (≤820px)**), `.rows`, `.acoes`; attrs `empty-text`, `fluido` (só as **células** quebram/preenchem — os **títulos nunca quebram**), `clicavel` (linha clicável) | `acao` ({acao,linha}), `linha` ({linha}) | Tabela genérica orientada a dados. |
-| `ui-icon` | `name`, `size` | — | Biblioteca de ícones padrão (SVG `currentColor`). Sem emoji. Inclui `fornecedor`, `contato`, `cotacao` (módulo Compras). |
+| `ui-icon` | `name`, `size` | — | Biblioteca de ícones padrão (SVG `currentColor`). Sem emoji. Inclui `fornecedor`, `contato`, `cotacao` (módulo Compras), `email`, `usuarios`, `seta-direita` (login). |
 | `ui-alert` | `tipo` (erro\|aviso\|info\|sucesso), `message`; prop `.mensagem` | — | **Componente PADRÃO de mensagem de erro/alerta inline.** Some quando sem `message`. Usar sempre que houver mensagem de erro de validação numa tela/form. |
 | `ui-tabs` | `.abas=[{id,rotulo,icone}]`, attr `ativo`; evento `mudar` | Abas com slots nomeados (`slot="<id>"`); mostra só a aba ativa. A aba ativa muda **apenas a cor** (texto + ícone via `currentColor`) e a barra inferior — sem alterar `font-weight`/tamanho (evita reflow/deslocamento). |
 | `ui-badge` | `color` (hex ou `var(--token)`), `text` | — | Etiqueta colorida; fundo via `color-mix` (tema-seguro). |
@@ -35,7 +35,7 @@ sobem por `CustomEvent`**.
 | `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Altura de viewport fixa: o conteúdo rola no `main` → **sidebar com altura constante** em todas as telas. Esconde header/sidebar no login. |
 | `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky). **Marca-bloco** com gaps iguais (logo↔texto == texto↔sanduíche): **logo** `src/assets/dattaobra.png` (transparente) + texto **"Dattaobra"** (link → `/obras`) + **botão sanduíche** (recolhe no desktop / drawer no mobile). O logo alinha com a coluna de ícones da sidebar e a largura do `nav` da sidebar (195px) é igualada a este cluster → o sanduíche encosta no limite direito da sidebar. À direita: **alternador de tema** (sol/lua), chip do usuário → `/perfil`, Sair. Ícones via `ui-icon`. |
 | `app-sidebar` | attr `aberto` (drawer mobile), `recolhido` (régua de ícones no desktop); evento `navegou` | Menu lateral em abas (Obras, Fornecedores, Contatos, Cotações, Itens, Administração via `role-guard`, Perfil). `template()` itera o array `ITENS`. Ao recolher, os rótulos somem e o ícone fica no mesmo lugar; altura sempre 100% do conteúdo. Preferência persistida. |
-| `app-loader` | attr `texto` | Tela de carregamento inicial (overlay) exibida enquanto o snapshot carrega. |
+| `app-loader` | attr `texto` | Overlay de carregamento usado **só no boot sem cache** (refresh já logado). No fluxo de **login**, o carregamento acontece na própria tela de login (não há overlay). |
 | `role-guard` | attr `role="admin"\|"usuario"` | Mostra/oculta o slot conforme o papel (UX). |
 
 > As views leem do **data-store** ([data-store.js](../src/core/data-store.js)) — cache-first, sem recarregar. Navegação entre abas é instantânea.
@@ -57,8 +57,9 @@ sobem por `CustomEvent`**.
 ### Autenticação — `features/auth/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `login-view` | — | Tela `/login` (cartão centralizado). |
-| `login-form` | — | Formulário; chama `auth.login`. |
+| `login-view` | — | Tela `/login` **split-screen** (igual ao design): esquerda clara com a marca + `login-form`; direita verde-escura com card "Execução das obras" (sparkline SVG), título, 3 destaques e o fundo animado `login-grafo-bg`. Visual **fixo** (não segue tema). `< 900px` esconde o painel direito. |
+| `login-form` | — | Formulário; campos próprios com ícone (e-mail/usuário, senha com olho), checkbox **"Manter-me conectado"** e botão "Entrar →" (`ui-button`, gradiente via `::part`). Chama `auth.login(email, senha, lembrar)`. **O carregamento acontece nesta tela** (o botão fica em loading até o snapshot chegar — ver [app.js](../src/app.js)); em sucesso a view é substituída ao navegar. |
+| `login-grafo-bg` | — | Fundo animado de "grafos" (canvas: ~52 nós à deriva + arestas) do painel direito do login. Respeita `prefers-reduced-motion`; pausa com a aba oculta; cleanup de `rAF`/observer via `aoLimpar`. |
 
 ### Perfil — `features/perfil/`
 | Componente | Props/Eventos | Descrição |

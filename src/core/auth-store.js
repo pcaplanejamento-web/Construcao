@@ -10,31 +10,65 @@ import { bus, EVENTOS } from "./event-bus.js";
 
 let estado = { token: null, usuario: null, config: {} };
 
+// "Manter-me conectado": false = localStorage (persiste entre sessões, padrão);
+// true = sessionStorage (some ao fechar a aba). Inferido no boot por lerStorage.
+let usarSessao = false;
+
+function _store() {
+  return usarSessao ? sessionStorage : localStorage;
+}
+
+function _limparStorages() {
+  const s = CONFIG.STORAGE;
+  [localStorage, sessionStorage].forEach((st) => {
+    try {
+      st.removeItem(s.TOKEN);
+      st.removeItem(s.USUARIO);
+      st.removeItem(s.CONFIG_USUARIO);
+    } catch (e) {
+      /* indisponível */
+    }
+  });
+}
+
 function persistir() {
   try {
     const s = CONFIG.STORAGE;
-    if (estado.token) {
-      localStorage.setItem(s.TOKEN, estado.token);
-      localStorage.setItem(s.USUARIO, JSON.stringify(estado.usuario || null));
-      localStorage.setItem(s.CONFIG_USUARIO, JSON.stringify(estado.config || {}));
-    } else {
-      localStorage.removeItem(s.TOKEN);
-      localStorage.removeItem(s.USUARIO);
-      localStorage.removeItem(s.CONFIG_USUARIO);
+    if (!estado.token) {
+      _limparStorages();
+      return;
     }
+    const st = _store();
+    st.setItem(s.TOKEN, estado.token);
+    st.setItem(s.USUARIO, JSON.stringify(estado.usuario || null));
+    st.setItem(s.CONFIG_USUARIO, JSON.stringify(estado.config || {}));
+    // Remove do storage que NÃO deve guardar (ao alternar lembrar ↔ sessão).
+    const outra = usarSessao ? localStorage : sessionStorage;
+    outra.removeItem(s.TOKEN);
+    outra.removeItem(s.USUARIO);
+    outra.removeItem(s.CONFIG_USUARIO);
   } catch (e) {
-    /* localStorage indisponível: segue só em memória. */
+    /* storage indisponível: segue só em memória. */
   }
 }
 
 function lerStorage() {
   try {
     const s = CONFIG.STORAGE;
-    const token = localStorage.getItem(s.TOKEN);
+    // localStorage (lembrar) tem prioridade; senão sessionStorage.
+    let token = localStorage.getItem(s.TOKEN);
+    let st = localStorage;
+    if (token) {
+      usarSessao = false;
+    } else {
+      token = sessionStorage.getItem(s.TOKEN);
+      st = sessionStorage;
+      usarSessao = !!token;
+    }
     if (!token) return;
     estado.token = token;
-    estado.usuario = JSON.parse(localStorage.getItem(s.USUARIO) || "null");
-    estado.config = JSON.parse(localStorage.getItem(s.CONFIG_USUARIO) || "{}");
+    estado.usuario = JSON.parse(st.getItem(s.USUARIO) || "null");
+    estado.config = JSON.parse(st.getItem(s.CONFIG_USUARIO) || "{}");
   } catch (e) {
     /* ignora storage corrompido */
   }
@@ -48,9 +82,14 @@ export const auth = {
   estaAutenticado: () => !!estado.token,
   ehAdmin: () => !!(estado.usuario && estado.usuario.role === "admin"),
 
-  /** Autentica e popula a sessão. */
-  async login(email, senha) {
+  /**
+   * Autentica e popula a sessão.
+   * @param {boolean} lembrar  true (padrão) → persiste em localStorage;
+   *                           false → sessionStorage (some ao fechar a aba).
+   */
+  async login(email, senha, lembrar = true) {
     const data = await api.call("auth.login", { email, senha });
+    usarSessao = !lembrar;
     estado = {
       token: data.token,
       usuario: data.usuario,
