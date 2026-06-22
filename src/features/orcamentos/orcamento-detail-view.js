@@ -23,6 +23,7 @@ import "../../components/ui-icon.js";
 import "../../components/ui-data-table.js";
 import "../despesas/category-badge.js";
 import "../cotacoes/preco-form.js";
+import { abrirRegistrarDespesa } from "../cotacoes/cotacao-despesa-form.js";
 import "./orcamento-form.js";
 
 class OrcamentoDetailView extends BaseElement {
@@ -95,11 +96,13 @@ class OrcamentoDetailView extends BaseElement {
     // Tabela PADRÃO de ofertas (mesmas colunas em todo o sistema).
     this._tabela.columns = colunasOferta();
     this._tabela.acoes = [
+      { nome: "registrar", rotulo: "Registrar" },
       { nome: "editar", rotulo: "Editar" },
       { nome: "remover", rotulo: "Excluir", variant: "perigo" },
     ];
     this._tabela.addEventListener("acao", (e) => {
-      if (e.detail.acao === "editar") this.abrirPrecoForm(e.detail.linha);
+      if (e.detail.acao === "registrar") abrirRegistrarDespesa(e.detail.linha);
+      else if (e.detail.acao === "editar") this.abrirPrecoForm(e.detail.linha);
       else this.removerPreco(e.detail.linha);
     });
     alvo.querySelector("#addOferta").addEventListener("click", () => this.abrirPrecoForm(null));

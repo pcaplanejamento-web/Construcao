@@ -304,6 +304,12 @@ cotação e/ou orçamento. `cotacao_id` e `orcamento_id` são **opcionais**.
 > (calculado no cliente e no servidor; o total **cheio** = `valor_unit × qtd`). Campos
 > novos vazios = comportamento legado. Excluir uma cotação remove suas ofertas.
 
+> **Vínculo bidirecional oferta ↔ despesa:** ao registrar, a oferta recebe
+> `despesa_id` e a despesa recebe `preco_id` (FK → CotacaoPrecos.id). Na listagem de
+> ofertas, as colunas **Obra** e **Status** (A pagar/Em pagamento/Pago) são **derivadas**
+> da despesa vinculada; a coluna **Despesa** mostra o id dela. Qualquer tabela de ofertas
+> tem a ação **Registrar** (abre o banner único Registrar Despesa → escolhe a obra).
+
 > **Oferta única (cotação × orçamento):** a oferta é a MESMA linha. Quando criada
 > num orçamento, ganha `orcamento_id` (+ a cotação escolhida em `cotacao_id`), então
 > aparece tanto na cotação quanto no orçamento. O contato é o ofertante do orçamento.

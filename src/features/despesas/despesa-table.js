@@ -177,6 +177,15 @@ class DespesaTable extends BaseElement {
             .join(" ");
         },
       },
+      {
+        chave: "preco_id",
+        titulo: "Oferta",
+        secundaria: true,
+        formato: (v) =>
+          v
+            ? `<code title="${v}" style="font-size:var(--fs-xs)">…${String(v).slice(-6)}</code>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+      },
     ];
     tabela.acoes = [
       { nome: "editar", rotulo: "Editar" },

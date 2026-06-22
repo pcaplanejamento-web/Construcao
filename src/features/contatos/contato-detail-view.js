@@ -16,6 +16,7 @@ import { moeda } from "../../core/formatters.js";
 import { balancos } from "../despesas/despesa-split.js";
 import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { colunasOferta } from "../orcamentos/orcamento-util.js";
+import { abrirRegistrarDespesa } from "../cotacoes/cotacao-despesa-form.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
 import "../../components/ui-card.js";
@@ -143,9 +144,13 @@ class ContatoDetailView extends BaseElement {
 
     this._gradeEquipes = alvo.querySelector("#gradeEquipes");
 
-    // Ofertas: MESMA tabela das ofertas das cotações (links navegam).
+    // Ofertas: tabela PADRÃO de ofertas + ação "Registrar" (banner único).
     this._tabOfertas = alvo.querySelector("#tabOfertas");
     this._tabOfertas.columns = colunasOferta();
+    this._tabOfertas.acoes = [{ nome: "registrar", rotulo: "Registrar" }];
+    this._tabOfertas.addEventListener("acao", (e) => {
+      if (e.detail.acao === "registrar") abrirRegistrarDespesa(e.detail.linha);
+    });
     this._gradeOrc = alvo.querySelector("#gradeOrc");
 
     // Dados: Pago/Recebido + Saldo a pagar/Saldo a receber, por obra.

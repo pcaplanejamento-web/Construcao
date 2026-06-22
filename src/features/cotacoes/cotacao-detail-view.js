@@ -28,7 +28,7 @@ import "./oferta-kpis.js";
 import "./grafico-evolucao-precos.js";
 import "./cotacao-form.js";
 import "./preco-form.js";
-import "./cotacao-despesa-form.js";
+import { abrirRegistrarDespesa } from "./cotacao-despesa-form.js";
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
 const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
@@ -125,6 +125,7 @@ class CotacaoDetailView extends BaseElement {
     // Tabela PADRÃO de ofertas (mesmas colunas em todo o sistema).
     this._tabela.columns = colunasOferta();
     this._tabela.acoes = [
+      { nome: "registrar", rotulo: "Registrar" },
       { nome: "escolher", rotulo: "Escolher" },
       { nome: "editar", rotulo: "Editar" },
       { nome: "remover", rotulo: "Excluir", variant: "perigo" },
@@ -132,7 +133,8 @@ class CotacaoDetailView extends BaseElement {
     this._tabela.addEventListener("acao", (e) => {
       const acao = e.detail.acao;
       const preco = e.detail.linha;
-      if (acao === "escolher") this.escolher(preco);
+      if (acao === "registrar") abrirRegistrarDespesa(preco);
+      else if (acao === "escolher") this.escolher(preco);
       else if (acao === "editar") this.abrirPrecoForm(preco);
       else this.removerPreco(preco);
     });

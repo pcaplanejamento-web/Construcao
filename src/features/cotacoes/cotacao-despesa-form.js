@@ -17,7 +17,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
-import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { toastSucesso, toastAviso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta, qtdOferta, unitFinalOferta } from "./cotacao-util.js";
 import { ofertanteNome, rotuloOrcamento } from "../orcamentos/orcamento-util.js";
 import "../../components/ui-modal.js";
@@ -80,7 +80,7 @@ class CotacaoDespesaForm extends BaseElement {
   }
 
   template() {
-    const titulo = this.modoObra ? "Registrar Despesa" : "Registrar como despesa";
+    const titulo = "Registrar Despesa";
     const topo = this.modoObra
       ? `<ui-select id="modoReg" label="O que registrar?"></ui-select>
          <div id="secOferta">
@@ -104,7 +104,7 @@ class CotacaoDespesaForm extends BaseElement {
         </div>
         <div slot="rodape">
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
-          <ui-button id="confirmar">${this.modoObra ? "Registrar despesa" : "Lançar despesa"}</ui-button>
+          <ui-button id="confirmar">Registrar despesa</ui-button>
         </div>
       </ui-modal>
     `;
@@ -283,12 +283,18 @@ class CotacaoDespesaForm extends BaseElement {
     const qtd = qtdOferta(preco, cotacao);
     const unit = unitFinalOferta(preco);
     const temDesc = Number(preco.valor_unit_desconto) > 0;
-    const itemNome = (cotacao.item_id && (dataStore.item(cotacao.item_id) || {}).nome) || cotacao.descricao || "";
+    // Item próprio da oferta (fallback à cotação, p/ ofertas avulsas/sem cotação).
+    const itemObj =
+      (preco.item_id && dataStore.item(preco.item_id)) ||
+      (cotacao.item_id && dataStore.item(cotacao.item_id)) ||
+      null;
+    const itemNome = (itemObj && itemObj.nome) || cotacao.descricao || "";
+    const classif = (itemObj && itemObj.classificacao) || cotacao.classificacao || "";
     const ofert = ofertanteNome(preco.contato_id, preco.equipe_id);
     const empresa = preco.equipe_id ? "" : this.empresaDoContato(preco.contato_id);
     box.innerHTML = `
       <span class="item">${itemNome}</span>
-      ${cotacao.classificacao ? `<category-badge nome="${cotacao.classificacao}" cor="${COR_CLASSIFICACAO[cotacao.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
+      ${classif ? `<category-badge nome="${classif}" cor="${COR_CLASSIFICACAO[classif] || "var(--cor-neutro)"}"></category-badge>` : ""}
       <span class="val">${moeda(total)}</span>
       <small>Qtd: ${qtd} × ${moeda(unit)}${temDesc ? " (com desconto)" : ""}</small>
       <small>Ofertante: ${ofert}${empresa ? " · Empresa: " + empresa : ""}</small>
@@ -362,7 +368,7 @@ class CotacaoDespesaForm extends BaseElement {
     try {
       // Cria a despesa E marca a oferta como registrada + fecha a cotação (servidor).
       // A subclassificação é herdada do item; "" deixa o servidor resolvê-la.
-      await dataStore.registrarDespesaOferta(cotacao.id, preco.id, obraId, "", responsaveis);
+      await dataStore.registrarDespesaOferta((cotacao && cotacao.id) || "", preco.id, obraId, "", responsaveis);
       const obra = dataStore.obra(obraId) || {};
       toastSucesso(`Despesa lançada em "${obra.nome || "obra"}".`);
       this.emitir("registrado", { obra_id: obraId });
@@ -375,3 +381,23 @@ class CotacaoDespesaForm extends BaseElement {
 }
 
 customElements.define("cotacao-despesa-form", CotacaoDespesaForm);
+
+/**
+ * Abre o banner ÚNICO "Registrar Despesa" para uma OFERTA (modo oferta-fixa: o
+ * usuário escolhe a obra). Entrada PADRONIZADA do botão "Registrar" em toda
+ * tabela de ofertas. Reusa o mesmo componente de Registrar Despesa das obras.
+ */
+export function abrirRegistrarDespesa(oferta) {
+  if (!oferta || !oferta.id) return;
+  if (String(oferta.despesa_id || "")) {
+    toastAviso("Esta oferta já foi registrada como despesa.");
+    return;
+  }
+  const form = document.createElement("cotacao-despesa-form");
+  form.preco = oferta;
+  if (oferta.cotacao_id) form.cotacao = dataStore.cotacao(oferta.cotacao_id);
+  const fechar = () => form.remove();
+  form.addEventListener("fechar", fechar);
+  form.addEventListener("registrado", fechar);
+  document.body.appendChild(form);
+}

@@ -8,6 +8,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { totalOferta, totalOfertaCheio, qtdOferta } from "../cotacoes/cotacao-util.js";
+import { statusPagamento } from "../despesas/despesa-split.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-empty-state.js";
 
@@ -80,6 +81,29 @@ function _fornecedorOferta(of) {
   return (dataStore.fornecedores().find((f) => String(f.id) === String(fid)) || {}).nome || "";
 }
 
+/** Despesa gerada por esta oferta (por despesa_id; fallback por preco_id). */
+function _despesaDaOferta(of) {
+  if (!of) return null;
+  const did = of.despesa_id;
+  if (!did && !of.id) return null;
+  return (
+    dataStore
+      .todasDespesas()
+      .find(
+        (d) =>
+          (did && String(d.id) === String(did)) ||
+          (of.id && String(d.preco_id) === String(of.id))
+      ) || null
+  );
+}
+/** ID curto p/ exibição (últimos 6 chars), id completo no title. */
+function _idCurto(id) {
+  if (!id) return _fraco("—");
+  const s = String(id);
+  return `<code title="${s}" style="font-size:var(--fs-xs)">${s.length > 6 ? "…" + s.slice(-6) : s}</code>`;
+}
+const COR_STATUS = { "A pagar": "#d97706", "Em pagamento": "var(--cor-info)", Pago: "var(--cor-sucesso)" };
+
 /**
  * Colunas PADRÃO da tabela de OFERTAS (componente único reusado em todo lugar:
  * cotação, orçamento, fornecedor, contato e a aba Ofertas). Linhas = ofertas
@@ -148,14 +172,28 @@ export function colunasOferta() {
     },
     ...colunasLog(),
     {
+      chave: "despesa_id",
+      titulo: "Obra",
+      secundaria: true,
+      formato: (id, linha) => {
+        const d = _despesaDaOferta(linha);
+        return d ? (dataStore.obra(d.obra_id) || {}).nome || _fraco("—") : _fraco("—");
+      },
+    },
+    { chave: "despesa_id", titulo: "Despesa", secundaria: true, formato: (id) => _idCurto(id) },
+    {
       chave: "escolhido",
       titulo: "Status",
-      formato: (v, linha) =>
-        linha.despesa_id
-          ? `<category-badge nome="Registrada" cor="var(--cor-info)"></category-badge>`
-          : v === true || v === "TRUE" || v === "true"
+      formato: (v, linha) => {
+        const d = _despesaDaOferta(linha);
+        if (d) {
+          const st = statusPagamento(d);
+          return `<category-badge nome="${st}" cor="${COR_STATUS[st] || "var(--cor-neutro)"}"></category-badge>`;
+        }
+        return v === true || v === "TRUE" || v === "true"
           ? `<category-badge nome="Escolhida" cor="var(--cor-sucesso)"></category-badge>`
-          : _fraco("—"),
+          : _fraco("—");
+      },
     },
   ];
 }
@@ -176,10 +214,18 @@ export function montarTabelaOfertas(el, ofertas, opcoes = {}) {
   tabela.setAttribute("fluido", "");
   if (opcoes.clicavel) tabela.setAttribute("clicavel", "");
   tabela.columns = colunasOferta();
-  if (opcoes.acoes) tabela.acoes = opcoes.acoes;
+  // Ação PADRÃO "Registrar" (abre o banner único Registrar Despesa) + ações da view.
+  tabela.acoes = [{ nome: "registrar", rotulo: "Registrar" }, ...(opcoes.acoes || [])];
   tabela.rows = lista;
   if (opcoes.onLinha) tabela.addEventListener("linha", (e) => opcoes.onLinha(e.detail.linha));
-  if (opcoes.onAcao) tabela.addEventListener("acao", (e) => opcoes.onAcao(e.detail.acao, e.detail.linha));
+  tabela.addEventListener("acao", (e) => {
+    const { acao, linha } = e.detail;
+    if (acao === "registrar") {
+      import("../cotacoes/cotacao-despesa-form.js").then((m) => m.abrirRegistrarDespesa(linha));
+      return;
+    }
+    if (opcoes.onAcao) opcoes.onAcao(acao, linha);
+  });
   el.replaceChildren(tabela);
 }
 
