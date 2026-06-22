@@ -167,13 +167,20 @@ class PrecoForm extends BaseElement {
 
   aposRender() {
     const p = this.preco || {};
-    // Item (quando livre).
+    // Item (quando livre). Pré-preenche com o item próprio OU o da cotação (legado).
     const selItem = this.$("#item");
     if (selItem) {
-      const itens = dataStore.itensAtivos();
+      const ctx = this.cotacaoCtx();
+      const resolvidoId = p.item_id || (ctx && ctx.item_id) || "";
+      let itens = dataStore.itensAtivos();
+      // Garante que o item atual da oferta apareça na lista (mesmo se inativo).
+      if (resolvidoId && !itens.some((i) => String(i.id) === String(resolvidoId))) {
+        const it = dataStore.item(resolvidoId);
+        if (it) itens = [it, ...itens];
+      }
       selItem.setAttribute("placeholder", itens.length ? "Selecione o item" : "Nenhum item cadastrado");
       selItem.options = itens.map((i) => ({ value: i.id, label: `${i.nome} — ${i.classificacao}` }));
-      selItem.value = p.item_id || "";
+      selItem.value = resolvidoId;
       selItem.addEventListener("change", () => this.atualizarClasse());
     }
     // Ofertante (quando livre).
@@ -199,6 +206,13 @@ class PrecoForm extends BaseElement {
         fid = (ct && ct.fornecedor_id) || "";
       }
       selForn.value = fid;
+    }
+    // Quantidade: própria da oferta OU a da cotação (legado), p/ não abrir vazia.
+    const selQtd = this.$("#quantidade");
+    if (selQtd && !String(selQtd.value || "")) {
+      const ctx = this.cotacaoCtx();
+      const q = p.quantidade || (ctx && ctx.quantidade) || "";
+      if (Number(q) > 0) selQtd.value = q;
     }
 
     this.atualizarClasse();
