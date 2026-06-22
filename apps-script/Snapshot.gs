@@ -28,6 +28,10 @@ function dadosSnapshot(data, sessao) {
   const u = buscarUsuarioPorId(sessao.usuario_id);
   if (!u) lancar(ERRO.NAO_AUTENTICADO, "Usuário não encontrado.");
 
+  // Auto-reparo (uma vez): conserta dados de versões antigas — ex.: ofertas órfãs
+  // de despesas excluídas antes da regra de reversão.
+  _migrarUmaVez();
+
   // Obras acessíveis (próprias + compartilhadas), com ehDono/dono/total_gasto.
   const obras = obrasListar(data, sessao).obras;
   const idsAcc = {};

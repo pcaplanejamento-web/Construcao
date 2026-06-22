@@ -312,7 +312,9 @@ cotação e/ou orçamento. `cotacao_id` e `orcamento_id` são **opcionais**.
 > tem a ação **Registrar** (abre o banner único Registrar Despesa → escolhe a obra).
 > **Excluir a despesa reverte o registro:** desvincula a oferta (`despesa_id=""`,
 > `escolhido=false`) e reabre a cotação (`status="aberta"`) — a oferta fica disponível
-> para novo registro.
+> para novo registro. Ofertas **órfãs** de despesas excluídas ANTES dessa regra são
+> reparadas automaticamente uma vez (`_repararOfertasOrfas` em `Migracoes.gs`, disparada
+> no próximo `dados.snapshot`, guardada por flag em ScriptProperties).
 
 > **Oferta única (cotação × orçamento):** a oferta é a MESMA linha. Quando criada
 > num orçamento, ganha `orcamento_id` (+ a cotação escolhida em `cotacao_id`), então
