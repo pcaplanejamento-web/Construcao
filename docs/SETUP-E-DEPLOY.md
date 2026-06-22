@@ -97,9 +97,29 @@ cada push na `main` redeploya sozinho. Domínio: **dattaobra.com.br**.
 - **`.assetsignore`** — exclui do que vai ao ar: `apps-script/` (backend), `docs/`,
   `test/`, `scripts/`, `*.md`, configs. **Sem isso o backend vazaria.**
 - **`_headers`** — cabeçalhos de segurança/cache (Workers honra `_headers`).
-- **URLs limpas:** assets do `index.html` e do `app-header` usam caminho
-  **absoluto** (`/src/...`) — obrigatório para funcionarem em paths profundos
-  (ex.: `/obras/123`). Links internos são `<a href="/rota">` (sem `#`).
+- **URLs limpas + caminho-base:** o `index.html` define um **`<base href>`
+  dinâmico** (raiz `/` no domínio próprio; `/Construcao/` no GitHub Pages) e os
+  assets usam caminho **relativo** (`src/...`). O `<base>` faz os relativos (e os
+  de dentro dos Shadow DOMs) resolverem no prefixo certo mesmo em paths profundos
+  (ex.: `/obras/123`). Links internos são `<a href="/rota">` (sem `#`); o roteador
+  adiciona/remove o caminho-base ao falar com a History API (ver ARQUITETURA).
+
+### Publicar no GitHub Pages (espelho — Actions)
+
+Espelho do mesmo frontend em **`pcaplanejamento-web.github.io/Construcao/`** (útil,
+por exemplo, quando uma rede corporativa bloqueia o domínio próprio por estar "sem
+categoria"). Cada push na `main` dispara o workflow.
+
+- **`.github/workflows/pages.yml`** — roda `scripts/build-site.sh` e publica **só o
+  `dist/`** (frontend). O backend (`apps-script/`), `docs/` e `test/` **ficam de
+  fora** — não vão ao ar. Origem do Pages: **GitHub Actions** (não "deploy from
+  branch", que serviria a raiz inteira e exporia o backend).
+- **Subcaminho `/Construcao/`** — resolvido pelo `<base href>` dinâmico + roteador
+  ciente do caminho-base. O mesmo código serve raiz (Cloudflare) e subpasta (Pages).
+- **Fallback de SPA** — `build-site.sh` copia `index.html` → `dist/404.html`; o Pages
+  serve o `404.html` em paths sem arquivo, então `/obras` e `/publico/:token` bootam.
+- **Repo público:** o Pages no plano free exige repositório **público** (sem
+  segredos no código — eles vivem nas Script Properties do Apps Script).
 
 ---
 

@@ -26,6 +26,10 @@
      mutações write-through. As views leem daqui (sem recarregar).
    - `router.js`: roteamento por path (History API, URLs limpas `/obras`) +
      gating de rota; intercepta `<a href="/...">` e cai no `index.html` (SPA).
+     **Caminho-base** (`BASE`, do `<base href>`): vazio na raiz (Cloudflare),
+     `/Construcao` no GitHub Pages — `rotaAtual()` remove o BASE e `navegar`/
+     `irPara`/`urlAbsoluta()` o adicionam, então o mesmo código serve raiz e
+     subpasta. Rotas internas são sempre **sem** o BASE (ex.: `"/obras"`).
    - `store.js`, `event-bus.js`: estado reativo e pub/sub.
    - `formatters.js`, `validators.js`, `config.js`: utilitários e configuração.
 2. **`components/`** — primitivos reutilizáveis `ui-*` (botão, input, modal,
