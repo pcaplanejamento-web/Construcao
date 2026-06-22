@@ -177,15 +177,15 @@ class FornecedorDetailView extends BaseElement {
       .filter((c) => String(c.fornecedor_id) === String(f.id));
     this._tabContatos.rows = contatos;
 
-    // Ofertas feitas por esses contatos, em todas as cotações (ofertas cruas).
+    // Ofertas deste fornecedor: por fornecedor_id PRÓPRIO da oferta OU por um
+    // contato do fornecedor (cobre ofertas avulsas e de orçamento, sem cotação).
     const ids = new Set(contatos.map((c) => String(c.id)));
-    const ofertas = [];
-    dataStore.cotacoes().forEach((cot) => {
-      dataStore.precosDaCotacao(cot.id).forEach((p) => {
-        if (ids.has(String(p.contato_id))) ofertas.push(p);
-      });
-    });
-    ofertas.sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
+    const ofertas = dataStore
+      .todasOfertas()
+      .filter(
+        (p) =>
+          String(p.fornecedor_id || "") === String(f.id) || ids.has(String(p.contato_id))
+      );
     this._tabOfertas.rows = ofertas;
 
     // Orçamentos deste fornecedor (grade de cards — mesmo componente de Cotações).

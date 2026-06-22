@@ -12,15 +12,12 @@ import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { melhorTotal } from "./cotacao-util.js";
 import "../../components/ui-card.js";
-import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-empty-state.js";
 import "../despesas/category-badge.js";
 import "./cotacao-form.js";
-import "../orcamentos/orcamento-card.js";
-import "../orcamentos/orcamento-form.js";
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
 const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
@@ -46,40 +43,24 @@ class CotacoesView extends BaseElement {
         <div class="cabecalho">
           <div>
             <h1>Cotações</h1>
-            <p class="sub">Compare preços de contatos e agrupe ofertas em orçamentos.</p>
+            <p class="sub">Compare preços de ofertas para cada item. Orçamentos e ofertas têm abas próprias no menu.</p>
           </div>
         </div>
-        <ui-tabs id="abas">
-          <div slot="cotacoes">
-            <ui-card title="Minhas cotações">
-              <ui-button slot="acoes" id="nova">+ Nova cotação</ui-button>
-              <div id="lista"></div>
-            </ui-card>
-          </div>
-          <div slot="orcamento">
-            <ui-card title="Meus orçamentos">
-              <ui-button slot="acoes" id="novoOrc">+ Novo orçamento</ui-button>
-              <div id="listaOrc"></div>
-            </ui-card>
-          </div>
-        </ui-tabs>
+        <ui-card title="Minhas cotações">
+          <ui-button slot="acoes" id="nova">+ Nova cotação</ui-button>
+          <div id="lista"></div>
+        </ui-card>
       </div>
     `;
   }
 
   aoConectar() {
-    this.$("#abas").abas = [
-      { id: "cotacoes", rotulo: "Cotações", icone: "cotacao" },
-      { id: "orcamento", rotulo: "Orçamento", icone: "carteira" },
-    ];
     this.$("#nova").addEventListener("click", () => this.abrirForm(null));
-    this.$("#novoOrc").addEventListener("click", () => this.abrirOrcamentoForm(null));
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
 
   pintar() {
     this.pintarCotacoes();
-    this.pintarOrcamentos();
   }
 
   pintarCotacoes() {
@@ -184,36 +165,6 @@ class CotacoesView extends BaseElement {
     el.replaceChildren(tabela);
   }
 
-  /* ----------------------------- Orçamento ---------------------------- */
-
-  pintarOrcamentos() {
-    const el = this.$("#listaOrc");
-    if (!el || !dataStore.carregado()) return;
-    const orcamentos = dataStore.orcamentos();
-    if (!orcamentos.length) {
-      el.innerHTML = `
-        <ui-empty-state icone="carteira" titulo="Nenhum orçamento"
-          texto="Crie um orçamento (Material ou Serviço) e agrupe ofertas de várias cotações.">
-          <ui-button slot="acao" id="vazioOrc">+ Criar orçamento</ui-button>
-        </ui-empty-state>`;
-      el.querySelector("#vazioOrc").addEventListener("click", () => this.abrirOrcamentoForm(null));
-      return;
-    }
-    const grid = document.createElement("div");
-    grid.className = "grid";
-    orcamentos.forEach((o) => {
-      const card = document.createElement("orcamento-card");
-      card.orcamento = o;
-      card.addEventListener("abrir", (e) => {
-        irPara("/orcamentos/" + e.detail.orcamento.id);
-      });
-      card.addEventListener("editar", (e) => this.abrirOrcamentoForm(e.detail.orcamento));
-      card.addEventListener("remover", (e) => this.removerOrcamento(e.detail.orcamento));
-      grid.appendChild(card);
-    });
-    el.replaceChildren(grid);
-  }
-
   abrirForm(cotacao) {
     const form = document.createElement("cotacao-form");
     form.cotacao = cotacao;
@@ -221,25 +172,6 @@ class CotacoesView extends BaseElement {
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", fechar);
     document.body.appendChild(form);
-  }
-
-  abrirOrcamentoForm(orcamento) {
-    const form = document.createElement("orcamento-form");
-    form.orcamento = orcamento;
-    const fechar = () => form.remove();
-    form.addEventListener("fechar", fechar);
-    form.addEventListener("salvo", fechar);
-    document.body.appendChild(form);
-  }
-
-  async removerOrcamento(orcamento) {
-    if (!confirm("Excluir o orçamento e suas ofertas?")) return;
-    try {
-      await dataStore.removerOrcamento(orcamento.id);
-      toastSucesso("Orçamento removido.");
-    } catch (e) {
-      notificarErro(e);
-    }
   }
 
   async remover(cotacao) {

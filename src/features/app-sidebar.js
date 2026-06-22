@@ -20,6 +20,8 @@ const ITENS = [
   { rota: "/fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
   { rota: "/contatos", rotulo: "Contatos", icone: "contato" },
   { rota: "/cotacoes", rotulo: "Cotações", icone: "cotacao" },
+  { rota: "/orcamentos", rotulo: "Orçamentos", icone: "carteira" },
+  { rota: "/ofertas", rotulo: "Ofertas", icone: "cifrao" },
   { rota: "/itens", rotulo: "Itens", icone: "tag" },
 ];
 const ITEM_PERFIL = { rota: "/perfil", rotulo: "Meu perfil", icone: "usuario" };

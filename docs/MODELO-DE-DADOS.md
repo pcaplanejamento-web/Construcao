@@ -276,23 +276,28 @@ guarda só os **extras** criados pelo usuário (com log).
 | item_id | UUID | **FK → Itens.id (obrigatório p/ novas cotações)** |
 | classificacao | string | `Material` \| `Serviço` (desnormalizado de Itens.classificacao) |
 
-### Aba `CotacaoPrecos` (oferta de um contato)
+### Aba `CotacaoPrecos` (OFERTA — unidade independente)
+A oferta é a unidade atômica: nasce de um **item** e pode (opcional) vincular-se a uma
+cotação e/ou orçamento. `cotacao_id` e `orcamento_id` são **opcionais**.
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
 | id | UUID | PK |
-| cotacao_id | UUID | FK → Cotacoes.id |
-| contato_id | UUID | FK → Contatos.id (quem ofertou) |
+| cotacao_id | UUID | (opcional) FK → Cotacoes.id |
+| contato_id | UUID | FK → Contatos.id (ofertante; XOR `equipe_id`) |
 | valor_unit | number | valor unitário ofertado |
-| prazo_entrega | string | opcional |
+| prazo_entrega | string | data/prazo de entrega (**obrigatório** nas ofertas novas) |
 | observacao | string | opcional |
 | escolhido | boolean | a oferta escolhida (exclusiva por cotação) |
 | criado_em | ISO datetime | |
 | despesa_id | UUID | FK → Despesas.id (preenchido quando a oferta é **registrada como despesa**) |
 | atualizado_em / autor_nome / editor_nome | — | auditoria |
-| orcamento_id | UUID | **FK → Orcamentos.id** (vazio = oferta criada direto na cotação) |
-| equipe_id | UUID | **FK → Equipes.id** — quando o ofertante do orçamento é uma equipe (Serviço); senão usa `contato_id` |
+| orcamento_id | UUID | (opcional) **FK → Orcamentos.id** |
+| equipe_id | UUID | **FK → Equipes.id** — ofertante equipe/grupo (XOR `contato_id`) |
 | quantidade | number | (append) quantitativo **próprio** da oferta; vazio = usa `cotacao.quantidade` (legado) |
 | valor_unit_desconto | number | (append) valor unitário **com desconto**; vazio = sem desconto → usa `valor_unit` |
+| item_id | UUID | (append) **FK → Itens.id** — item PRÓPRIO da oferta (classificação/subclassificação vêm dele) |
+| fornecedor_id | UUID | (append) **FK → Fornecedores.id** — obrigatório p/ Material |
+| usuario_id | UUID | (append) dono da oferta (permite oferta avulsa, sem cotação/orçamento) |
 
 > **Valor final** de uma oferta = `(valor_unit_desconto || valor_unit) × (quantidade
 > || cotacao.quantidade || 1)` — base da comparação de cotações e do valor da despesa

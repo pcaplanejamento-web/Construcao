@@ -13,7 +13,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda, numero, data as fmtData } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { abrirBannerVinculos, vinculosDaOferta } from "../shared/vinculos.js";
-import { rotuloOrcamento, ofertanteNome } from "../orcamentos/orcamento-util.js";
+import { rotuloOrcamento, ofertanteNome, colunasOferta } from "../orcamentos/orcamento-util.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta, melhorTotal, resumoOfertas, coresPorContato } from "./cotacao-util.js";
 import "../../components/ui-card.js";
@@ -122,59 +122,8 @@ class CotacaoDetailView extends BaseElement {
     this._evolucao = alvo.querySelector("#evolucao");
     this._comparacao = alvo.querySelector("#comparacao");
     this._tabela = alvo.querySelector("#tabela");
-    this._tabela.columns = [
-      {
-        chave: "contato_id",
-        titulo: "Ofertante",
-        formato: (id, linha) => ofertanteNome(linha.contato_id, linha.equipe_id),
-      },
-      {
-        chave: "contato_id",
-        titulo: "Empresa",
-        formato: (id, linha) => {
-          if (linha.equipe_id) return `<span style="color:var(--cor-texto-fraco)">—</span>`;
-          const c = this._mapaContato[id];
-          const emp = c && c.fornecedor_id ? this._mapaForn[c.fornecedor_id] : "";
-          return emp || `<span style="color:var(--cor-texto-fraco)">—</span>`;
-        },
-      },
-      { chave: "valor_unit", titulo: "Valor unit.", alinhar: "dir", formato: (v) => moeda(v) },
-      {
-        chave: "valor_unit",
-        titulo: "Total",
-        alinhar: "dir",
-        formato: (v, linha) => {
-          const t = totalOferta(linha, this._cotacao);
-          const ehMenor = this._min != null && t === this._min;
-          return ehMenor
-            ? `<strong style="color:var(--cor-sucesso)">${moeda(t)}</strong>`
-            : moeda(t);
-        },
-      },
-      { chave: "prazo_entrega", titulo: "Prazo", formato: (v) => v || "—" },
-      { chave: "observacao", titulo: "Obs.", formato: (v) => v || "—" },
-      {
-        chave: "orcamento_id",
-        titulo: "Orçamento",
-        formato: (id) => {
-          const orc = id ? dataStore.orcamento(id) : null;
-          return orc
-            ? `<a href="/orcamentos/${orc.id}">${rotuloOrcamento(orc)}</a>`
-            : `<span style="color:var(--cor-texto-fraco)">—</span>`;
-        },
-      },
-      ...colunasLog(),
-      {
-        chave: "escolhido",
-        titulo: "Status",
-        formato: (v, linha) =>
-          linha.despesa_id
-            ? `<category-badge nome="Registrada" cor="var(--cor-info)"></category-badge>`
-            : this._bool(v)
-            ? `<category-badge nome="Escolhida" cor="var(--cor-sucesso)"></category-badge>`
-            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
-      },
-    ];
+    // Tabela PADRÃO de ofertas (mesmas colunas em todo o sistema).
+    this._tabela.columns = colunasOferta();
     this._tabela.acoes = [
       { nome: "escolher", rotulo: "Escolher" },
       { nome: "editar", rotulo: "Editar" },

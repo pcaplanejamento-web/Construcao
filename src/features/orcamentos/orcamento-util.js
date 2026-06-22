@@ -8,6 +8,8 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { totalOferta, totalOfertaCheio, qtdOferta } from "../cotacoes/cotacao-util.js";
+import "../../components/ui-data-table.js";
+import "../../components/ui-empty-state.js";
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
 export const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
@@ -41,27 +43,66 @@ export function totalOrcamento(orcId) {
 }
 
 const _fraco = (t) => `<span style="color:var(--cor-texto-fraco)">${t}</span>`;
-const _nomeItemCot = (c) => (c && c.item_id && (dataStore.item(c.item_id) || {}).nome) || (c || {}).descricao || "—";
+const _verde = (t) => `<span style="color:var(--cor-sucesso);font-weight:var(--peso-semi)">${t}</span>`;
+
+/** Item de uma oferta: próprio (item_id) ou herdado da cotação (legado). */
+function _itemDaOferta(of) {
+  if (of && of.item_id) return dataStore.item(of.item_id);
+  const c = of && of.cotacao_id ? dataStore.cotacao(of.cotacao_id) : null;
+  return c && c.item_id ? dataStore.item(c.item_id) : null;
+}
+function _nomeItemOferta(of) {
+  const it = _itemDaOferta(of);
+  if (it && it.nome) return it.nome;
+  const c = of && of.cotacao_id ? dataStore.cotacao(of.cotacao_id) : null;
+  return (c && c.descricao) || "—";
+}
+function _classeOferta(of) {
+  const it = _itemDaOferta(of);
+  if (it && it.classificacao) return it.classificacao;
+  const c = of && of.cotacao_id ? dataStore.cotacao(of.cotacao_id) : null;
+  return (c && c.classificacao) || "";
+}
+function _subclasseOferta(of) {
+  const it = _itemDaOferta(of);
+  const catId = it && it.categoria_id;
+  if (!catId) return "";
+  return (dataStore.categorias().find((c) => String(c.id) === String(catId)) || {}).nome || "";
+}
+/** Fornecedor da oferta: próprio (fornecedor_id) ou do contato ofertante. */
+function _fornecedorOferta(of) {
+  let fid = of && of.fornecedor_id;
+  if (!fid && of && of.contato_id) {
+    const ct = dataStore.contatos().find((x) => String(x.id) === String(of.contato_id));
+    fid = ct && ct.fornecedor_id;
+  }
+  if (!fid) return "";
+  return (dataStore.fornecedores().find((f) => String(f.id) === String(fid)) || {}).nome || "";
+}
 
 /**
- * Colunas da tabela de OFERTAS (mesmo formato da tabela de ofertas das cotações),
- * para reuso nas abas Ofertas de fornecedor/contato. Inclui a coluna "Cotação"
- * (as ofertas aqui vêm de cotações diferentes). Linhas = ofertas cruas (precos).
+ * Colunas PADRÃO da tabela de OFERTAS (componente único reusado em todo lugar:
+ * cotação, orçamento, fornecedor, contato e a aba Ofertas). Linhas = ofertas
+ * cruas (precos). Item/classe/subclasse derivam do item próprio (fallback à
+ * cotação). Valores com desconto em verde.
  */
 export function colunasOferta() {
-  const empresaNome = (id) => {
-    const c = dataStore.contatos().find((x) => String(x.id) === String(id));
-    if (!c || !c.fornecedor_id) return "";
-    return (dataStore.fornecedores().find((f) => String(f.id) === String(c.fornecedor_id)) || {}).nome || "";
-  };
   return [
+    { chave: "item_id", titulo: "Item", formato: (id, l) => _nomeItemOferta(l) },
     {
-      chave: "cotacao_id",
-      titulo: "Cotação",
-      formato: (id) => (id ? `<a href="/cotacoes/${id}">${_nomeItemCot(dataStore.cotacao(id))}</a>` : _fraco("—")),
+      chave: "item_id",
+      titulo: "Classificação",
+      secundaria: true,
+      formato: (id, l) => {
+        const c = _classeOferta(l);
+        return c
+          ? `<category-badge nome="${c}" cor="${COR_CLASSIFICACAO[c] || "var(--cor-neutro)"}"></category-badge>`
+          : _fraco("—");
+      },
     },
+    { chave: "item_id", titulo: "Subclassificação", secundaria: true, formato: (id, l) => _subclasseOferta(l) || _fraco("—") },
     { chave: "contato_id", titulo: "Ofertante", formato: (id, l) => ofertanteNome(l.contato_id, l.equipe_id) },
-    { chave: "contato_id", titulo: "Empresa", formato: (id, l) => (l.equipe_id ? _fraco("—") : empresaNome(id) || _fraco("—")) },
+    { chave: "fornecedor_id", titulo: "Fornecedor", formato: (id, l) => _fornecedorOferta(l) || _fraco("—") },
     {
       chave: "quantidade",
       titulo: "Qtd",
@@ -74,7 +115,7 @@ export function colunasOferta() {
       titulo: "Unit. c/ desc.",
       alinhar: "dir",
       secundaria: true,
-      formato: (v) => (Number(v) > 0 ? moeda(v) : _fraco("—")),
+      formato: (v) => (Number(v) > 0 ? _verde(moeda(v)) : _fraco("—")),
     },
     {
       chave: "valor_unit",
@@ -87,13 +128,19 @@ export function colunasOferta() {
       chave: "valor_unit",
       titulo: "Total c/ desc.",
       alinhar: "dir",
-      formato: (v, linha) => moeda(totalOferta(linha, dataStore.cotacao(linha.cotacao_id))),
+      formato: (v, linha) => _verde(moeda(totalOferta(linha, dataStore.cotacao(linha.cotacao_id)))),
     },
     { chave: "prazo_entrega", titulo: "Prazo", formato: (v) => v || "—" },
-    { chave: "observacao", titulo: "Obs.", formato: (v) => v || "—" },
+    {
+      chave: "cotacao_id",
+      titulo: "Cotação",
+      secundaria: true,
+      formato: (id) => (id ? `<a href="/cotacoes/${id}">${_nomeItemOferta({ cotacao_id: id })}</a>` : _fraco("—")),
+    },
     {
       chave: "orcamento_id",
       titulo: "Orçamento",
+      secundaria: true,
       formato: (id) => {
         const o = id ? dataStore.orcamento(id) : null;
         return o ? `<a href="/orcamentos/${o.id}">${rotuloOrcamento(o)}</a>` : _fraco("—");
@@ -111,6 +158,29 @@ export function colunasOferta() {
           : _fraco("—"),
     },
   ];
+}
+
+/**
+ * Monta a TABELA PADRÃO de ofertas (reuso único). `opcoes`: { acoes?, onAcao?,
+ * onLinha?, clicavel?, vazio? }. Não cria componente novo — usa `ui-data-table`.
+ */
+export function montarTabelaOfertas(el, ofertas, opcoes = {}) {
+  if (!el) return;
+  const lista = Array.isArray(ofertas) ? ofertas : [];
+  if (!lista.length) {
+    el.innerHTML = `<ui-empty-state icone="cotacao" titulo="Nenhuma oferta"
+      texto="${opcoes.vazio || "Nenhuma oferta ainda."}"></ui-empty-state>`;
+    return;
+  }
+  const tabela = document.createElement("ui-data-table");
+  tabela.setAttribute("fluido", "");
+  if (opcoes.clicavel) tabela.setAttribute("clicavel", "");
+  tabela.columns = colunasOferta();
+  if (opcoes.acoes) tabela.acoes = opcoes.acoes;
+  tabela.rows = lista;
+  if (opcoes.onLinha) tabela.addEventListener("linha", (e) => opcoes.onLinha(e.detail.linha));
+  if (opcoes.onAcao) tabela.addEventListener("acao", (e) => opcoes.onAcao(e.detail.acao, e.detail.linha));
+  el.replaceChildren(tabela);
 }
 
 /** Colunas da tabela de orçamentos (abas de fornecedor/contato/obra). */

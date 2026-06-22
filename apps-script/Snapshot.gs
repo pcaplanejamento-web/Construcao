@@ -91,6 +91,24 @@ function dadosSnapshot(data, sessao) {
     });
   });
 
+  // Lista PLANA de ofertas (oferta = unidade independente): todas as CotacaoPrecos
+  // do usuário, por dono direto (usuario_id), por cotação OU por orçamento dele.
+  const orcamentosUsuario = listarOrcamentosUsuario(u.id);
+  const idsOrc = {};
+  orcamentosUsuario.forEach(function (o) {
+    idsOrc[o.id] = true;
+  });
+  const ofertas = repoListar(SCHEMA.COTACAO_PRECOS).filter(function (p) {
+    return (
+      String(p.usuario_id || "") === String(u.id) ||
+      idsCot[p.cotacao_id] ||
+      idsOrc[p.orcamento_id]
+    );
+  });
+  ofertas.sort(function (a, b) {
+    return String(b.criado_em).localeCompare(String(a.criado_em));
+  });
+
   // Histórico de preços (evolução no tempo) agrupado por cotação (asc por data).
   const historicoPorCotacao = {};
   cotacoes.forEach(function (c) {
@@ -120,8 +138,9 @@ function dadosSnapshot(data, sessao) {
     itens: listarItensUsuario(u.id),
     cotacoes: cotacoes,
     precosPorCotacao: precosPorCotacao,
+    ofertas: ofertas,
     historicoPorCotacao: historicoPorCotacao,
-    orcamentos: listarOrcamentosUsuario(u.id),
+    orcamentos: orcamentosUsuario,
     equipes: listarEquipesUsuario(u.id),
     servidor_em: agoraIso(),
   };

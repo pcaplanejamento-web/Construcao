@@ -233,6 +233,9 @@ const SCHEMA = {
       "equipe_id", // (append) FK → Equipes.id (ofertante equipe; senão contato_id)
       "quantidade", // (append) quantitativo PRÓPRIO da oferta (vazio = usa cotacao.quantidade)
       "valor_unit_desconto", // (append) valor unitário com desconto (vazio = sem desconto → usa valor_unit)
+      "item_id", // (append) FK → Itens.id — item PRÓPRIO da oferta (oferta independente da cotação)
+      "fornecedor_id", // (append) FK → Fornecedores.id — fornecedor da oferta (obrigatório p/ Material)
+      "usuario_id", // (append) dono da oferta (permite oferta avulsa, sem cotação/orçamento)
     ],
   },
 

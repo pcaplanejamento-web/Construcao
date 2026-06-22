@@ -53,7 +53,7 @@ A API é um **único Web App** do Apps Script. Um `doPost` despacha por `action`
 ### Estado inicial (cache-first)
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, participantesPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cargos:[...], itens:[...], cotacoes:[...], precosPorCotacao:{cotacaoId:[...]}, historicoPorCotacao:{cotacaoId:[...]}, usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `usuarios` só para admin. |
+| `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, participantesPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cargos:[...], itens:[...], cotacoes:[...], ofertas:[...], historicoPorCotacao:{cotacaoId:[...]}, orcamentos:[...], usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `ofertas` é a **lista plana** de todas as ofertas do usuário (independentes da cotação). `usuarios` só para admin. |
 
 ### Obras (próprias + compartilhadas)
 Cada obra inclui `ehDono` (bool), `dono_nome`/`dono_email` e `total_gasto`.
@@ -176,11 +176,11 @@ para dono **e** colaboradores.
 | `cotacoes.criar` | `{ item_id, quantidade?, unidade?, categoria_id?, obra_id?, status? }` | `{ cotacao }` — **`item_id` obrigatório**; servidor deriva `descricao`(nome)+`classificacao`; `categoria_id` = subclassificação |
 | `cotacoes.atualizar` | `{ id, ...campos }` (`item_id` re-deriva descrição+classificação) | `{ cotacao }` |
 | `cotacoes.remover` | `{ id }` | `{ id }` (remove a cotação e suas ofertas) |
-| `cotacoes.adicionarPreco` | `{ cotacao_id, contato_id, valor_unit, quantidade?, valor_unit_desconto?, prazo_entrega?, observacao?, orcamento_id? }` | `{ preco, historico }`. Com `orcamento_id`, o `contato_id` é **forçado** ao ofertante do orçamento. `quantidade`/`valor_unit_desconto` próprios da oferta (vazios = legado). |
-| `cotacoes.atualizarPreco` | `{ id, contato_id?, valor_unit?, quantidade?, valor_unit_desconto?, prazo_entrega?, observacao? }` | `{ preco, historico }` (`historico` só se o valor mudou; senão `null`) |
+| `cotacoes.adicionarPreco` | `{ item_id, cotacao_id?, orcamento_id?, contato_id?, equipe_id?, fornecedor_id?, valor_unit, quantidade?, valor_unit_desconto?, prazo_entrega, observacao? }` | `{ preco, historico }`. **Criar oferta** (universal): `item_id` obrigatório; cotação/orçamento opcionais. Pela classificação do item — **Material**: fornecedor obrigatório, ofertante opcional; **Serviço**: ofertante obrigatório, fornecedor opcional. `prazo_entrega` obrigatório. Dentro de orçamento, herda ofertante/fornecedor dele. Grava `usuario_id`. |
+| `cotacoes.atualizarPreco` | `{ id, item_id?, contato_id?, equipe_id?, fornecedor_id?, valor_unit?, quantidade?, valor_unit_desconto?, prazo_entrega?, observacao? }` | `{ preco, historico }` (`historico` só se o valor mudou; senão `null`) |
 | `cotacoes.removerPreco` | `{ id }` | `{ id, cotacao_id }` (mantém o histórico; **bloqueia** se registrada) |
 | `cotacoes.escolherPreco` | `{ id }` | `{ precos }` (marca a escolhida e desmarca as demais da cotação) |
-| `cotacoes.registrarDespesa` | `{ preco_id, obra_id, categoria_id?, responsaveis? }` | `{ despesa, resumo, precos, cotacao }` — **único caminho** p/ criar despesa. Valor = `(valor_unit_desconto||valor_unit) × (preco.quantidade||cotacao.quantidade)`; **subclassificação herdada do item** (`categoria_id` do request é só fallback). "Orçamento completo" = o front chama esta action por oferta. |
+| `cotacoes.registrarDespesa` | `{ preco_id, obra_id, categoria_id?, responsaveis? }` | `{ despesa, resumo, precos, cotacao, preco }` — **único caminho** p/ criar despesa. Item/fornecedor vêm da **oferta** (`cotacao` é opcional → `null` p/ avulsa/orçamento). Valor = `(valor_unit_desconto||valor_unit) × (preco.quantidade||cotacao.quantidade)`; **subclassificação herdada do item**. "Orçamento completo" = o front chama esta action por oferta. |
 
 ### Compras — Orçamentos (container de ofertas)
 | Action | `data` | Retorno |
@@ -190,8 +190,9 @@ para dono **e** colaboradores.
 | `orcamentos.atualizar` | `{ id, ...campos }` | `{ orcamento }` — se o **ofertante** (contato/equipe) muda, **propaga** `contato_id`/`equipe_id` às ofertas |
 | `orcamentos.remover` | `{ id }` | `{ id }` — remove o orçamento + ofertas (cascade); **bloqueia** se alguma oferta virou despesa |
 
-> Snapshot inclui `orcamentos`. As ofertas do orçamento vêm em `precosPorCotacao`
-> (têm `cotacao_id`); o cliente as agrupa por `orcamento_id`.
+> Snapshot inclui `orcamentos` e a **lista plana `ofertas`** (toda `CotacaoPrecos` do
+> usuário). O cliente filtra: `precosDaCotacao` (por `cotacao_id`), `ofertasDoOrcamento`
+> (por `orcamento_id`), `todasOfertas` (a lista inteira — aba Ofertas).
 
 ### Equipes (grupos: líder + membros + obras)
 | Action | `data` | Retorno |

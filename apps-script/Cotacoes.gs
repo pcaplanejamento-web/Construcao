@@ -69,14 +69,23 @@ function _cotacaoDoUsuario(cotacaoId, usuarioId) {
   return c;
 }
 
-/** Localiza uma oferta garantindo que a cotação é do usuário. */
+/** Localiza uma oferta garantindo a posse: dono direto (usuario_id) OU via
+ * cotação/orçamento do usuário (cobre ofertas legadas sem usuario_id). */
 function _precoDoUsuario(precoId, usuarioId) {
   const p = repoEncontrar(SCHEMA.COTACAO_PRECOS, function (x) {
     return String(x.id) === String(precoId);
   });
   if (!p) lancar(ERRO.NAO_ENCONTRADO, "Oferta não encontrada.");
-  _cotacaoDoUsuario(p.cotacao_id, usuarioId);
-  return p;
+  if (String(p.usuario_id || "") === String(usuarioId)) return p;
+  if (String(p.cotacao_id || "")) {
+    _cotacaoDoUsuario(p.cotacao_id, usuarioId);
+    return p;
+  }
+  if (String(p.orcamento_id || "")) {
+    _orcamentoDoUsuario(p.orcamento_id, usuarioId);
+    return p;
+  }
+  lancar(ERRO.NAO_AUTORIZADO, "Oferta não pode ser alterada.");
 }
 
 /* ------------------------------ Cotações ------------------------------ */
@@ -173,44 +182,79 @@ function cotacoesRemover(data, sessao) {
 
 /* ------------------------------- Ofertas ------------------------------ */
 
-/** cotacoes.adicionarPreco -> { preco, historico }. */
+/**
+ * cotacoes.adicionarPreco -> { preco, historico }. CRIAR OFERTA (universal).
+ * A oferta é independente: nasce de um ITEM (obrigatório) e pode (opcional)
+ * vincular-se a uma cotação e/ou a um orçamento. Regras pela classificação do
+ * item — Material: fornecedor obrigatório, ofertante opcional; Serviço:
+ * ofertante obrigatório, fornecedor opcional. Prazo de entrega obrigatório.
+ */
 function cotacoesAdicionarPreco(data, sessao) {
-  const cotacaoId = data && data.cotacao_id;
-  _cotacaoDoUsuario(cotacaoId, sessao.usuario_id);
+  const usuarioId = sessao.usuario_id;
 
-  // Oferta de orçamento: o ofertante é SEMPRE o do orçamento (forçado) — pode ser
-  // um CONTATO ou uma EQUIPE (Serviço). Ofertas diretas na cotação são de contato.
+  // Vínculos OPCIONAIS: cotação e/ou orçamento (valida posse se vierem).
+  const cotacaoId = String((data && data.cotacao_id) || "");
   const orcamentoId = String((data && data.orcamento_id) || "");
+  const cotacao = cotacaoId ? _cotacaoDoUsuario(cotacaoId, usuarioId) : null;
+  const orcamento = orcamentoId ? _orcamentoDoUsuario(orcamentoId, usuarioId) : null;
+
+  // Item: obrigatório (herda da cotação se houver e não vier explícito).
+  let itemId = String((data && data.item_id) || "");
+  if (!itemId && cotacao) itemId = String(cotacao.item_id || "");
+  if (!itemId) lancar(ERRO.VALIDACAO, "Selecione o item da oferta.");
+  const item = _itemPorId(itemId, usuarioId);
+  const classificacao = String(item.classificacao || "");
+
+  // Ofertante (contato XOR equipe). Herdado do orçamento, se houver.
   let contatoId = String((data && data.contato_id) || "");
-  let equipeId = "";
-  if (orcamentoId) {
-    const orc = _orcamentoDoUsuario(orcamentoId, sessao.usuario_id);
-    if (String(orc.equipe_id || "")) {
-      equipeId = String(orc.equipe_id);
+  let equipeId = String((data && data.equipe_id) || "");
+  if (orcamento) {
+    if (String(orcamento.equipe_id || "")) {
+      equipeId = String(orcamento.equipe_id);
       contatoId = "";
-    } else {
-      contatoId = String(orc.contato_id || "");
+    } else if (String(orcamento.contato_id || "")) {
+      contatoId = String(orcamento.contato_id);
+      equipeId = "";
     }
   }
+  let contato = null;
   if (equipeId) {
-    _equipeDoUsuario(equipeId, sessao.usuario_id);
-  } else {
-    if (!contatoId) lancar(ERRO.VALIDACAO, "Selecione o contato da oferta.");
-    _contatoDoUsuario(contatoId, sessao.usuario_id);
+    _equipeDoUsuario(equipeId, usuarioId);
+    contatoId = "";
+  } else if (contatoId) {
+    contato = _contatoDoUsuario(contatoId, usuarioId);
   }
 
+  // Fornecedor: herdado do orçamento (Material) ou auto pelo contato ofertante.
+  let fornecedorId = String((data && data.fornecedor_id) || "");
+  if (!fornecedorId && orcamento && String(orcamento.fornecedor_id || ""))
+    fornecedorId = String(orcamento.fornecedor_id);
+  if (!fornecedorId && contato && String(contato.fornecedor_id || ""))
+    fornecedorId = String(contato.fornecedor_id);
+  if (fornecedorId) _fornecedorDoUsuario(fornecedorId, usuarioId);
+
+  // Regras por classificação do item.
+  if (classificacao === "Material") {
+    if (!fornecedorId) lancar(ERRO.VALIDACAO, "Material exige um fornecedor.");
+  } else {
+    if (!contatoId && !equipeId)
+      lancar(ERRO.VALIDACAO, "Serviço exige um ofertante (contato ou equipe).");
+  }
+
+  const prazo = String((data && data.prazo_entrega) || "").trim();
+  if (!prazo) lancar(ERRO.VALIDACAO, "Informe a data/prazo de entrega.");
   const valor = Number(data && data.valor_unit);
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
 
   return comLock(function () {
     const agora = agoraIso();
-    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+    const nomeUsuario = (buscarUsuarioPorId(usuarioId) || {}).nome || "";
     const preco = {
       id: novoId(),
       cotacao_id: cotacaoId,
       contato_id: contatoId,
       valor_unit: valor,
-      prazo_entrega: String((data && data.prazo_entrega) || ""),
+      prazo_entrega: prazo,
       observacao: String((data && data.observacao) || ""),
       escolhido: false,
       criado_em: agora,
@@ -223,6 +267,10 @@ function cotacoesAdicionarPreco(data, sessao) {
       quantidade: Number(data && data.quantidade) > 0 ? Number(data.quantidade) : "",
       valor_unit_desconto:
         Number(data && data.valor_unit_desconto) > 0 ? Number(data.valor_unit_desconto) : "",
+      // Oferta independente: carrega item, fornecedor e dono próprios.
+      item_id: itemId,
+      fornecedor_id: fornecedorId,
+      usuario_id: usuarioId,
     };
     repoInserir(SCHEMA.COTACAO_PRECOS, preco);
     const historico = _logPreco(preco); // ponto inicial da evolução
@@ -238,9 +286,28 @@ function cotacoesAtualizarPreco(data, sessao) {
   const patch = {};
   if (data.contato_id !== undefined) {
     const contatoId = String(data.contato_id || "");
-    if (!contatoId) lancar(ERRO.VALIDACAO, "Selecione o contato da oferta.");
-    _contatoDoUsuario(contatoId, sessao.usuario_id);
+    if (contatoId) {
+      _contatoDoUsuario(contatoId, sessao.usuario_id);
+      patch.equipe_id = ""; // contato XOR equipe
+    }
     patch.contato_id = contatoId;
+  }
+  if (data.equipe_id !== undefined) {
+    const equipeId = String(data.equipe_id || "");
+    if (equipeId) {
+      _equipeDoUsuario(equipeId, sessao.usuario_id);
+      patch.contato_id = "";
+    }
+    patch.equipe_id = equipeId;
+  }
+  if (data.item_id !== undefined && String(data.item_id || "")) {
+    _itemPorId(String(data.item_id), sessao.usuario_id);
+    patch.item_id = String(data.item_id);
+  }
+  if (data.fornecedor_id !== undefined) {
+    const f = String(data.fornecedor_id || "");
+    if (f) _fornecedorDoUsuario(f, sessao.usuario_id);
+    patch.fornecedor_id = f;
   }
   let valorMudou = false;
   if (data.valor_unit !== undefined) {
@@ -315,7 +382,10 @@ function cotacoesEscolherPreco(data, sessao) {
 function cotacoesRegistrarDespesa(data, sessao) {
   const precoId = data && data.preco_id;
   const preco = _precoDoUsuario(precoId, sessao.usuario_id);
-  const cotacao = _cotacaoDoUsuario(preco.cotacao_id, sessao.usuario_id);
+  // Cotação é OPCIONAL (oferta pode ser avulsa ou só de orçamento).
+  const cotacao = String(preco.cotacao_id || "")
+    ? _cotacaoDoUsuario(preco.cotacao_id, sessao.usuario_id)
+    : null;
 
   const obraId = String((data && data.obra_id) || "");
   if (!obraId) lancar(ERRO.VALIDACAO, "Selecione a obra.");
@@ -325,20 +395,32 @@ function cotacoesRegistrarDespesa(data, sessao) {
   // Valor FINAL = unitário com desconto (se houver) × quantidade.
   const qtd = Number(preco.quantidade) > 0
     ? Number(preco.quantidade)
-    : (Number(cotacao.quantidade) > 0 ? Number(cotacao.quantidade) : 1);
+    : (cotacao && Number(cotacao.quantidade) > 0 ? Number(cotacao.quantidade) : 1);
   const unit = Number(preco.valor_unit_desconto) > 0
     ? Number(preco.valor_unit_desconto)
     : (Number(preco.valor_unit) || 0);
   const valor = unit * qtd;
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Valor da oferta inválido.");
-  const item = String(cotacao.descricao || "").trim() || "Cotação";
 
-  // Ofertante = contato XOR equipe (herdado da oferta). Empresa = fornecedor do
-  // contato ofertante (equipe não tem empresa).
+  // Item da oferta (próprio; fallback à cotação no legado) → nome/classificação/subclasse.
+  const itemId = String(preco.item_id || (cotacao && cotacao.item_id) || "");
+  let itemReg = null;
+  if (itemId) {
+    try {
+      itemReg = _itemPorId(itemId, sessao.usuario_id);
+    } catch (e) {
+      itemReg = null;
+    }
+  }
+  const item = (itemReg && itemReg.nome) || String((cotacao && cotacao.descricao) || "").trim() || "Oferta";
+  const classificacao = (itemReg && itemReg.classificacao) || (cotacao && cotacao.classificacao) || "";
+
+  // Ofertante = contato XOR equipe (herdado da oferta). Empresa = fornecedor PRÓPRIO
+  // da oferta (fallback ao fornecedor do contato ofertante).
   const ofertanteContatoId = String(preco.contato_id || "");
   const ofertanteEquipeId = String(preco.equipe_id || "");
   let ofertanteNome = "";
-  let fornecedorId = "";
+  let fornecedorId = String(preco.fornecedor_id || "");
   if (ofertanteEquipeId) {
     const equipe = repoEncontrar(SCHEMA.EQUIPES, function (x) {
       return String(x.id) === ofertanteEquipeId;
@@ -349,19 +431,10 @@ function cotacoesRegistrarDespesa(data, sessao) {
       return String(x.id) === ofertanteContatoId;
     }) || {};
     ofertanteNome = contato.nome || "";
-    fornecedorId = String(contato.fornecedor_id || "");
-  }
-  // Subclassificação HERDADA do item (definida na criação do item); fallback à cotação.
-  let itemCat = null;
-  if (String(cotacao.item_id || "")) {
-    try {
-      itemCat = _itemPorId(String(cotacao.item_id), sessao.usuario_id);
-    } catch (e) {
-      itemCat = null;
-    }
+    if (!fornecedorId) fornecedorId = String(contato.fornecedor_id || "");
   }
   const categoriaId = String(
-    (itemCat && itemCat.categoria_id) || (data && data.categoria_id) || cotacao.categoria_id || ""
+    (itemReg && itemReg.categoria_id) || (data && data.categoria_id) || (cotacao && cotacao.categoria_id) || ""
   );
 
   // Responsabilidade (% por participante). A distribuição por integrante (equipe)
@@ -375,9 +448,9 @@ function cotacoesRegistrarDespesa(data, sessao) {
 
   return comLock(function () {
     const despesa = _novaDespesa(obraId, sessao.usuario_id, {
-      item_id: String(cotacao.item_id || ""), // herda item+classificação (se houver)
-      item: item, // fallback p/ cotações legadas sem item_id
-      classificacao: cotacao.classificacao,
+      item_id: itemId, // item PRÓPRIO da oferta (fallback à cotação)
+      item: item,
+      classificacao: classificacao,
       valor: valor,
       categoria_id: categoriaId,
       observacao: "Oferta · " + (ofertanteNome || ""),
@@ -387,25 +460,42 @@ function cotacoesRegistrarDespesa(data, sessao) {
       ofertante_equipe_id: ofertanteEquipeId,
       responsaveis: responsaveis,
     });
-    // Marca esta oferta como registrada/escolhida e desmarca as demais.
-    repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {
-      return String(p.cotacao_id) === String(cotacao.id);
-    }).forEach(function (p) {
-      const ehEsta = String(p.id) === String(precoId);
-      const patch = {};
-      if (_boolDe(p.escolhido) !== ehEsta) patch.escolhido = ehEsta;
-      if (ehEsta) patch.despesa_id = despesa.id;
-      if (Object.keys(patch).length) repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", p.id, patch);
-    });
-    const cotAtual = repoAtualizar(SCHEMA.COTACOES, "id", cotacao.id, {
-      status: "fechada",
-      atualizado_em: agoraIso(),
+    if (cotacao) {
+      // Marca esta oferta como registrada/escolhida, desmarca as demais e fecha a cotação.
+      repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {
+        return String(p.cotacao_id) === String(cotacao.id);
+      }).forEach(function (p) {
+        const ehEsta = String(p.id) === String(precoId);
+        const patch = {};
+        if (_boolDe(p.escolhido) !== ehEsta) patch.escolhido = ehEsta;
+        if (ehEsta) patch.despesa_id = despesa.id;
+        if (Object.keys(patch).length) repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", p.id, patch);
+      });
+      const cotAtual = repoAtualizar(SCHEMA.COTACOES, "id", cotacao.id, {
+        status: "fechada",
+        atualizado_em: agoraIso(),
+      });
+      return {
+        despesa: despesa,
+        resumo: _calcularResumo(obraId, sessao.usuario_id),
+        precos: listarPrecosCotacao(cotacao.id),
+        cotacao: cotAtual,
+        preco: repoEncontrar(SCHEMA.COTACAO_PRECOS, function (x) {
+          return String(x.id) === String(precoId);
+        }),
+      };
+    }
+    // Oferta avulsa / só de orçamento (sem cotação): marca apenas esta oferta.
+    const precoAtual = repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", precoId, {
+      escolhido: true,
+      despesa_id: despesa.id,
     });
     return {
       despesa: despesa,
       resumo: _calcularResumo(obraId, sessao.usuario_id),
-      precos: listarPrecosCotacao(cotacao.id),
-      cotacao: cotAtual,
+      precos: [precoAtual],
+      cotacao: null,
+      preco: precoAtual,
     };
   });
 }

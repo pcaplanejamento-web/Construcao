@@ -197,15 +197,10 @@ class ContatoDetailView extends BaseElement {
     // Equipes onde este contato é líder ou membro (nova lógica; grade de cards).
     montarGradeEquipes(this._gradeEquipes, dataStore.equipesDoContato(c.id));
 
-    // Ofertas deste contato (ofertas cruas), em todas as cotações.
-    const ofertas = [];
-    dataStore.cotacoes().forEach((cot) => {
-      dataStore.precosDaCotacao(cot.id).forEach((p) => {
-        if (String(p.contato_id) === String(c.id)) ofertas.push(p);
-      });
-    });
-    ofertas.sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
-    this._tabOfertas.rows = ofertas;
+    // Ofertas deste contato (lista plana — inclui avulsas e de orçamento).
+    this._tabOfertas.rows = dataStore
+      .todasOfertas()
+      .filter((p) => String(p.contato_id) === String(c.id));
 
     // Orçamentos onde este contato é o ofertante (grade de cards).
     montarGradeOrcamentos(

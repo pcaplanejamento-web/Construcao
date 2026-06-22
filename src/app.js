@@ -31,6 +31,8 @@ import "./features/contatos/contatos-view.js";
 import "./features/contatos/contato-detail-view.js";
 import "./features/cotacoes/cotacoes-view.js";
 import "./features/cotacoes/cotacao-detail-view.js";
+import "./features/cotacoes/ofertas-view.js";
+import "./features/orcamentos/orcamentos-view.js";
 import "./features/orcamentos/orcamento-detail-view.js";
 import "./features/equipes/equipe-detail-view.js";
 import "./features/perfil/perfil-view.js";
@@ -91,6 +93,8 @@ async function iniciar() {
     .adicionar("/contatos/:id", "contato-detail-view", { protegida: true })
     .adicionar("/cotacoes", "cotacoes-view", { protegida: true })
     .adicionar("/cotacoes/:id", "cotacao-detail-view", { protegida: true })
+    .adicionar("/ofertas", "ofertas-view", { protegida: true })
+    .adicionar("/orcamentos", "orcamentos-view", { protegida: true })
     .adicionar("/orcamentos/:id", "orcamento-detail-view", { protegida: true })
     .adicionar("/equipes/:id", "equipe-detail-view", { protegida: true })
     .adicionar("/perfil", "perfil-view", { protegida: true })

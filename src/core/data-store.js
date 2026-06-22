@@ -14,7 +14,7 @@ import { api } from "./api-client.js";
 import { auth } from "./auth-store.js";
 import { bus, EVENTOS } from "./event-bus.js";
 
-const CACHE_VERSAO = 1;
+const CACHE_VERSAO = 2; // bump: ofertas viraram lista plana (oferta independente)
 
 const ESTADO_VAZIO = {
   carregado: false,
@@ -31,7 +31,7 @@ const ESTADO_VAZIO = {
   cargos: [], // cargos de contatos (fixos + extras do usuário)
   itens: [], // catálogo de itens (cada um Material ou Serviço)
   cotacoes: [], // módulo Compras (necessidades a cotar)
-  precosPorCotacao: {}, // cotacaoId -> [oferta]
+  ofertas: [], // módulo Compras — LISTA PLANA de ofertas (oferta independente da cotação)
   historicoPorCotacao: {}, // cotacaoId -> [ponto de histórico de preço]
   orcamentos: [], // módulo Compras (containers de ofertas)
   equipes: [], // grupos (líder + membros + obras)
@@ -66,7 +66,7 @@ function persistir() {
       cargos: s.cargos,
       itens: s.itens,
       cotacoes: s.cotacoes,
-      precosPorCotacao: s.precosPorCotacao,
+      ofertas: s.ofertas,
       historicoPorCotacao: s.historicoPorCotacao,
       orcamentos: s.orcamentos,
       equipes: s.equipes,
@@ -122,7 +122,7 @@ function _aplicarSnapshot(d) {
     cargos: d.cargos || [],
     itens: d.itens || [],
     cotacoes: d.cotacoes || [],
-    precosPorCotacao: d.precosPorCotacao || {},
+    ofertas: d.ofertas || [],
     historicoPorCotacao: d.historicoPorCotacao || {},
     orcamentos: d.orcamentos || [],
     equipes: d.equipes || [],
@@ -178,7 +178,11 @@ const itensAtivos = () => store.get().itens.filter((i) => i.ativo !== false);
 const item = (id) => store.get().itens.find((i) => String(i.id) === String(id)) || null;
 const cotacoes = () => store.get().cotacoes;
 const cotacao = (id) => store.get().cotacoes.find((c) => String(c.id) === String(id)) || null;
-const precosDaCotacao = (cotacaoId) => store.get().precosPorCotacao[cotacaoId] || [];
+/** TODAS as ofertas do usuário (lista plana — oferta independente da cotação). */
+const todasOfertas = () => store.get().ofertas;
+/** Ofertas de uma cotação (filtra a lista plana; mantém a ordenação por criado_em). */
+const precosDaCotacao = (cotacaoId) =>
+  store.get().ofertas.filter((p) => String(p.cotacao_id) === String(cotacaoId));
 const historicoDaCotacao = (cotacaoId) => store.get().historicoPorCotacao[cotacaoId] || [];
 const orcamentos = () => store.get().orcamentos;
 const orcamento = (id) => store.get().orcamentos.find((o) => String(o.id) === String(id)) || null;
@@ -194,17 +198,9 @@ const equipesDoContato = (contatoId) =>
 /** Equipes vinculadas a uma obra. */
 const equipesDaObra = (obraId) =>
   store.get().equipes.filter((e) => (e.obras || []).some((o) => String(o) === String(obraId)));
-/** Ofertas de um orçamento: achata precosPorCotacao e filtra orcamento_id. */
-const ofertasDoOrcamento = (orcId) => {
-  const mapa = store.get().precosPorCotacao;
-  const out = [];
-  Object.keys(mapa).forEach((cotId) => {
-    (mapa[cotId] || []).forEach((p) => {
-      if (String(p.orcamento_id) === String(orcId)) out.push(p);
-    });
-  });
-  return out;
-};
+/** Ofertas de um orçamento: filtra a lista plana por orcamento_id. */
+const ofertasDoOrcamento = (orcId) =>
+  store.get().ofertas.filter((p) => String(p.orcamento_id) === String(orcId));
 
 /* --------------------- Recalcular resumo local ----------------------- */
 
@@ -641,7 +637,6 @@ async function criarCotacao(dados) {
   const s = store.get();
   store.set({
     cotacoes: [r.cotacao, ...s.cotacoes],
-    precosPorCotacao: { ...s.precosPorCotacao, [r.cotacao.id]: [] },
   });
   persistir();
   bus.emit(EVENTOS.COTACOES, { tipo: "criada" });
@@ -662,13 +657,11 @@ async function atualizarCotacao(id, dados) {
 async function removerCotacao(id) {
   await api.call("cotacoes.remover", { id });
   const s = store.get();
-  const precos = { ...s.precosPorCotacao };
-  delete precos[id];
   const historico = { ...s.historicoPorCotacao };
   delete historico[id];
   store.set({
     cotacoes: s.cotacoes.filter((c) => String(c.id) !== String(id)),
-    precosPorCotacao: precos,
+    ofertas: s.ofertas.filter((p) => String(p.cotacao_id) !== String(id)),
     historicoPorCotacao: historico,
   });
   persistir();
@@ -702,14 +695,10 @@ async function atualizarOrcamento(id, dados) {
 async function removerOrcamento(id) {
   await api.call("orcamentos.remover", { id });
   const s = store.get();
-  // Remove o orçamento e desvincula/remove suas ofertas do cache local.
-  const precos = {};
-  Object.keys(s.precosPorCotacao).forEach((cotId) => {
-    precos[cotId] = (s.precosPorCotacao[cotId] || []).filter((p) => String(p.orcamento_id) !== String(id));
-  });
+  // Remove o orçamento e desvincula suas ofertas do cache local.
   store.set({
     orcamentos: s.orcamentos.filter((o) => String(o.id) !== String(id)),
-    precosPorCotacao: precos,
+    ofertas: s.ofertas.filter((p) => String(p.orcamento_id) !== String(id)),
   });
   persistir();
   bus.emit(EVENTOS.ORCAMENTOS, { tipo: "removido" });
@@ -757,59 +746,66 @@ function _appendHistorico(cotacaoId, ponto) {
   });
 }
 
-/* ------------------- Mutações: ofertas (preços) ---------------------- */
+/* ------------------- Mutações: ofertas (lista plana) ----------------- */
 
-async function adicionarPreco(cotacaoId, dados) {
-  const r = await api.call("cotacoes.adicionarPreco", { cotacao_id: cotacaoId, ...dados });
+/** Substitui (por id) ou adiciona uma oferta na lista plana. */
+function _mesclarOferta(preco) {
+  if (!preco) return;
   const s = store.get();
+  const existe = s.ofertas.some((p) => String(p.id) === String(preco.id));
   store.set({
-    precosPorCotacao: {
-      ...s.precosPorCotacao,
-      [cotacaoId]: [r.preco, ...(s.precosPorCotacao[cotacaoId] || [])],
-    },
+    ofertas: existe
+      ? s.ofertas.map((p) => (String(p.id) === String(preco.id) ? preco : p))
+      : [preco, ...s.ofertas],
   });
-  _appendHistorico(cotacaoId, r.historico);
+}
+
+/** Mescla uma lista de ofertas (resposta do servidor) por id. */
+function _mesclarOfertas(lista) {
+  if (!Array.isArray(lista) || !lista.length) return;
+  const s = store.get();
+  const porId = {};
+  lista.forEach((p) => (porId[String(p.id)] = p));
+  const atual = s.ofertas.map((p) => porId[String(p.id)] || p);
+  lista.forEach((p) => {
+    if (!s.ofertas.some((x) => String(x.id) === String(p.id))) atual.unshift(p);
+  });
+  store.set({ ofertas: atual });
+}
+
+/** Criar oferta (universal): `dados` traz item_id (+ cotacao_id?/orcamento_id?/...). */
+async function criarOferta(dados) {
+  const r = await api.call("cotacoes.adicionarPreco", { ...dados });
+  _mesclarOferta(r.preco);
+  const cotId = String((r.preco || {}).cotacao_id || "");
+  if (cotId) _appendHistorico(cotId, r.historico);
   persistir();
-  bus.emit(EVENTOS.COTACOES, { tipo: "preco-adicionado", cotacao_id: cotacaoId });
+  bus.emit(EVENTOS.COTACOES, { tipo: "preco-adicionado", cotacao_id: cotId });
   return r.preco;
 }
 
-async function atualizarPreco(cotacaoId, id, dados) {
+/** Atualizar uma oferta. */
+async function atualizarOferta(id, dados) {
   const r = await api.call("cotacoes.atualizarPreco", { id, ...dados });
-  const s = store.get();
-  store.set({
-    precosPorCotacao: {
-      ...s.precosPorCotacao,
-      [cotacaoId]: (s.precosPorCotacao[cotacaoId] || []).map((p) =>
-        String(p.id) === String(id) ? r.preco : p
-      ),
-    },
-  });
-  _appendHistorico(cotacaoId, r.historico); // ponto novo só se o valor mudou
+  _mesclarOferta(r.preco);
+  const cotId = String((r.preco || {}).cotacao_id || "");
+  if (cotId) _appendHistorico(cotId, r.historico); // ponto novo só se o valor mudou
   persistir();
-  bus.emit(EVENTOS.COTACOES, { tipo: "preco-atualizado", cotacao_id: cotacaoId });
+  bus.emit(EVENTOS.COTACOES, { tipo: "preco-atualizado", cotacao_id: cotId });
   return r.preco;
 }
 
 async function removerPreco(cotacaoId, id) {
   await api.call("cotacoes.removerPreco", { id });
   const s = store.get();
-  store.set({
-    precosPorCotacao: {
-      ...s.precosPorCotacao,
-      [cotacaoId]: (s.precosPorCotacao[cotacaoId] || []).filter((p) => String(p.id) !== String(id)),
-    },
-  });
+  store.set({ ofertas: s.ofertas.filter((p) => String(p.id) !== String(id)) });
   persistir();
-  bus.emit(EVENTOS.COTACOES, { tipo: "preco-removido", cotacao_id: cotacaoId });
+  bus.emit(EVENTOS.COTACOES, { tipo: "preco-removido", cotacao_id: cotacaoId || "" });
 }
 
 async function escolherPreco(cotacaoId, id) {
   const r = await api.call("cotacoes.escolherPreco", { id });
-  const s = store.get();
-  store.set({
-    precosPorCotacao: { ...s.precosPorCotacao, [cotacaoId]: r.precos },
-  });
+  _mesclarOfertas(r.precos);
   persistir();
   bus.emit(EVENTOS.COTACOES, { tipo: "preco-escolhido", cotacao_id: cotacaoId });
   return r.precos;
@@ -817,8 +813,8 @@ async function escolherPreco(cotacaoId, id) {
 
 /**
  * Lança a oferta como despesa na obra E marca a oferta (despesa_id) + fecha a
- * cotação — tudo no servidor (atômico). Atualiza despesas/resumo, ofertas e a
- * cotação no store.
+ * cotação (se houver) — tudo no servidor (atômico). Atualiza despesas/resumo,
+ * a(s) oferta(s) e a cotação no store.
  */
 async function registrarDespesaOferta(cotacaoId, precoId, obraId, categoriaId, responsaveis) {
   const r = await api.call("cotacoes.registrarDespesa", {
@@ -828,31 +824,32 @@ async function registrarDespesaOferta(cotacaoId, precoId, obraId, categoriaId, r
     categoria_id: categoriaId,
     responsaveis: Array.isArray(responsaveis) ? responsaveis : [],
   });
-  // Despesa criada na obra (com resumo recalculado pelo servidor).
   _setDespesasObra(obraId, [r.despesa, ...despesas(obraId)], r.resumo);
-  // Ofertas (escolhido + despesa_id) e cotação (status fechada) atualizadas.
-  const s = store.get();
-  store.set({
-    precosPorCotacao: { ...s.precosPorCotacao, [cotacaoId]: r.precos },
-    cotacoes: s.cotacoes.map((c) => (String(c.id) === String(cotacaoId) ? r.cotacao : c)),
-  });
+  _mesclarOfertas(r.precos);
+  _mesclarOferta(r.preco);
+  if (r.cotacao) {
+    const s = store.get();
+    store.set({
+      cotacoes: s.cotacoes.map((c) => (String(c.id) === String(r.cotacao.id) ? r.cotacao : c)),
+    });
+  }
   persistir();
   bus.emit(EVENTOS.DESPESAS, { tipo: "criada", obra_id: obraId });
-  bus.emit(EVENTOS.COTACOES, { tipo: "registrada", cotacao_id: cotacaoId });
+  bus.emit(EVENTOS.COTACOES, { tipo: "registrada", cotacao_id: cotacaoId || "" });
   return r;
 }
 
 /**
  * Registra o ORÇAMENTO COMPLETO: todas as ofertas ainda não registradas viram
- * despesas na obra (reusa registrarDespesaOferta por oferta — sequencial, pois
- * cada registro fecha sua cotação). A subclassificação vem do item (servidor) e a
- * mesma responsabilidade é aplicada a todas. Retorna { total, despesas }.
+ * despesas na obra (reusa registrarDespesaOferta por oferta — sequencial). A
+ * subclassificação vem do item (servidor) e a mesma responsabilidade é aplicada
+ * a todas. Retorna { total, despesas }.
  */
 async function registrarOrcamentoCompleto(orcId, obraId, responsaveis) {
   const ofertas = ofertasDoOrcamento(orcId).filter((p) => !String(p.despesa_id || ""));
   const despesasCriadas = [];
   for (const oferta of ofertas) {
-    const r = await registrarDespesaOferta(oferta.cotacao_id, oferta.id, obraId, "", responsaveis);
+    const r = await registrarDespesaOferta(oferta.cotacao_id || "", oferta.id, obraId, "", responsaveis);
     despesasCriadas.push(r.despesa);
   }
   return { total: despesasCriadas.length, despesas: despesasCriadas };
@@ -892,7 +889,7 @@ export const dataStore = {
   usuario, config, categorias, categoriasItem, categoriasFornecedor, usuarios, obras, obra, despesas, todasDespesas, resumo, categoriasDaObra,
   participantesDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, itens, itensAtivos, item,
-  cotacoes, cotacao, precosDaCotacao,
+  cotacoes, cotacao, precosDaCotacao, todasOfertas,
   historicoDaCotacao,
   orcamentos, orcamento, ofertasDoOrcamento,
   equipes, equipe, equipesDoContato, equipesDaObra,
@@ -907,7 +904,7 @@ export const dataStore = {
   criarCargo, atualizarCargo, removerCargo,
   criarItem, atualizarItem, removerItem,
   criarCotacao, atualizarCotacao, removerCotacao,
-  adicionarPreco, atualizarPreco, removerPreco, escolherPreco, registrarDespesaOferta,
+  criarOferta, atualizarOferta, removerPreco, escolherPreco, registrarDespesaOferta,
   registrarOrcamentoCompleto,
   criarOrcamento, atualizarOrcamento, removerOrcamento,
   criarEquipe, atualizarEquipe, removerEquipe,
