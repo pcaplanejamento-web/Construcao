@@ -11,6 +11,7 @@ import { moeda, data as fmtData } from "../../core/formatters.js";
 import { totalPago, distribuicao, parseLista, statusPagamento } from "./despesa-split.js";
 import { ofertanteNome } from "../orcamentos/orcamento-util.js";
 import "../../components/ui-data-table.js";
+import { injetarBuscaNoCard } from "../../components/ui-busca.js";
 import "./category-badge.js";
 
 /** Nome da empresa (fornecedor) pelo id. */
@@ -204,6 +205,8 @@ class DespesaTable extends BaseElement {
     tabela.addEventListener("excluir-massa", (e) =>
       this.emitir("excluir-massa", { despesas: e.detail.linhas })
     );
+    // Busca no cabeçalho do card (a tabela interna não alcança o card por estar no shadow).
+    injetarBuscaNoCard(this, tabela);
     this.atualizarTabela();
   }
 

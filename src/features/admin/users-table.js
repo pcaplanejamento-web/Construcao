@@ -7,6 +7,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { data as fmtData } from "../../core/formatters.js";
 import "../../components/ui-data-table.js";
+import { injetarBuscaNoCard } from "../../components/ui-busca.js";
 import "../../components/ui-badge.js";
 
 class UsersTable extends BaseElement {
@@ -66,6 +67,7 @@ class UsersTable extends BaseElement {
     // Edição em massa (sem exclusão de usuários).
     t.setAttribute("editar-massa", "");
     t.addEventListener("editar-massa", (e) => this.emitir("editar-massa", { usuarios: e.detail.linhas }));
+    injetarBuscaNoCard(this, t);
     this.atualizar();
   }
 

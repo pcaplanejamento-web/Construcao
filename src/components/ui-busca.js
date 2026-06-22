@@ -86,3 +86,29 @@ class UiBusca extends BaseElement {
 }
 
 customElements.define("ui-busca", UiBusca);
+
+/**
+ * Coloca uma <ui-busca> no cabeçalho do <ui-card> mais próximo de `host`
+ * (slot="acoes", à ESQUERDA do botão de ação — ou no lugar dele, se não houver),
+ * ligada à `tabela` (chama `tabela.buscar(texto)`). Idempotente: em re-render só
+ * re-liga a busca existente à tabela atual. Devolve a <ui-busca> (ou null sem card).
+ */
+export function injetarBuscaNoCard(host, tabela) {
+  const card = host && host.closest && host.closest("ui-card");
+  if (!card || !tabela) return null;
+  const existente = Array.from(card.children).find(
+    (c) => c.tagName === "UI-BUSCA" && c.getAttribute("slot") === "acoes"
+  );
+  if (existente) {
+    existente._tabelaBusca = tabela; // a tabela pode ter sido recriada
+    return existente;
+  }
+  const busca = document.createElement("ui-busca");
+  busca.setAttribute("slot", "acoes");
+  busca._tabelaBusca = tabela;
+  busca.addEventListener("buscar", (e) => {
+    if (busca._tabelaBusca && busca._tabelaBusca.buscar) busca._tabelaBusca.buscar(e.detail.texto);
+  });
+  card.insertBefore(busca, card.firstChild); // primeiro filho → leftmost no slot acoes
+  return busca;
+}

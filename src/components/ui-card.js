@@ -32,7 +32,8 @@ class UiCard extends BaseElement {
       /* título ocupa o espaço e QUEBRA se for longo; ações coladas à direita. */
       h3 { font-size: var(--fs-md); font-weight: var(--peso-semi);
         flex: 1; min-width: 0; overflow-wrap: anywhere; }
-      header > div { flex: none; }
+      /* ações: alinhadas à direita; busca (se houver) fica à ESQUERDA do botão. */
+      header > div { flex: none; display: flex; align-items: center; gap: var(--esp-2); }
       .corpo { padding: var(--esp-5); flex: 1; min-height: 0; }
       .rodape { padding: var(--esp-4) var(--esp-5); border-top: 1px solid var(--cor-borda); }
       ::slotted([slot="rodape"]) { display: block; }

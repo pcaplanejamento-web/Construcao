@@ -25,7 +25,7 @@
 import { BaseElement } from "./base-element.js";
 import { moeda } from "../core/formatters.js";
 import "./ui-coluna-menu.js";
-import "./ui-busca.js";
+import { injetarBuscaNoCard } from "./ui-busca.js";
 
 class UiDataTable extends BaseElement {
   static get observedAttributes() {
@@ -141,9 +141,6 @@ class UiDataTable extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
-      /* Container relativo p/ a <ui-busca> ficar sobreposta ao cabeçalho (sem deslocar nada). */
-      .grade { position: relative; }
-      .busca-tabela { position: absolute; top: 6px; right: 8px; z-index: 6; }
       /* Área rolável com altura limitada: cabeçalho e totais ficam fixos (sticky)
          e a barra de rolagem horizontal fica sempre na base da tabela. */
       .wrap { overflow: auto; max-height: 70vh; -webkit-overflow-scrolling: touch; }
@@ -235,10 +232,13 @@ class UiDataTable extends BaseElement {
 
     const selbar = this._sel.size ? this._selbarHtml() : "";
 
-    return `${selbar}<div class="grade">
-      <ui-busca class="busca-tabela" id="buscaTabela" placeholder="Pesquisar na tabela..."></ui-busca>
-      <div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${this._corpoHtml()}</tbody>${this._rodapeHtml()}</table></div>
-    </div>`;
+    return `${selbar}<div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${this._corpoHtml()}</tbody>${this._rodapeHtml()}</table></div>`;
+  }
+
+  /** Busca global (chamada pela <ui-busca> no cabeçalho do card) — só atualiza o corpo. */
+  buscar(texto) {
+    this._buscaTexto = (texto || "").toLowerCase();
+    this._atualizarCorpo();
   }
 
   /** HTML do corpo (tbody) — linhas visíveis (filtro + busca + ordenação). */
@@ -357,15 +357,10 @@ class UiDataTable extends BaseElement {
     this.$$(".th-btn").forEach((btn) => {
       btn.addEventListener("click", () => this._abrirMenu(Number(btn.dataset.col), btn));
     });
-    // Busca global: atualiza só o corpo (preserva foco/texto da <ui-busca>).
-    const busca = this.$("#buscaTabela");
-    if (busca) {
-      if (this._buscaTexto) busca.definir(this._buscaTexto); // restaura após re-render
-      busca.addEventListener("buscar", (e) => {
-        this._buscaTexto = (e.detail.texto || "").toLowerCase();
-        this._atualizarCorpo();
-      });
-    }
+    // Busca: vai no cabeçalho do card (à esquerda do botão), ligada a esta tabela.
+    // (Re)liga em todo render; é idempotente. A <ui-busca> vive no card → preserva foco.
+    const busca = injetarBuscaNoCard(this, this);
+    if (busca && this._buscaTexto) busca.definir(this._buscaTexto);
   }
 
   /** Liga eventos das linhas do tbody (ações, clique, seleção). Reusado pela busca. */
