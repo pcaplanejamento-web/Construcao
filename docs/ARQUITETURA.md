@@ -113,9 +113,20 @@ O Apps Script não tem websockets. O acompanhamento ao vivo é obtido por:
   cotação → orçamento — o que cobre inclusive ofertas avulsas (antes não tinham obra
   resolvível). `obra_id` é coluna **append-only** em `CotacaoPrecos`.
 
-## Pagamentos e Repasses (entidades próprias)
+## Transferências, Pagamentos e Repasses (entidades próprias)
 
-- `Pagamentos` é uma aba própria: um pagamento pode cobrir **VÁRIAS despesas**
+- `Transferencias` é o nível que **agrupa pagamentos**: 1 transferência → N pagamentos
+  (1 por despesa) com o **mesmo recebedor + empresa + obra + pagador** e um **tipo**
+  (dinheiro/crédito/débito/boleto). Toda criação de pagamento nasce de uma transferência:
+  `transferenciasLancar` (Transferencias.gs) valida a homogeneidade **antes** de qualquer
+  escrita (recebedor divergente → erro, nada gravado) e grava transferência + N pagamentos
+  sob **1 `comLock`** (helpers sem lock `_pagamentoMontar/_pagamentoGravar`). Vínculo
+  bidirecional: `pagamento.transferencia_id` ↔ `transferencia.pagamento_ids`.
+- **Cascata:** `transferenciasRemover` apaga a transferência + todos os pagamentos
+  (+ repasses + re-sync das despesas). Excluir um pagamento isolado (`pagamentosRemover`)
+  ajusta a transferência — e a **remove se ficar vazia** (pagamento não existe sem
+  transferência). O front sintetiza uma transferência 1:1 p/ pagamentos antigos/levas.
+- `Pagamentos` (sob uma transferência) pode cobrir **VÁRIAS despesas**
   (`alocacoes` = `[{despesa_id, valor}]`), com pagador (contato/participante),
   recebedor (contato OU equipe/grupo), obra e fornecedor. `Repasses` registra o
   recebedor repassando parte a outros contatos.
@@ -124,8 +135,9 @@ O Apps Script não tem websockets. O acompanhamento ao vivo é obtido por:
   front legado (`despesa-split` + telas) segue lendo o espelho sem mudança.
   `despesas.lancarPagamento`/`removerPagamento` **delegam** à entidade Pagamentos
   (mesma rota/retorno). Análise multi-despesa usa `balancosDePagamentos`.
-- **Migração** `mig_pagamentos_v1` (Migracoes.gs) extrai cada leva embutida p/ um
-  Pagamento (idempotente via `origem_leva_id`), auto-disparada no próximo snapshot.
+- **Migrações** (Migracoes.gs, idempotentes, auto-disparadas no próximo snapshot):
+  `mig_pagamentos_v1` extrai cada leva embutida p/ um Pagamento (via `origem_leva_id`);
+  `mig_transferencias_v1` cria 1 transferência 1:1 p/ cada pagamento sem `transferencia_id`.
 
 ## Cotação por item × por subclassificação
 

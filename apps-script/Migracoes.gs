@@ -81,6 +81,48 @@ function _migrarPagamentosEmbutidos_v1() {
   return criados;
 }
 
+/**
+ * Cria 1 TRANSFERÊNCIA (1:1) para cada PAGAMENTO ainda sem `transferencia_id`,
+ * copiando recebedor/pagador/empresa/data; tipo default "dinheiro". Vincula os dois
+ * lados (pagamento.transferencia_id ↔ transferencia.pagamento_ids). Idempotente
+ * (flag + filtro `transferencia_id === ""`). Retorna nº de transferências criadas.
+ */
+function _migrarTransferencias_v1() {
+  let criadas = 0;
+  repoListar(SCHEMA.PAGAMENTOS).forEach(function (p) {
+    if (String(p.transferencia_id || "")) return; // já vinculado
+    const agora = agoraIso();
+    const tipo = String(p.tipo || "") || "dinheiro";
+    const tId = novoId();
+    repoInserir(SCHEMA.TRANSFERENCIAS, {
+      id: tId,
+      usuario_id: p.usuario_id,
+      obra_id: p.obra_id,
+      data: p.data || "",
+      valor_total: Number(p.valor) || 0,
+      tipo: tipo,
+      recebedor_contato_id: String(p.recebedor_contato_id || ""),
+      recebedor_equipe_id: String(p.recebedor_equipe_id || ""),
+      fornecedor_id: String(p.fornecedor_id || ""),
+      pagador_chave: String(p.pagador_chave || ""),
+      pagador_contato_id: String(p.pagador_contato_id || ""),
+      pagamento_ids: JSON.stringify([p.id]),
+      observacao: "",
+      criado_em: p.criado_em || agora,
+      autor_nome: p.autor_nome || "",
+      atualizado_em: agora,
+      editor_nome: "",
+    });
+    repoAtualizar(SCHEMA.PAGAMENTOS, "id", p.id, {
+      transferencia_id: tId,
+      tipo: tipo,
+      atualizado_em: agora,
+    });
+    criadas++;
+  });
+  return criadas;
+}
+
 /** Roda as migrações pendentes UMA vez (double-checked via flag + lock). */
 function _migrarUmaVez() {
   const props = PropertiesService.getScriptProperties();
@@ -96,6 +138,14 @@ function _migrarUmaVez() {
       if (props.getProperty("mig_pagamentos_v1") === "1") return;
       _migrarPagamentosEmbutidos_v1();
       props.setProperty("mig_pagamentos_v1", "1");
+    });
+  }
+  // Depois de mig_pagamentos_v1 (precisa que as levas já sejam entidades Pagamento).
+  if (props.getProperty("mig_transferencias_v1") !== "1") {
+    comLock(function () {
+      if (props.getProperty("mig_transferencias_v1") === "1") return;
+      _migrarTransferencias_v1();
+      props.setProperty("mig_transferencias_v1", "1");
     });
   }
 }

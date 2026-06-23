@@ -106,11 +106,11 @@ function _sincronizarMirrorDespesa(despesaId) {
 /* ------------------------------ Pagamentos ---------------------------------- */
 
 /**
- * pagamentos.lancar -> { pagamento, despesas, resumo }.
- * Cria um pagamento (entidade) que aloca valor a uma ou mais despesas e re-sincroniza
- * o espelho de cada despesa tocada. Recebedor/distribuição vêm prontos do chamador.
+ * Monta (valida + objeto) um pagamento SEM gravar e SEM lock — reusável dentro do
+ * lock de uma TRANSFERÊNCIA. Faz TODA a validação (alocações, pagador, não-estouro,
+ * distribuição) antes de qualquer escrita. Aceita `transferencia_id` e `tipo`.
  */
-function pagamentosLancar(data, sessao) {
+function _pagamentoMontar(data, sessao) {
   const usuarioId = sessao.usuario_id;
   const alocacoes = (Array.isArray(data && data.alocacoes) ? data.alocacoes : [])
     .map(function (a) {
@@ -156,7 +156,7 @@ function pagamentosLancar(data, sessao) {
 
   const agora = agoraIso();
   const nome = (buscarUsuarioPorId(usuarioId) || {}).nome || "";
-  const pagamento = {
+  return {
     id: novoId(),
     usuario_id: usuarioId,
     obra_id: obraId,
@@ -175,22 +175,61 @@ function pagamentosLancar(data, sessao) {
     atualizado_em: agora,
     editor_nome: nome,
     origem_leva_id: String((data && data.origem_leva_id) || ""),
+    transferencia_id: String((data && data.transferencia_id) || ""),
+    tipo: String((data && data.tipo) || ""),
   };
+}
 
+/** Grava um pagamento (já montado/validado) e re-sincroniza os espelhos. SEM lock. */
+function _pagamentoGravar(pagamento) {
+  repoInserir(SCHEMA.PAGAMENTOS, pagamento);
+  const despesas = _parseJsonLista(pagamento.alocacoes).map(function (a) {
+    return _lerDespesa(_sincronizarMirrorDespesa(a.despesa_id));
+  });
+  return { pagamento: _lerPagamento(pagamento), despesas: despesas };
+}
+
+/** Remove 1 pagamento (cascata repasses + re-sync despesas). SEM lock. Devolve transferencia_id. */
+function _pagamentoRemoverInterno(id) {
+  const pag = repoEncontrar(SCHEMA.PAGAMENTOS, function (x) {
+    return String(x.id) === String(id);
+  });
+  if (!pag) return { despesas: [], transferencia_id: "" };
+  const alocs = _parseJsonLista(pag.alocacoes);
+  // Cascata: repasses que apontam p/ este pagamento.
+  repoFiltrar(SCHEMA.REPASSES, function (r) {
+    return String(r.pagamento_id) === String(id);
+  }).forEach(function (r) {
+    repoRemover(SCHEMA.REPASSES, "id", r.id);
+  });
+  repoRemover(SCHEMA.PAGAMENTOS, "id", id);
+  const despesas = alocs.map(function (a) {
+    return _lerDespesa(_sincronizarMirrorDespesa(a.despesa_id));
+  });
+  return { despesas: despesas, transferencia_id: String(pag.transferencia_id || "") };
+}
+
+/**
+ * pagamentos.lancar -> { pagamento, despesas, resumo }. Mantido por retrocompat
+ * (o front novo usa transferencias.lancar). Cria 1 pagamento (sem transferência própria).
+ */
+function pagamentosLancar(data, sessao) {
+  const pagamento = _pagamentoMontar(data, sessao);
+  const obraId = String(pagamento.obra_id || "");
   return comLock(function () {
-    repoInserir(SCHEMA.PAGAMENTOS, pagamento);
-    const despesas = alocacoes.map(function (a) {
-      return _lerDespesa(_sincronizarMirrorDespesa(a.despesa_id));
-    });
+    const r = _pagamentoGravar(pagamento);
     return {
-      pagamento: _lerPagamento(pagamento),
-      despesas: despesas,
-      resumo: obraId ? _calcularResumo(obraId, usuarioId) : null,
+      pagamento: r.pagamento,
+      despesas: r.despesas,
+      resumo: obraId ? _calcularResumo(obraId, sessao.usuario_id) : null,
     };
   });
 }
 
-/** pagamentos.remover -> { id, despesas, resumo }. Cascata: remove repasses do pagamento. */
+/**
+ * pagamentos.remover -> { id, despesas, resumo }. Cascata: repasses do pagamento.
+ * Se o pagamento pertencer a uma transferência, ajusta-a (ou remove se ficar vazia).
+ */
 function pagamentosRemover(data, sessao) {
   const id = String((data && data.id) || "");
   const pag = repoEncontrar(SCHEMA.PAGAMENTOS, function (x) {
@@ -199,23 +238,15 @@ function pagamentosRemover(data, sessao) {
   if (!pag) lancar(ERRO.NAO_ENCONTRADO, "Pagamento não encontrado.");
   if (String(pag.usuario_id) !== String(sessao.usuario_id))
     lancar(ERRO.VALIDACAO, "Sem acesso a este pagamento.");
-  const alocs = _parseJsonLista(pag.alocacoes);
   const obraId = String(pag.obra_id || "");
+  const transferenciaId = String(pag.transferencia_id || "");
 
   return comLock(function () {
-    // Cascata: repasses que apontam p/ este pagamento.
-    repoFiltrar(SCHEMA.REPASSES, function (r) {
-      return String(r.pagamento_id) === String(id);
-    }).forEach(function (r) {
-      repoRemover(SCHEMA.REPASSES, "id", r.id);
-    });
-    repoRemover(SCHEMA.PAGAMENTOS, "id", id);
-    const despesas = alocs.map(function (a) {
-      return _lerDespesa(_sincronizarMirrorDespesa(a.despesa_id));
-    });
+    const r = _pagamentoRemoverInterno(id);
+    if (transferenciaId) _ajustarTransferenciaAposRemocao(transferenciaId, id);
     return {
       id: id,
-      despesas: despesas,
+      despesas: r.despesas,
       resumo: obraId ? _calcularResumo(obraId, sessao.usuario_id) : null,
     };
   });

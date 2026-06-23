@@ -19,7 +19,7 @@ import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { valorPositivo } from "../../core/validators.js";
 import { parseLista, statusPagamento, totalRealizado, restoDespesa } from "./despesa-split.js";
 import { ofertanteNome, previaOfertaHtml } from "../orcamentos/orcamento-util.js";
-import { previaPagamentoHtml, abrirPagamento } from "../pagamentos/pagamento-util.js";
+import { previaPagamentoHtml, abrirPagamento, TIPOS_TRANSFERENCIA } from "../pagamentos/pagamento-util.js";
 import { abrirOferta } from "../cotacoes/preco-form.js";
 import { integrantesDaEquipe } from "../equipes/equipe-util.js";
 import "../../components/ui-modal.js";
@@ -149,7 +149,10 @@ class DespesaDetail extends BaseElement {
             <div class="statuslinha" id="statusLinha"></div>
             <div class="pag-cards" id="listaPag"></div>
             <div class="lancar" id="lancarBox">
-              <ui-select id="pagPagador" label="Quem pagou"></ui-select>
+              <div class="linha">
+                <ui-select id="pagPagador" label="Quem pagou"></ui-select>
+                <ui-select id="pagTipo" label="Tipo"></ui-select>
+              </div>
               <div class="linha">
                 <ui-input id="pagValor" label="Valor a lançar (R$)" type="number" step="0.01" min="0" placeholder="0,00"></ui-input>
                 <ui-input id="pagData" label="Data" type="date" value="${hojeIso()}"></ui-input>
@@ -210,13 +213,26 @@ class DespesaDetail extends BaseElement {
 
   /** Liga o mini-form de lançamento + pinta status e lista. */
   preencherPagamentos() {
-    // Quem pagou: participantes da obra (mesmas chaves do acerto).
+    // Quem pagou: participantes da obra + (sempre) o usuário; fallback p/ contatos ativos
+    // (corrige o caso de obra sem participantes → não dava p/ escolher pagador).
     const parts = dataStore.participantesDaObra(this.despesa.obra_id);
+    let optsPag = parts.map((p) => ({ value: p.chave, label: p.nome }));
+    if (!optsPag.length) {
+      const u = dataStore.usuario();
+      if (u) optsPag.push({ value: "u:" + u.id, label: (u.nome || "Você") + " (você)" });
+      dataStore.contatosAtivos().forEach((c) => optsPag.push({ value: "c:" + c.id, label: c.nome }));
+    }
     const selPag = this.$("#pagPagador");
     if (selPag) {
-      selPag.setAttribute("placeholder", parts.length ? "Selecione quem pagou" : "Sem participantes");
-      selPag.options = parts.map((p) => ({ value: p.chave, label: p.nome }));
-      selPag.value = (parts[0] || {}).chave || "";
+      selPag.setAttribute("placeholder", optsPag.length ? "Selecione quem pagou" : "Sem participantes");
+      selPag.options = optsPag;
+      selPag.value = (optsPag[0] || {}).value || "";
+    }
+    // Tipo: dinheiro (default) | crédito | débito | boleto.
+    const selTipo = this.$("#pagTipo");
+    if (selTipo) {
+      selTipo.options = TIPOS_TRANSFERENCIA.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }));
+      selTipo.value = "dinheiro";
     }
     const dist = this.$("#pagDist");
     if (dist && this.despesa.ofertante_equipe_id) {
@@ -331,7 +347,12 @@ class DespesaDetail extends BaseElement {
       if (alerta) alerta.mensagem = `O valor (${moeda(valor)}) passa do que falta pagar (${moeda(resto)}).`;
       return;
     }
-    const dados = { valor, pagador, data: this.$("#pagData").value || hojeIso() };
+    const dados = {
+      valor,
+      pagador,
+      data: this.$("#pagData").value || hojeIso(),
+      tipo: (this.$("#pagTipo") && this.$("#pagTipo").value) || "dinheiro",
+    };
     const dist = this.$("#pagDist");
     if (dist && this.despesa.ofertante_equipe_id) {
       const distribuicao = dist.itens

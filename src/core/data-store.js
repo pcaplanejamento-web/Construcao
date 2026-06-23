@@ -15,7 +15,7 @@ import { auth } from "./auth-store.js";
 import { bus, EVENTOS } from "./event-bus.js";
 import { obraIdDaOferta } from "../features/shared/rastreabilidade.js";
 
-const CACHE_VERSAO = 3; // bump: coleções pagamentos/repasses (entidades próprias)
+const CACHE_VERSAO = 4; // bump: coleção transferencias (agrupa pagamentos)
 
 const ESTADO_VAZIO = {
   carregado: false,
@@ -36,6 +36,7 @@ const ESTADO_VAZIO = {
   historicoPorCotacao: {}, // cotacaoId -> [ponto de histórico de preço]
   orcamentos: [], // módulo Compras (containers de ofertas)
   equipes: [], // grupos (líder + membros + obras)
+  transferencias: [], // transferências (agrupam N pagamentos de 1 recebedor/empresa)
   pagamentos: [], // pagamentos (entidade própria; 1 pagamento → várias despesas)
   repasses: [], // repasses de um pagamento a outros contatos
   usuarios: [], // admin
@@ -73,6 +74,7 @@ function persistir() {
       historicoPorCotacao: s.historicoPorCotacao,
       orcamentos: s.orcamentos,
       equipes: s.equipes,
+      transferencias: s.transferencias,
       pagamentos: s.pagamentos,
       repasses: s.repasses,
       usuarios: s.usuarios,
@@ -131,6 +133,7 @@ function _aplicarSnapshot(d) {
     historicoPorCotacao: d.historicoPorCotacao || {},
     orcamentos: d.orcamentos || [],
     equipes: d.equipes || [],
+    transferencias: d.transferencias || [],
     pagamentos: d.pagamentos || [],
     repasses: d.repasses || [],
     usuarios: d.usuarios || [],
@@ -265,7 +268,10 @@ function _pagamentoDeLeva(lv, d) {
 const pagamentos = () => {
   const ents = store.get().pagamentos || [];
   const cobertas = new Set();
-  ents.forEach((p) => p.origem_leva_id && cobertas.add(String(p.origem_leva_id)));
+  ents.forEach((p) => {
+    if (p.origem_leva_id) cobertas.add(String(p.origem_leva_id)); // leva legada migrada
+    cobertas.add(String(p.id)); // a leva-espelho de uma entidade tem id = id da entidade
+  });
   const sint = [];
   todasDespesas().forEach((d) => {
     (Array.isArray(d.pagamentos_realizados) ? d.pagamentos_realizados : []).forEach((lv) => {
@@ -287,6 +293,49 @@ const repassesDoContato = (id) =>
   );
 /** "Esta despesa já tem pagamento?" (entidade OU leva embutida). */
 const despesaTemPagamento = (d) => pagamentosDaDespesa((d || {}).id).length > 0;
+
+// Transferências — entidades próprias + (fallback) SINTETIZADAS 1:1 de pagamentos sem
+// transferência real (levas embutidas e pagamentos pré-migração). Assim toda tela vê
+// "1 pagamento = 1 transferência" mesmo antes do deploy/migração do backend.
+function _transferenciaDePagamento(p) {
+  return {
+    id: "t:" + p.id,
+    _sintetico: true,
+    _pagamentoId: p.id,
+    usuario_id: p.usuario_id,
+    obra_id: p.obra_id,
+    data: p.data,
+    valor_total: Number(p.valor) || 0,
+    tipo: p.tipo || "dinheiro",
+    recebedor_contato_id: p.recebedor_contato_id || "",
+    recebedor_equipe_id: p.recebedor_equipe_id || "",
+    fornecedor_id: p.fornecedor_id || "",
+    pagador_chave: p.pagador_chave || "",
+    pagador_contato_id: p.pagador_contato_id || "",
+    pagamento_ids: [p.id],
+  };
+}
+const transferencias = () => {
+  const reais = store.get().transferencias || [];
+  const idsReais = new Set(reais.map((t) => String(t.id)));
+  const sint = [];
+  pagamentos().forEach((p) => {
+    const tid = String(p.transferencia_id || "");
+    if (tid && idsReais.has(tid)) return; // coberto por transferência real
+    sint.push(_transferenciaDePagamento(p));
+  });
+  return reais.concat(sint);
+};
+const transferencia = (id) => transferencias().find((t) => String(t.id) === String(id)) || null;
+const transferenciasDaObra = (id) => transferencias().filter((t) => String(t.obra_id) === String(id));
+const transferenciaDoPagamento = (pagId) =>
+  transferencias().find((t) => (t.pagamento_ids || []).some((pid) => String(pid) === String(pagId))) || null;
+const pagamentosDaTransferencia = (tId) => {
+  const t = transferencia(tId);
+  if (!t) return [];
+  const ids = new Set((t.pagamento_ids || []).map((x) => String(x)));
+  return pagamentos().filter((p) => ids.has(String(p.id)) || String(p.transferencia_id || "") === String(tId));
+};
 
 /* --------------------- Recalcular resumo local ----------------------- */
 
@@ -542,6 +591,7 @@ async function lancarPagamento(obraId, despesaId, dados) {
   const lista = despesas(obraId).map((d) => (String(d.id) === String(despesaId) ? r.despesa : d));
   _setDespesasObra(obraId, lista, r.resumo);
   if (r.pagamento) store.set({ pagamentos: [r.pagamento, ...store.get().pagamentos] });
+  if (r.transferencia) store.set({ transferencias: [r.transferencia, ...store.get().transferencias] });
   persistir();
   bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada", obra_id: obraId });
   return r.despesa;
@@ -568,13 +618,79 @@ async function lancarPagamentoMulti(dados) {
   return r.pagamento;
 }
 
-/** Remove um pagamento (entidade) e re-sincroniza as despesas alocadas. */
-async function removerPagamentoV2(id) {
-  const r = await api.call("pagamentos.remover", { id });
+/**
+ * Lança uma TRANSFERÊNCIA: 1 transferência + N pagamentos (1 por despesa). O backend
+ * valida que todas as despesas têm o mesmo recebedor/empresa (senão erro, nada gravado).
+ * dados: { obra_id, data, tipo, pagador, alocacoes:[{despesa_id,valor}], distribuicao? }.
+ */
+async function lancarTransferencia(dados) {
+  const r = await api.call("transferencias.lancar", dados);
   const s = store.get();
   store.set({
-    pagamentos: s.pagamentos.filter((p) => String(p.id) !== String(id)),
+    transferencias: [r.transferencia, ...s.transferencias],
+    pagamentos: [...(r.pagamentos || []), ...s.pagamentos],
+  });
+  _aplicarDespesasAtualizadas(r.despesas, r.resumo, r.transferencia.obra_id);
+  persistir();
+  bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada" });
+  return r.transferencia;
+}
+
+/** Remove uma TRANSFERÊNCIA e, em cascata, TODOS os seus pagamentos (+ repasses). */
+async function removerTransferencia(id) {
+  const r = await api.call("transferencias.remover", { id });
+  const s = store.get();
+  const pagIds = new Set(
+    (s.pagamentos || []).filter((p) => String(p.transferencia_id) === String(id)).map((p) => String(p.id))
+  );
+  store.set({
+    transferencias: s.transferencias.filter((t) => String(t.id) !== String(id)),
+    pagamentos: s.pagamentos.filter((p) => String(p.transferencia_id) !== String(id)),
+    repasses: s.repasses.filter((rp) => !pagIds.has(String(rp.pagamento_id))), // cascata
+  });
+  _aplicarDespesasAtualizadas(r.despesas, r.resumo, (r.despesas && r.despesas[0] && r.despesas[0].obra_id) || "");
+  persistir();
+  bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada" });
+  return r;
+}
+
+/** Exclui uma transferência — entidade (cascata no backend) OU sintetizada 1:1 (= excluir o pagamento). */
+async function excluirTransferencia(t) {
+  if (t && t._sintetico) {
+    const p = pagamentos().find((x) => String(x.id) === String(t._pagamentoId));
+    return excluirPagamento(p || t._pagamentoId);
+  }
+  return removerTransferencia((t && t.id) || t);
+}
+
+/** Remove um pagamento (entidade) e re-sincroniza as despesas alocadas + a transferência. */
+async function removerPagamentoV2(id) {
+  const s0 = store.get();
+  const pag = (s0.pagamentos || []).find((p) => String(p.id) === String(id));
+  const transferenciaId = pag ? String(pag.transferencia_id || "") : "";
+  const r = await api.call("pagamentos.remover", { id });
+  const s = store.get();
+  const pagamentosRest = s.pagamentos.filter((p) => String(p.id) !== String(id));
+  let transferencias = s.transferencias || [];
+  if (transferenciaId) {
+    const aindaTem = pagamentosRest.some((p) => String(p.transferencia_id) === String(transferenciaId));
+    if (!aindaTem) {
+      transferencias = transferencias.filter((t) => String(t.id) !== String(transferenciaId));
+    } else {
+      transferencias = transferencias.map((t) => {
+        if (String(t.id) !== String(transferenciaId)) return t;
+        const ids = (t.pagamento_ids || []).filter((pid) => String(pid) !== String(id));
+        const total = pagamentosRest
+          .filter((p) => String(p.transferencia_id) === String(transferenciaId))
+          .reduce((acc, p) => acc + (Number(p.valor) || 0), 0);
+        return { ...t, pagamento_ids: ids, valor_total: total };
+      });
+    }
+  }
+  store.set({
+    pagamentos: pagamentosRest,
     repasses: s.repasses.filter((rp) => String(rp.pagamento_id) !== String(id)), // cascata
+    transferencias,
   });
   _aplicarDespesasAtualizadas(r.despesas, r.resumo, (r.despesas && r.despesas[0] && r.despesas[0].obra_id) || "");
   persistir();
@@ -1049,12 +1165,14 @@ export const dataStore = {
   despesasDoContato, despesasDoFornecedor, despesasDoItem, despesasDaEquipe,
   pagamentos, repasses, pagamentosDaDespesa, pagamentosDoContato, pagamentosDaObra,
   repassesDoPagamento, repassesDoContato, despesaTemPagamento,
+  transferencias, transferencia, transferenciasDaObra, transferenciaDoPagamento, pagamentosDaTransferencia,
   // mutações
   criarObra, atualizarObra, removerObra,
   adicionarParticipante, removerParticipante, definirResponsavel,
   gerarLinkPublico, removerLinkPublico,
   adicionarDespesa, atualizarDespesa, removerDespesa, lancarPagamento, removerPagamento,
   lancarPagamentoMulti, removerPagamentoV2, excluirPagamento, lancarRepasse, removerRepasse,
+  lancarTransferencia, removerTransferencia, excluirTransferencia,
   criarCategoria, atualizarCategoria, removerCategoria,
   criarFornecedor, atualizarFornecedor, removerFornecedor,
   criarContato, atualizarContato, removerContato,

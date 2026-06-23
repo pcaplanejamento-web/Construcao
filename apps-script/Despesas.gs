@@ -328,37 +328,24 @@ function despesasLancarPagamento(data, sessao) {
   const pagador = String((data && data.pagador) || "");
   if (!pagador) lancar(ERRO.VALIDACAO, "Selecione quem pagou.");
 
-  // Recebedor: equipe (líder + distribuição) ou contato ofertante + empresa.
-  const equipeId = String(atual.ofertante_equipe_id || "");
-  let contatoId = String(atual.ofertante_contato_id || "");
-  let fornecedorId = String(atual.fornecedor_id || "");
-  let distribuicao = [];
-  if (equipeId) {
-    const equipe = repoEncontrar(SCHEMA.EQUIPES, function (x) {
-      return String(x.id) === equipeId;
-    }) || {};
-    contatoId = String(equipe.lider_id || "");
-    fornecedorId = "";
-    distribuicao = Array.isArray(data && data.distribuicao) ? data.distribuicao : [];
-  }
-
-  const r = pagamentosLancar(
+  // Delega à TRANSFERÊNCIA: 1 despesa → 1 transferência / 1 pagamento (regra de ouro a).
+  // O recebedor/empresa é derivado da própria despesa dentro de transferenciasLancar.
+  const r = transferenciasLancar(
     {
       alocacoes: [{ despesa_id: despesaId, valor: valor }],
       pagador_chave: pagador,
-      recebedor_contato_id: contatoId,
-      recebedor_equipe_id: equipeId,
-      fornecedor_id: fornecedorId,
-      distribuicao: distribuicao,
+      distribuicao: Array.isArray(data && data.distribuicao) ? data.distribuicao : [],
       obra_id: atual.obra_id,
       data: data && data.data,
+      tipo: (data && data.tipo) || "dinheiro",
     },
     sessao
   );
   return {
     despesa: (r.despesas && r.despesas[0]) || _lerDespesa(_despesaAcessivel(despesaId, sessao.usuario_id)),
     resumo: r.resumo || _calcularResumo(atual.obra_id, sessao.usuario_id),
-    pagamento: r.pagamento, // a leva virou um Pagamento (entidade) — o front adiciona à coleção
+    pagamento: (r.pagamentos && r.pagamentos[0]) || null, // a leva virou um Pagamento (entidade)
+    transferencia: r.transferencia, // a transferência que agrupa o pagamento
   };
 }
 

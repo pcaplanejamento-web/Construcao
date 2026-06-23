@@ -51,7 +51,9 @@ const ROTAS = {
   "despesas.lancarPagamento": { fn: despesasLancarPagamento },
   "despesas.removerPagamento": { fn: despesasRemoverPagamento },
 
-  // Pagamentos / Repasses (entidades próprias)
+  // Transferências (agrupam pagamentos) / Pagamentos / Repasses (entidades próprias)
+  "transferencias.lancar": { fn: transferenciasLancar },
+  "transferencias.remover": { fn: transferenciasRemover },
   "pagamentos.lancar": { fn: pagamentosLancar },
   "pagamentos.remover": { fn: pagamentosRemover },
   "repasses.lancar": { fn: repassesLancar },

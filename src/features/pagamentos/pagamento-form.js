@@ -1,16 +1,19 @@
 /**
- * <pagamento-form> — Modal para REGISTRAR um pagamento que pode cobrir VÁRIAS
- * despesas da obra (entidade Pagamentos). Seleciona despesas (com alocação por
- * despesa, default = resto), pagador (participante), recebedor (contato OU
- * equipe/grupo), fornecedor opcional e data. Auto-contido (chama o data-store).
+ * <pagamento-form> — Modal para REGISTRAR uma TRANSFERÊNCIA que agrupa N pagamentos
+ * (1 por despesa selecionada). Seleciona despesas (alocação por despesa, default =
+ * resto), pagador (participante), tipo (dinheiro/crédito/débito/boleto) e data.
+ * Regra de ouro: todas as despesas marcadas precisam ter o MESMO recebedor + empresa
+ * (validado na tela e revalidado no servidor). Auto-contido (chama o data-store).
  *
- * Propriedade: .obra (objeto). Eventos: "salvo" ({pagamento}), "fechar".
+ * Propriedade: .obra (objeto). Eventos: "salvo" ({transferencia}), "fechar".
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { restoDespesa } from "../despesas/despesa-split.js";
 import { ofertanteNome } from "../orcamentos/orcamento-util.js";
+import { TIPOS_TRANSFERENCIA } from "./pagamento-util.js";
+import { recebedorUniforme, totalAlocacoes } from "./transferencia-regra.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-select.js";
@@ -55,8 +58,8 @@ class PagamentoForm extends BaseElement {
   estilos() {
     return `
       .campos { display: flex; flex-direction: column; gap: var(--esp-4); }
-      .linha { display: flex; gap: var(--esp-3); }
-      .linha > * { flex: 1; }
+      .linha { display: flex; gap: var(--esp-3); flex-wrap: wrap; }
+      .linha > * { flex: 1; min-width: 140px; }
       .tx { font-size: var(--fs-sm); color: var(--cor-texto-suave); display:block; margin-bottom: var(--esp-1); }
       .lista { display: flex; flex-direction: column; gap: var(--esp-2); max-height: 220px; overflow:auto;
         border: 1px solid var(--cor-divisor); border-radius: var(--raio-sm); padding: var(--esp-2); }
@@ -86,10 +89,15 @@ class PagamentoForm extends BaseElement {
           .join("")
       : `<div class="vazio">Nenhuma despesa com saldo a pagar nesta obra.</div>`;
 
+    const optsTipo = TIPOS_TRANSFERENCIA.map(
+      (t) => `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
+    ).join("");
+
     return `
-      <ui-modal open title="Registrar pagamento">
+      <ui-modal open title="Registrar transferência">
         <div class="campos">
           ${this._aviso ? `<ui-alert tipo="aviso" message="${String(this._aviso).replace(/"/g, "&quot;")}"></ui-alert>` : ""}
+          <ui-alert id="erroRec" tipo="erro" hidden></ui-alert>
           <div>
             <label class="tx">Despesas a pagar (o recebedor é o ofertante de cada uma)</label>
             <div class="lista" id="lista">${linhasDesp}</div>
@@ -97,7 +105,8 @@ class PagamentoForm extends BaseElement {
           </div>
           <div class="linha">
             <ui-select id="pagador" label="Quem pagou"></ui-select>
-            <ui-input id="data" label="Data do pagamento" type="date"></ui-input>
+            <ui-select id="tipo" label="Tipo"></ui-select>
+            <ui-input id="data" label="Data" type="date"></ui-input>
           </div>
         </div>
         <div slot="rodape">
@@ -109,14 +118,23 @@ class PagamentoForm extends BaseElement {
   }
 
   aposRender() {
-    // Pagador: participantes da obra (chave/nome); fallback p/ contatos ativos.
+    // Pagador: participantes da obra + (sempre) o usuário; fallback p/ contatos ativos.
+    const u = dataStore.usuario();
     const parts = dataStore.participantesDaObra((this.obra || {}).id);
-    const optsPag = parts.length
-      ? parts.map((p) => ({ value: p.chave, label: p.nome }))
-      : dataStore.contatosAtivos().map((c) => ({ value: "c:" + c.id, label: c.nome }));
+    let optsPag = parts.map((p) => ({ value: p.chave, label: p.nome }));
+    if (!optsPag.length) {
+      if (u) optsPag.push({ value: "u:" + u.id, label: (u.nome || "Você") + " (você)" });
+      dataStore.contatosAtivos().forEach((c) => optsPag.push({ value: "c:" + c.id, label: c.nome }));
+    }
     const selPag = this.$("#pagador");
     selPag.setAttribute("placeholder", "Selecione quem pagou");
     selPag.options = optsPag;
+    if (optsPag.length) selPag.value = optsPag[0].value;
+
+    // Tipo: dinheiro (default) | crédito | débito | boleto.
+    const selTipo = this.$("#tipo");
+    selTipo.options = TIPOS_TRANSFERENCIA.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }));
+    selTipo.value = "dinheiro";
 
     // Data: padrão hoje + NÃO permite futuro (max no input interno).
     const hoje = new Date().toISOString().substring(0, 10);
@@ -144,6 +162,14 @@ class PagamentoForm extends BaseElement {
     return this.$$(".aloc").find((i) => String(i.dataset.id) === String(id));
   }
 
+  /** Despesas marcadas (objetos). */
+  _marcadas() {
+    const ids = this.$$(".chk")
+      .filter((cb) => cb.checked)
+      .map((cb) => String(cb.dataset.id));
+    return this._despesas().filter((d) => ids.includes(String(d.id)));
+  }
+
   /** Alocações marcadas → [{despesa_id, valor}]. */
   _alocacoes() {
     return this.$$(".chk")
@@ -152,15 +178,39 @@ class PagamentoForm extends BaseElement {
       .filter((a) => a.valor > 0);
   }
 
+  /** Regra de ouro (c): todas as marcadas com o mesmo recebedor + empresa? */
+  _recebedorUniforme() {
+    return recebedorUniforme(this._marcadas());
+  }
+
   _recalcular() {
-    const total = this._alocacoes().reduce((s, a) => s + a.valor, 0);
+    const total = totalAlocacoes(this._alocacoes());
     if (this.$("#total")) this.$("#total").textContent = `Total: ${moeda(total)}`;
+    // Pré-valida a homogeneidade do recebedor/empresa.
+    const erro = this.$("#erroRec");
+    const ok = this._recebedorUniforme();
+    if (erro) {
+      if (ok) erro.setAttribute("hidden", "");
+      else {
+        erro.removeAttribute("hidden");
+        erro.setAttribute(
+          "message",
+          "As despesas selecionadas têm recebedores/empresas diferentes. Selecione apenas despesas do mesmo recebedor para uma transferência."
+        );
+      }
+    }
+    const btn = this.$("#salvar");
+    if (btn) btn.disabled = !ok;
   }
 
   async salvar() {
     const alocacoes = this._alocacoes();
     if (!alocacoes.length) {
       notificarErro(new Error("Selecione ao menos uma despesa e informe o valor."));
+      return;
+    }
+    if (!this._recebedorUniforme()) {
+      notificarErro(new Error("Todos os recebedores e a empresa devem ser os mesmos para uma transferência."));
       return;
     }
     const pagador = this.$("#pagador").value || "";
@@ -177,17 +227,16 @@ class PagamentoForm extends BaseElement {
       return;
     }
     this.$("#data").removeAttribute("error");
+    const tipo = this.$("#tipo").value || "dinheiro";
 
     const obraId = (this.obra || {}).id;
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");
     try {
-      // 1 pagamento por despesa — o recebedor/empresa são derivados de cada despesa
-      // (ofertante/fornecedor) no servidor. Quem paga e a data são comuns.
-      for (const a of alocacoes) {
-        await dataStore.lancarPagamento(obraId, a.despesa_id, { valor: a.valor, pagador, data: dataPg });
-      }
-      toastSucesso(`${alocacoes.length} pagamento(s) registrado(s).`);
+      // 1 ÚNICA transferência agrupando N pagamentos (1 por despesa). Recebedor/empresa
+      // derivados de cada despesa no servidor; pagador/tipo/data são comuns.
+      await dataStore.lancarTransferencia({ obra_id: obraId, alocacoes, pagador, tipo, data: dataPg });
+      toastSucesso(`Transferência registrada (${alocacoes.length} pagamento(s)).`);
       this.emitir("salvo", {});
       this.emitir("fechar");
     } catch (e) {

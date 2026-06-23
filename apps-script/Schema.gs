@@ -311,6 +311,31 @@ const SCHEMA = {
       "atualizado_em",
       "editor_nome",
       "origem_leva_id", // id da leva embutida de origem (idempotência da migração)
+      "transferencia_id", // (append) FK → Transferencias.id — todo pagamento pertence a 1 transferência
+      "tipo", // (append) forma: dinheiro | crédito | débito | boleto (espelha a transferência)
+    ],
+  },
+
+  TRANSFERENCIAS: {
+    aba: "Transferencias", // 1 transferência agrupa N pagamentos (mesmo recebedor/empresa/obra/pagador)
+    colunas: [
+      "id",
+      "usuario_id",
+      "obra_id", // FK → Obras.id (mesma de todos os pagamentos)
+      "data", // = data dos pagamentos
+      "valor_total", // Σ valor dos pagamentos
+      "tipo", // dinheiro | crédito | débito | boleto
+      "recebedor_contato_id", // FK → Contatos.id (XOR equipe) — o MESMO de todos os pagamentos
+      "recebedor_equipe_id", // FK → Equipes.id (XOR contato)
+      "fornecedor_id", // FK → Fornecedores.id (empresa que recebe; "" p/ equipe)
+      "pagador_chave", // participante que pagou ("c:"/"u:"/"e:") — o MESMO de todos
+      "pagador_contato_id", // FK → Contatos.id (quando o pagador é contato)
+      "pagamento_ids", // JSON [pagamento_id, ...] — os N pagamentos desta transferência
+      "observacao",
+      "criado_em",
+      "autor_nome",
+      "atualizado_em",
+      "editor_nome",
     ],
   },
 
@@ -354,6 +379,9 @@ const STATUS_OBRA = ["ativa", "pausada", "concluida"];
 
 /** Status de cotação válidos. */
 const STATUS_COTACAO = ["aberta", "fechada"];
+
+/** Formas de transferência/pagamento válidas. */
+const TIPOS_TRANSFERENCIA = ["dinheiro", "crédito", "débito", "boleto"];
 
 /** Classificações de item (fixas). Toda despesa/item é Material ou Serviço. */
 const CLASSIFICACOES_ITEM = ["Material", "Serviço"];

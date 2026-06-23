@@ -37,6 +37,7 @@ import "./obra-share-form.js";
 import "./obra-participantes.js";
 import "../pagamentos/pagamento-form.js";
 import "../pagamentos/repasse-form.js";
+import { abrirTransferencia, nomeTipo } from "../pagamentos/pagamento-util.js";
 
 class ObraDetailView extends BaseElement {
   constructor() {
@@ -131,15 +132,25 @@ class ObraDetailView extends BaseElement {
           </ui-card>
         </div>
         <div slot="pagamentos">
-          <ui-card title="Pagamentos da obra">
-            <ui-button slot="acoes" id="addPag">+ Registrar pagamento</ui-button>
-            <ui-data-table id="tabPag" fluido
-              empty-text="Nenhum pagamento registrado nesta obra."></ui-data-table>
-          </ui-card>
-          <ui-card title="Repasses">
-            <ui-data-table id="tabRep" fluido
-              empty-text="Nenhum repasse registrado."></ui-data-table>
-          </ui-card>
+          <ui-tabs id="abasPag">
+            <div slot="transferencias">
+              <ui-card title="Transferências da obra">
+                <ui-button slot="acoes" id="addPag">+ Registrar transferência</ui-button>
+                <ui-data-table id="tabTransf" fluido clicavel
+                  empty-text="Nenhuma transferência registrada nesta obra."></ui-data-table>
+              </ui-card>
+            </div>
+            <div slot="pagamentos">
+              <ui-card title="Pagamentos da obra">
+                <ui-data-table id="tabPag" fluido
+                  empty-text="Nenhum pagamento registrado nesta obra."></ui-data-table>
+              </ui-card>
+              <ui-card title="Repasses">
+                <ui-data-table id="tabRep" fluido
+                  empty-text="Nenhum repasse registrado."></ui-data-table>
+              </ui-card>
+            </div>
+          </ui-tabs>
         </div>
       </ui-tabs>
     `;
@@ -151,8 +162,14 @@ class ObraDetailView extends BaseElement {
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
       { id: "equipes", rotulo: "Equipes", icone: "usuario" },
       { id: "fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
-      { id: "pagamentos", rotulo: "Pagamentos", icone: "cifrao" },
+      { id: "pagamentos", rotulo: "Transferência", icone: "cifrao" },
     ];
+    const abasPag = alvo.querySelector("#abasPag");
+    if (abasPag)
+      abasPag.abas = [
+        { id: "transferencias", rotulo: "Transferências", icone: "cifrao" },
+        { id: "pagamentos", rotulo: "Pagamentos", icone: "recibo" },
+      ];
     this._gradeOrc = alvo.querySelector("#gradeOrc");
     this._gradeEquipes = alvo.querySelector("#gradeEquipes");
     this._tabForn = alvo.querySelector("#tabForn");
@@ -173,10 +190,24 @@ class ObraDetailView extends BaseElement {
     this._tabela.addEventListener("excluir-massa", (e) => this.removerMassa(e.detail.despesas));
     this._tabela.addEventListener("acao-massa", (e) => this.acaoMassa(e.detail.acao, e.detail.despesas));
 
-    // Aba Pagamentos.
+    // Aba Transferência → sub-abas [Transferências | Pagamentos].
+    this._tabTransf = alvo.querySelector("#tabTransf");
     this._tabPag = alvo.querySelector("#tabPag");
     this._tabRep = alvo.querySelector("#tabRep");
     alvo.querySelector("#addPag").addEventListener("click", () => this.abrirPagamentoForm());
+    this._tabTransf.acoes = [{ nome: "remover", rotulo: "Excluir", variant: "perigo" }];
+    this._tabTransf.columns = [
+      { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
+      { chave: "valor_total", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "tipo", titulo: "Tipo", formato: (v) => nomeTipo(v) },
+      { chave: "pagador_chave", titulo: "Pagou", formato: (v) => this._nomeChave(v) },
+      { chave: "_recebedor", titulo: "Recebedor", formato: (_, l) => this._nomeRecebedor(l) },
+      { chave: "pagamento_ids", titulo: "Pagamentos", alinhar: "dir", formato: (v) => String((v || []).length) },
+    ];
+    this._tabTransf.addEventListener("linha", (e) => abrirTransferencia(e.detail.linha));
+    this._tabTransf.addEventListener("acao", (e) => {
+      if (e.detail.acao === "remover") this.removerTransferenciaObra(e.detail.linha);
+    });
     this._tabPag.acoes = [
       { nome: "repassar", rotulo: "Repassar" },
       { nome: "remover", rotulo: "Excluir", variant: "perigo" },
@@ -235,6 +266,7 @@ class ObraDetailView extends BaseElement {
     // Pagamentos / Repasses da obra.
     this._mapaPart = {};
     dataStore.participantesDaObra(this.obraId).forEach((p) => (this._mapaPart[p.chave] = p.nome));
+    if (this._tabTransf) this._tabTransf.rows = dataStore.transferenciasDaObra(this.obraId);
     if (this._tabPag) this._tabPag.rows = dataStore.pagamentosDaObra(this.obraId);
     if (this._tabRep)
       this._tabRep.rows = dataStore
@@ -352,6 +384,18 @@ class ObraDetailView extends BaseElement {
     try {
       await dataStore.excluirPagamento(pagamento); // entidade ou leva embutida
       toastSucesso("Pagamento excluído.");
+    } catch (e) {
+      notificarErro(e);
+    }
+  }
+
+  async removerTransferenciaObra(transferencia) {
+    const n = (transferencia.pagamento_ids || []).length;
+    if (!confirm(`Excluir esta transferência? ${n} pagamento(s) serão excluídos e as despesas voltam a ficar em aberto.`))
+      return;
+    try {
+      await dataStore.excluirTransferencia(transferencia); // cascata: pagamentos + repasses
+      toastSucesso("Transferência excluída.");
     } catch (e) {
       notificarErro(e);
     }
