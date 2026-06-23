@@ -105,18 +105,19 @@ recolher) e as cores no troca de tema (efeito "bugado").
 `--cor-mesa`** < card `--cor-superficie`. Ou seja, a mesa é **mais clara que o fundo e
 mais escura que o card** (claro: #f3f5f8 < #f8fafc < #fff; escuro: #0b1220 < #0e1727 < #111c2e).
 **Mesa** = container que segura os cards (tabela ou grade). É o `ui-card` com o atributo
-**`mesa`**: corpo em `--cor-mesa` + sombra **`--sombra-mesa`** (elevação moderna que a
-separa do fundo) + borda `--cor-borda-forte`. **A mesa NÃO levanta** no hover.
-Formulários/KPIs usam `ui-card` sem `mesa`.
+**`mesa`**: o card inteiro (**incluindo o título**) em `--cor-mesa` + sombra
+**`--sombra-mesa`** (elevação moderna que a separa do fundo) + borda `--cor-borda-forte`.
+**A mesa NÃO levanta** no hover. Formulários/KPIs usam `ui-card` sem `mesa`.
 **Card** (clicável) = obra/equipe/orçamento, pagamento/transferência/oferta (`.resumo`) e
 **cada linha** das tabelas. Espec única de elevação: base `--sombra-md`, hover
 `box-shadow: var(--sombra-lg); transform: translateY(-4px)` (transição escopada). **KPIs
 coloridos não são clicáveis → não levantam.**
 **Linha-card** (`ui-data-table`): `border-collapse: separate; border-spacing: 0 var(--esp-2)`;
-cada linha é um card branco (`--sombra-sm`→hover `translateY(-2px)`+`--sombra-md`). Os
-**tópicos (thead), a linha de soma (tfoot) e a coluna de marcação (.sel)** usam `--cor-mesa`
-(parte da mesa, não cards). A **coluna de marcação fica SEPARADA do card**: ela não
-arredonda; o card branco começa na 1ª coluna de DADOS (`td.sel + td` recebe o raio à esquerda).
+as **células de dados** formam um card branco com **contorno** (`border 1px --cor-borda`,
+como o card de obra) que **levanta no hover** (`translateY(-2px)`+`--sombra-md`). Os
+**tópicos (thead), a linha de soma (tfoot, SEM divisória) e a coluna de marcação (.sel)**
+usam `--cor-mesa` (parte da mesa, não cards). A **coluna de marcação fica SEPARADA e NÃO
+anima**: o hover-levanta é em `td:not(.sel)` (só o card sobe; a marcação fica parada).
 
 ## Breakpoints (proporcionalidade)
 Convenção (CSS não aceita `var()` em `@media`): **sm 600 · md 900 · lg 1100**.

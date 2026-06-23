@@ -165,16 +165,19 @@ class UiDataTable extends BaseElement {
         font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
       /* Tópicos (cabeçalho) sticky na cor da MESA — os vãos mostram a mesa, não branco. */
       thead th { position: sticky; top: 0; z-index: 3; background: var(--cor-mesa); }
-      /* LINHA-CARD: fundo branco, cantos arredondados, sombra + elevação no hover. A
-         coluna de marcação (.sel) fica SEPARADA do card (cor da mesa, sem arredondar):
-         o card começa na 1ª coluna de DADOS (após a sel, quando houver). */
-      tbody td { background: var(--cor-superficie); }
-      tbody td.sel { background: var(--cor-mesa); box-shadow: none; }
-      tbody tr td:first-child:not(.sel) { border-top-left-radius: var(--raio-sm); border-bottom-left-radius: var(--raio-sm); }
-      tbody tr td.sel + td { border-top-left-radius: var(--raio-sm); border-bottom-left-radius: var(--raio-sm); }
-      tbody tr td:last-child { border-top-right-radius: var(--raio-sm); border-bottom-right-radius: var(--raio-sm); }
-      tbody tr { box-shadow: var(--sombra-sm); transition: transform var(--transicao), box-shadow var(--transicao); }
-      tbody tr:hover { transform: translateY(-2px); box-shadow: var(--sombra-md); }
+      /* LINHA-CARD: as células de DADOS formam um card branco com CONTORNO (como o card
+         de obra), cantos arredondados e elevação no hover. A coluna de marcação (.sel)
+         NÃO faz parte do card e NÃO anima — fica parada, na cor da mesa. */
+      tbody td { background: var(--cor-superficie);
+        border-top: 1px solid var(--cor-borda); border-bottom: 1px solid var(--cor-borda);
+        transition: transform var(--transicao), box-shadow var(--transicao); }
+      tbody td.sel { background: var(--cor-mesa); border: none; transition: none; }
+      tbody tr td:first-child:not(.sel),
+      tbody tr td.sel + td { border-left: 1px solid var(--cor-borda);
+        border-top-left-radius: var(--raio-sm); border-bottom-left-radius: var(--raio-sm); }
+      tbody tr td:last-child { border-right: 1px solid var(--cor-borda);
+        border-top-right-radius: var(--raio-sm); border-bottom-right-radius: var(--raio-sm); }
+      tbody tr:hover td:not(.sel) { transform: translateY(-2px); box-shadow: var(--sombra-md); }
       .dir { text-align: right; }
       td.dir { font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
       /* Coluna de marcação (seleção): fixa à esquerda, na cor da MESA (separada do card). */
@@ -193,10 +196,9 @@ class UiDataTable extends BaseElement {
         border-radius: var(--raio-sm); padding: 4px 10px; font-size: var(--fs-xs); color: var(--cor-texto-suave); }
       .btn-acao:hover { background: var(--cor-superficie-2); }
       .btn-acao.perigo { color: var(--cor-erro); border-color: var(--cor-erro-suave); }
-      /* Linha de SOMA (totais): fixa na base, na cor da MESA (não é um card branco). */
+      /* Linha de SOMA (totais): fixa na base, na cor da MESA — SEM divisória (parte da mesa). */
       tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--cor-mesa);
-        border-top: 2px solid var(--cor-borda-forte); font-family: var(--fonte-titulo);
-        font-weight: var(--peso-forte); }
+        font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
       tfoot td.sel { z-index: 3; }
       tfoot .rotulo { font-family: var(--fonte-base); font-weight: var(--peso-semi);
         color: var(--cor-texto-suave); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }

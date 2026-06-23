@@ -37,10 +37,10 @@ class UiCard extends BaseElement {
       /* ações: alinhadas à direita; busca (se houver) fica à ESQUERDA do botão. */
       header > div { flex: none; display: flex; align-items: center; gap: var(--esp-2); }
       .corpo { padding: var(--esp-5); flex: 1; min-height: 0; }
-      /* MESA: corpo na cor da mesa (entre o fundo e o card) + sombra moderna que a
-         separa do fundo. A mesa NÃO levanta — só os cards/linhas sobre ela. */
-      :host([mesa]) .corpo { background: var(--cor-mesa); }
-      :host([mesa]) .card { box-shadow: var(--sombra-mesa); border-color: var(--cor-borda-forte); }
+      /* MESA: card inteiro (incluindo o TÍTULO) na cor da mesa — entre o fundo e o card —
+         + sombra moderna que a separa do fundo. A mesa NÃO levanta; só os cards/linhas
+         sobre ela. */
+      :host([mesa]) .card { background: var(--cor-mesa); box-shadow: var(--sombra-mesa); border-color: var(--cor-borda-forte); }
       .rodape { padding: var(--esp-4) var(--esp-5); border-top: 1px solid var(--cor-borda); }
       ::slotted([slot="rodape"]) { display: block; }
       slot[name="rodape"]:not(:empty) { display: block; }
