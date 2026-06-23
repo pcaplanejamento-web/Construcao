@@ -224,12 +224,16 @@ class ObraDetailView extends BaseElement {
       if (e.detail.acao === "repassar") this.abrirRepasseForm(e.detail.linha);
       else this.removerPagamentoObra(e.detail.linha);
     });
+    this._tabRep.acoes = [{ nome: "remover", rotulo: "Excluir", variant: "perigo" }];
     this._tabRep.columns = [
       { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
       { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
       { chave: "recebedor_contato_id", titulo: "De", formato: (v) => this._nomeContato(v) },
       { chave: "contatos_repassados", titulo: "Para", formato: (v) => (v || []).map((c) => this._nomeContato(c)).join(", ") || "—" },
     ];
+    this._tabRep.addEventListener("acao", (e) => {
+      if (e.detail.acao === "remover") this.removerRepasseObra(e.detail.linha);
+    });
 
     this._montado = true;
   }
@@ -306,10 +310,20 @@ class ObraDetailView extends BaseElement {
     document.body.appendChild(form);
   }
 
+  /** Re-resolve as despesas selecionadas para a versão VIVA do store (por id). A
+   * tabela guarda a seleção por referência de objeto; após uma mutação (pagar/excluir),
+   * o objeto na seleção pode ficar DESATUALIZADO. Agir sempre sobre o estado atual evita
+   * falsos "já quitada"/"já tem pagamento" (restoDespesa lê pagamentos_realizados do objeto). */
+  _frescas(despesas) {
+    const porId = new Map(dataStore.despesas(this.obraId).map((d) => [String(d.id), d]));
+    return (despesas || []).map((d) => porId.get(String((d || {}).id)) || d);
+  }
+
   /** Ações em massa sobre as despesas selecionadas (vindas da tabela). */
   acaoMassa(acao, despesas) {
-    if (acao === "pagar") this.pagarMassa(despesas);
-    else if (acao === "responsavel") this.responsabilidadeMassa(despesas);
+    const frescas = this._frescas(despesas);
+    if (acao === "pagar") this.pagarMassa(frescas);
+    else if (acao === "responsavel") this.responsabilidadeMassa(frescas);
   }
 
   /** Lançar pagamento nas selecionadas — ignora as já QUITADAS (sem saldo a pagar).
@@ -381,6 +395,25 @@ class ObraDetailView extends BaseElement {
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", fechar);
     document.body.appendChild(form);
+  }
+
+  /** Excluir um repasse (da tabela de Repasses da obra) — desfaz o vínculo, volta ao
+   * estado original. Mesmo texto/aviso do banner do pagamento. */
+  async removerRepasseObra(repasse) {
+    if (!repasse) return;
+    const ok = await confirmar({
+      titulo: "Excluir repasse",
+      mensagem: "Excluir este repasse? O vínculo é desfeito (volta ao estado original).",
+      perigo: true,
+      rotuloOk: "Excluir",
+    });
+    if (!ok) return;
+    try {
+      await dataStore.removerRepasse(repasse.id);
+      toastSucesso("Repasse excluído.");
+    } catch (e) {
+      notificarErro(e);
+    }
   }
 
   async removerPagamentoObra(pagamento) {
@@ -542,7 +575,7 @@ class ObraDetailView extends BaseElement {
 
   /** Exclusão em massa (a tabela já confirmou) — remove cada selecionada. */
   async removerMassa(despesas) {
-    const lista = despesas || [];
+    const lista = this._frescas(despesas);
     const comPag = lista.filter((d) => dataStore.despesaTemPagamento(d));
     if (comPag.length) {
       await avisar({
