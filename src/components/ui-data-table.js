@@ -194,14 +194,16 @@ class UiDataTable extends BaseElement {
       /* Quando há coluna de marcação, a sombra começa na borda esquerda do card (36px) e o
          clip-path corta o "vazamento" horizontal da sombra EXATAMENTE nessa borda (left:0),
          deixando a sombra nos demais lados — assim a lateral fica alinhada e a marcação limpa. */
-      :host([tem-selecao]) tbody tr::after { left: 36px; clip-path: inset(-24px -24px -24px 0); }
+      :host([tem-selecao]) tbody tr::after { left: 2.5rem; clip-path: inset(-24px -24px -24px 0); }
       /* a sombra (pseudo) sobe o MESMO tanto que o contorno (células) — ficam alinhados. */
       tbody tr:hover::after { box-shadow: var(--sombra-realce); transform: translateY(-4px); }
       .dir { text-align: right; }
       td.dir { font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
-      /* Coluna de marcação (seleção): fixa à esquerda, na cor da MESA (separada do card). */
-      .sel { width: 36px; text-align: center; position: sticky; left: 0;
-        background: var(--cor-mesa); z-index: 2; }
+      /* Coluna de marcacao (selecao): largura FIXA (2.5rem = 40px) e na cor da MESA.
+         NAO e mais sticky — a linha inteira rola como UMA peca (marcacao + card + conteudo
+         juntos), entao a sombra/contorno nunca desalinham na rolagem horizontal. */
+      .sel { width: 2.5rem; min-width: 2.5rem; max-width: 2.5rem; text-align: center;
+        background: var(--cor-mesa); }
       thead th.sel { z-index: 6; background: var(--cor-mesa); }
       input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cor-primaria); cursor: pointer; }
       .th-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none;
