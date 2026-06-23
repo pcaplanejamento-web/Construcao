@@ -163,20 +163,24 @@ class UiDataTable extends BaseElement {
       :host([clicavel]) tbody tr { cursor: pointer; }
       th { color: var(--cor-texto-fraco); font-weight: var(--peso-semi);
         font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
-      /* cabeçalho sticky na cor da MESA (os vãos entre os cards mostram a mesa, não branco). */
-      thead th { position: sticky; top: 0; z-index: 3; background: var(--cor-fundo); }
-      /* LINHA-CARD: fundo branco, cantos arredondados nas pontas, sombra + elevação no hover. */
+      /* Tópicos (cabeçalho) sticky na cor da MESA — os vãos mostram a mesa, não branco. */
+      thead th { position: sticky; top: 0; z-index: 3; background: var(--cor-mesa); }
+      /* LINHA-CARD: fundo branco, cantos arredondados, sombra + elevação no hover. A
+         coluna de marcação (.sel) fica SEPARADA do card (cor da mesa, sem arredondar):
+         o card começa na 1ª coluna de DADOS (após a sel, quando houver). */
       tbody td { background: var(--cor-superficie); }
-      tbody tr td:first-child { border-top-left-radius: var(--raio-sm); border-bottom-left-radius: var(--raio-sm); }
+      tbody td.sel { background: var(--cor-mesa); box-shadow: none; }
+      tbody tr td:first-child:not(.sel) { border-top-left-radius: var(--raio-sm); border-bottom-left-radius: var(--raio-sm); }
+      tbody tr td.sel + td { border-top-left-radius: var(--raio-sm); border-bottom-left-radius: var(--raio-sm); }
       tbody tr td:last-child { border-top-right-radius: var(--raio-sm); border-bottom-right-radius: var(--raio-sm); }
       tbody tr { box-shadow: var(--sombra-sm); transition: transform var(--transicao), box-shadow var(--transicao); }
       tbody tr:hover { transform: translateY(-2px); box-shadow: var(--sombra-md); }
       .dir { text-align: right; }
       td.dir { font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
-      /* Coluna inicial de seleção: fixa à esquerda. */
+      /* Coluna de marcação (seleção): fixa à esquerda, na cor da MESA (separada do card). */
       .sel { width: 36px; text-align: center; position: sticky; left: 0;
-        background: var(--cor-superficie); z-index: 2; }
-      thead th.sel { z-index: 4; background: var(--cor-fundo); }
+        background: var(--cor-mesa); z-index: 2; }
+      thead th.sel { z-index: 4; background: var(--cor-mesa); }
       input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cor-primaria); cursor: pointer; }
       .th-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none;
         font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
@@ -189,9 +193,9 @@ class UiDataTable extends BaseElement {
         border-radius: var(--raio-sm); padding: 4px 10px; font-size: var(--fs-xs); color: var(--cor-texto-suave); }
       .btn-acao:hover { background: var(--cor-superficie-2); }
       .btn-acao.perigo { color: var(--cor-erro); border-color: var(--cor-erro-suave); }
-      /* Linha de TOTAIS: fixa na base da área da tabela. */
-      tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--cor-superficie);
-        border-top: 2px solid var(--cor-borda); font-family: var(--fonte-titulo);
+      /* Linha de SOMA (totais): fixa na base, na cor da MESA (não é um card branco). */
+      tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--cor-mesa);
+        border-top: 2px solid var(--cor-borda-forte); font-family: var(--fonte-titulo);
         font-weight: var(--peso-forte); }
       tfoot td.sel { z-index: 3; }
       tfoot .rotulo { font-family: var(--fonte-base); font-weight: var(--peso-semi);

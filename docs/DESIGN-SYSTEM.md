@@ -94,23 +94,29 @@ espaçamento (24px) acima e abaixo** automaticamente, sem `margin` avulso.
 ## Raio, sombra, camadas
 `--raio-sm`(8) `--raio-md`(12, botões/inputs) `--raio-lg`(20, cards) `--raio-completo`(999);
 `--sombra-sm/md/lg` (tonalizadas no escuro). **Card** usa `--sombra-md` (duas camadas:
-contorno suave + halo difuso). `--z-nav/modal/toast`; transição padrão `--transicao`.
+contorno suave + halo difuso). **Mesa** usa `--sombra-mesa` (elevação moderna) sobre
+`--cor-mesa` (superfície entre o fundo e o card). `--z-nav/modal/toast`; transição padrão `--transicao`.
 **Transições sempre escopadas** às propriedades animadas (ex.: `transition: box-shadow, transform`)
 — **nunca `transition: all`**, senão o card anima largura no reflow (sidebar
 recolher) e as cores no troca de tema (efeito "bugado").
 
 ## Mesa + cards (sistema baseado em cards)
+**Camadas (do mais escuro ao mais claro):** fundo do sistema `--cor-fundo` < **mesa
+`--cor-mesa`** < card `--cor-superficie`. Ou seja, a mesa é **mais clara que o fundo e
+mais escura que o card** (claro: #f3f5f8 < #f8fafc < #fff; escuro: #0b1220 < #0e1727 < #111c2e).
 **Mesa** = container que segura os cards (tabela ou grade). É o `ui-card` com o atributo
-**`mesa`**: corpo recuado (`--cor-fundo`, "menos branco") p/ os cards brancos se
-destacarem. **A mesa NÃO levanta** no hover. Formulários/KPIs usam `ui-card` sem `mesa`.
+**`mesa`**: corpo em `--cor-mesa` + sombra **`--sombra-mesa`** (elevação moderna que a
+separa do fundo) + borda `--cor-borda-forte`. **A mesa NÃO levanta** no hover.
+Formulários/KPIs usam `ui-card` sem `mesa`.
 **Card** (clicável) = obra/equipe/orçamento, pagamento/transferência/oferta (`.resumo`) e
 **cada linha** das tabelas. Espec única de elevação: base `--sombra-md`, hover
-`box-shadow: var(--sombra-lg); transform: translateY(-4px)` (transição escopada). Os
-**KPIs coloridos não são clicáveis → não levantam**.
+`box-shadow: var(--sombra-lg); transform: translateY(-4px)` (transição escopada). **KPIs
+coloridos não são clicáveis → não levantam.**
 **Linha-card** (`ui-data-table`): `border-collapse: separate; border-spacing: 0 var(--esp-2)`;
-cada linha é um card branco (cantos arredondados nas pontas via `td:first/last-child`),
-`--sombra-sm` em repouso e `translateY(-2px)`+`--sombra-md` no hover; cabeçalho/totais/
-coluna-de-seleção sticky usam `--cor-fundo` (cor da mesa) p/ os vãos não "vazarem" branco.
+cada linha é um card branco (`--sombra-sm`→hover `translateY(-2px)`+`--sombra-md`). Os
+**tópicos (thead), a linha de soma (tfoot) e a coluna de marcação (.sel)** usam `--cor-mesa`
+(parte da mesa, não cards). A **coluna de marcação fica SEPARADA do card**: ela não
+arredonda; o card branco começa na 1ª coluna de DADOS (`td.sel + td` recebe o raio à esquerda).
 
 ## Breakpoints (proporcionalidade)
 Convenção (CSS não aceita `var()` em `@media`): **sm 600 · md 900 · lg 1100**.

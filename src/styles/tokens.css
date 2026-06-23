@@ -42,6 +42,9 @@
   --cor-fundo: #f3f5f8;
   --cor-superficie: #ffffff;
   --cor-superficie-2: #f8fafc;
+  /* MESA: superfície dos containers de tabela/grade — mais clara que o fundo do
+     sistema e mais escura que o card branco (os cards "flutuam" sobre ela). */
+  --cor-mesa: #f8fafc;
   --cor-borda: #eef1f4;
   --cor-borda-forte: #e2e8f0;
   --cor-divisor: #f1f5f9; /* linhas internas (tabelas) */
@@ -94,6 +97,8 @@
   --sombra-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
   --sombra-md: 0 1px 2px rgba(16, 24, 40, 0.04), 0 14px 30px -22px rgba(16, 24, 40, 0.18);
   --sombra-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
+  /* MESA: elevação moderna (contorno nítido + halo difuso) que separa a mesa do fundo. */
+  --sombra-mesa: 0 1px 3px rgba(16, 24, 40, 0.06), 0 18px 40px -16px rgba(16, 24, 40, 0.22);
 
   /* Camadas (z-index) */
   --z-nav: 100;
@@ -123,6 +128,7 @@
     --cor-fundo: #0b1220;
     --cor-superficie: #111c2e;
     --cor-superficie-2: #1b2840;
+    --cor-mesa: #0e1727; /* entre o fundo (#0b1220) e o card (#111c2e) */
     --cor-borda: #2a3a55;
     --cor-borda-forte: #3a4d6e;
     --cor-divisor: #1e2c44;
@@ -134,6 +140,7 @@
     --sombra-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.45);
     --sombra-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+    --sombra-mesa: 0 1px 3px rgba(0, 0, 0, 0.5), 0 18px 42px -14px rgba(0, 0, 0, 0.65);
     color-scheme: dark;
   }
 }
@@ -152,6 +159,7 @@
   --cor-fundo: #0b1220;
   --cor-superficie: #111c2e;
   --cor-superficie-2: #1b2840;
+  --cor-mesa: #0e1727; /* entre o fundo (#0b1220) e o card (#111c2e) */
   --cor-borda: #2a3a55;
   --cor-borda-forte: #3a4d6e;
   --cor-texto: #e9eef5;
@@ -162,5 +170,6 @@
   --sombra-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.45);
   --sombra-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --sombra-mesa: 0 1px 3px rgba(0, 0, 0, 0.5), 0 18px 42px -14px rgba(0, 0, 0, 0.65);
   color-scheme: dark;
 }
