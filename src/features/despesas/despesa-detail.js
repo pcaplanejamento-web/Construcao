@@ -259,18 +259,30 @@ class DespesaDetail extends BaseElement {
   pintarLancamentos() {
     const cont = this.$("#listaPag");
     if (!cont) return;
-    const pags = dataStore.pagamentosDaDespesa(this.despesa.id);
     cont.innerHTML = "";
-    if (!pags.length) cont.innerHTML = `<p class="muted">Nenhum pagamento lançado.</p>`;
-    pags.forEach((p) => {
+    // Fonte 1: pagamentos (entidade) que cobrem a despesa. Fonte 2 (fallback p/ o
+    // backend atual, sem a entidade): as levas embutidas em pagamentos_realizados.
+    // Em ambos os casos é possível EXCLUIR — e a exclusão desvincula a despesa.
+    const pags = dataStore.pagamentosDaDespesa(this.despesa.id);
+    let cards;
+    if (pags.length) {
+      cards = pags.map((p) => ({ pg: p, del: () => this.removerPagamentoCard(p.id) }));
+    } else {
+      cards = parseLista(this.despesa.pagamentos_realizados).map((lv) => ({
+        pg: this._levaComoPagamento(lv),
+        del: () => this.removerLancamento(lv.id),
+      }));
+    }
+    if (!cards.length) cont.innerHTML = `<p class="muted">Nenhum pagamento lançado.</p>`;
+    cards.forEach(({ pg, del }) => {
       // Card de pagamento (esverdeado), clicável → banner com os dados completos.
       const card = document.createElement("div");
       card.className = "resumo pag clicavel";
       card.title = "Ver detalhes do pagamento";
-      card.innerHTML = previaPagamentoHtml(p);
+      card.innerHTML = previaPagamentoHtml(pg);
       card.addEventListener("click", (e) => {
         if (e.target.closest(".rem")) return;
-        abrirPagamento(p);
+        abrirPagamento(pg);
       });
       const btn = document.createElement("button");
       btn.type = "button";
@@ -279,15 +291,47 @@ class DespesaDetail extends BaseElement {
       btn.title = "Excluir pagamento";
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.removerPagamentoCard(p.id);
+        del();
       });
       card.appendChild(btn);
       cont.appendChild(card);
     });
     // Regra: não dá p/ lançar em despesa que já tem pagamento — exclua antes.
-    const tem = pags.length > 0;
+    const tem = cards.length > 0;
     if (this.$("#lancarBox")) this.$("#lancarBox").hidden = tem;
     if (this.$("#pagAviso")) this.$("#pagAviso").hidden = !tem;
+  }
+
+  /** Converte uma leva embutida num objeto compatível com previaPagamentoHtml/abrirPagamento. */
+  _levaComoPagamento(lv) {
+    const d = this.despesa;
+    return {
+      id: lv.id,
+      obra_id: d.obra_id,
+      data: lv.data,
+      valor: Number(lv.valor) || 0,
+      pagador_chave: lv.pagador || "",
+      pagador_contato_id: String(lv.pagador || "").indexOf("c:") === 0 ? String(lv.pagador).slice(2) : "",
+      recebedor_contato_id: lv.contato_id || d.ofertante_contato_id || "",
+      recebedor_equipe_id: d.ofertante_equipe_id || "",
+      fornecedor_id: lv.fornecedor_id || "",
+      alocacoes: [{ despesa_id: d.id, valor: Number(lv.valor) || 0 }],
+      distribuicao: parseLista(lv.distribuicao),
+    };
+  }
+
+  /** Exclui uma LEVA embutida (modelo atual) — desvincula da despesa. */
+  async removerLancamento(lancamentoId) {
+    if (!confirm("Excluir este pagamento? A despesa volta ao estado anterior, sem pagamento.")) return;
+    try {
+      const atualizada = await dataStore.removerPagamento(this.despesa.obra_id, this.despesa.id, lancamentoId);
+      this._despesa = atualizada;
+      this.atualizarStatusPag();
+      this.pintarLancamentos();
+      toastSucesso("Pagamento excluído.");
+    } catch (e) {
+      notificarErro(e);
+    }
   }
 
   async lancarPagamento() {
