@@ -10,7 +10,7 @@ import { rotuloVoltar } from "../../core/router.js";
 import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { moeda } from "../../core/formatters.js";
+import { moeda, data as fmtData } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { balancos } from "../despesas/despesa-split.js";
 import { avatarNomeHtml } from "../shared/avatar.js";
@@ -33,6 +33,8 @@ import "../despesas/despesa-detail.js";
 import "./obra-form.js";
 import "./obra-share-form.js";
 import "./obra-participantes.js";
+import "../pagamentos/pagamento-form.js";
+import "../pagamentos/repasse-form.js";
 
 class ObraDetailView extends BaseElement {
   constructor() {
@@ -126,6 +128,17 @@ class ObraDetailView extends BaseElement {
               empty-text="Nenhum fornecedor usado nesta obra ainda."></ui-data-table>
           </ui-card>
         </div>
+        <div slot="pagamentos">
+          <ui-card title="Pagamentos da obra">
+            <ui-button slot="acoes" id="addPag">+ Registrar pagamento</ui-button>
+            <ui-data-table id="tabPag" fluido
+              empty-text="Nenhum pagamento registrado nesta obra."></ui-data-table>
+          </ui-card>
+          <ui-card title="Repasses">
+            <ui-data-table id="tabRep" fluido
+              empty-text="Nenhum repasse registrado."></ui-data-table>
+          </ui-card>
+        </div>
       </ui-tabs>
     `;
     alvo.querySelector("#abas").abas = [
@@ -136,6 +149,7 @@ class ObraDetailView extends BaseElement {
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
       { id: "equipes", rotulo: "Equipes", icone: "usuario" },
       { id: "fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
+      { id: "pagamentos", rotulo: "Pagamentos", icone: "cifrao" },
     ];
     this._gradeOrc = alvo.querySelector("#gradeOrc");
     this._gradeEquipes = alvo.querySelector("#gradeEquipes");
@@ -155,6 +169,32 @@ class ObraDetailView extends BaseElement {
     this._tabela.addEventListener("editar", (e) => this.abrirBanner(e.detail.despesa));
     this._tabela.addEventListener("remover", (e) => this.remover(e.detail.despesa));
     this._tabela.addEventListener("excluir-massa", (e) => this.removerMassa(e.detail.despesas));
+
+    // Aba Pagamentos.
+    this._tabPag = alvo.querySelector("#tabPag");
+    this._tabRep = alvo.querySelector("#tabRep");
+    alvo.querySelector("#addPag").addEventListener("click", () => this.abrirPagamentoForm());
+    this._tabPag.acoes = [
+      { nome: "repassar", rotulo: "Repassar" },
+      { nome: "remover", rotulo: "Excluir", variant: "perigo" },
+    ];
+    this._tabPag.columns = [
+      { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
+      { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "pagador_chave", titulo: "Pagou", formato: (v) => this._nomeChave(v) },
+      { chave: "_recebedor", titulo: "Recebedor", formato: (_, l) => this._nomeRecebedor(l) },
+      { chave: "alocacoes", titulo: "Despesas", alinhar: "dir", formato: (v) => String((v || []).length) },
+    ];
+    this._tabPag.addEventListener("acao", (e) => {
+      if (e.detail.acao === "repassar") this.abrirRepasseForm(e.detail.linha);
+      else this.removerPagamentoObra(e.detail.linha);
+    });
+    this._tabRep.columns = [
+      { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
+      { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "recebedor_contato_id", titulo: "De", formato: (v) => this._nomeContato(v) },
+      { chave: "contatos_repassados", titulo: "Para", formato: (v) => (v || []).map((c) => this._nomeContato(c)).join(", ") || "—" },
+    ];
 
     this._montado = true;
   }
@@ -189,7 +229,63 @@ class ObraDetailView extends BaseElement {
     // Tabela recebe TODAS as despesas; busca (campo da tabela) e filtro de
     // Classificação (dropdown do tópico) acontecem dentro da própria tabela.
     this._tabela.despesas = despesas;
+    // Pagamentos / Repasses da obra.
+    this._mapaPart = {};
+    dataStore.participantesDaObra(this.obraId).forEach((p) => (this._mapaPart[p.chave] = p.nome));
+    if (this._tabPag) this._tabPag.rows = dataStore.pagamentosDaObra(this.obraId);
+    if (this._tabRep)
+      this._tabRep.rows = dataStore
+        .repasses()
+        .filter((r) => String(r.obra_id) === String(this.obraId));
     this.pintarTopo();
+  }
+
+  /* ----------------------- Pagamentos / Repasses ----------------------- */
+
+  _nomeContato(id) {
+    if (!id) return "—";
+    return (dataStore.contatos().find((c) => String(c.id) === String(id)) || {}).nome || "—";
+  }
+  /** Nome de uma chave de participante ("c:"/"e:"/"u:") ou contato direto. */
+  _nomeChave(chave) {
+    const s = String(chave || "");
+    if (this._mapaPart && this._mapaPart[s]) return this._mapaPart[s];
+    if (s.indexOf("c:") === 0) return this._nomeContato(s.slice(2));
+    if (s.indexOf("e:") === 0) return (dataStore.equipe(s.slice(2)) || {}).nome || "—";
+    return s || "—";
+  }
+  _nomeRecebedor(p) {
+    if (p.recebedor_equipe_id) return ((dataStore.equipe(p.recebedor_equipe_id) || {}).nome || "—") + " (grupo)";
+    return this._nomeContato(p.recebedor_contato_id);
+  }
+
+  abrirPagamentoForm() {
+    const form = document.createElement("pagamento-form");
+    form.obra = this._obra;
+    const fechar = () => form.remove();
+    form.addEventListener("fechar", fechar);
+    form.addEventListener("salvo", fechar);
+    document.body.appendChild(form);
+  }
+
+  abrirRepasseForm(pagamento) {
+    const form = document.createElement("repasse-form");
+    form.pagamento = pagamento;
+    form.obra = this._obra;
+    const fechar = () => form.remove();
+    form.addEventListener("fechar", fechar);
+    form.addEventListener("salvo", fechar);
+    document.body.appendChild(form);
+  }
+
+  async removerPagamentoObra(pagamento) {
+    if (!confirm("Excluir este pagamento? As despesas cobertas voltam a ficar em aberto.")) return;
+    try {
+      await dataStore.removerPagamentoV2(pagamento.id);
+      toastSucesso("Pagamento excluído.");
+    } catch (e) {
+      notificarErro(e);
+    }
   }
 
   pintarTopo() {
