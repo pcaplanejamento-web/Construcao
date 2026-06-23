@@ -94,7 +94,12 @@ class DespesaDetail extends BaseElement {
       .lancamento { display: flex; align-items: center; gap: var(--esp-2);
         padding: var(--esp-2) 0; border-bottom: 1px solid var(--cor-borda); }
       .lc-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-      .lancar { display: flex; flex-direction: column; gap: var(--esp-3); margin-top: var(--esp-2); }
+      /* Form de lançar pagamento: caixa visualmente separada (recuada, com título). */
+      .lancar { display: flex; flex-direction: column; gap: var(--esp-3); margin-top: var(--esp-2);
+        border: 1px solid var(--cor-borda); border-radius: var(--raio-md); padding: var(--esp-4);
+        background: var(--cor-mesa); }
+      .lancar .titulo-lancar { font-size: var(--fs-sm); font-weight: var(--peso-semi);
+        color: var(--cor-texto-suave); }
       .rem { border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
         color: var(--cor-erro); border-radius: var(--raio-sm); width: 30px; height: 30px;
         flex: none; cursor: pointer; }
@@ -151,6 +156,7 @@ class DespesaDetail extends BaseElement {
             <div class="statuslinha" id="statusLinha"></div>
             <div class="pag-cards" id="listaPag"></div>
             <div class="lancar" id="lancarBox">
+              <label class="titulo-lancar">Lançar pagamento</label>
               <div class="linha">
                 <ui-select id="pagPagador" label="Quem pagou"></ui-select>
                 <ui-select id="pagTipo" label="Tipo"></ui-select>
