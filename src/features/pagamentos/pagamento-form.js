@@ -12,6 +12,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { restoDespesa } from "../despesas/despesa-split.js";
 import { ofertanteNome } from "../orcamentos/orcamento-util.js";
+import { integrantesDaEquipe } from "../equipes/equipe-util.js";
 import { nomeTipo } from "./pagamento-util.js";
 import { recebedorUniforme, totalAlocacoes } from "./transferencia-regra.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
@@ -20,6 +21,7 @@ import "../../components/ui-select.js";
 import "../../components/ui-input.js";
 import "../../components/ui-alert.js";
 import "../../components/ui-button.js";
+import "../despesas/split-editor.js";
 
 class PagamentoForm extends BaseElement {
   set obra(v) {
@@ -104,6 +106,10 @@ class PagamentoForm extends BaseElement {
             <ui-select id="tipo" label="Tipo"></ui-select>
             <ui-input id="data" label="Data" type="date"></ui-input>
           </div>
+          <div id="distBox" hidden>
+            <label class="tx">Distribuir entre integrantes (R$)</label>
+            <split-editor id="dist"></split-editor>
+          </div>
         </div>
         <div slot="rodape">
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
@@ -180,9 +186,34 @@ class PagamentoForm extends BaseElement {
     return recebedorUniforme(this._marcadas());
   }
 
+  /** Mostra a distribuição entre integrantes SÓ quando há 1 despesa marcada cujo
+   * recebedor é uma EQUIPE — mesmo critério da despesa e o único caso que o backend
+   * aplica (transferenciasLancar: alocacoes.length === 1 && recebedor_equipe_id). */
+  _atualizarDist() {
+    const box = this.$("#distBox");
+    const ed = this.$("#dist");
+    if (!box || !ed) return;
+    const marc = this._marcadas();
+    const unica = marc.length === 1 ? marc[0] : null;
+    const eqId = (unica && unica.ofertante_equipe_id) || "";
+    if (eqId) {
+      if (this._distEqId !== eqId) {
+        ed.modo = "valor";
+        ed.participantes = integrantesDaEquipe(eqId);
+        ed.itens = [];
+        this._distEqId = eqId;
+      }
+      box.hidden = false;
+    } else {
+      box.hidden = true;
+      this._distEqId = "";
+    }
+  }
+
   _recalcular() {
     const total = totalAlocacoes(this._alocacoes());
     if (this.$("#total")) this.$("#total").textContent = `Total: ${moeda(total)}`;
+    this._atualizarDist();
     // Pré-valida a homogeneidade do recebedor/empresa.
     const erro = this.$("#erroRec");
     const ok = this._recebedorUniforme();
@@ -226,13 +257,28 @@ class PagamentoForm extends BaseElement {
     this.$("#data").removeAttribute("error");
     const tipo = this.$("#tipo").value || "dinheiro";
 
+    // Distribuição entre integrantes (só ativa p/ 1 despesa de equipe — vide _atualizarDist).
+    let distribuicao = [];
+    const distBox = this.$("#distBox");
+    if (distBox && !distBox.hidden) {
+      distribuicao = this.$("#dist").itens
+        .filter((x) => x.chave && Number(x.valor) > 0)
+        .map((x) => ({ chave: x.chave, valor: Number(x.valor) || 0 }));
+      const somaDist = distribuicao.reduce((s, x) => s + x.valor, 0);
+      const total = totalAlocacoes(alocacoes);
+      if (somaDist - total > 0.01) {
+        notificarErro(new Error(`A distribuição (${moeda(somaDist)}) passa do valor total (${moeda(total)}).`));
+        return;
+      }
+    }
+
     const obraId = (this.obra || {}).id;
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");
     try {
       // 1 ÚNICA transferência agrupando N pagamentos (1 por despesa). Recebedor/empresa
       // derivados de cada despesa no servidor; pagador/tipo/data são comuns.
-      await dataStore.lancarTransferencia({ obra_id: obraId, alocacoes, pagador, tipo, data: dataPg });
+      await dataStore.lancarTransferencia({ obra_id: obraId, alocacoes, pagador, tipo, data: dataPg, distribuicao });
       toastSucesso(`Transferência registrada (${alocacoes.length} pagamento(s)).`);
       this.emitir("salvo", {});
       this.emitir("fechar");

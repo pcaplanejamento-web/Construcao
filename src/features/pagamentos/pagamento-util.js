@@ -12,25 +12,6 @@ import { notificarErro, toastSucesso } from "../../core/event-bus.js";
 import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-button.js";
-import "./repasse-form.js";
-
-/**
- * Abre o form de REPASSE para um pagamento (recebedor repassa parte a outros contatos).
- * Reusa o mesmo `repasse-form` da aba Pagamentos. `aoSalvar` re-renderiza a lista (opcional).
- */
-export function abrirRepasse(pagamento, aoSalvar) {
-  if (!pagamento) return;
-  const form = document.createElement("repasse-form");
-  form.pagamento = pagamento;
-  form.obra = dataStore.obra(pagamento.obra_id);
-  const fechar = () => form.remove();
-  form.addEventListener("fechar", fechar);
-  form.addEventListener("salvo", () => {
-    if (aoSalvar) aoSalvar();
-    fechar();
-  });
-  document.body.appendChild(form);
-}
 
 /** Formas de transferência/pagamento (espelha TIPOS_TRANSFERENCIA do backend). */
 export const TIPOS_TRANSFERENCIA = ["dinheiro", "crédito", "débito", "boleto"];
@@ -244,14 +225,6 @@ export function abrirPagamento(pagamento) {
 
   const rod = document.createElement("div");
   rod.setAttribute("slot", "rodape");
-  // "Repassar": registra um repasse deste pagamento (só p/ pagamento real, não sintetizado).
-  if (p && p.id && !p._sintetico) {
-    const repassar = document.createElement("ui-button");
-    repassar.setAttribute("variant", "secundario");
-    repassar.textContent = "Repassar";
-    repassar.addEventListener("click", () => abrirRepasse(p, pintarReps));
-    rod.appendChild(repassar);
-  }
   const btn = document.createElement("ui-button");
   btn.textContent = "Fechar";
   btn.addEventListener("click", () => modal.remove());
@@ -332,20 +305,6 @@ export function abrirTransferencia(transferencia) {
         modal.remove();
         abrirPagamento(p);
       });
-      // "Repassar" direto na transferência (não dispara o clique do card).
-      if (p && p.id && !p._sintetico) {
-        const rep = document.createElement("ui-button");
-        rep.setAttribute("variant", "secundario");
-        rep.setAttribute("tamanho", "sm");
-        rep.textContent = "Repassar";
-        rep.style.alignSelf = "flex-start";
-        rep.style.marginTop = "var(--esp-1)";
-        rep.addEventListener("click", (e) => {
-          e.stopPropagation();
-          abrirRepasse(p);
-        });
-        card.appendChild(rep);
-      }
       cont.appendChild(card);
     });
   }

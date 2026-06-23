@@ -12,7 +12,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { balancos } from "../despesas/despesa-split.js";
+import { balancos, restoDespesa } from "../despesas/despesa-split.js";
 import { avatarNomeHtml } from "../shared/avatar.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
@@ -312,16 +312,19 @@ class ObraDetailView extends BaseElement {
     else if (acao === "responsavel") this.responsabilidadeMassa(despesas);
   }
 
-  /** Lançar pagamento nas selecionadas — ignora as que já têm pagamento (aviso no form). */
+  /** Lançar pagamento nas selecionadas — ignora as já QUITADAS (sem saldo a pagar).
+   * Usa o saldo VISÍVEL (restoDespesa), o MESMO critério do pagamento-form e do status
+   * na tela — assim uma despesa "A pagar" nunca é tratada como já paga. */
   pagarMassa(despesas) {
-    const comPag = (despesas || []).filter((d) => dataStore.despesaTemPagamento(d));
-    const disponiveis = (despesas || []).filter((d) => !dataStore.despesaTemPagamento(d));
+    const lista = despesas || [];
+    const quitadas = lista.filter((d) => restoDespesa(d) <= 0.01);
+    const disponiveis = lista.filter((d) => restoDespesa(d) > 0.01);
     if (!disponiveis.length) {
-      notificarErro(new Error("Todas as selecionadas já têm pagamento. Exclua o pagamento para relançar."));
+      notificarErro(new Error("Todas as selecionadas já estão quitadas (sem saldo a pagar)."));
       return;
     }
-    const aviso = comPag.length
-      ? `${comPag.length} despesa(s) já têm pagamento e foram ignoradas (exclua o pagamento para relançar).`
+    const aviso = quitadas.length
+      ? `${quitadas.length} despesa(s) já quitada(s) foram ignoradas (sem saldo a pagar).`
       : "";
     this.abrirPagamentoForm(disponiveis, aviso);
   }
