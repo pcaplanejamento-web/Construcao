@@ -118,7 +118,9 @@ cima/baixo em todas + esquerda na 1ª col. de dados + direita na última = um re
 sem bordas internas — como o card de obra). **Hover = efeito no COMPONENTE INTEIRO, nunca
 por célula:** a **sombra é única, num pseudo-elemento `tbody tr::after`** (`--sombra-realce`,
 sutil) que cobre **só a região de DADOS** (`left: 36px` quando há coluna de marcação — via
-`:host([tem-selecao])` que o componente reflete; a **marcação NÃO tem sombra**) e fica em
+`:host([tem-selecao])` que o componente reflete; `clip-path: inset(-24px -24px -24px 0)`
+corta o vazamento horizontal da sombra na **borda esquerda do card**, mantendo a marcação
+limpa; sobe o mesmo `translateY(-4px)` das células → contorno e sombra alinhados) e fica em
 `z-index: 4` — **por cima da coluna de marcação e da linha de soma** (z2/3), mas **abaixo do
 cabeçalho** (thead z5/6). O **lift** vai nas **células de dados** (`translateY(-4px)` — sobem
 juntas; `transform` não vale p/ `<tr>`); o contorno **escurece** (`--cor-borda-forte`). Os

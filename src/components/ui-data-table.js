@@ -191,7 +191,10 @@ class UiDataTable extends BaseElement {
       tbody tr::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0;
         border-radius: var(--raio-sm); pointer-events: none; z-index: 4;
         transition: box-shadow var(--transicao), transform var(--transicao); }
-      :host([tem-selecao]) tbody tr::after { left: 36px; }
+      /* Quando há coluna de marcação, a sombra começa na borda esquerda do card (36px) e o
+         clip-path corta o "vazamento" horizontal da sombra EXATAMENTE nessa borda (left:0),
+         deixando a sombra nos demais lados — assim a lateral fica alinhada e a marcação limpa. */
+      :host([tem-selecao]) tbody tr::after { left: 36px; clip-path: inset(-24px -24px -24px 0); }
       /* a sombra (pseudo) sobe o MESMO tanto que o contorno (células) — ficam alinhados. */
       tbody tr:hover::after { box-shadow: var(--sombra-realce); transform: translateY(-4px); }
       .dir { text-align: right; }
