@@ -153,7 +153,8 @@ class UiDataTable extends BaseElement {
       :host { display: block; }
       /* Área rolável com altura limitada: cabeçalho e totais ficam fixos (sticky)
          e a barra de rolagem horizontal fica sempre na base da tabela. */
-      .wrap { overflow: auto; max-height: 70vh; -webkit-overflow-scrolling: touch; }
+      /* padding-bottom dá folga p/ a sombra da última linha-card não ser cortada pelo overflow. */
+      .wrap { overflow: auto; max-height: 70vh; -webkit-overflow-scrolling: touch; padding-bottom: var(--esp-2); }
       .sem-result td { text-align: center; color: var(--cor-texto-fraco); padding: var(--esp-5); }
       /* Tabela = MESA: cada LINHA do corpo é um card branco; leve espaçamento entre elas. */
       table { width: 100%; border-collapse: separate; border-spacing: 0 var(--esp-2); font-size: var(--fs-sm); }
@@ -164,7 +165,7 @@ class UiDataTable extends BaseElement {
       th { color: var(--cor-texto-fraco); font-weight: var(--peso-semi);
         font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
       /* Tópicos (cabeçalho) sticky na cor da MESA — os vãos mostram a mesa, não branco. */
-      thead th { position: sticky; top: 0; z-index: 3; background: var(--cor-mesa); }
+      thead th { position: sticky; top: 0; z-index: 5; background: var(--cor-mesa); }
       /* LINHA-CARD: as células de DADOS formam UM card branco com CONTORNO CONTÍNUO (não
          por célula): borda em cima/embaixo de TODAS + esquerda na 1ª coluna de dados +
          direita na última = um retângulo único arredondado. A coluna de marcação (.sel)
@@ -181,16 +182,23 @@ class UiDataTable extends BaseElement {
          transformavel, o "subir" vai nas CELULAS DE DADOS (sobem juntas, como um card so)
          e a SOMBRA unica vai no TR — nunca por celula. O contorno continuo realca
          (escurece) no componente inteiro. A marcacao (.sel) NAO sobe (fica na mesa). */
-      tbody tr { transition: box-shadow var(--transicao); }
+      tbody tr { position: relative; }
       tbody td:not(.sel) { transition: transform var(--transicao), border-color var(--transicao); }
-      tbody tr:hover { box-shadow: var(--sombra-lg); }
       tbody tr:hover td:not(.sel) { transform: translateY(-4px); border-color: var(--cor-borda-forte); }
+      /* SOMBRA do card via pseudo-elemento: cobre SO a regiao de DADOS (do limite da
+         coluna de marcacao ate a direita) e fica POR CIMA de tudo (z alto) — passa por
+         cima da marcacao e da linha de soma. A marcacao em si NAO tem sombra. Sutil. */
+      tbody tr::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+        border-radius: var(--raio-sm); pointer-events: none; z-index: 4;
+        transition: box-shadow var(--transicao); }
+      :host([tem-selecao]) tbody tr::after { left: 36px; }
+      tbody tr:hover::after { box-shadow: var(--sombra-realce); }
       .dir { text-align: right; }
       td.dir { font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
       /* Coluna de marcação (seleção): fixa à esquerda, na cor da MESA (separada do card). */
       .sel { width: 36px; text-align: center; position: sticky; left: 0;
         background: var(--cor-mesa); z-index: 2; }
-      thead th.sel { z-index: 4; background: var(--cor-mesa); }
+      thead th.sel { z-index: 6; background: var(--cor-mesa); }
       input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cor-primaria); cursor: pointer; }
       .th-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none;
         font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
@@ -253,6 +261,8 @@ class UiDataTable extends BaseElement {
     const ativa = (i) => (this._ordem && this._ordem.col === i) || this._filtros[i];
 
     const temSel = this._temSelecao();
+    // Marca no host se há coluna de marcação (p/ a sombra do card começar após ela).
+    this.toggleAttribute("tem-selecao", temSel);
     const cabecalho =
       (temSel ? `<th class="sel"><input type="checkbox" id="selTodos"></th>` : "") +
       cols

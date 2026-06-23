@@ -99,6 +99,8 @@
   --sombra-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
   /* MESA: elevação moderna (contorno nítido + halo difuso) que separa a mesa do fundo. */
   --sombra-mesa: 0 1px 3px rgba(16, 24, 40, 0.06), 0 18px 40px -16px rgba(16, 24, 40, 0.22);
+  /* REALCE: sombra sutil/harmônica do card ao passar o mouse (hugs o componente). */
+  --sombra-realce: 0 2px 4px -2px rgba(16, 24, 40, 0.12), 0 8px 20px -6px rgba(16, 24, 40, 0.20);
 
   /* Camadas (z-index) */
   --z-nav: 100;
@@ -141,6 +143,7 @@
     --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.45);
     --sombra-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
     --sombra-mesa: 0 1px 3px rgba(0, 0, 0, 0.5), 0 18px 42px -14px rgba(0, 0, 0, 0.65);
+    --sombra-realce: 0 2px 4px -2px rgba(0, 0, 0, 0.4), 0 8px 20px -6px rgba(0, 0, 0, 0.55);
     color-scheme: dark;
   }
 }
@@ -171,5 +174,6 @@
   --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.45);
   --sombra-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
   --sombra-mesa: 0 1px 3px rgba(0, 0, 0, 0.5), 0 18px 42px -14px rgba(0, 0, 0, 0.65);
+  --sombra-realce: 0 2px 4px -2px rgba(0, 0, 0, 0.4), 0 8px 20px -6px rgba(0, 0, 0, 0.55);
   color-scheme: dark;
 }

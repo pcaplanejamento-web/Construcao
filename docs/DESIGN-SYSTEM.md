@@ -116,11 +116,14 @@ coloridos não são clicáveis → não levantam.**
 as **células de dados** formam UM card branco com **contorno contínuo** (`border 1px`:
 cima/baixo em todas + esquerda na 1ª col. de dados + direita na última = um retângulo só,
 sem bordas internas — como o card de obra). **Hover = efeito no COMPONENTE INTEIRO, nunca
-por célula:** a **sombra é única, no `<tr>`** (`box-shadow: var(--sombra-lg)`); o **lift**
-vai nas **células de dados** (`translateY(-4px)` — sobem juntas como uma peça, pois
-`transform` NÃO se aplica a `<tr>`/table-row, só a `<td>`); o contorno todo **escurece**
-(`--cor-borda-forte`). Os **tópicos (thead), a linha de soma (tfoot, SEM divisória) e a
-coluna de marcação (.sel)** usam `--cor-mesa`; a marcação fica SEPARADA e **não sobe**.
+por célula:** a **sombra é única, num pseudo-elemento `tbody tr::after`** (`--sombra-realce`,
+sutil) que cobre **só a região de DADOS** (`left: 36px` quando há coluna de marcação — via
+`:host([tem-selecao])` que o componente reflete; a **marcação NÃO tem sombra**) e fica em
+`z-index: 4` — **por cima da coluna de marcação e da linha de soma** (z2/3), mas **abaixo do
+cabeçalho** (thead z5/6). O **lift** vai nas **células de dados** (`translateY(-4px)` — sobem
+juntas; `transform` não vale p/ `<tr>`); o contorno **escurece** (`--cor-borda-forte`). Os
+**tópicos (thead), a linha de soma (tfoot, SEM divisória) e a coluna de marcação (.sel)**
+usam `--cor-mesa`; a marcação fica SEPARADA e **não sobe**.
 
 ## Breakpoints (proporcionalidade)
 Convenção (CSS não aceita `var()` em `@media`): **sm 600 · md 900 · lg 1100**.
