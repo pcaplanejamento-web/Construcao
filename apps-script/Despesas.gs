@@ -358,6 +358,7 @@ function despesasLancarPagamento(data, sessao) {
   return {
     despesa: (r.despesas && r.despesas[0]) || _lerDespesa(_despesaAcessivel(despesaId, sessao.usuario_id)),
     resumo: r.resumo || _calcularResumo(atual.obra_id, sessao.usuario_id),
+    pagamento: r.pagamento, // a leva virou um Pagamento (entidade) — o front adiciona à coleção
   };
 }
 

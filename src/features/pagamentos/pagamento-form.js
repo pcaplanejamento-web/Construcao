@@ -24,9 +24,15 @@ class PagamentoForm extends BaseElement {
   get obra() {
     return this._obra || null;
   }
+  /** Quando vem das selecionadas: lista SÓ essas, já marcadas. */
+  set despesasSelecionadas(v) {
+    this._restritas = Array.isArray(v) ? v : null;
+    if (this.shadowRoot.childElementCount) this.renderizar();
+  }
 
-  /** Despesas da obra com saldo a pagar (resto > 0). */
+  /** Despesas a oferecer: as selecionadas (restritas) ou as da obra com saldo > 0. */
   _despesas() {
+    if (this._restritas) return this._restritas;
     const id = (this.obra || {}).id;
     return dataStore.despesas(id).filter((d) => restoDespesa(d) > 0.01);
   }
@@ -58,11 +64,11 @@ class PagamentoForm extends BaseElement {
           .map(
             (d) => `
         <label class="desp">
-          <input type="checkbox" class="chk" data-id="${d.id}" />
+          <input type="checkbox" class="chk" data-id="${d.id}" ${this._restritas ? "checked" : ""} />
           <span class="nome" title="${this._nomeDespesa(d)}">${this._nomeDespesa(d)}
             <small>· resto ${moeda(restoDespesa(d))}</small></span>
           <ui-input class="aloc" data-id="${d.id}" type="number" step="0.01" min="0"
-            value="${restoDespesa(d).toFixed(2)}" disabled></ui-input>
+            value="${restoDespesa(d).toFixed(2)}" ${this._restritas ? "" : "disabled"}></ui-input>
         </label>`
           )
           .join("")
@@ -131,6 +137,7 @@ class PagamentoForm extends BaseElement {
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
+    this._recalcular(); // total inicial (despesas pré-marcadas)
   }
 
   _alocInput(id) {

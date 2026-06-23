@@ -34,7 +34,16 @@ class UiDataTable extends BaseElement {
 
   /** A seleção (e a barra de ações em massa) só existe em tabelas editáveis/excluíveis. */
   _temSelecao() {
-    return this.hasAttribute("editar-massa") || this.hasAttribute("excluir-massa");
+    return this.hasAttribute("editar-massa") || this.hasAttribute("excluir-massa") || this.acoesMassa.length > 0;
+  }
+
+  /** Ações em massa CUSTOMIZADAS na barra de seleção: [{nome, rotulo, variant?}]. */
+  set acoesMassa(v) {
+    this._acoesMassa = v || [];
+    this._talvezRenderizar();
+  }
+  get acoesMassa() {
+    return this._acoesMassa || [];
   }
 
   set columns(v) {
@@ -189,6 +198,11 @@ class UiDataTable extends BaseElement {
       .selbar .n { font-weight: var(--peso-semi); color: var(--cor-primaria-escura); }
       .selbar .somas { display: flex; gap: var(--esp-3); flex-wrap: wrap; flex: 1; }
       .selbar .soma b { font-family: var(--fonte-titulo); }
+      .selbar .acao-massa { border: 1px solid var(--cor-primaria); background: var(--cor-primaria);
+        color: #fff; border-radius: var(--raio-sm); padding: 4px 12px; font-size: var(--fs-xs);
+        cursor: pointer; font-weight: var(--peso-semi); }
+      .selbar .acao-massa:first-of-type { margin-left: auto; }
+      .selbar .acao-massa:hover { background: var(--cor-primaria-escura); }
       .selbar .editar { margin-left: auto; border: 1px solid var(--cor-primaria);
         background: var(--cor-primaria); color: #fff; border-radius: var(--raio-sm);
         padding: 4px 12px; font-size: var(--fs-xs); cursor: pointer; font-weight: var(--peso-semi); }
@@ -310,13 +324,16 @@ class UiDataTable extends BaseElement {
         return `<span class="soma">${c.titulo}: <b>${moeda(soma)}</b></span>`;
       })
       .join("");
+    const custom = this.acoesMassa
+      .map((a, i) => `<button class="acao-massa ${a.variant || ""}" data-i="${i}">${a.rotulo}</button>`)
+      .join("");
     const editar = this.hasAttribute("editar-massa")
       ? `<button class="editar" id="editarMassa">Editar selecionadas</button>`
       : "";
     const excluir = this.hasAttribute("excluir-massa")
       ? `<button class="excluir" id="excluirMassa">Excluir selecionadas</button>`
       : "";
-    return `<div class="selbar"><span class="n">${selecionadas.length} selecionada(s)</span><div class="somas">${somas}</div>${editar}${excluir}</div>`;
+    return `<div class="selbar"><span class="n">${selecionadas.length} selecionada(s)</span><div class="somas">${somas}</div>${custom}${editar}${excluir}</div>`;
   }
 
   aposRender() {
@@ -334,6 +351,14 @@ class UiDataTable extends BaseElement {
         this.renderizar();
       });
     }
+    // Ações em massa customizadas → evento genérico "acao-massa" (a view decide).
+    this.$$(".acao-massa").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const a = this.acoesMassa[Number(btn.dataset.i)];
+        const linhas = [...this._sel];
+        if (a && linhas.length) this.emitir("acao-massa", { acao: a.nome, linhas });
+      });
+    });
     // Editar selecionadas em massa — abre o form de edição (a view decide).
     const btnEditar = this.$("#editarMassa");
     if (btnEditar) {

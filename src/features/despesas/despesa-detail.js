@@ -19,6 +19,7 @@ import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { valorPositivo } from "../../core/validators.js";
 import { parseLista, statusPagamento, totalRealizado, restoDespesa } from "./despesa-split.js";
 import { ofertanteNome, previaOfertaHtml } from "../orcamentos/orcamento-util.js";
+import { previaPagamentoHtml, abrirPagamento } from "../pagamentos/pagamento-util.js";
 import { abrirOferta } from "../cotacoes/preco-form.js";
 import { integrantesDaEquipe } from "../equipes/equipe-util.js";
 import "../../components/ui-modal.js";
@@ -76,6 +77,14 @@ class DespesaDetail extends BaseElement {
       .resumo .val { font-size: var(--fs-lg); font-weight: var(--peso-forte);
         color: var(--cor-primaria); }
       .resumo small { color: var(--cor-texto-suave); }
+      /* Card de PAGAMENTO: levemente esverdeado (espelha o card de oferta). */
+      .resumo.pag { position: relative; background: var(--cor-sucesso-suave, rgba(22,163,74,.10)); }
+      .resumo.pag .val { color: var(--cor-sucesso); }
+      .resumo.pag.clicavel:hover { border-color: var(--cor-sucesso); background: rgba(22,163,74,.16); }
+      .resumo.pag .rem { position: absolute; top: var(--esp-2); right: var(--esp-2); }
+      .pag-cards { display: flex; flex-direction: column; gap: var(--esp-2); }
+      .pag-aviso { font-size: var(--fs-sm); color: var(--cor-texto-suave);
+        background: var(--cor-superficie-2); border-radius: var(--raio-sm); padding: var(--esp-2) var(--esp-3); }
       .secao { border-top: 1px solid var(--cor-borda); padding-top: var(--esp-3); }
       .statuslinha { display: flex; align-items: center; gap: var(--esp-2);
         margin-bottom: var(--esp-2); flex-wrap: wrap; }
@@ -136,10 +145,10 @@ class DespesaDetail extends BaseElement {
             <textarea id="observacao" placeholder="Detalhes (opcional)">${d.observacao || ""}</textarea>
           </div>
           <div class="secao" id="secPag">
-            <label class="tx">Pagamentos — lançamentos (levas)</label>
+            <label class="tx">Pagamentos</label>
             <div class="statuslinha" id="statusLinha"></div>
-            <div id="listaPag"></div>
-            <div class="lancar">
+            <div class="pag-cards" id="listaPag"></div>
+            <div class="lancar" id="lancarBox">
               <ui-select id="pagPagador" label="Quem pagou"></ui-select>
               <div class="linha">
                 <ui-input id="pagValor" label="Valor a lançar (R$)" type="number" step="0.01" min="0" placeholder="0,00"></ui-input>
@@ -149,6 +158,7 @@ class DespesaDetail extends BaseElement {
               <split-editor id="pagDist"></split-editor>` : ""}
               <ui-button id="lancarPag" variant="secundario" tamanho="sm">＋ Lançar pagamento</ui-button>
             </div>
+            <div class="pag-aviso" id="pagAviso" hidden>Para lançar outro pagamento, exclua o pagamento atual (a despesa volta ao estado sem pagamento).</div>
           </div>
           <div class="secao">
             <label class="tx">Responsabilidade — % por participante (soma 100%)</label>
@@ -249,35 +259,35 @@ class DespesaDetail extends BaseElement {
   pintarLancamentos() {
     const cont = this.$("#listaPag");
     if (!cont) return;
-    const lista = parseLista(this.despesa.pagamentos_realizados);
-    if (!lista.length) {
-      cont.innerHTML = `<p class="muted">Nenhum pagamento lançado.</p>`;
-      return;
-    }
-    // Mapa chave→nome dos participantes (resolve o pagador da leva).
-    const nomePart = {};
-    dataStore.participantesDaObra(this.despesa.obra_id).forEach((p) => (nomePart[p.chave] = p.nome));
+    const pags = dataStore.pagamentosDaDespesa(this.despesa.id);
     cont.innerHTML = "";
-    lista.forEach((p) => {
-      const row = document.createElement("div");
-      row.className = "lancamento";
-      const pagador = nomePart[p.pagador] || "—";
-      const dist = parseLista(p.distribuicao)
-        .map((x) => `${this._nomeChave(x.chave)}: ${moeda(x.valor)}`)
-        .join(" · ");
-      row.innerHTML = `<div class="lc-info">
-          <strong>${moeda(p.valor)}</strong>
-          <small class="muted">${fmtData(p.data)} · pago por ${pagador}</small>
-          ${dist ? `<small class="muted">${dist}</small>` : ""}
-        </div>`;
+    if (!pags.length) cont.innerHTML = `<p class="muted">Nenhum pagamento lançado.</p>`;
+    pags.forEach((p) => {
+      // Card de pagamento (esverdeado), clicável → banner com os dados completos.
+      const card = document.createElement("div");
+      card.className = "resumo pag clicavel";
+      card.title = "Ver detalhes do pagamento";
+      card.innerHTML = previaPagamentoHtml(p);
+      card.addEventListener("click", (e) => {
+        if (e.target.closest(".rem")) return;
+        abrirPagamento(p);
+      });
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "rem";
       btn.textContent = "✕";
-      btn.addEventListener("click", () => this.removerLancamento(p.id));
-      row.appendChild(btn);
-      cont.appendChild(row);
+      btn.title = "Excluir pagamento";
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.removerPagamentoCard(p.id);
+      });
+      card.appendChild(btn);
+      cont.appendChild(card);
     });
+    // Regra: não dá p/ lançar em despesa que já tem pagamento — exclua antes.
+    const tem = pags.length > 0;
+    if (this.$("#lancarBox")) this.$("#lancarBox").hidden = tem;
+    if (this.$("#pagAviso")) this.$("#pagAviso").hidden = !tem;
   }
 
   async lancarPagamento() {
@@ -329,13 +339,18 @@ class DespesaDetail extends BaseElement {
     btn.removeAttribute("loading");
   }
 
-  async removerLancamento(lancamentoId) {
-    if (!confirm("Remover este pagamento lançado?")) return;
+  /** Exclui o PAGAMENTO (entidade) — desvincula da despesa, que volta ao estado sem pagamento. */
+  async removerPagamentoCard(pagamentoId) {
+    if (!confirm("Excluir este pagamento? A despesa volta ao estado anterior, sem pagamento.")) return;
     try {
-      const atualizada = await dataStore.removerPagamento(this.despesa.obra_id, this.despesa.id, lancamentoId);
-      this._despesa = atualizada;
+      await dataStore.removerPagamentoV2(pagamentoId);
+      const atual = dataStore
+        .despesas(this.despesa.obra_id)
+        .find((d) => String(d.id) === String(this.despesa.id));
+      if (atual) this._despesa = atual;
       this.atualizarStatusPag();
       this.pintarLancamentos();
+      toastSucesso("Pagamento excluído.");
     } catch (e) {
       notificarErro(e);
     }

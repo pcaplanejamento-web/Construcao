@@ -205,6 +205,14 @@ class DespesaTable extends BaseElement {
     tabela.addEventListener("excluir-massa", (e) =>
       this.emitir("excluir-massa", { despesas: e.detail.linhas })
     );
+    // Ações em massa nas selecionadas: lançar pagamento + definir responsabilidade.
+    tabela.acoesMassa = [
+      { nome: "pagar", rotulo: "Lançar pagamento" },
+      { nome: "responsavel", rotulo: "Definir responsabilidade" },
+    ];
+    tabela.addEventListener("acao-massa", (e) =>
+      this.emitir("acao-massa", { acao: e.detail.acao, despesas: e.detail.linhas })
+    );
     // Busca no cabeçalho do card (a tabela interna não alcança o card por estar no shadow).
     injetarBuscaNoCard(this, tabela);
     this.atualizarTabela();

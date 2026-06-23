@@ -22,6 +22,7 @@ const ITENS = [
   { rota: "/cotacoes", rotulo: "Cotações", icone: "cotacao" },
   { rota: "/orcamentos", rotulo: "Orçamentos", icone: "carteira" },
   { rota: "/ofertas", rotulo: "Ofertas", icone: "cifrao" },
+  { rota: "/pagamentos", rotulo: "Pagamentos", icone: "carteira" },
   { rota: "/itens", rotulo: "Itens", icone: "tag" },
 ];
 const ITEM_PERFIL = { rota: "/perfil", rotulo: "Meu perfil", icone: "usuario" };

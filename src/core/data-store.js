@@ -506,6 +506,7 @@ async function lancarPagamento(obraId, despesaId, dados) {
   const r = await api.call("despesas.lancarPagamento", { despesa_id: despesaId, ...dados });
   const lista = despesas(obraId).map((d) => (String(d.id) === String(despesaId) ? r.despesa : d));
   _setDespesasObra(obraId, lista, r.resumo);
+  if (r.pagamento) store.set({ pagamentos: [r.pagamento, ...store.get().pagamentos] });
   persistir();
   bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada", obra_id: obraId });
   return r.despesa;

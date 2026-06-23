@@ -30,6 +30,8 @@ import "../cotacoes/cotacao-despesa-form.js";
 import "../orcamentos/orcamento-form.js";
 import "../despesas/despesa-table.js";
 import "../despesas/despesa-detail.js";
+import "../despesas/split-editor.js";
+import "../../components/ui-modal.js";
 import "./obra-form.js";
 import "./obra-share-form.js";
 import "./obra-participantes.js";
@@ -169,6 +171,7 @@ class ObraDetailView extends BaseElement {
     this._tabela.addEventListener("editar", (e) => this.abrirBanner(e.detail.despesa));
     this._tabela.addEventListener("remover", (e) => this.remover(e.detail.despesa));
     this._tabela.addEventListener("excluir-massa", (e) => this.removerMassa(e.detail.despesas));
+    this._tabela.addEventListener("acao-massa", (e) => this.acaoMassa(e.detail.acao, e.detail.despesas));
 
     // Aba Pagamentos.
     this._tabPag = alvo.querySelector("#tabPag");
@@ -259,13 +262,83 @@ class ObraDetailView extends BaseElement {
     return this._nomeContato(p.recebedor_contato_id);
   }
 
-  abrirPagamentoForm() {
+  abrirPagamentoForm(despesasSelecionadas) {
     const form = document.createElement("pagamento-form");
     form.obra = this._obra;
+    if (despesasSelecionadas) form.despesasSelecionadas = despesasSelecionadas;
     const fechar = () => form.remove();
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", fechar);
     document.body.appendChild(form);
+  }
+
+  /** Ações em massa sobre as despesas selecionadas (vindas da tabela). */
+  acaoMassa(acao, despesas) {
+    if (acao === "pagar") this.pagarMassa(despesas);
+    else if (acao === "responsavel") this.responsabilidadeMassa(despesas);
+  }
+
+  /** Lançar pagamento nas selecionadas — bloqueia as que já têm pagamento. */
+  pagarMassa(despesas) {
+    const jaTem = (d) => dataStore.pagamentosDaDespesa(d.id).length > 0;
+    const comPag = (despesas || []).filter(jaTem);
+    const disponiveis = (despesas || []).filter((d) => !jaTem(d));
+    if (comPag.length) {
+      const msg =
+        `${comPag.length} despesa(s) selecionada(s) já têm pagamento e serão ignoradas ` +
+        `(exclua o pagamento para relançar).` +
+        (disponiveis.length ? ` Continuar com a(s) ${disponiveis.length} restante(s)?` : "");
+      if (!disponiveis.length) {
+        notificarErro(new Error("Todas as selecionadas já têm pagamento. Exclua o pagamento para relançar."));
+        return;
+      }
+      if (!confirm(msg)) return;
+    }
+    this.abrirPagamentoForm(disponiveis);
+  }
+
+  /** Definir a MESMA responsabilidade (% por participante) nas selecionadas. */
+  responsabilidadeMassa(despesas) {
+    const lista = despesas || [];
+    if (!lista.length) return;
+    const modal = document.createElement("ui-modal");
+    modal.setAttribute("open", "");
+    modal.setAttribute("title", `Definir responsabilidade · ${lista.length} despesa(s)`);
+    const corpo = document.createElement("div");
+    const ed = document.createElement("split-editor");
+    ed.modo = "pct";
+    ed.limite = 100;
+    ed.participantes = dataStore.participantesDaObra(this.obraId);
+    ed.itens = [];
+    corpo.appendChild(ed);
+    modal.appendChild(corpo);
+    const rod = document.createElement("div");
+    rod.setAttribute("slot", "rodape");
+    const cancelar = document.createElement("ui-button");
+    cancelar.setAttribute("variant", "secundario");
+    cancelar.textContent = "Cancelar";
+    cancelar.addEventListener("click", () => modal.remove());
+    const salvar = document.createElement("ui-button");
+    salvar.textContent = "Aplicar";
+    salvar.addEventListener("click", async () => {
+      const responsaveis = ed.itens
+        .filter((x) => x.chave && Number(x.valor) > 0)
+        .map((x) => ({ chave: x.chave, pct: Number(x.valor) || 0 }));
+      salvar.setAttribute("loading", "");
+      try {
+        for (const d of lista) await dataStore.atualizarDespesa(this.obraId, d.id, { responsaveis });
+        toastSucesso(`Responsabilidade definida em ${lista.length} despesa(s).`);
+        modal.remove();
+      } catch (e) {
+        notificarErro(e);
+      }
+      salvar.removeAttribute("loading");
+    });
+    rod.appendChild(cancelar);
+    rod.appendChild(salvar);
+    modal.appendChild(rod);
+    modal.addEventListener("fechar", () => modal.remove());
+    document.body.appendChild(modal);
   }
 
   abrirRepasseForm(pagamento) {
