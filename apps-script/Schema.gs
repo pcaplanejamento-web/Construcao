@@ -289,6 +289,49 @@ const SCHEMA = {
     ],
   },
 
+  PAGAMENTOS: {
+    aba: "Pagamentos", // pagamento = entidade própria; pode cobrir VÁRIAS despesas (alocacoes)
+    colunas: [
+      "id",
+      "usuario_id",
+      "obra_id", // FK → Obras.id
+      "data",
+      "valor", // total do pagamento (= Σ alocacoes)
+      "pagador_chave", // participante que pagou ("c:"/"u:"/"e:")
+      "pagador_contato_id", // FK → Contatos.id (quando o pagador é contato)
+      "recebedor_contato_id", // FK → Contatos.id (XOR equipe)
+      "recebedor_equipe_id", // FK → Equipes.id (grupo recebedor; XOR contato)
+      "fornecedor_id", // FK → Fornecedores.id (empresa que recebe; opcional)
+      "alocacoes", // JSON [{despesa_id, valor}] — cobre uma OU várias despesas
+      "distribuicao", // JSON [{chave, valor}] — quanto cada integrante recebeu (equipe)
+      "observacao",
+      "criado_em",
+      "autor_nome",
+      "atualizado_em",
+      "editor_nome",
+      "origem_leva_id", // id da leva embutida de origem (idempotência da migração)
+    ],
+  },
+
+  REPASSES: {
+    aba: "Repasses", // o recebedor de um pagamento repassa parte a outros contatos
+    colunas: [
+      "id",
+      "usuario_id",
+      "pagamento_id", // FK → Pagamentos.id
+      "recebedor_contato_id", // FK → Contatos.id (quem recebeu e está repassando)
+      "obra_id", // FK → Obras.id
+      "contatos_repassados", // JSON [contato_id, ...]
+      "valor",
+      "data",
+      "observacao",
+      "criado_em",
+      "autor_nome",
+      "atualizado_em",
+      "editor_nome",
+    ],
+  },
+
   SESSOES: {
     aba: "Sessoes",
     colunas: [

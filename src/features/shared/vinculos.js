@@ -46,6 +46,8 @@ function _ctx() {
     fornecedores: dataStore.fornecedoresAtivos(),
     itens: dataStore.itensAtivos(),
     equipes: dataStore.equipes(),
+    pagamentos: dataStore.pagamentos(),
+    repasses: dataStore.repasses(),
     participantes,
   };
 }
@@ -75,6 +77,11 @@ const COL_CONTATO = [
 const COL_FORNECEDOR = [{ chave: "nome", titulo: "Fornecedor" }];
 const COL_EQUIPE = [{ chave: "nome", titulo: "Equipe" }];
 const COL_ORCAMENTO = [{ chave: "titulo", titulo: "Orçamento", formato: (v, l) => v || l.tipo || "—" }];
+const COL_PAGAMENTO = [
+  { chave: "data", titulo: "Data", formato: (v) => v || "—" },
+  { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+];
+const COL_REPASSE = COL_PAGAMENTO;
 
 const rotaOferta = (l) => (l.cotacao_id ? "/cotacoes/" + l.cotacao_id : "/ofertas");
 
@@ -101,6 +108,7 @@ export function vinculosDoFornecedor(id) {
     _grupo("Ofertas", COL_OFERTA, r.ofertas, rotaOferta),
     _grupo("Despesas", COL_DESPESA, _comObra(r.despesas), (l) => "/obras/" + l.obra_id),
     _grupo("Obras", COL_OBRA, r.obras, (l) => "/obras/" + l.id),
+    _grupo("Pagamentos", COL_PAGAMENTO, r.pagamentos, null),
   ];
 }
 
@@ -111,6 +119,8 @@ export function vinculosDoContato(id) {
     _grupo("Despesas", COL_DESPESA, _comObra(r.despesas), (l) => "/obras/" + l.obra_id),
     _grupo("Equipes", COL_EQUIPE, r.equipes, (l) => "/equipes/" + l.id),
     _grupo("Obras", COL_OBRA, r.obras, (l) => "/obras/" + l.id),
+    _grupo("Pagamentos", COL_PAGAMENTO, r.pagamentos, null),
+    _grupo("Repasses", COL_REPASSE, r.repasses, null),
   ];
 }
 
@@ -131,6 +141,7 @@ export function vinculosDaEquipe(id) {
     _grupo("Despesas", COL_DESPESA, _comObra(r.despesas), (l) => "/obras/" + l.obra_id),
     _grupo("Orçamentos", COL_ORCAMENTO, r.orcamentos, (l) => "/orcamentos/" + l.id),
     _grupo("Obras", COL_OBRA, r.obras, (l) => "/obras/" + l.id),
+    _grupo("Pagamentos", COL_PAGAMENTO, r.pagamentos, null),
   ];
 }
 
@@ -142,6 +153,8 @@ export function vinculosDaObra(id) {
     _grupo("Ofertas", COL_OFERTA, r.ofertas, rotaOferta),
     _grupo("Orçamentos", COL_ORCAMENTO, r.orcamentos, (l) => "/orcamentos/" + l.id),
     _grupo("Equipes", COL_EQUIPE, r.equipes, (l) => "/equipes/" + l.id),
+    _grupo("Pagamentos", COL_PAGAMENTO, r.pagamentos, null),
+    _grupo("Repasses", COL_REPASSE, r.repasses, null),
   ];
 }
 

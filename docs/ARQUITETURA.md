@@ -112,3 +112,17 @@ O Apps Script não tem websockets. O acompanhamento ao vivo é obtido por:
 - A **obra de uma oferta** resolve em cascata: própria (`oferta.obra_id`, novo FK) →
   cotação → orçamento — o que cobre inclusive ofertas avulsas (antes não tinham obra
   resolvível). `obra_id` é coluna **append-only** em `CotacaoPrecos`.
+
+## Pagamentos e Repasses (entidades próprias)
+
+- `Pagamentos` é uma aba própria: um pagamento pode cobrir **VÁRIAS despesas**
+  (`alocacoes` = `[{despesa_id, valor}]`), com pagador (contato/participante),
+  recebedor (contato OU equipe/grupo), obra e fornecedor. `Repasses` registra o
+  recebedor repassando parte a outros contatos.
+- **Retrocompat:** a despesa mantém `pagamentos_realizados`/`pagamentos`/`pago` como
+  **espelhos** reconstruídos por `_sincronizarMirrorDespesa` (Pagamentos.gs) — todo o
+  front legado (`despesa-split` + telas) segue lendo o espelho sem mudança.
+  `despesas.lancarPagamento`/`removerPagamento` **delegam** à entidade Pagamentos
+  (mesma rota/retorno). Análise multi-despesa usa `balancosDePagamentos`.
+- **Migração** `mig_pagamentos_v1` (Migracoes.gs) extrai cada leva embutida p/ um
+  Pagamento (idempotente via `origem_leva_id`), auto-disparada no próximo snapshot.

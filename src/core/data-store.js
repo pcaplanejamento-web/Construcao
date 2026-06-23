@@ -15,7 +15,7 @@ import { auth } from "./auth-store.js";
 import { bus, EVENTOS } from "./event-bus.js";
 import { obraIdDaOferta } from "../features/shared/rastreabilidade.js";
 
-const CACHE_VERSAO = 2; // bump: ofertas viraram lista plana (oferta independente)
+const CACHE_VERSAO = 3; // bump: coleções pagamentos/repasses (entidades próprias)
 
 const ESTADO_VAZIO = {
   carregado: false,
@@ -36,6 +36,8 @@ const ESTADO_VAZIO = {
   historicoPorCotacao: {}, // cotacaoId -> [ponto de histórico de preço]
   orcamentos: [], // módulo Compras (containers de ofertas)
   equipes: [], // grupos (líder + membros + obras)
+  pagamentos: [], // pagamentos (entidade própria; 1 pagamento → várias despesas)
+  repasses: [], // repasses de um pagamento a outros contatos
   usuarios: [], // admin
 };
 
@@ -71,6 +73,8 @@ function persistir() {
       historicoPorCotacao: s.historicoPorCotacao,
       orcamentos: s.orcamentos,
       equipes: s.equipes,
+      pagamentos: s.pagamentos,
+      repasses: s.repasses,
       usuarios: s.usuarios,
     };
     localStorage.setItem(chave, JSON.stringify({ versao: CACHE_VERSAO, dados }));
@@ -127,6 +131,8 @@ function _aplicarSnapshot(d) {
     historicoPorCotacao: d.historicoPorCotacao || {},
     orcamentos: d.orcamentos || [],
     equipes: d.equipes || [],
+    pagamentos: d.pagamentos || [],
+    repasses: d.repasses || [],
     usuarios: d.usuarios || [],
   });
   persistir();
@@ -215,6 +221,20 @@ const despesasDoContato = (id) => todasDespesas().filter((d) => String(d.ofertan
 const despesasDoFornecedor = (id) => todasDespesas().filter((d) => String(d.fornecedor_id) === String(id));
 const despesasDoItem = (id) => todasDespesas().filter((d) => String(d.item_id) === String(id));
 const despesasDaEquipe = (id) => todasDespesas().filter((d) => String(d.ofertante_equipe_id) === String(id));
+
+// Pagamentos / Repasses (entidades próprias)
+const pagamentos = () => store.get().pagamentos;
+const repasses = () => store.get().repasses;
+const pagamentosDaDespesa = (id) =>
+  pagamentos().filter((p) => (p.alocacoes || []).some((a) => String(a.despesa_id) === String(id)));
+const pagamentosDoContato = (id) =>
+  pagamentos().filter((p) => String(p.pagador_contato_id) === String(id) || String(p.recebedor_contato_id) === String(id));
+const pagamentosDaObra = (id) => pagamentos().filter((p) => String(p.obra_id) === String(id));
+const repassesDoPagamento = (id) => repasses().filter((r) => String(r.pagamento_id) === String(id));
+const repassesDoContato = (id) =>
+  repasses().filter(
+    (r) => String(r.recebedor_contato_id) === String(id) || (r.contatos_repassados || []).some((c) => String(c) === String(id))
+  );
 
 /* --------------------- Recalcular resumo local ----------------------- */
 
@@ -472,6 +492,56 @@ async function lancarPagamento(obraId, despesaId, dados) {
   persistir();
   bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada", obra_id: obraId });
   return r.despesa;
+}
+
+/* ---- Pagamentos / Repasses (entidades próprias) ---- */
+
+/** Aplica as despesas atualizadas (de várias obras) retornadas por um pagamento. */
+function _aplicarDespesasAtualizadas(lista, resumo, obraResumo) {
+  (lista || []).forEach((d) => {
+    const oid = d.obra_id;
+    const novas = despesas(oid).map((x) => (String(x.id) === String(d.id) ? d : x));
+    _setDespesasObra(oid, novas, String(oid) === String(obraResumo) ? resumo : null);
+  });
+}
+
+/** Lança um pagamento que pode cobrir VÁRIAS despesas (entidade Pagamentos). */
+async function lancarPagamentoMulti(dados) {
+  const r = await api.call("pagamentos.lancar", dados);
+  store.set({ pagamentos: [r.pagamento, ...store.get().pagamentos] });
+  _aplicarDespesasAtualizadas(r.despesas, r.resumo, r.pagamento.obra_id);
+  persistir();
+  bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada" });
+  return r.pagamento;
+}
+
+/** Remove um pagamento (entidade) e re-sincroniza as despesas alocadas. */
+async function removerPagamentoV2(id) {
+  const r = await api.call("pagamentos.remover", { id });
+  const s = store.get();
+  store.set({
+    pagamentos: s.pagamentos.filter((p) => String(p.id) !== String(id)),
+    repasses: s.repasses.filter((rp) => String(rp.pagamento_id) !== String(id)), // cascata
+  });
+  _aplicarDespesasAtualizadas(r.despesas, r.resumo, (r.despesas && r.despesas[0] && r.despesas[0].obra_id) || "");
+  persistir();
+  bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada" });
+  return r;
+}
+
+/** Registra um repasse de um pagamento a outros contatos. */
+async function lancarRepasse(dados) {
+  const r = await api.call("repasses.lancar", dados);
+  store.set({ repasses: [r.repasse, ...store.get().repasses] });
+  persistir();
+  return r.repasse;
+}
+
+/** Remove um repasse. */
+async function removerRepasse(id) {
+  await api.call("repasses.remover", { id });
+  store.set({ repasses: store.get().repasses.filter((r) => String(r.id) !== String(id)) });
+  persistir();
 }
 
 /** Remove um pagamento parcial (leva) lançado da despesa. */
@@ -918,11 +988,14 @@ export const dataStore = {
   equipes, equipe, equipesDoContato, equipesDaObra,
   ofertasDoContato, ofertasDoFornecedor, ofertasDoItem, ofertasDaObra,
   despesasDoContato, despesasDoFornecedor, despesasDoItem, despesasDaEquipe,
+  pagamentos, repasses, pagamentosDaDespesa, pagamentosDoContato, pagamentosDaObra,
+  repassesDoPagamento, repassesDoContato,
   // mutações
   criarObra, atualizarObra, removerObra,
   adicionarParticipante, removerParticipante, definirResponsavel,
   gerarLinkPublico, removerLinkPublico,
   adicionarDespesa, atualizarDespesa, removerDespesa, lancarPagamento, removerPagamento,
+  lancarPagamentoMulti, removerPagamentoV2, lancarRepasse, removerRepasse,
   criarCategoria, atualizarCategoria, removerCategoria,
   criarFornecedor, atualizarFornecedor, removerFornecedor,
   criarContato, atualizarContato, removerContato,

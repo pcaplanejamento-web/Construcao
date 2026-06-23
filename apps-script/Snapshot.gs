@@ -146,6 +146,8 @@ function dadosSnapshot(data, sessao) {
     historicoPorCotacao: historicoPorCotacao,
     orcamentos: orcamentosUsuario,
     equipes: listarEquipesUsuario(u.id),
+    pagamentos: listarPagamentosUsuario(u.id),
+    repasses: listarRepassesUsuario(u.id),
     servidor_em: agoraIso(),
   };
 

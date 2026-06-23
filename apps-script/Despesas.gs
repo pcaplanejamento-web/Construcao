@@ -314,12 +314,10 @@ function _pagamentosDeLevas(levas) {
 
 /**
  * despesas.lancarPagamento -> { despesa, resumo }.
- * Lança um pagamento PARCIAL (uma "leva") da despesa ao ofertante. Deriva o
- * recebedor da própria despesa: equipe → contato = LÍDER (mestre) + exige a
- * `distribuicao` entre integrantes; senão → o contato ofertante + a empresa.
- * Guarda também QUEM pagou (`pagador`, chave de participante) — de onde o
- * "quem pagou quanto" (pagamentos) é derivado. Carimba data/autor no servidor.
- * Valida Σrealizados + valor ≤ valor da despesa e (equipe) Σdistribuicao ≤ leva.
+ * DELEGA p/ a entidade Pagamentos (Pagamentos.gs): cria um pagamento que aloca à
+ * ESTA despesa e re-sincroniza o espelho embutido (pagamentos_realizados/pagamentos/
+ * pago) — mantendo o front legado intacto. Deriva o recebedor da própria despesa:
+ * equipe → líder + `distribuicao` entre integrantes; senão → contato ofertante + empresa.
  */
 function despesasLancarPagamento(data, sessao) {
   const despesaId = data && data.despesa_id;
@@ -329,9 +327,6 @@ function despesasLancarPagamento(data, sessao) {
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
   const pagador = String((data && data.pagador) || "");
   if (!pagador) lancar(ERRO.VALIDACAO, "Selecione quem pagou.");
-  const totalDespesa = Number(atual.valor) || 0;
-  if (_totalRealizado(atual) + valor - totalDespesa > 0.01)
-    lancar(ERRO.VALIDACAO, "O total pago não pode passar do valor da despesa.");
 
   // Recebedor: equipe (líder + distribuição) ou contato ofertante + empresa.
   const equipeId = String(atual.ofertante_equipe_id || "");
@@ -345,58 +340,54 @@ function despesasLancarPagamento(data, sessao) {
     contatoId = String(equipe.lider_id || "");
     fornecedorId = "";
     distribuicao = Array.isArray(data && data.distribuicao) ? data.distribuicao : [];
-    const somaDist = distribuicao.reduce(function (s, d) {
-      return s + (Number(d && d.valor) || 0);
-    }, 0);
-    if (somaDist - valor > 0.01)
-      lancar(ERRO.VALIDACAO, "A soma da distribuição não pode passar do valor da leva.");
   }
 
-  const agora = agoraIso();
-  const nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
-  const lancamento = {
-    id: novoId(),
-    data: String((data && data.data) || agora.substring(0, 10)),
-    valor: valor,
-    pagador: pagador, // quem pagou (chave de participante) → deriva pagamentos
-    contato_id: contatoId,
-    fornecedor_id: fornecedorId,
-    distribuicao: distribuicao.map(function (d) {
-      return { chave: String(d.chave || ""), valor: Number(d.valor) || 0 };
-    }),
-    autor_nome: nome,
-    criado_em: agora,
+  const r = pagamentosLancar(
+    {
+      alocacoes: [{ despesa_id: despesaId, valor: valor }],
+      pagador_chave: pagador,
+      recebedor_contato_id: contatoId,
+      recebedor_equipe_id: equipeId,
+      fornecedor_id: fornecedorId,
+      distribuicao: distribuicao,
+      obra_id: atual.obra_id,
+      data: data && data.data,
+    },
+    sessao
+  );
+  return {
+    despesa: (r.despesas && r.despesas[0]) || _lerDespesa(_despesaAcessivel(despesaId, sessao.usuario_id)),
+    resumo: r.resumo || _calcularResumo(atual.obra_id, sessao.usuario_id),
   };
-
-  return comLock(function () {
-    const lista = _parseJsonLista(atual.pagamentos_realizados);
-    lista.push(lancamento);
-    const somaTotal = lista.reduce(function (s, p) {
-      return s + (Number(p.valor) || 0);
-    }, 0);
-    const despesa = repoAtualizar(SCHEMA.DESPESAS, "id", despesaId, {
-      pagamentos_realizados: JSON.stringify(lista),
-      pagamentos: JSON.stringify(_pagamentosDeLevas(lista)), // derivado das levas
-      pago: somaTotal - totalDespesa >= -0.01, // quitada quando cobre o valor
-      atualizado_em: agora,
-      editor_nome: nome,
-    });
-    return {
-      despesa: _lerDespesa(despesa),
-      resumo: _calcularResumo(atual.obra_id, sessao.usuario_id),
-    };
-  });
 }
 
-/** despesas.removerPagamento -> { despesa, resumo }. Remove uma leva lançada. */
+/**
+ * despesas.removerPagamento -> { despesa, resumo }. Remove o PAGAMENTO da leva
+ * (por id do pagamento OU id da leva legada migrada) e re-sincroniza o espelho.
+ */
 function despesasRemoverPagamento(data, sessao) {
   const despesaId = data && data.despesa_id;
   const lancamentoId = String((data && data.lancamento_id) || "");
   const atual = _despesaAcessivel(despesaId, sessao.usuario_id);
-  const totalDespesa = Number(atual.valor) || 0;
+
+  const pag = repoEncontrar(SCHEMA.PAGAMENTOS, function (x) {
+    return String(x.id) === lancamentoId || String(x.origem_leva_id || "") === lancamentoId;
+  });
+  if (pag) {
+    const r = pagamentosRemover({ id: pag.id }, sessao);
+    const desp = (r.despesas || []).find(function (d) {
+      return String(d.id) === String(despesaId);
+    });
+    return {
+      despesa: desp || _lerDespesa(_despesaAcessivel(despesaId, sessao.usuario_id)),
+      resumo: r.resumo || _calcularResumo(atual.obra_id, sessao.usuario_id),
+    };
+  }
+
+  // Fallback (não deveria ocorrer após a migração): remove a leva só do espelho.
   const nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
   const agora = agoraIso();
-
+  const totalDespesa = Number(atual.valor) || 0;
   return comLock(function () {
     const lista = _parseJsonLista(atual.pagamentos_realizados).filter(function (p) {
       return String(p.id) !== lancamentoId;
@@ -406,14 +397,11 @@ function despesasRemoverPagamento(data, sessao) {
     }, 0);
     const despesa = repoAtualizar(SCHEMA.DESPESAS, "id", despesaId, {
       pagamentos_realizados: JSON.stringify(lista),
-      pagamentos: JSON.stringify(_pagamentosDeLevas(lista)), // derivado das levas
+      pagamentos: JSON.stringify(_pagamentosDeLevas(lista)),
       pago: somaTotal - totalDespesa >= -0.01,
       atualizado_em: agora,
       editor_nome: nome,
     });
-    return {
-      despesa: _lerDespesa(despesa),
-      resumo: _calcularResumo(atual.obra_id, sessao.usuario_id),
-    };
+    return { despesa: _lerDespesa(despesa), resumo: _calcularResumo(atual.obra_id, sessao.usuario_id) };
   });
 }

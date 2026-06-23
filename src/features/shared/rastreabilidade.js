@@ -49,7 +49,13 @@ export function rastrearContato(id, ctx) {
   (ctx.participantes || []).forEach((p) => {
     if (String(p.chave || "") === "c:" + id && temId(p.obra_id)) ids.add(String(p.obra_id));
   });
-  return { ofertas, despesas, equipes, obras: _obrasPorIds(ids, ctx) };
+  const pagamentos = (ctx.pagamentos || []).filter(
+    (p) => eq(p.pagador_contato_id, id) || eq(p.recebedor_contato_id, id)
+  );
+  const repasses = (ctx.repasses || []).filter(
+    (r) => eq(r.recebedor_contato_id, id) || (r.contatos_repassados || []).some((c) => eq(c, id))
+  );
+  return { ofertas, despesas, equipes, obras: _obrasPorIds(ids, ctx), pagamentos, repasses };
 }
 
 export function rastrearFornecedor(id, ctx) {
@@ -59,7 +65,8 @@ export function rastrearFornecedor(id, ctx) {
   const ids = new Set();
   despesas.forEach((d) => temId(d.obra_id) && ids.add(String(d.obra_id)));
   ofertas.forEach((o) => { const ob = obraIdDaOferta(o, ctx); if (ob) ids.add(ob); });
-  return { contatos, ofertas, despesas, obras: _obrasPorIds(ids, ctx) };
+  const pagamentos = (ctx.pagamentos || []).filter((p) => eq(p.fornecedor_id, id));
+  return { contatos, ofertas, despesas, obras: _obrasPorIds(ids, ctx), pagamentos };
 }
 
 export function rastrearItem(id, ctx) {
@@ -88,7 +95,8 @@ export function rastrearEquipe(id, ctx) {
   const ids = new Set((eqp.obras || []).map(String));
   despesas.forEach((d) => temId(d.obra_id) && ids.add(String(d.obra_id)));
   ofertas.forEach((o) => { const ob = obraIdDaOferta(o, ctx); if (ob) ids.add(ob); });
-  return { ofertas, despesas, orcamentos, obras: _obrasPorIds(ids, ctx) };
+  const pagamentos = (ctx.pagamentos || []).filter((p) => eq(p.recebedor_equipe_id, id));
+  return { ofertas, despesas, orcamentos, obras: _obrasPorIds(ids, ctx), pagamentos };
 }
 
 export function rastrearObra(id, ctx) {
@@ -97,7 +105,9 @@ export function rastrearObra(id, ctx) {
   const ofertas = (ctx.ofertas || []).filter((o) => eq(obraIdDaOferta(o, ctx), id));
   const orcamentos = (ctx.orcamentos || []).filter((o) => eq(o.obra_id, id));
   const equipes = (ctx.equipes || []).filter((e) => (e.obras || []).some((ob) => eq(ob, id)));
-  return { despesas, cotacoes, ofertas, orcamentos, equipes };
+  const pagamentos = (ctx.pagamentos || []).filter((p) => eq(p.obra_id, id));
+  const repasses = (ctx.repasses || []).filter((r) => eq(r.obra_id, id));
+  return { despesas, cotacoes, ofertas, orcamentos, equipes, pagamentos, repasses };
 }
 
 export function rastrearOferta(oferta, ctx) {

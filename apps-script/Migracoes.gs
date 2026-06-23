@@ -36,13 +36,66 @@ function _repararOfertasOrfas() {
   return reparadas;
 }
 
+/**
+ * Extrai os pagamentos EMBUTIDOS (despesa.pagamentos_realizados) p/ a aba PAGAMENTOS,
+ * como entidades próprias (1 leva → 1 pagamento, 1 alocação). Idempotente via
+ * `origem_leva_id`. NÃO apaga os embutidos (continuam como espelho). Retorna nº criados.
+ */
+function _migrarPagamentosEmbutidos_v1() {
+  const jaTem = {};
+  repoListar(SCHEMA.PAGAMENTOS).forEach(function (p) {
+    const lid = String(p.origem_leva_id || "");
+    if (lid) jaTem[lid] = true;
+  });
+  let criados = 0;
+  repoListar(SCHEMA.DESPESAS).forEach(function (d) {
+    const levas = _parseJsonLista(d.pagamentos_realizados);
+    levas.forEach(function (lv) {
+      const lid = String((lv && lv.id) || "");
+      if (!lid || jaTem[lid]) return;
+      const valor = Number(lv.valor) || 0;
+      repoInserir(SCHEMA.PAGAMENTOS, {
+        id: novoId(),
+        usuario_id: d.usuario_id,
+        obra_id: d.obra_id,
+        data: lv.data || "",
+        valor: valor,
+        pagador_chave: String(lv.pagador || ""),
+        pagador_contato_id: _contatoDeChave(lv.pagador),
+        recebedor_contato_id: String(lv.contato_id || ""),
+        recebedor_equipe_id: String(d.ofertante_equipe_id || ""),
+        fornecedor_id: String(lv.fornecedor_id || ""),
+        alocacoes: JSON.stringify([{ despesa_id: d.id, valor: valor }]),
+        distribuicao: JSON.stringify(_parseJsonLista(lv.distribuicao)),
+        observacao: "",
+        criado_em: lv.criado_em || agoraIso(),
+        autor_nome: lv.autor_nome || "",
+        atualizado_em: lv.criado_em || agoraIso(),
+        editor_nome: "",
+        origem_leva_id: lid,
+      });
+      jaTem[lid] = true;
+      criados++;
+    });
+  });
+  return criados;
+}
+
 /** Roda as migrações pendentes UMA vez (double-checked via flag + lock). */
 function _migrarUmaVez() {
   const props = PropertiesService.getScriptProperties();
-  if (props.getProperty("mig_ofertas_orfas_v1") === "1") return;
-  comLock(function () {
-    if (props.getProperty("mig_ofertas_orfas_v1") === "1") return;
-    _repararOfertasOrfas();
-    props.setProperty("mig_ofertas_orfas_v1", "1");
-  });
+  if (props.getProperty("mig_ofertas_orfas_v1") !== "1") {
+    comLock(function () {
+      if (props.getProperty("mig_ofertas_orfas_v1") === "1") return;
+      _repararOfertasOrfas();
+      props.setProperty("mig_ofertas_orfas_v1", "1");
+    });
+  }
+  if (props.getProperty("mig_pagamentos_v1") !== "1") {
+    comLock(function () {
+      if (props.getProperty("mig_pagamentos_v1") === "1") return;
+      _migrarPagamentosEmbutidos_v1();
+      props.setProperty("mig_pagamentos_v1", "1");
+    });
+  }
 }

@@ -51,6 +51,12 @@ const ROTAS = {
   "despesas.lancarPagamento": { fn: despesasLancarPagamento },
   "despesas.removerPagamento": { fn: despesasRemoverPagamento },
 
+  // Pagamentos / Repasses (entidades próprias)
+  "pagamentos.lancar": { fn: pagamentosLancar },
+  "pagamentos.remover": { fn: pagamentosRemover },
+  "repasses.lancar": { fn: repassesLancar },
+  "repasses.remover": { fn: repassesRemover },
+
   // Categorias
   "categorias.listar": { fn: categoriasListar },
   "categorias.criar": { fn: categoriasCriar },

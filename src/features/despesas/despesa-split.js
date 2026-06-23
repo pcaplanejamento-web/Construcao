@@ -111,6 +111,63 @@ export function balancos(despesas) {
   return { porChave, porFornecedor };
 }
 
+/**
+ * Como `balancos`, mas lendo da COLEÇÃO de Pagamentos (entidades próprias) em vez
+ * das levas embutidas — entende pagamento que cobre VÁRIAS despesas (`alocacoes`).
+ * Para pagamento de despesa única, é equivalente a `balancos` (espelho sincronizado).
+ *  - pago[chave]     = Σ pagamento.valor onde pagador_chave = chave
+ *  - recebido[chave] = integrante → Σ distribuicao; ofertante (c:/e:) → Σ alocado
+ *  - realizado(d)    = Σ alocacoes.valor da despesa (entre todos os pagamentos)
+ */
+export function balancosDePagamentos(despesas, pagamentos) {
+  const pago = {};
+  const devido = {};
+  const recebido = {};
+  const saldoReceber = {};
+  const porFornecedor = {};
+  const alocadoPorDespesa = {};
+  (pagamentos || []).forEach((p) => {
+    if (p && p.pagador_chave) pago[p.pagador_chave] = (pago[p.pagador_chave] || 0) + (Number(p.valor) || 0);
+    parseLista(p.distribuicao).forEach((x) => {
+      if (x && x.chave) recebido[x.chave] = (recebido[x.chave] || 0) + (Number(x.valor) || 0);
+    });
+    parseLista(p.alocacoes).forEach((a) => {
+      if (a && a.despesa_id)
+        alocadoPorDespesa[a.despesa_id] = (alocadoPorDespesa[a.despesa_id] || 0) + (Number(a.valor) || 0);
+    });
+  });
+  (despesas || []).forEach((d) => {
+    const valor = Number(d.valor) || 0;
+    const realizado = alocadoPorDespesa[d.id] || 0;
+    const resto = Math.max(0, valor - realizado);
+    parseLista(d.responsaveis).forEach((r) => {
+      if (r && r.chave) devido[r.chave] = (devido[r.chave] || 0) + (valor * (Number(r.pct) || 0)) / 100;
+    });
+    if (d.ofertante_equipe_id) {
+      const ch = "e:" + d.ofertante_equipe_id;
+      recebido[ch] = (recebido[ch] || 0) + realizado;
+      if (resto > 0.01) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
+    } else if (d.ofertante_contato_id) {
+      const ch = "c:" + d.ofertante_contato_id;
+      recebido[ch] = (recebido[ch] || 0) + realizado;
+      if (resto > 0.01) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
+    }
+    if (d.fornecedor_id) {
+      const f = (porFornecedor[d.fornecedor_id] = porFornecedor[d.fornecedor_id] || { total: 0, recebido: 0, saldoReceber: 0 });
+      f.total += valor;
+      f.recebido += realizado;
+      f.saldoReceber += resto;
+    }
+  });
+  const porChave = {};
+  const g = (k) => (porChave[k] = porChave[k] || { pago: 0, recebido: 0, saldoApagar: 0, saldoReceber: 0 });
+  Object.keys(pago).forEach((k) => (g(k).pago = pago[k]));
+  Object.keys(recebido).forEach((k) => (g(k).recebido = recebido[k]));
+  Object.keys(saldoReceber).forEach((k) => (g(k).saldoReceber = saldoReceber[k]));
+  Object.keys(devido).forEach((k) => (g(k).saldoApagar = Math.max(0, (devido[k] || 0) - (pago[k] || 0))));
+  return { porChave, porFornecedor };
+}
+
 /** "nenhum" | "unico" | "distribuido" conforme o nº de pagantes com valor > 0. */
 export function distribuicao(despesa) {
   const n = parseLista(despesa && despesa.pagamentos).filter((p) => Number(p.valor) > 0).length;
