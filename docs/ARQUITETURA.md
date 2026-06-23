@@ -100,3 +100,15 @@ O Apps Script não tem websockets. O acompanhamento ao vivo é obtido por:
   (persiste entre sessões, padrão); desmarcado → `sessionStorage` (some ao fechar a
   aba). O `auth-store` infere a origem no boot e o `logout` limpa ambos.
 - Um trigger diário (`limparSessoesExpiradas`) remove sessões vencidas.
+
+## Rastreabilidade (derivar, não duplicar)
+
+- As vinculações entre entidades (contato↔ofertas/despesas/obras, fornecedor↔…,
+  item↔…, obra↔…, equipe↔…) são **derivadas dos FKs diretos**, nunca guardadas como
+  arrays de IDs duplicados — assim não há o que dessincronizar (a verdade é sempre o FK).
+- A lógica vive em [`rastreabilidade.js`](../src/features/shared/rastreabilidade.js)
+  (módulo **puro/testável**); [`vinculos.js`](../src/features/shared/vinculos.js) só
+  monta o `ctx` a partir do store e transforma o resultado em grupos p/ o banner.
+- A **obra de uma oferta** resolve em cascata: própria (`oferta.obra_id`, novo FK) →
+  cotação → orçamento — o que cobre inclusive ofertas avulsas (antes não tinham obra
+  resolvível). `obra_id` é coluna **append-only** em `CotacaoPrecos`.

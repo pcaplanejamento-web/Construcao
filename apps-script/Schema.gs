@@ -237,6 +237,7 @@ const SCHEMA = {
       "item_id", // (append) FK → Itens.id — item PRÓPRIO da oferta (oferta independente da cotação)
       "fornecedor_id", // (append) FK → Fornecedores.id — fornecedor da oferta (obrigatório p/ Material)
       "usuario_id", // (append) dono da oferta (permite oferta avulsa, sem cotação/orçamento)
+      "obra_id", // (append) FK → Obras.id — obra da oferta (herda cotação/orçamento; resolve obra de oferta avulsa)
     ],
   },
 

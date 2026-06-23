@@ -246,6 +246,12 @@ function cotacoesAdicionarPreco(data, sessao) {
   const valor = Number(data && data.valor_unit);
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
 
+  // Obra da oferta: explícita → herda da cotação → herda do orçamento (resolve obra de avulsa).
+  let obraId = String((data && data.obra_id) || "");
+  if (!obraId && cotacao) obraId = String(cotacao.obra_id || "");
+  if (!obraId && orcamento) obraId = String(orcamento.obra_id || "");
+  if (obraId) _obraAcessivel(obraId, usuarioId);
+
   return comLock(function () {
     const agora = agoraIso();
     const nomeUsuario = (buscarUsuarioPorId(usuarioId) || {}).nome || "";
@@ -271,6 +277,7 @@ function cotacoesAdicionarPreco(data, sessao) {
       item_id: itemId,
       fornecedor_id: fornecedorId,
       usuario_id: usuarioId,
+      obra_id: obraId, // herda cotação/orçamento; resolve obra de oferta avulsa
     };
     repoInserir(SCHEMA.COTACAO_PRECOS, preco);
     const historico = _logPreco(preco); // ponto inicial da evolução
@@ -324,6 +331,11 @@ function cotacoesAtualizarPreco(data, sessao) {
   if (data.valor_unit_desconto !== undefined)
     patch.valor_unit_desconto =
       Number(data.valor_unit_desconto) > 0 ? Number(data.valor_unit_desconto) : "";
+  if (data.obra_id !== undefined) {
+    const o = String(data.obra_id || "");
+    if (o) _obraAcessivel(o, sessao.usuario_id);
+    patch.obra_id = o;
+  }
   patch.atualizado_em = agoraIso();
   patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 

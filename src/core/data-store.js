@@ -13,6 +13,7 @@ import { criarStore } from "./store.js";
 import { api } from "./api-client.js";
 import { auth } from "./auth-store.js";
 import { bus, EVENTOS } from "./event-bus.js";
+import { obraIdDaOferta } from "../features/shared/rastreabilidade.js";
 
 const CACHE_VERSAO = 2; // bump: ofertas viraram lista plana (oferta independente)
 
@@ -201,6 +202,19 @@ const equipesDaObra = (obraId) =>
 /** Ofertas de um orçamento: filtra a lista plana por orcamento_id. */
 const ofertasDoOrcamento = (orcId) =>
   store.get().ofertas.filter((p) => String(p.orcamento_id) === String(orcId));
+
+/* Rastreabilidade (derivada) — atalhos p/ as direções reversas mais usadas. */
+const ofertasDoContato = (id) => store.get().ofertas.filter((o) => String(o.contato_id) === String(id));
+const ofertasDoFornecedor = (id) => store.get().ofertas.filter((o) => String(o.fornecedor_id) === String(id));
+const ofertasDoItem = (id) => store.get().ofertas.filter((o) => String(o.item_id) === String(id));
+const ofertasDaObra = (id) => {
+  const ctx = { cotacoes: store.get().cotacoes, orcamentos: store.get().orcamentos };
+  return store.get().ofertas.filter((o) => String(obraIdDaOferta(o, ctx)) === String(id));
+};
+const despesasDoContato = (id) => todasDespesas().filter((d) => String(d.ofertante_contato_id) === String(id));
+const despesasDoFornecedor = (id) => todasDespesas().filter((d) => String(d.fornecedor_id) === String(id));
+const despesasDoItem = (id) => todasDespesas().filter((d) => String(d.item_id) === String(id));
+const despesasDaEquipe = (id) => todasDespesas().filter((d) => String(d.ofertante_equipe_id) === String(id));
 
 /* --------------------- Recalcular resumo local ----------------------- */
 
@@ -902,6 +916,8 @@ export const dataStore = {
   historicoDaCotacao,
   orcamentos, orcamento, ofertasDoOrcamento,
   equipes, equipe, equipesDoContato, equipesDaObra,
+  ofertasDoContato, ofertasDoFornecedor, ofertasDoItem, ofertasDaObra,
+  despesasDoContato, despesasDoFornecedor, despesasDoItem, despesasDaEquipe,
   // mutações
   criarObra, atualizarObra, removerObra,
   adicionarParticipante, removerParticipante, definirResponsavel,
