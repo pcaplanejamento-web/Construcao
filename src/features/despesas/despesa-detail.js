@@ -225,8 +225,11 @@ class DespesaDetail extends BaseElement {
       dist.itens = [];
     }
     const pagValor = this.$("#pagValor");
-    if (pagValor && dist) {
-      pagValor.addEventListener("input", () => (dist.limite = Number(pagValor.value) || 0));
+    if (pagValor) {
+      pagValor.addEventListener("input", () => {
+        pagValor.removeAttribute("error"); // limpa o "Informe um valor" assim que digita
+        if (dist) dist.limite = Number(pagValor.value) || 0;
+      });
     }
     const btn = this.$("#lancarPag");
     if (btn) btn.addEventListener("click", () => this.lancarPagamento());
