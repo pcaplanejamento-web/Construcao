@@ -25,9 +25,10 @@ class PagamentosView extends BaseElement {
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       p.sub { color: var(--cor-texto-suave); margin-top: var(--esp-2); }
       .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--esp-3); }
-      .resumo { position: relative; border-radius: var(--raio-md);
+      .resumo { position: relative; border-radius: var(--raio-md); box-shadow: var(--sombra-sm);
         padding: var(--esp-3) var(--esp-4); display: flex; flex-direction: column; gap: 4px;
-        cursor: pointer; transition: border-color var(--transicao), background var(--transicao); }
+        cursor: pointer; transition: background var(--transicao), box-shadow var(--transicao), transform var(--transicao); }
+      .resumo:hover { transform: translateY(-4px); box-shadow: var(--sombra-md); }
       .resumo .item { font-weight: var(--peso-semi); }
       .resumo .val { font-size: var(--fs-lg); font-weight: var(--peso-forte); }
       .resumo small { color: var(--cor-texto-suave); }
@@ -50,10 +51,10 @@ class PagamentosView extends BaseElement {
         </div>
         <ui-tabs id="abas">
           <div slot="transferencias">
-            <ui-card title="Minhas transferências"><div id="listaT"></div></ui-card>
+            <ui-card mesa title="Mesa com transferências"><div id="listaT"></div></ui-card>
           </div>
           <div slot="pagamentos">
-            <ui-card title="Meus pagamentos"><div id="listaP"></div></ui-card>
+            <ui-card mesa title="Mesa com pagamentos"><div id="listaP"></div></ui-card>
           </div>
         </ui-tabs>
       </div>

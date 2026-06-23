@@ -54,13 +54,13 @@ class FornecedoresView extends BaseElement {
         </div>
         <ui-tabs id="abas">
           <div slot="fornecedores">
-            <ui-card title="Meus fornecedores">
+            <ui-card mesa title="Mesa com fornecedores">
               <ui-button slot="acoes" id="novo">+ Novo fornecedor</ui-button>
               <div id="lista"></div>
             </ui-card>
           </div>
           <div slot="classificacao">
-            <ui-card title="Classificações">
+            <ui-card mesa title="Mesa com classificações">
               <ui-button slot="acoes" id="novaClass">+ Nova classificação</ui-button>
               <div id="listaClass"></div>
             </ui-card>

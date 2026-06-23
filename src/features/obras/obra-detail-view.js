@@ -104,7 +104,7 @@ class ObraDetailView extends BaseElement {
           <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
         </div>
         <div slot="despesas" class="despesas-aba">
-          <ui-card title="Despesas">
+          <ui-card mesa title="Mesa com despesas da obra">
             <ui-button slot="acoes" id="addDespesa">+ Registrar Despesa</ui-button>
             <despesa-table id="tabela"></despesa-table>
           </ui-card>
@@ -116,18 +116,18 @@ class ObraDetailView extends BaseElement {
           <obra-participantes obra-id="${this.obraId}" modo="responsaveis"></obra-participantes>
         </div>
         <div slot="orcamentos">
-          <ui-card title="Orçamentos da obra">
+          <ui-card mesa title="Mesa com orçamentos da obra">
             <ui-button slot="acoes" id="addOrc">+ Novo orçamento</ui-button>
             <div id="gradeOrc"></div>
           </ui-card>
         </div>
         <div slot="equipes">
-          <ui-card title="Equipes da obra">
+          <ui-card mesa title="Mesa com equipes da obra">
             <div id="gradeEquipes"></div>
           </ui-card>
         </div>
         <div slot="fornecedores">
-          <ui-card title="Fornecedores da obra">
+          <ui-card mesa title="Mesa com fornecedores da obra">
             <ui-data-table id="tabForn" fluido clicavel
               empty-text="Nenhum fornecedor usado nesta obra ainda."></ui-data-table>
           </ui-card>
@@ -135,18 +135,18 @@ class ObraDetailView extends BaseElement {
         <div slot="pagamentos">
           <ui-tabs id="abasPag">
             <div slot="transferencias">
-              <ui-card title="Transferências da obra">
+              <ui-card mesa title="Mesa com transferências da obra">
                 <ui-button slot="acoes" id="addPag">+ Registrar transferência</ui-button>
                 <ui-data-table id="tabTransf" fluido clicavel
                   empty-text="Nenhuma transferência registrada nesta obra."></ui-data-table>
               </ui-card>
             </div>
             <div slot="pagamentos">
-              <ui-card title="Pagamentos da obra">
+              <ui-card mesa title="Mesa com pagamentos da obra">
                 <ui-data-table id="tabPag" fluido
                   empty-text="Nenhum pagamento registrado nesta obra."></ui-data-table>
               </ui-card>
-              <ui-card title="Repasses">
+              <ui-card mesa title="Mesa com repasses">
                 <ui-data-table id="tabRep" fluido
                   empty-text="Nenhum repasse registrado."></ui-data-table>
               </ui-card>

@@ -107,7 +107,7 @@ class CotacaoDetailView extends BaseElement {
           <ui-card><category-breakdown id="comparacao"></category-breakdown></ui-card>
         </div>
         <div slot="ofertas">
-          <ui-card title="Ofertas">
+          <ui-card mesa title="Mesa com ofertas">
             <ui-button slot="acoes" id="addOferta">+ Adicionar oferta</ui-button>
             <ui-data-table id="tabela" fluido
               empty-text="Nenhuma oferta ainda. Adicione ofertas de contatos para comparar."></ui-data-table>

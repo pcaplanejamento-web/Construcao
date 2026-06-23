@@ -46,13 +46,13 @@ class AdminView extends BaseElement {
         </div>
         <ui-tabs id="abas">
           <div slot="usuarios">
-            <ui-card title="Usuários">
+            <ui-card mesa title="Mesa com usuários">
               <ui-button slot="acoes" id="novo">+ Novo usuário</ui-button>
               <div id="conteudoUsuarios"></div>
             </ui-card>
           </div>
           <div slot="transferencias" class="pilha">
-            <ui-card title="Tipos de transferência">
+            <ui-card mesa title="Mesa com tipos de transferência">
               <ui-button slot="acoes" id="novoTipo">+ Novo tipo</ui-button>
               <div id="listaTipos"></div>
             </ui-card>

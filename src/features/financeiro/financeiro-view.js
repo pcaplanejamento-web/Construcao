@@ -58,17 +58,17 @@ class FinanceiroView extends BaseElement {
         <div class="kpis" id="kpis"></div>
         <ui-tabs id="abas">
           <div slot="receber">
-            <ui-card title="A receber — por destinatário">
+            <ui-card mesa title="Mesa com recebimentos por destinatário">
               <ui-data-table id="tabReceber" fluido empty-text="Nada a receber."></ui-data-table>
             </ui-card>
           </div>
           <div slot="pagar">
-            <ui-card title="A pagar — por responsável">
+            <ui-card mesa title="Mesa com pagamentos por responsável">
               <ui-data-table id="tabPagar" fluido empty-text="Nada a pagar."></ui-data-table>
             </ui-card>
           </div>
           <div slot="aberto">
-            <ui-card title="Despesas em aberto">
+            <ui-card mesa title="Mesa com despesas em aberto">
               <ui-data-table id="tabAberto" fluido clicavel empty-text="Nenhuma despesa em aberto."></ui-data-table>
             </ui-card>
           </div>

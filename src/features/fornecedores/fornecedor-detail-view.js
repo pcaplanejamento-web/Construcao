@@ -85,25 +85,25 @@ class FornecedorDetailView extends BaseElement {
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="contatos" class="aba">
-          <ui-card title="Contatos do fornecedor">
+          <ui-card mesa title="Mesa com contatos do fornecedor">
             <ui-button slot="acoes" id="novoContato">+ Novo contato</ui-button>
             <ui-data-table id="tabContatos" fluido
               empty-text="Nenhum contato deste fornecedor ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="ofertas" class="aba">
-          <ui-card title="Ofertas deste fornecedor">
+          <ui-card mesa title="Mesa com ofertas deste fornecedor">
             <ui-data-table id="tabOfertas" fluido clicavel
               empty-text="Nenhuma oferta de contatos deste fornecedor ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="orcamentos" class="aba">
-          <ui-card title="Orçamentos deste fornecedor">
+          <ui-card mesa title="Mesa com orçamentos deste fornecedor">
             <div id="gradeOrc"></div>
           </ui-card>
         </div>
         <div slot="dados" class="aba">
-          <ui-card title="Dados — a receber por obra">
+          <ui-card mesa title="Mesa com dados — a receber por obra">
             <ui-data-table id="tabDados" fluido clicavel
               empty-text="Nenhuma despesa desta empresa ainda."></ui-data-table>
           </ui-card>

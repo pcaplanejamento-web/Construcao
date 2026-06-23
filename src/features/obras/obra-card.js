@@ -35,7 +35,7 @@ class ObraCard extends BaseElement {
         transition: box-shadow var(--transicao), transform var(--transicao);
         display: flex; flex-direction: column; gap: var(--esp-3); height: 100%;
       }
-      .card:hover { box-shadow: var(--sombra-lg); transform: translateY(-2px); }
+      .card:hover { box-shadow: var(--sombra-lg); transform: translateY(-4px); }
       .topo { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--esp-2); }
       /* Título com altura fixa de 2 linhas (clamp): o card não cresce
          verticalmente com nomes longos — só varia na horizontal (grid). */

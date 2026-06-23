@@ -48,7 +48,7 @@ class CotacoesView extends BaseElement {
             <p class="sub">Compare preços de ofertas para cada item. Orçamentos e ofertas têm abas próprias no menu.</p>
           </div>
         </div>
-        <ui-card title="Minhas cotações">
+        <ui-card mesa title="Mesa com cotações">
           <ui-button slot="acoes" id="nova">+ Nova cotação</ui-button>
           <div id="lista"></div>
         </ui-card>

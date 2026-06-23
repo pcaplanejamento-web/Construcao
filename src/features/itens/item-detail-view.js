@@ -119,19 +119,19 @@ class ItemDetailView extends BaseElement {
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="despesas" class="aba">
-          <ui-card title="Despesas deste item">
+          <ui-card mesa title="Mesa com despesas deste item">
             <ui-data-table id="tabDespesas" fluido clicavel
               empty-text="Nenhuma despesa com este item ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="cotacoes" class="aba">
-          <ui-card title="Cotações deste item">
+          <ui-card mesa title="Mesa com cotações deste item">
             <ui-data-table id="tabCotacoes" fluido clicavel
               empty-text="Nenhuma cotação com este item ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="obras" class="aba">
-          <ui-card title="Obras onde foi usado">
+          <ui-card mesa title="Mesa com obras onde foi usado">
             <ui-data-table id="tabObras" fluido clicavel
               empty-text="Este item ainda não foi usado em nenhuma obra."></ui-data-table>
           </ui-card>

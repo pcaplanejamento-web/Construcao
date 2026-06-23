@@ -72,8 +72,9 @@ class DespesaDetail extends BaseElement {
       .resumo { background: var(--cor-superficie-2); border-radius: var(--raio-sm);
         padding: var(--esp-3) var(--esp-4); display: flex; flex-direction: column; gap: 4px; }
       .resumo.clicavel { cursor: pointer; border: 1px solid var(--cor-borda);
-        transition: border-color var(--transicao), background var(--transicao); }
-      .resumo.clicavel:hover { border-color: var(--cor-primaria); background: var(--cor-primaria-suave); }
+        transition: border-color var(--transicao), background var(--transicao), box-shadow var(--transicao), transform var(--transicao); }
+      .resumo.clicavel:hover { border-color: var(--cor-primaria); background: var(--cor-primaria-suave);
+        transform: translateY(-4px); box-shadow: var(--sombra-md); }
       .resumo .item { font-weight: var(--peso-semi); }
       .resumo .val { font-size: var(--fs-lg); font-weight: var(--peso-forte);
         color: var(--cor-primaria); }

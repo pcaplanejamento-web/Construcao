@@ -25,11 +25,12 @@ class OrcamentoCard extends BaseElement {
       :host { display: block; }
       .card {
         background: var(--cor-superficie); border: 1px solid var(--cor-borda);
-        border-radius: var(--raio-lg); box-shadow: var(--sombra-sm);
-        padding: var(--esp-5); cursor: pointer; transition: var(--transicao);
+        border-radius: var(--raio-lg); box-shadow: var(--sombra-md);
+        padding: var(--esp-5); cursor: pointer;
+        transition: box-shadow var(--transicao), transform var(--transicao);
         display: flex; flex-direction: column; gap: var(--esp-3); height: 100%;
       }
-      .card:hover { box-shadow: var(--sombra-md); transform: translateY(-2px); }
+      .card:hover { box-shadow: var(--sombra-lg); transform: translateY(-4px); }
       .topo { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--esp-2); }
       h3 { font-size: var(--fs-lg); font-weight: var(--peso-semi); overflow-wrap: anywhere; }
       .sub { color: var(--cor-texto-fraco); font-size: var(--fs-sm);

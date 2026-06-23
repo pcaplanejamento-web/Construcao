@@ -81,35 +81,35 @@ class ContatoDetailView extends BaseElement {
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="obras">
-          <ui-card title="Obras vinculadas">
+          <ui-card mesa title="Mesa com obras vinculadas">
             <ui-data-table id="tabObras" fluido clicavel
               empty-text="Este contato não participa de nenhuma obra ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="fornecedores">
-          <ui-card title="Fornecedor vinculado">
+          <ui-card mesa title="Mesa com fornecedor vinculado">
             <ui-data-table id="tabForn" fluido clicavel
               empty-text="Sem fornecedor vinculado."></ui-data-table>
           </ui-card>
         </div>
         <div slot="equipes">
-          <ui-card title="Equipes do contato">
+          <ui-card mesa title="Mesa com equipes do contato">
             <div id="gradeEquipes"></div>
           </ui-card>
         </div>
         <div slot="ofertas">
-          <ui-card title="Ofertas deste contato">
+          <ui-card mesa title="Mesa com ofertas deste contato">
             <ui-data-table id="tabOfertas" fluido
               empty-text="Este contato não tem ofertas ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="orcamentos">
-          <ui-card title="Orçamentos deste contato">
+          <ui-card mesa title="Mesa com orçamentos deste contato">
             <div id="gradeOrc"></div>
           </ui-card>
         </div>
         <div slot="dados">
-          <ui-card title="Dados — a receber e a pagar por obra">
+          <ui-card mesa title="Mesa com dados — a receber e a pagar por obra">
             <ui-data-table id="tabDados" fluido clicavel
               empty-text="Sem valores a receber ou a pagar."></ui-data-table>
           </ui-card>

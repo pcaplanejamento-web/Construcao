@@ -77,21 +77,21 @@ class EquipeDetailView extends BaseElement {
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="obras">
-          <ui-card title="Obras vinculadas">
+          <ui-card mesa title="Mesa com obras vinculadas">
             <ui-button slot="acoes" id="addObra">+ Vincular obra</ui-button>
             <ui-data-table id="tabObras" fluido clicavel
               empty-text="Nenhuma obra vinculada ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="membros">
-          <ui-card title="Membros">
+          <ui-card mesa title="Mesa com membros">
             <ui-button slot="acoes" id="addMembro">+ Adicionar membro</ui-button>
             <ui-data-table id="tabMembros" fluido clicavel
               empty-text="Nenhum membro ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="dados">
-          <ui-card title="Dados — recebimentos da equipe">
+          <ui-card mesa title="Mesa com dados — recebimentos da equipe">
             <ui-data-table id="tabDados" fluido clicavel
               empty-text="Nenhuma despesa vinculada a esta equipe ainda."></ui-data-table>
           </ui-card>

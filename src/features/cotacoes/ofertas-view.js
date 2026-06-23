@@ -36,7 +36,7 @@ class OfertasView extends BaseElement {
             <p class="sub">Todas as ofertas (preços) registradas — de cotações, orçamentos ou avulsas.</p>
           </div>
         </div>
-        <ui-card title="Minhas ofertas">
+        <ui-card mesa title="Mesa com ofertas">
           <ui-button slot="acoes" id="nova">+ Criar oferta</ui-button>
           <div id="lista"></div>
         </ui-card>

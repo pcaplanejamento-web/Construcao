@@ -155,23 +155,28 @@ class UiDataTable extends BaseElement {
          e a barra de rolagem horizontal fica sempre na base da tabela. */
       .wrap { overflow: auto; max-height: 70vh; -webkit-overflow-scrolling: touch; }
       .sem-result td { text-align: center; color: var(--cor-texto-fraco); padding: var(--esp-5); }
-      table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
-      th, td { padding: var(--esp-3) var(--esp-3); text-align: left;
-        border-bottom: 1px solid var(--cor-divisor); white-space: nowrap; vertical-align: middle; }
+      /* Tabela = MESA: cada LINHA do corpo é um card branco; leve espaçamento entre elas. */
+      table { width: 100%; border-collapse: separate; border-spacing: 0 var(--esp-2); font-size: var(--fs-sm); }
+      th, td { padding: var(--esp-3) var(--esp-3); text-align: left; white-space: nowrap; vertical-align: middle; }
       :host([fluido]) table { table-layout: auto; }
       :host([fluido]) td { white-space: normal; }
       :host([clicavel]) tbody tr { cursor: pointer; }
       th { color: var(--cor-texto-fraco); font-weight: var(--peso-semi);
         font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
-      thead th { position: sticky; top: 0; z-index: 3; background: var(--cor-superficie); }
-      tbody tr:last-child td { border-bottom: none; }
-      tbody tr:hover { background: var(--cor-superficie-2); }
+      /* cabeçalho sticky na cor da MESA (os vãos entre os cards mostram a mesa, não branco). */
+      thead th { position: sticky; top: 0; z-index: 3; background: var(--cor-fundo); }
+      /* LINHA-CARD: fundo branco, cantos arredondados nas pontas, sombra + elevação no hover. */
+      tbody td { background: var(--cor-superficie); }
+      tbody tr td:first-child { border-top-left-radius: var(--raio-sm); border-bottom-left-radius: var(--raio-sm); }
+      tbody tr td:last-child { border-top-right-radius: var(--raio-sm); border-bottom-right-radius: var(--raio-sm); }
+      tbody tr { box-shadow: var(--sombra-sm); transition: transform var(--transicao), box-shadow var(--transicao); }
+      tbody tr:hover { transform: translateY(-2px); box-shadow: var(--sombra-md); }
       .dir { text-align: right; }
       td.dir { font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
       /* Coluna inicial de seleção: fixa à esquerda. */
       .sel { width: 36px; text-align: center; position: sticky; left: 0;
         background: var(--cor-superficie); z-index: 2; }
-      thead th.sel { z-index: 4; }
+      thead th.sel { z-index: 4; background: var(--cor-fundo); }
       input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cor-primaria); cursor: pointer; }
       .th-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none;
         font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;

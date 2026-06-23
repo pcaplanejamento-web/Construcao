@@ -1,14 +1,16 @@
 /**
  * <ui-card> — Container com superfície, sombra e cabeçalho opcional.
  *
- * Atributos: title (opcional), padded (booleano, padding no corpo — padrão sim)
+ * Atributos: title (opcional), padded (booleano, padding no corpo — padrão sim),
+ *   mesa (booleano: vira "mesa" — corpo recuado, p/ tabelas/grades de cards; os cards
+ *   brancos sobre ela se destacam). A mesa NÃO levanta no hover (só os cards sobre ela).
  * Slots: default (corpo), name="acoes" (canto superior direito), name="rodape"
  */
 import { BaseElement } from "./base-element.js";
 
 class UiCard extends BaseElement {
   static get observedAttributes() {
-    return ["title"];
+    return ["title", "mesa"];
   }
   attributeChangedCallback() {
     if (this.shadowRoot.childElementCount) this.renderizar();
@@ -35,6 +37,8 @@ class UiCard extends BaseElement {
       /* ações: alinhadas à direita; busca (se houver) fica à ESQUERDA do botão. */
       header > div { flex: none; display: flex; align-items: center; gap: var(--esp-2); }
       .corpo { padding: var(--esp-5); flex: 1; min-height: 0; }
+      /* MESA: corpo recuado (menos branco) p/ destacar os cards brancos sobre ela. */
+      :host([mesa]) .corpo { background: var(--cor-fundo); }
       .rodape { padding: var(--esp-4) var(--esp-5); border-top: 1px solid var(--cor-borda); }
       ::slotted([slot="rodape"]) { display: block; }
       slot[name="rodape"]:not(:empty) { display: block; }

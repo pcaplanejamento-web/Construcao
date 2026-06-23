@@ -33,7 +33,7 @@ class OrcamentosView extends BaseElement {
             <p class="sub">Agrupe ofertas de vários itens num orçamento (de um fornecedor ou grupo).</p>
           </div>
         </div>
-        <ui-card title="Meus orçamentos">
+        <ui-card mesa title="Mesa com orçamentos">
           <ui-button slot="acoes" id="novo">+ Novo orçamento</ui-button>
           <div id="lista"></div>
         </ui-card>

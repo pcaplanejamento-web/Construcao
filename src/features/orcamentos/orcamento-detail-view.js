@@ -89,7 +89,7 @@ class OrcamentoDetailView extends BaseElement {
     alvo.innerHTML = `
       <a class="voltar" href="/cotacoes"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>${rotuloVoltar("/cotacoes")}</span></a>
       <div class="topo" id="topo"></div>
-      <ui-card title="Ofertas do orçamento">
+      <ui-card mesa title="Mesa com ofertas do orçamento">
         <ui-button slot="acoes" id="addOferta">+ Adicionar oferta</ui-button>
         <ui-data-table id="tabela" fluido
           empty-text="Nenhuma oferta neste orçamento ainda."></ui-data-table>

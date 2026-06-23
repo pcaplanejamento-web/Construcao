@@ -95,10 +95,22 @@ espaçamento (24px) acima e abaixo** automaticamente, sem `margin` avulso.
 `--raio-sm`(8) `--raio-md`(12, botões/inputs) `--raio-lg`(20, cards) `--raio-completo`(999);
 `--sombra-sm/md/lg` (tonalizadas no escuro). **Card** usa `--sombra-md` (duas camadas:
 contorno suave + halo difuso). `--z-nav/modal/toast`; transição padrão `--transicao`.
-Botões/cards sobem 1–3px no hover (`translateY`) com `--transicao`. **Transições
-sempre escopadas** às propriedades animadas (ex.: `transition: box-shadow, transform`)
+**Transições sempre escopadas** às propriedades animadas (ex.: `transition: box-shadow, transform`)
 — **nunca `transition: all`**, senão o card anima largura no reflow (sidebar
 recolher) e as cores no troca de tema (efeito "bugado").
+
+## Mesa + cards (sistema baseado em cards)
+**Mesa** = container que segura os cards (tabela ou grade). É o `ui-card` com o atributo
+**`mesa`**: corpo recuado (`--cor-fundo`, "menos branco") p/ os cards brancos se
+destacarem. **A mesa NÃO levanta** no hover. Formulários/KPIs usam `ui-card` sem `mesa`.
+**Card** (clicável) = obra/equipe/orçamento, pagamento/transferência/oferta (`.resumo`) e
+**cada linha** das tabelas. Espec única de elevação: base `--sombra-md`, hover
+`box-shadow: var(--sombra-lg); transform: translateY(-4px)` (transição escopada). Os
+**KPIs coloridos não são clicáveis → não levantam**.
+**Linha-card** (`ui-data-table`): `border-collapse: separate; border-spacing: 0 var(--esp-2)`;
+cada linha é um card branco (cantos arredondados nas pontas via `td:first/last-child`),
+`--sombra-sm` em repouso e `translateY(-2px)`+`--sombra-md` no hover; cabeçalho/totais/
+coluna-de-seleção sticky usam `--cor-fundo` (cor da mesa) p/ os vãos não "vazarem" branco.
 
 ## Breakpoints (proporcionalidade)
 Convenção (CSS não aceita `var()` em `@media`): **sm 600 · md 900 · lg 1100**.

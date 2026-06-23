@@ -51,19 +51,19 @@ class ContatosView extends BaseElement {
         </div>
         <ui-tabs id="abas">
           <div slot="contatos">
-            <ui-card title="Meus contatos">
+            <ui-card mesa title="Mesa com contatos">
               <ui-button slot="acoes" id="novo">+ Novo contato</ui-button>
               <div id="lista"></div>
             </ui-card>
           </div>
           <div slot="equipes">
-            <ui-card title="Minhas equipes">
+            <ui-card mesa title="Mesa com equipes">
               <ui-button slot="acoes" id="novaEquipe">+ Nova equipe</ui-button>
               <div id="listaEquipes"></div>
             </ui-card>
           </div>
           <div slot="cargos" class="pilha">
-            <ui-card title="Meus cargos">
+            <ui-card mesa title="Mesa com cargos">
               <ui-button slot="acoes" id="novoCargo">+ Novo cargo</ui-button>
               <div id="listaCargos"></div>
             </ui-card>
