@@ -208,10 +208,11 @@ const SCHEMA = {
       "criado_em",
       "atualizado_em",
       // Itens (append): vínculo ao catálogo.
-      "item_id", // FK → Itens.id (obrigatório p/ novas cotações)
+      "item_id", // FK → Itens.id (obrigatório quando modo = item)
       "classificacao", // Material | Serviço (desnormalizado do item)
       "autor_nome", // (append) quem criou
       "editor_nome", // (append) quem editou por último
+      "modo", // (append) "item" (legado/default) | "subclasse" (cotação por subclassificação)
     ],
   },
 

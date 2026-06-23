@@ -95,11 +95,28 @@ function cotacoesListar(data, sessao) {
   return { cotacoes: listarCotacoesUsuario(sessao.usuario_id) };
 }
 
-/** cotacoes.criar -> { cotacao }. */
+/** cotacoes.criar -> { cotacao }. modo "item" (1 item) ou "subclasse" (categoria → vários itens). */
 function cotacoesCriar(data, sessao) {
-  const itemId = String((data && data.item_id) || "");
-  if (!itemId) lancar(ERRO.VALIDACAO, "Selecione um item para a cotação.");
-  const item = _itemPorId(itemId, sessao.usuario_id); // deriva nome+classificacao
+  const modo = String((data && data.modo) || "") === "subclasse" ? "subclasse" : "item";
+  let itemId = "";
+  let descricao = "";
+  let classificacao = "";
+  let categoriaId = String((data && data.categoria_id) || "");
+
+  if (modo === "subclasse") {
+    if (!categoriaId) lancar(ERRO.VALIDACAO, "Selecione a subclassificação da cotação.");
+    const cat = listarCategoriasUsuario(sessao.usuario_id).find(function (c) {
+      return String(c.id) === categoriaId && String(c.tipo || "") !== "fornecedor";
+    });
+    if (!cat) lancar(ERRO.VALIDACAO, "Subclassificação inválida.");
+    descricao = cat.nome; // rótulo = nome da subclassificação
+  } else {
+    itemId = String((data && data.item_id) || "");
+    if (!itemId) lancar(ERRO.VALIDACAO, "Selecione um item para a cotação.");
+    const item = _itemPorId(itemId, sessao.usuario_id); // deriva nome+classificacao
+    descricao = item.nome;
+    classificacao = item.classificacao;
+  }
 
   const obraId = String((data && data.obra_id) || "");
   if (obraId) _obraAcessivel(obraId, sessao.usuario_id);
@@ -111,17 +128,18 @@ function cotacoesCriar(data, sessao) {
       id: novoId(),
       usuario_id: sessao.usuario_id,
       obra_id: obraId,
-      descricao: item.nome, // = nome do item (desnormalizado)
+      descricao: descricao,
       quantidade: Number((data && data.quantidade) || 0) || 0,
       unidade: String((data && data.unidade) || ""),
-      categoria_id: String((data && data.categoria_id) || ""), // subclassificação
+      categoria_id: categoriaId, // subclassificação
       status: _statusCotacaoValido(data && data.status),
       criado_em: agora,
       atualizado_em: agora,
       item_id: itemId,
-      classificacao: item.classificacao,
+      classificacao: classificacao,
       autor_nome: nomeUsuario,
       editor_nome: nomeUsuario,
+      modo: modo,
     };
     repoInserir(SCHEMA.COTACOES, cotacao);
     return { cotacao: cotacao };
@@ -204,6 +222,11 @@ function cotacoesAdicionarPreco(data, sessao) {
   if (!itemId) lancar(ERRO.VALIDACAO, "Selecione o item da oferta.");
   const item = _itemPorId(itemId, usuarioId);
   const classificacao = String(item.classificacao || "");
+  // Cotação por subclassificação: o item da oferta deve pertencer àquela subclasse.
+  if (cotacao && String(cotacao.modo || "") === "subclasse" && String(cotacao.categoria_id || "")) {
+    if (String(item.categoria_id || "") !== String(cotacao.categoria_id))
+      lancar(ERRO.VALIDACAO, "O item da oferta não pertence à subclassificação da cotação.");
+  }
 
   // Ofertante (contato XOR equipe). Herdado do orçamento, se houver.
   let contatoId = String((data && data.contato_id) || "");

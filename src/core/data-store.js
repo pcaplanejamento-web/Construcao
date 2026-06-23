@@ -191,6 +191,23 @@ const todasOfertas = () => store.get().ofertas;
 const precosDaCotacao = (cotacaoId) =>
   store.get().ofertas.filter((p) => String(p.cotacao_id) === String(cotacaoId));
 const historicoDaCotacao = (cotacaoId) => store.get().historicoPorCotacao[cotacaoId] || [];
+/** Itens (ativos) de uma subclassificação (categoria tipo item). */
+const itensDaSubclasse = (categoriaId) =>
+  store.get().itens.filter((i) => i.ativo !== false && String(i.categoria_id) === String(categoriaId));
+/** Ofertas de uma cotação agrupadas por item: [{ itemId, ofertas:[...] }] (ordem de surgimento). */
+const precosDaCotacaoPorItem = (cotacaoId) => {
+  const grupos = {};
+  const ordem = [];
+  precosDaCotacao(cotacaoId).forEach((p) => {
+    const k = String(p.item_id || "");
+    if (!grupos[k]) {
+      grupos[k] = [];
+      ordem.push(k);
+    }
+    grupos[k].push(p);
+  });
+  return ordem.map((k) => ({ itemId: k, ofertas: grupos[k] }));
+};
 const orcamentos = () => store.get().orcamentos;
 const orcamento = (id) => store.get().orcamentos.find((o) => String(o.id) === String(id)) || null;
 const equipes = () => store.get().equipes;
@@ -983,7 +1000,7 @@ export const dataStore = {
   participantesDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, itens, itensAtivos, item,
   cotacoes, cotacao, precosDaCotacao, todasOfertas,
-  historicoDaCotacao,
+  historicoDaCotacao, itensDaSubclasse, precosDaCotacaoPorItem,
   orcamentos, orcamento, ofertasDoOrcamento,
   equipes, equipe, equipesDoContato, equipesDaObra,
   ofertasDoContato, ofertasDoFornecedor, ofertasDoItem, ofertasDaObra,

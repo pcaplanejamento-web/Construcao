@@ -72,9 +72,14 @@ class PrecoForm extends BaseElement {
   get ehOrcTravado() {
     return !!this.orcamento;
   }
-  /** Item é um SELECT só ao CRIAR sem cotação (precisa escolher). Senão é card. */
+  /**
+   * Item é um SELECT ao CRIAR sem cotação OU quando a cotação é por SUBCLASSIFICAÇÃO
+   * (o item não é fixo — escolhe-se entre os itens da subclasse). Senão é card.
+   */
   itemPrecisaSelect() {
-    return !this.somenteLeitura && !this.ehEdicao && !this.cotacaoCtx();
+    if (this.somenteLeitura || this.ehEdicao) return false;
+    const ctx = this.cotacaoCtx();
+    return !ctx || String(ctx.modo || "") === "subclasse";
   }
 
   estilos() {
@@ -282,7 +287,11 @@ class PrecoForm extends BaseElement {
     // Item (select) — só ao criar sem cotação.
     const selItem = this.$("#item");
     if (selItem) {
-      let itens = dataStore.itensAtivos();
+      const ctxItem = this.cotacaoCtx();
+      let itens =
+        ctxItem && String(ctxItem.modo || "") === "subclasse" && ctxItem.categoria_id
+          ? dataStore.itensDaSubclasse(ctxItem.categoria_id)
+          : dataStore.itensAtivos();
       const resolvidoId = this.itemResolvidoId();
       if (resolvidoId && !itens.some((i) => String(i.id) === String(resolvidoId))) {
         const it = dataStore.item(resolvidoId);

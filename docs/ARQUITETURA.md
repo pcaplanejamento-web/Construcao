@@ -126,3 +126,13 @@ O Apps Script não tem websockets. O acompanhamento ao vivo é obtido por:
   (mesma rota/retorno). Análise multi-despesa usa `balancosDePagamentos`.
 - **Migração** `mig_pagamentos_v1` (Migracoes.gs) extrai cada leva embutida p/ um
   Pagamento (idempotente via `origem_leva_id`), auto-disparada no próximo snapshot.
+
+## Cotação por item × por subclassificação
+
+- `Cotacoes.modo` (append-only): `"item"` (legado/default — 1 cotação = 1 item) ou
+  `"subclasse"` (1 cotação = uma subclassificação; as ofertas trazem itens variados
+  daquela subclasse). Linhas legadas (`modo` vazio) = `"item"`.
+- No modo subclasse, `cotacoesCriar` exige `categoria_id` (tipo item) e `item_id=""`;
+  `cotacoesAdicionarPreco` valida que o item da oferta pertence à subclasse. O front
+  (`cotacao-form`) tem o toggle; o detalhe lista as ofertas com a coluna Item
+  (`precosDaCotacaoPorItem`/`itensDaSubclasse` agrupam/filtram por item).

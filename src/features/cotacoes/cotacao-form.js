@@ -45,7 +45,8 @@ class CotacaoForm extends BaseElement {
     return `
       <ui-modal open title="${this.ehEdicao ? "Editar cotação" : "Nova cotação"}">
         <div class="campos">
-          <div class="item-linha">
+          ${this.ehEdicao ? "" : `<ui-select id="modo" label="Tipo de cotação"></ui-select>`}
+          <div class="item-linha" id="itemLinha">
             <ui-select id="item" label="Item"></ui-select>
             <div id="classBadge"></div>
           </div>
@@ -72,6 +73,16 @@ class CotacaoForm extends BaseElement {
   aposRender() {
     const c = this.cotacao || {};
 
+    const selModo = this.$("#modo");
+    if (selModo) {
+      selModo.options = [
+        { value: "item", label: "Por item" },
+        { value: "subclasse", label: "Por subclassificação" },
+      ];
+      selModo.value = c.modo || "item";
+      selModo.addEventListener("change", () => this.aplicarModo());
+    }
+
     const selItem = this.$("#item");
     const itens = dataStore.itensAtivos();
     selItem.setAttribute("placeholder", itens.length ? "Selecione um item" : "Nenhum item cadastrado");
@@ -85,6 +96,7 @@ class CotacaoForm extends BaseElement {
       dataStore.categoriasItem().map((x) => ({ value: x.id, label: x.nome }))
     );
     selCat.value = c.categoria_id || "";
+    this.aplicarModo();
 
     const selObra = this.$("#obra");
     selObra.options = [{ value: "", label: "— Nenhuma (geral) —" }].concat(
@@ -104,6 +116,19 @@ class CotacaoForm extends BaseElement {
     this.$("#salvar").addEventListener("click", () => this.salvar());
   }
 
+  /** Modo atual: do select (criação) ou da própria cotação (edição). */
+  _modoAtual() {
+    const sel = this.$("#modo");
+    return (sel && sel.value) || (this.cotacao || {}).modo || "item";
+  }
+
+  /** Por subclassificação esconde o item (a oferta é que define o item da subclasse). */
+  aplicarModo() {
+    const subclasse = this._modoAtual() === "subclasse";
+    const il = this.$("#itemLinha");
+    if (il) il.style.display = subclasse ? "none" : "";
+  }
+
   /** Mostra a classificação (Material/Serviço) do item escolhido (somente leitura). */
   pintarClassBadge() {
     const alvo = this.$("#classBadge");
@@ -115,20 +140,32 @@ class CotacaoForm extends BaseElement {
   }
 
   async salvar() {
-    const itemId = this.$("#item").value;
-    if (!itemId) {
-      this.$("#item").setAttribute("error", "Selecione um item.");
-      return;
-    }
-    this.$("#item").removeAttribute("error");
-    const dados = {
-      item_id: itemId,
+    const modo = this._modoAtual();
+    const comum = {
+      modo: modo,
       quantidade: Number(this.$("#quantidade").value) || 0,
       unidade: this.$("#unidade").value.trim(),
-      categoria_id: this.$("#categoria").value,
       obra_id: this.$("#obra").value,
       status: this.$("#status").value,
     };
+    let dados;
+    if (modo === "subclasse") {
+      const categoriaId = this.$("#categoria").value;
+      if (!categoriaId) {
+        this.$("#categoria").setAttribute("error", "Selecione a subclassificação.");
+        return;
+      }
+      this.$("#categoria").removeAttribute("error");
+      dados = { ...comum, categoria_id: categoriaId };
+    } else {
+      const itemId = this.$("#item").value;
+      if (!itemId) {
+        this.$("#item").setAttribute("error", "Selecione um item.");
+        return;
+      }
+      this.$("#item").removeAttribute("error");
+      dados = { ...comum, item_id: itemId, categoria_id: this.$("#categoria").value };
+    }
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");
     try {

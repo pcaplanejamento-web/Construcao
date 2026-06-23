@@ -186,7 +186,9 @@ class CotacaoDetailView extends BaseElement {
     dataStore.fornecedores().forEach((f) => (this._mapaForn[f.id] = f.nome));
 
     const precos = dataStore.precosDaCotacao(this.cotacaoId);
-    this._min = melhorTotal(precos, c);
+    // Por subclassificação as ofertas são de itens DIFERENTES → não há um único
+    // "melhor preço" global (a coluna Item + o dropdown agrupam/ordenam por item).
+    this._min = String(c.modo || "") === "subclasse" ? null : melhorTotal(precos, c);
     this._tabela.rows = precos; // formato lê this._min/_mapas (já definidos)
 
     // Cores estáveis por contato (mesma cor no gráfico, na comparação e legenda).
