@@ -15,6 +15,7 @@ import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { acerto, rotuloOrigem, balancos } from "../despesas/despesa-split.js";
 import { avatarNomeHtml } from "../shared/avatar.js";
+import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-button.js";
@@ -193,7 +194,7 @@ class ObraParticipantes extends BaseElement {
       toastSucesso("Dono e usuários compartilhados são participantes automáticos.");
       return;
     }
-    if (!confirm(`Remover "${p.nome}" dos participantes?`)) return;
+    if (!(await confirmar({ titulo: "Remover participante", mensagem: `Remover "${p.nome}" dos participantes?`, perigo: true, rotuloOk: "Remover" }))) return;
     try {
       await dataStore.removerParticipante(this.obraId, p.id);
       toastSucesso("Participante removido.");

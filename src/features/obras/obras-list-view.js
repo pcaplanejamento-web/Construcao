@@ -8,6 +8,7 @@ import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-empty-state.js";
@@ -102,7 +103,7 @@ class ObrasListView extends BaseElement {
   }
 
   async remover(obra) {
-    if (!confirm(`Excluir a obra "${obra.nome}" e todas as suas despesas?`)) return;
+    if (!(await confirmar({ titulo: "Excluir obra", mensagem: `Excluir a obra "${obra.nome}" e todas as suas despesas?`, perigo: true, rotuloOk: "Excluir" }))) return;
     try {
       await dataStore.removerObra(obra.id);
       toastSucesso("Obra excluída.");

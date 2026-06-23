@@ -13,6 +13,7 @@ import { api } from "../../core/api-client.js";
 import { dataStore } from "../../core/data-store.js";
 import { data as fmtData } from "../../core/formatters.js";
 import { bus, EVENTOS, toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -136,7 +137,7 @@ class ObraShareForm extends BaseElement {
   }
 
   async desativarLink() {
-    if (!confirm("Desativar o link público? Quem tiver o link perderá o acesso.")) return;
+    if (!(await confirmar({ titulo: "Desativar link público", mensagem: `Desativar o link público? Quem tiver o link perderá o acesso.`, perigo: true, rotuloOk: "Desativar" }))) return;
     try {
       await dataStore.removerLinkPublico(this.obra.id);
       toastSucesso("Link público desativado.");

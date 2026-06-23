@@ -20,7 +20,7 @@ import { valorPositivo } from "../../core/validators.js";
 import { parseLista, statusPagamento, totalRealizado, restoDespesa } from "./despesa-split.js";
 import { ofertanteNome, previaOfertaHtml } from "../orcamentos/orcamento-util.js";
 import { previaPagamentoHtml, abrirPagamento, nomeTipo } from "../pagamentos/pagamento-util.js";
-import { confirmar, avisar } from "../shared/confirmar.js";
+import { confirmar, avisar } from "../../components/confirmar.js";
 import { abrirOferta } from "../cotacoes/preco-form.js";
 import { integrantesDaEquipe } from "../equipes/equipe-util.js";
 import "../../components/ui-modal.js";

@@ -26,6 +26,7 @@ import { BaseElement } from "./base-element.js";
 import { moeda } from "../core/formatters.js";
 import "./ui-coluna-menu.js";
 import { injetarBuscaNoCard } from "./ui-busca.js";
+import { confirmar } from "./confirmar.js";
 
 class UiDataTable extends BaseElement {
   static get observedAttributes() {
@@ -370,10 +371,16 @@ class UiDataTable extends BaseElement {
     // Excluir selecionadas em massa.
     const btnExcluir = this.$("#excluirMassa");
     if (btnExcluir) {
-      btnExcluir.addEventListener("click", () => {
+      btnExcluir.addEventListener("click", async () => {
         const linhas = [...this._sel];
         if (!linhas.length) return;
-        if (!confirm(`Excluir ${linhas.length} item(ns) selecionado(s)?`)) return;
+        const ok = await confirmar({
+          titulo: "Excluir selecionados",
+          mensagem: `Excluir ${linhas.length} item(ns) selecionado(s)?`,
+          perigo: true,
+          rotuloOk: "Excluir",
+        });
+        if (!ok) return;
         this.__sel = new Set();
         this.emitir("excluir-massa", { linhas });
       });

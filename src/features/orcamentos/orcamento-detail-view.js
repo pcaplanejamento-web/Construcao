@@ -26,6 +26,7 @@ import "../despesas/category-badge.js";
 import "../cotacoes/preco-form.js";
 import { abrirRegistrarDespesa } from "../cotacoes/cotacao-despesa-form.js";
 import { abrirOferta } from "../cotacoes/preco-form.js";
+import { confirmar } from "../../components/confirmar.js";
 import "./orcamento-form.js";
 
 class OrcamentoDetailView extends BaseElement {
@@ -196,7 +197,7 @@ class OrcamentoDetailView extends BaseElement {
       titulo: "Esta oferta",
       grupos: vinculosDaOferta(preco),
       aoExcluir: async () => {
-        if (!confirm("Excluir esta oferta?")) return;
+        if (!(await confirmar({ titulo: "Excluir oferta", mensagem: `Excluir esta oferta?`, perigo: true, rotuloOk: "Excluir" }))) return;
         try {
           await dataStore.removerPreco(preco.cotacao_id, preco.id);
           toastSucesso("Oferta removida.");

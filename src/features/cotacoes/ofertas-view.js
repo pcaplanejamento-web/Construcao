@@ -9,6 +9,7 @@ import { montarTabelaOfertas } from "../orcamentos/orcamento-util.js";
 import { abrirOferta } from "./preco-form.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -89,7 +90,7 @@ class OfertasView extends BaseElement {
   }
 
   async remover(oferta) {
-    if (!confirm("Excluir esta oferta?")) return;
+    if (!(await confirmar({ titulo: "Excluir oferta", mensagem: `Excluir esta oferta?`, perigo: true, rotuloOk: "Excluir" }))) return;
     try {
       await dataStore.removerPreco(oferta.cotacao_id || "", oferta.id);
       toastSucesso("Oferta excluída.");

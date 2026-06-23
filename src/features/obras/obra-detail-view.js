@@ -38,7 +38,7 @@ import "./obra-participantes.js";
 import "../pagamentos/pagamento-form.js";
 import "../pagamentos/repasse-form.js";
 import { abrirTransferencia, nomeTipo, excluirTransferenciaComAviso } from "../pagamentos/pagamento-util.js";
-import { confirmar, avisar } from "../shared/confirmar.js";
+import { confirmar, avisar } from "../../components/confirmar.js";
 
 class ObraDetailView extends BaseElement {
   constructor() {
@@ -381,10 +381,27 @@ class ObraDetailView extends BaseElement {
   }
 
   async removerPagamentoObra(pagamento) {
-    if (!confirm("Excluir este pagamento? As despesas cobertas voltam a ficar em aberto.")) return;
+    const t = dataStore.transferenciaDoPagamento(pagamento.id);
+    const nPags = t ? (t.pagamento_ids || []).length : 1;
+    if (nPags > 1) {
+      await avisar({
+        titulo: "Não é possível excluir só este pagamento",
+        mensagem:
+          "Este pagamento faz parte de uma transferência com vários pagamentos. Exclua a transferência inteira — todos os pagamentos saem juntos.",
+      });
+      return;
+    }
+    const ok = await confirmar({
+      titulo: "Excluir pagamento",
+      mensagem: "Isso exclui o pagamento e a transferência. As despesas cobertas voltam a ficar em aberto.",
+      perigo: true,
+      rotuloOk: "Excluir",
+    });
+    if (!ok) return;
     try {
-      await dataStore.excluirPagamento(pagamento); // entidade ou leva embutida
-      toastSucesso("Pagamento excluído.");
+      if (t) await dataStore.excluirTransferencia(t);
+      else await dataStore.excluirPagamento(pagamento);
+      toastSucesso("Pagamento e transferência excluídos.");
     } catch (e) {
       notificarErro(e);
     }

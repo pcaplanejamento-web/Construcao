@@ -9,7 +9,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
-import { confirmar } from "../shared/confirmar.js";
+import { confirmar } from "../../components/confirmar.js";
 import { nomeTipo } from "../pagamentos/pagamento-util.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-button.js";

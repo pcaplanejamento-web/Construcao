@@ -6,8 +6,8 @@
  * (só botão OK, informativo). `opts`: { titulo, mensagem, listaHtml?, rotuloOk?,
  * rotuloCancelar?, perigo?, soOk? }.
  */
-import "../../components/ui-modal.js";
-import "../../components/ui-button.js";
+import "./ui-modal.js";
+import "./ui-button.js";
 
 export function confirmar(opts = {}) {
   return new Promise((resolve) => {

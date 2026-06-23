@@ -12,6 +12,7 @@ import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
 import { melhorTotal } from "./cotacao-util.js";
+import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-button.js";
@@ -203,7 +204,7 @@ class CotacoesView extends BaseElement {
   }
 
   async remover(cotacao) {
-    if (!confirm(`Excluir a cotação "${cotacao.descricao}" e suas ofertas?`)) return;
+    if (!(await confirmar({ titulo: "Excluir cotação", mensagem: `Excluir a cotação "${cotacao.descricao}" e suas ofertas?`, perigo: true, rotuloOk: "Excluir" }))) return;
     try {
       await dataStore.removerCotacao(cotacao.id);
       toastSucesso("Cotação removida.");

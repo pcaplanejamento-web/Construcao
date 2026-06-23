@@ -6,6 +6,7 @@
 import { irPara } from "../../core/router.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-empty-state.js";
 import "./orcamento-card.js";
 import "./orcamento-form.js";
@@ -20,7 +21,7 @@ function _abrirForm(orcamento) {
 }
 
 async function _remover(orcamento) {
-  if (!confirm("Excluir o orçamento e suas ofertas?")) return;
+  if (!(await confirmar({ titulo: "Excluir orçamento", mensagem: "Excluir o orçamento e suas ofertas?", perigo: true, rotuloOk: "Excluir" }))) return;
   try {
     await dataStore.removerOrcamento(orcamento.id);
     toastSucesso("Orçamento removido.");

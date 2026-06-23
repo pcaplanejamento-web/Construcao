@@ -18,6 +18,7 @@ import {
 } from "../shared/vinculos.js";
 import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
+import { confirmar } from "../../components/confirmar.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -186,7 +187,7 @@ class FornecedoresView extends BaseElement {
       titulo: `O fornecedor "${fornecedor.nome}"`,
       grupos: vinculosDoFornecedor(fornecedor.id),
       aoExcluir: async () => {
-        if (!confirm(`Excluir o fornecedor "${fornecedor.nome}"?`)) return;
+        if (!(await confirmar({ titulo: "Excluir fornecedor", mensagem: `Excluir o fornecedor "${fornecedor.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
         try {
           await dataStore.removerFornecedor(fornecedor.id);
           toastSucesso("Fornecedor removido.");
@@ -256,7 +257,7 @@ class FornecedoresView extends BaseElement {
       titulo: `A classificação "${categoria.nome}"`,
       grupos: vinculosDaSubclassificacao(categoria.id),
       aoExcluir: async () => {
-        if (!confirm(`Excluir a classificação "${categoria.nome}"?`)) return;
+        if (!(await confirmar({ titulo: "Excluir classificação", mensagem: `Excluir a classificação "${categoria.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
         try {
           await dataStore.removerCategoria(categoria.id);
           toastSucesso("Classificação removida.");

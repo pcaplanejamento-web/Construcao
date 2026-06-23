@@ -21,6 +21,7 @@ import { colunasOferta } from "../orcamentos/orcamento-util.js";
 import { abrirRegistrarDespesa } from "../cotacoes/cotacao-despesa-form.js";
 import { abrirOferta } from "../cotacoes/preco-form.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
+import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -249,7 +250,7 @@ class FornecedorDetailView extends BaseElement {
   }
 
   async removerContato(contato) {
-    if (!confirm(`Excluir o contato "${contato.nome}"?`)) return;
+    if (!(await confirmar({ titulo: "Excluir contato", mensagem: `Excluir o contato "${contato.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
     try {
       await dataStore.removerContato(contato.id);
       toastSucesso("Contato removido.");

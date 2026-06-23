@@ -12,6 +12,7 @@ import { abrirBannerVinculos, vinculosDoContato, vinculosDoCargo } from "../shar
 import { avatarNomeHtml, corAvatar, whatsappBtnHtml } from "../shared/avatar.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
@@ -253,7 +254,7 @@ class ContatosView extends BaseElement {
       titulo: `O contato "${contato.nome}"`,
       grupos: vinculosDoContato(contato.id),
       aoExcluir: async () => {
-        if (!confirm(`Excluir o contato "${contato.nome}"?`)) return;
+        if (!(await confirmar({ titulo: "Excluir contato", mensagem: `Excluir o contato "${contato.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
         try {
           await dataStore.removerContato(contato.id);
           toastSucesso("Contato removido.");
@@ -269,7 +270,7 @@ class ContatosView extends BaseElement {
       titulo: `O cargo "${cargo.nome}"`,
       grupos: vinculosDoCargo(cargo.nome),
       aoExcluir: async () => {
-        if (!confirm(`Excluir o cargo "${cargo.nome}"?`)) return;
+        if (!(await confirmar({ titulo: "Excluir cargo", mensagem: `Excluir o cargo "${cargo.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
         try {
           await dataStore.removerCargo(cargo.id);
           toastSucesso("Cargo removido.");

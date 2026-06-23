@@ -5,6 +5,7 @@
 import { irPara } from "../../core/router.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-empty-state.js";
 import "./equipe-card.js";
 import "./equipe-form.js";
@@ -19,7 +20,7 @@ function _abrirForm(equipe) {
 }
 
 async function _remover(equipe) {
-  if (!confirm(`Excluir a equipe "${equipe.nome}"?`)) return;
+  if (!(await confirmar({ titulo: "Excluir equipe", mensagem: `Excluir a equipe "${equipe.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
   try {
     await dataStore.removerEquipe(equipe.id);
     toastSucesso("Equipe removida.");

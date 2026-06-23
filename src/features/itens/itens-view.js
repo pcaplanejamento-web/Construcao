@@ -13,6 +13,7 @@ import { colunasLog } from "../../core/audit-columns.js";
 import { abrirBannerVinculos, vinculosDoItem, vinculosDaSubclassificacao } from "../shared/vinculos.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
+import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
@@ -176,7 +177,7 @@ class ItensView extends BaseElement {
       titulo: `O item "${item.nome}"`,
       grupos: vinculosDoItem(item.id),
       aoExcluir: async () => {
-        if (!confirm(`Excluir o item "${item.nome}"?`)) return;
+        if (!(await confirmar({ titulo: "Excluir item", mensagem: `Excluir o item "${item.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
         try {
           await dataStore.removerItem(item.id);
           toastSucesso("Item removido.");
@@ -245,7 +246,7 @@ class ItensView extends BaseElement {
       titulo: `A subclassificação "${categoria.nome}"`,
       grupos: vinculosDaSubclassificacao(categoria.id),
       aoExcluir: async () => {
-        if (!confirm(`Excluir a subclassificação "${categoria.nome}"?`)) return;
+        if (!(await confirmar({ titulo: "Excluir subclassificação", mensagem: `Excluir a subclassificação "${categoria.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
         try {
           await dataStore.removerCategoria(categoria.id);
           toastSucesso("Subclassificação removida.");

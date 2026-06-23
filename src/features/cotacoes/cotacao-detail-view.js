@@ -31,6 +31,7 @@ import "./cotacao-form.js";
 import "./preco-form.js";
 import { abrirRegistrarDespesa } from "./cotacao-despesa-form.js";
 import { abrirOferta } from "./preco-form.js";
+import { confirmar } from "../../components/confirmar.js";
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
 const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
@@ -312,7 +313,7 @@ class CotacaoDetailView extends BaseElement {
       titulo: "Esta oferta",
       grupos: vinculosDaOferta(preco),
       aoExcluir: async () => {
-        if (!confirm("Excluir esta oferta?")) return;
+        if (!(await confirmar({ titulo: "Excluir oferta", mensagem: `Excluir esta oferta?`, perigo: true, rotuloOk: "Excluir" }))) return;
         try {
           await dataStore.removerPreco(this.cotacaoId, preco.id);
           toastSucesso("Oferta removida.");

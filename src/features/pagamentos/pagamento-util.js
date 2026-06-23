@@ -9,7 +9,7 @@
 import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
 import { notificarErro, toastSucesso } from "../../core/event-bus.js";
-import { confirmar } from "../shared/confirmar.js";
+import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-button.js";
 
@@ -203,7 +203,13 @@ export function abrirPagamento(pagamento) {
       x.textContent = "✕";
       x.title = "Excluir repasse";
       x.addEventListener("click", async () => {
-        if (!confirm("Excluir este repasse? O vínculo é desfeito (volta ao estado original).")) return;
+        const ok = await confirmar({
+          titulo: "Excluir repasse",
+          mensagem: "Excluir este repasse? O vínculo é desfeito (volta ao estado original).",
+          perigo: true,
+          rotuloOk: "Excluir",
+        });
+        if (!ok) return;
         try {
           await dataStore.removerRepasse(r.id);
           pintarReps();
