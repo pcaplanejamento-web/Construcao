@@ -10,10 +10,12 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { restoDespesa } from "../despesas/despesa-split.js";
+import { ofertanteNome } from "../orcamentos/orcamento-util.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-select.js";
 import "../../components/ui-input.js";
+import "../../components/ui-alert.js";
 import "../../components/ui-button.js";
 
 class PagamentoForm extends BaseElement {
@@ -28,6 +30,16 @@ class PagamentoForm extends BaseElement {
   set despesasSelecionadas(v) {
     this._restritas = Array.isArray(v) ? v : null;
     if (this.shadowRoot.childElementCount) this.renderizar();
+  }
+  /** Aviso opcional (ex.: despesas já pagas foram ignoradas) — mostrado no topo. */
+  set aviso(v) {
+    this._aviso = v || "";
+    if (this.shadowRoot.childElementCount) this.renderizar();
+  }
+
+  /** Recebedor da despesa = ofertante (contato OU equipe/grupo). */
+  _recebedorDespesa(d) {
+    return ofertanteNome(d.ofertante_contato_id, d.ofertante_equipe_id);
   }
 
   /** Despesas a oferecer: as selecionadas (restritas) ou as da obra com saldo > 0. */
@@ -66,7 +78,7 @@ class PagamentoForm extends BaseElement {
         <label class="desp">
           <input type="checkbox" class="chk" data-id="${d.id}" ${this._restritas ? "checked" : ""} />
           <span class="nome" title="${this._nomeDespesa(d)}">${this._nomeDespesa(d)}
-            <small>· resto ${moeda(restoDespesa(d))}</small></span>
+            <small>· resto ${moeda(restoDespesa(d))} · recebe: ${this._recebedorDespesa(d)}</small></span>
           <ui-input class="aloc" data-id="${d.id}" type="number" step="0.01" min="0"
             value="${restoDespesa(d).toFixed(2)}" ${this._restritas ? "" : "disabled"}></ui-input>
         </label>`
@@ -77,18 +89,15 @@ class PagamentoForm extends BaseElement {
     return `
       <ui-modal open title="Registrar pagamento">
         <div class="campos">
+          ${this._aviso ? `<ui-alert tipo="aviso" message="${String(this._aviso).replace(/"/g, "&quot;")}"></ui-alert>` : ""}
           <div>
-            <label class="tx">Despesas cobertas por este pagamento</label>
+            <label class="tx">Despesas a pagar (o recebedor é o ofertante de cada uma)</label>
             <div class="lista" id="lista">${linhasDesp}</div>
             <div class="total" id="total">Total: ${moeda(0)}</div>
           </div>
           <div class="linha">
             <ui-select id="pagador" label="Quem pagou"></ui-select>
-            <ui-select id="recebedor" label="Recebedor (contato ou grupo)"></ui-select>
-          </div>
-          <div class="linha">
-            <ui-select id="fornecedor" label="Empresa (opcional)"></ui-select>
-            <ui-input id="data" label="Data" type="date"></ui-input>
+            <ui-input id="data" label="Data do pagamento" type="date"></ui-input>
           </div>
         </div>
         <div slot="rodape">
@@ -109,20 +118,11 @@ class PagamentoForm extends BaseElement {
     selPag.setAttribute("placeholder", "Selecione quem pagou");
     selPag.options = optsPag;
 
-    // Recebedor: contatos ("c:id") + equipes ("e:id").
-    const selReceb = this.$("#recebedor");
-    selReceb.setAttribute("placeholder", "Selecione o recebedor");
-    selReceb.options = [
-      ...dataStore.contatosAtivos().map((c) => ({ value: "c:" + c.id, label: c.nome })),
-      ...dataStore.equipes().map((e) => ({ value: "e:" + e.id, label: e.nome + " (grupo)" })),
-    ];
-
-    const selForn = this.$("#fornecedor");
-    selForn.options = [{ value: "", label: "— Nenhuma —" }].concat(
-      dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
-    );
-
-    this.$("#data").value = new Date().toISOString().substring(0, 10);
+    // Data: padrão hoje + NÃO permite futuro (max no input interno).
+    const hoje = new Date().toISOString().substring(0, 10);
+    this.$("#data").value = hoje;
+    const inpData = this.$("#data").shadowRoot && this.$("#data").shadowRoot.querySelector("input");
+    if (inpData) inpData.max = hoje;
 
     // Checkbox habilita/desabilita o valor + recalcula o total.
     this.$$(".chk").forEach((cb) => {
@@ -170,23 +170,25 @@ class PagamentoForm extends BaseElement {
     }
     this.$("#pagador").removeAttribute("error");
 
-    const receb = this.$("#recebedor").value || "";
-    const dados = {
-      obra_id: (this.obra || {}).id,
-      alocacoes,
-      pagador_chave: pagador,
-      recebedor_contato_id: receb.indexOf("c:") === 0 ? receb.slice(2) : "",
-      recebedor_equipe_id: receb.indexOf("e:") === 0 ? receb.slice(2) : "",
-      fornecedor_id: this.$("#fornecedor").value || "",
-      data: this.$("#data").value || new Date().toISOString().substring(0, 10),
-    };
+    const hoje = new Date().toISOString().substring(0, 10);
+    const dataPg = this.$("#data").value || hoje;
+    if (dataPg > hoje) {
+      this.$("#data").setAttribute("error", "A data não pode ser futura.");
+      return;
+    }
+    this.$("#data").removeAttribute("error");
 
+    const obraId = (this.obra || {}).id;
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");
     try {
-      const pag = await dataStore.lancarPagamentoMulti(dados);
-      toastSucesso("Pagamento registrado.");
-      this.emitir("salvo", { pagamento: pag });
+      // 1 pagamento por despesa — o recebedor/empresa são derivados de cada despesa
+      // (ofertante/fornecedor) no servidor. Quem paga e a data são comuns.
+      for (const a of alocacoes) {
+        await dataStore.lancarPagamento(obraId, a.despesa_id, { valor: a.valor, pagador, data: dataPg });
+      }
+      toastSucesso(`${alocacoes.length} pagamento(s) registrado(s).`);
+      this.emitir("salvo", {});
       this.emitir("fechar");
     } catch (e) {
       notificarErro(e);

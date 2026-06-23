@@ -239,8 +239,41 @@ const despesasDoFornecedor = (id) => todasDespesas().filter((d) => String(d.forn
 const despesasDoItem = (id) => todasDespesas().filter((d) => String(d.item_id) === String(id));
 const despesasDaEquipe = (id) => todasDespesas().filter((d) => String(d.ofertante_equipe_id) === String(id));
 
-// Pagamentos / Repasses (entidades próprias)
-const pagamentos = () => store.get().pagamentos;
+// Pagamentos / Repasses — entidades próprias + (fallback) SINTETIZADOS das levas
+// embutidas (pagamentos antigos seguem a MESMA lógica em todas as telas, mesmo antes
+// do deploy do backend novo). Recebedor/empresa do sintetizado vêm da despesa.
+const _pagadorContatoId = (chave) => (String(chave || "").indexOf("c:") === 0 ? String(chave).slice(2) : "");
+function _pagamentoDeLeva(lv, d) {
+  return {
+    id: "leva:" + lv.id,
+    _sintetico: true,
+    _despesaId: d.id,
+    _levaId: lv.id,
+    usuario_id: d.usuario_id,
+    obra_id: d.obra_id,
+    data: lv.data,
+    valor: Number(lv.valor) || 0,
+    pagador_chave: lv.pagador || "",
+    pagador_contato_id: _pagadorContatoId(lv.pagador),
+    recebedor_contato_id: lv.contato_id || d.ofertante_contato_id || "",
+    recebedor_equipe_id: d.ofertante_equipe_id || "",
+    fornecedor_id: lv.fornecedor_id || d.fornecedor_id || "",
+    alocacoes: [{ despesa_id: d.id, valor: Number(lv.valor) || 0 }],
+    distribuicao: Array.isArray(lv.distribuicao) ? lv.distribuicao : [],
+  };
+}
+const pagamentos = () => {
+  const ents = store.get().pagamentos || [];
+  const cobertas = new Set();
+  ents.forEach((p) => p.origem_leva_id && cobertas.add(String(p.origem_leva_id)));
+  const sint = [];
+  todasDespesas().forEach((d) => {
+    (Array.isArray(d.pagamentos_realizados) ? d.pagamentos_realizados : []).forEach((lv) => {
+      if (lv && lv.id && !cobertas.has(String(lv.id))) sint.push(_pagamentoDeLeva(lv, d));
+    });
+  });
+  return ents.concat(sint);
+};
 const repasses = () => store.get().repasses;
 const pagamentosDaDespesa = (id) =>
   pagamentos().filter((p) => (p.alocacoes || []).some((a) => String(a.despesa_id) === String(id)));
@@ -252,6 +285,8 @@ const repassesDoContato = (id) =>
   repasses().filter(
     (r) => String(r.recebedor_contato_id) === String(id) || (r.contatos_repassados || []).some((c) => String(c) === String(id))
   );
+/** "Esta despesa já tem pagamento?" (entidade OU leva embutida). */
+const despesaTemPagamento = (d) => pagamentosDaDespesa((d || {}).id).length > 0;
 
 /* --------------------- Recalcular resumo local ----------------------- */
 
@@ -545,6 +580,12 @@ async function removerPagamentoV2(id) {
   persistir();
   bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada" });
   return r;
+}
+
+/** Exclui um pagamento — entidade (removerPagamentoV2) OU leva embutida (removerPagamento). */
+async function excluirPagamento(p) {
+  if (p && p._sintetico) return removerPagamento(p.obra_id, p._despesaId, p._levaId);
+  return removerPagamentoV2((p && p.id) || p);
 }
 
 /** Registra um repasse de um pagamento a outros contatos. */
@@ -1007,13 +1048,13 @@ export const dataStore = {
   ofertasDoContato, ofertasDoFornecedor, ofertasDoItem, ofertasDaObra,
   despesasDoContato, despesasDoFornecedor, despesasDoItem, despesasDaEquipe,
   pagamentos, repasses, pagamentosDaDespesa, pagamentosDoContato, pagamentosDaObra,
-  repassesDoPagamento, repassesDoContato,
+  repassesDoPagamento, repassesDoContato, despesaTemPagamento,
   // mutações
   criarObra, atualizarObra, removerObra,
   adicionarParticipante, removerParticipante, definirResponsavel,
   gerarLinkPublico, removerLinkPublico,
   adicionarDespesa, atualizarDespesa, removerDespesa, lancarPagamento, removerPagamento,
-  lancarPagamentoMulti, removerPagamentoV2, lancarRepasse, removerRepasse,
+  lancarPagamentoMulti, removerPagamentoV2, excluirPagamento, lancarRepasse, removerRepasse,
   criarCategoria, atualizarCategoria, removerCategoria,
   criarFornecedor, atualizarFornecedor, removerFornecedor,
   criarContato, atualizarContato, removerContato,

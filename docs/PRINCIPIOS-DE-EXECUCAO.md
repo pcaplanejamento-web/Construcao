@@ -103,10 +103,16 @@ Claro e escuro funcionam em 100% dos componentes porque o chrome só usa tokens
 header e escolha persistida ([theme.js](../src/core/theme.js)). Badges usam
 `color-mix` para recalcular no tema. Nenhum hex de chrome fixo.
 
-### 19. Proporcional em todas as telas
+### 19. Proporcional em todas as telas + touchscreen
 Layouts fluidos (max-width, %, `minmax`, `clamp`) e breakpoints padrão (sm 600,
 md 900, lg 1100). Sidebar vira drawer no mobile; grids reflowam; tabelas rolam.
 Nada deve estourar em telas pequenas, médias ou grandes.
+**Touchscreen (telefones):** toda funcionalidade tem que ser usável por toque —
+barras de ação/seleção quebram em várias linhas (`flex-wrap`), modais cabem na
+largura (não estouram), tabelas largas rolam SÓ internamente (`.wrap` com
+`overflow:auto`, sem vazar o documento) e os alvos de toque têm tamanho
+confortável. Ao mexer numa tela, verificar no preview em ~390px sem overflow
+horizontal do documento.
 
 ---
 

@@ -262,10 +262,11 @@ class ObraDetailView extends BaseElement {
     return this._nomeContato(p.recebedor_contato_id);
   }
 
-  abrirPagamentoForm(despesasSelecionadas) {
+  abrirPagamentoForm(despesasSelecionadas, aviso) {
     const form = document.createElement("pagamento-form");
     form.obra = this._obra;
     if (despesasSelecionadas) form.despesasSelecionadas = despesasSelecionadas;
+    if (aviso) form.aviso = aviso;
     const fechar = () => form.remove();
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", fechar);
@@ -278,23 +279,18 @@ class ObraDetailView extends BaseElement {
     else if (acao === "responsavel") this.responsabilidadeMassa(despesas);
   }
 
-  /** Lançar pagamento nas selecionadas — bloqueia as que já têm pagamento. */
+  /** Lançar pagamento nas selecionadas — ignora as que já têm pagamento (aviso no form). */
   pagarMassa(despesas) {
-    const jaTem = (d) => dataStore.pagamentosDaDespesa(d.id).length > 0;
-    const comPag = (despesas || []).filter(jaTem);
-    const disponiveis = (despesas || []).filter((d) => !jaTem(d));
-    if (comPag.length) {
-      const msg =
-        `${comPag.length} despesa(s) selecionada(s) já têm pagamento e serão ignoradas ` +
-        `(exclua o pagamento para relançar).` +
-        (disponiveis.length ? ` Continuar com a(s) ${disponiveis.length} restante(s)?` : "");
-      if (!disponiveis.length) {
-        notificarErro(new Error("Todas as selecionadas já têm pagamento. Exclua o pagamento para relançar."));
-        return;
-      }
-      if (!confirm(msg)) return;
+    const comPag = (despesas || []).filter((d) => dataStore.despesaTemPagamento(d));
+    const disponiveis = (despesas || []).filter((d) => !dataStore.despesaTemPagamento(d));
+    if (!disponiveis.length) {
+      notificarErro(new Error("Todas as selecionadas já têm pagamento. Exclua o pagamento para relançar."));
+      return;
     }
-    this.abrirPagamentoForm(disponiveis);
+    const aviso = comPag.length
+      ? `${comPag.length} despesa(s) já têm pagamento e foram ignoradas (exclua o pagamento para relançar).`
+      : "";
+    this.abrirPagamentoForm(disponiveis, aviso);
   }
 
   /** Definir a MESMA responsabilidade (% por participante) nas selecionadas. */
@@ -354,7 +350,7 @@ class ObraDetailView extends BaseElement {
   async removerPagamentoObra(pagamento) {
     if (!confirm("Excluir este pagamento? As despesas cobertas voltam a ficar em aberto.")) return;
     try {
-      await dataStore.removerPagamentoV2(pagamento.id);
+      await dataStore.excluirPagamento(pagamento); // entidade ou leva embutida
       toastSucesso("Pagamento excluído.");
     } catch (e) {
       notificarErro(e);
