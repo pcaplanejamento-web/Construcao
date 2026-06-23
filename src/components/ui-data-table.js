@@ -165,19 +165,26 @@ class UiDataTable extends BaseElement {
         font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
       /* Tópicos (cabeçalho) sticky na cor da MESA — os vãos mostram a mesa, não branco. */
       thead th { position: sticky; top: 0; z-index: 3; background: var(--cor-mesa); }
-      /* LINHA-CARD: as células de DADOS formam um card branco com CONTORNO (como o card
-         de obra), cantos arredondados e elevação no hover. A coluna de marcação (.sel)
-         NÃO faz parte do card e NÃO anima — fica parada, na cor da mesa. */
+      /* LINHA-CARD: as células de DADOS formam UM card branco com CONTORNO CONTÍNUO (não
+         por célula): borda em cima/embaixo de TODAS + esquerda na 1ª coluna de dados +
+         direita na última = um retângulo único arredondado. A coluna de marcação (.sel)
+         fica na cor da mesa, SEM borda (separada do card). */
       tbody td { background: var(--cor-superficie);
-        border-top: 1px solid var(--cor-borda); border-bottom: 1px solid var(--cor-borda);
-        transition: transform var(--transicao), box-shadow var(--transicao); }
-      tbody td.sel { background: var(--cor-mesa); border: none; transition: none; }
+        border-top: 1px solid var(--cor-borda); border-bottom: 1px solid var(--cor-borda); }
+      tbody td.sel { background: var(--cor-mesa); border: none; }
       tbody tr td:first-child:not(.sel),
       tbody tr td.sel + td { border-left: 1px solid var(--cor-borda);
         border-top-left-radius: var(--raio-sm); border-bottom-left-radius: var(--raio-sm); }
       tbody tr td:last-child { border-right: 1px solid var(--cor-borda);
         border-top-right-radius: var(--raio-sm); border-bottom-right-radius: var(--raio-sm); }
-      tbody tr:hover td:not(.sel) { transform: translateY(-2px); box-shadow: var(--sombra-md); }
+      /* ELEVAÇÃO no hover: o componente sobe como UMA peça. Como `<tr>` (table-row) não é
+         transformável, o "subir" vai nas CÉLULAS DE DADOS (sobem juntas, como um card só)
+         e a SOMBRA única vai no `<tr>` — nunca por célula. O contorno contínuo realça
+         (escurece) no componente inteiro. A marcação (.sel) NÃO sobe (fica na mesa). */
+      tbody tr { transition: box-shadow var(--transicao); }
+      tbody td:not(.sel) { transition: transform var(--transicao), border-color var(--transicao); }
+      tbody tr:hover { box-shadow: var(--sombra-lg); }
+      tbody tr:hover td:not(.sel) { transform: translateY(-4px); border-color: var(--cor-borda-forte); }
       .dir { text-align: right; }
       td.dir { font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
       /* Coluna de marcação (seleção): fixa à esquerda, na cor da MESA (separada do card). */

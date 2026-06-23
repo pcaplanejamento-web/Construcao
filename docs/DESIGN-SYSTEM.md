@@ -113,11 +113,14 @@ mais escura que o card** (claro: #f3f5f8 < #f8fafc < #fff; escuro: #0b1220 < #0e
 `box-shadow: var(--sombra-lg); transform: translateY(-4px)` (transição escopada). **KPIs
 coloridos não são clicáveis → não levantam.**
 **Linha-card** (`ui-data-table`): `border-collapse: separate; border-spacing: 0 var(--esp-2)`;
-as **células de dados** formam um card branco com **contorno** (`border 1px --cor-borda`,
-como o card de obra) que **levanta no hover** (`translateY(-2px)`+`--sombra-md`). Os
-**tópicos (thead), a linha de soma (tfoot, SEM divisória) e a coluna de marcação (.sel)**
-usam `--cor-mesa` (parte da mesa, não cards). A **coluna de marcação fica SEPARADA e NÃO
-anima**: o hover-levanta é em `td:not(.sel)` (só o card sobe; a marcação fica parada).
+as **células de dados** formam UM card branco com **contorno contínuo** (`border 1px`:
+cima/baixo em todas + esquerda na 1ª col. de dados + direita na última = um retângulo só,
+sem bordas internas — como o card de obra). **Hover = efeito no COMPONENTE INTEIRO, nunca
+por célula:** a **sombra é única, no `<tr>`** (`box-shadow: var(--sombra-lg)`); o **lift**
+vai nas **células de dados** (`translateY(-4px)` — sobem juntas como uma peça, pois
+`transform` NÃO se aplica a `<tr>`/table-row, só a `<td>`); o contorno todo **escurece**
+(`--cor-borda-forte`). Os **tópicos (thead), a linha de soma (tfoot, SEM divisória) e a
+coluna de marcação (.sel)** usam `--cor-mesa`; a marcação fica SEPARADA e **não sobe**.
 
 ## Breakpoints (proporcionalidade)
 Convenção (CSS não aceita `var()` em `@media`): **sm 600 · md 900 · lg 1100**.
