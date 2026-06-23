@@ -19,7 +19,8 @@ import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { valorPositivo } from "../../core/validators.js";
 import { parseLista, statusPagamento, totalRealizado, restoDespesa } from "./despesa-split.js";
 import { ofertanteNome, previaOfertaHtml } from "../orcamentos/orcamento-util.js";
-import { previaPagamentoHtml, abrirPagamento, TIPOS_TRANSFERENCIA } from "../pagamentos/pagamento-util.js";
+import { previaPagamentoHtml, abrirPagamento, nomeTipo } from "../pagamentos/pagamento-util.js";
+import { confirmar, avisar } from "../shared/confirmar.js";
 import { abrirOferta } from "../cotacoes/preco-form.js";
 import { integrantesDaEquipe } from "../equipes/equipe-util.js";
 import "../../components/ui-modal.js";
@@ -228,11 +229,12 @@ class DespesaDetail extends BaseElement {
       selPag.options = optsPag;
       selPag.value = (optsPag[0] || {}).value || "";
     }
-    // Tipo: dinheiro (default) | crédito | débito | boleto.
+    // Tipo: lido do store (base + extras configurados em Configuração).
     const selTipo = this.$("#pagTipo");
     if (selTipo) {
-      selTipo.options = TIPOS_TRANSFERENCIA.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }));
-      selTipo.value = "dinheiro";
+      const tipos = dataStore.tiposTransferencia();
+      selTipo.options = tipos.map((t) => ({ value: t.nome, label: nomeTipo(t.nome) }));
+      selTipo.value = (tipos[0] && tipos[0].nome) || "dinheiro";
     }
     const dist = this.$("#pagDist");
     if (dist && this.despesa.ofertante_equipe_id) {
@@ -312,16 +314,35 @@ class DespesaDetail extends BaseElement {
 
   /** Exclui o pagamento (entidade ou leva) — desvincula a despesa, que volta ao estado anterior. */
   async excluirPag(p) {
-    if (!confirm("Excluir este pagamento? A despesa volta ao estado anterior, sem pagamento.")) return;
+    const t = dataStore.transferenciaDoPagamento(p.id);
+    const nPags = t ? (t.pagamento_ids || []).length : 1;
+    // Trava: pagamento de transferência com vários pagamentos só sai excluindo a transferência.
+    if (nPags > 1) {
+      await avisar({
+        titulo: "Não é possível excluir só este pagamento",
+        mensagem:
+          "Este pagamento faz parte de uma transferência com vários pagamentos. Exclua a transferência inteira (aba Transferências da obra ou pelo banner da transferência) — todos os pagamentos saem juntos.",
+      });
+      return;
+    }
+    const ok = await confirmar({
+      titulo: "Excluir pagamento",
+      mensagem:
+        "Isso exclui o pagamento e a transferência (que tem só este pagamento). A despesa volta ao estado sem pagamento.",
+      perigo: true,
+      rotuloOk: "Excluir",
+    });
+    if (!ok) return;
     try {
-      await dataStore.excluirPagamento(p);
+      if (t) await dataStore.excluirTransferencia(t);
+      else await dataStore.excluirPagamento(p);
       const atual = dataStore
         .despesas(this.despesa.obra_id)
         .find((d) => String(d.id) === String(this.despesa.id));
       if (atual) this._despesa = atual;
       this.atualizarStatusPag();
       this.pintarLancamentos();
-      toastSucesso("Pagamento excluído.");
+      toastSucesso("Pagamento e transferência excluídos.");
     } catch (e) {
       notificarErro(e);
     }
@@ -471,7 +492,22 @@ class DespesaDetail extends BaseElement {
   }
 
   async excluir() {
-    if (!confirm(`Excluir a despesa "${this.despesa.item}"?`)) return;
+    // Trava: não excluir despesa com pagamento vinculado.
+    if (dataStore.despesaTemPagamento(this.despesa)) {
+      await avisar({
+        titulo: "Despesa com pagamento vinculado",
+        mensagem:
+          "Esta despesa tem pagamento vinculado. Exclua o pagamento (ou a transferência) antes de excluir a despesa.",
+      });
+      return;
+    }
+    const ok = await confirmar({
+      titulo: "Excluir despesa",
+      mensagem: `Excluir a despesa "${this.despesa.item}"?`,
+      perigo: true,
+      rotuloOk: "Excluir",
+    });
+    if (!ok) return;
     const btn = this.$("#excluir");
     btn.setAttribute("loading", "");
     try {

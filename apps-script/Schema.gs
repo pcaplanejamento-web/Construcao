@@ -177,6 +177,11 @@ const SCHEMA = {
     ],
   },
 
+  TIPOS_TRANSF: {
+    aba: "TiposTransferencia", // tipos EXTRAS de transferência do usuário (os 4 base são constantes)
+    colunas: ["id", "usuario_id", "nome", "criado_em", "atualizado_em", "autor_nome", "editor_nome"],
+  },
+
   ITENS: {
     aba: "Itens", // catálogo de itens (cada um Material ou Serviço)
     colunas: [

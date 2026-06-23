@@ -91,13 +91,13 @@ class AppSidebar extends BaseElement {
       <div class="backdrop" id="backdrop"></div>
       <nav>
         ${ITENS.map(link).join("")}
-        <role-guard role="admin">
-          <a href="/admin" data-rota="/admin" title="Administração">
-            <ui-icon name="config" size="18"></ui-icon><span class="rotulo">Administração</span>
-          </a>
-        </role-guard>
         <div class="sep"></div>
         ${link(ITEM_PERFIL)}
+        <role-guard role="admin">
+          <a href="/admin" data-rota="/admin" title="Configuração">
+            <ui-icon name="config" size="18"></ui-icon><span class="rotulo">Configuração</span>
+          </a>
+        </role-guard>
       </nav>
     `;
   }

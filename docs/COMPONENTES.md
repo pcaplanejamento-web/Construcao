@@ -36,7 +36,7 @@ sobem por `CustomEvent`**.
 |------------|---------------|-----------|
 | `app-shell` | getter `.outlet` | Layout raiz: `app-header` (topo) + `app-sidebar` (lateral) + outlet do roteador. Altura de viewport fixa: o conteúdo rola no `main` → **sidebar com altura constante** em todas as telas. No login esconde header+sidebar; na rota pública (`/publico/*`) mostra o header (somente-leitura) **sem** sidebar. |
 | `app-header` | evento `toggle-sidebar` | Cabeçalho persistente (sticky). **Marca-bloco** com gaps iguais (logo↔texto == texto↔sanduíche): **logo** `src/assets/dattaobra.png` (transparente) + texto **"Dattaobra"** (link → `/obras`) + **botão sanduíche** (recolhe no desktop / drawer no mobile). O logo alinha com a coluna de ícones da sidebar e a largura do `nav` da sidebar (195px) é igualada a este cluster → o sanduíche encosta no limite direito da sidebar. À direita: **alternador de tema** (sol/lua), chip do usuário → `/perfil`, Sair. Ícones via `ui-icon`. **Modo somente-leitura** (link público, sem sessão): o MESMO componente renderiza só a marca + selo "Somente leitura" (sem menu/usuário/sair). |
-| `app-sidebar` | attr `aberto` (drawer mobile), `recolhido` (régua de ícones no desktop); evento `navegou` | Menu lateral em abas (Obras, Fornecedores, Contatos, Cotações, Itens, Administração via `role-guard`, Perfil). `template()` itera o array `ITENS`. Ao recolher, os rótulos somem e o ícone fica no mesmo lugar; altura sempre 100% do conteúdo. Preferência persistida. |
+| `app-sidebar` | attr `aberto` (drawer mobile), `recolhido` (régua de ícones no desktop); evento `navegou` | Menu lateral em abas (Obras, Fornecedores, Contatos, Cotações, Itens, **Transferências**, Perfil e, por último — abaixo de Meu perfil — **Configuração** via `role-guard` admin). `template()` itera o array `ITENS`. Ao recolher, os rótulos somem e o ícone fica no mesmo lugar; altura sempre 100% do conteúdo. Preferência persistida. |
 | `app-loader` | attr `texto` | Overlay de carregamento usado **só no boot sem cache** (refresh já logado). No fluxo de **login**, o carregamento acontece na própria tela de login (não há overlay). |
 | `role-guard` | attr `role="admin"\|"usuario"` | Mostra/oculta o slot conforme o papel (UX). |
 
@@ -180,7 +180,9 @@ Tudo lê do data-store (cache-first) e emite `EVENTOS.FORNECEDORES/CONTATOS/COTA
 ### Admin — `features/admin/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `admin-view` | — | Rota `/admin` (só admin). Lista + ações. |
+| `admin-view` | — | Rota `/admin` (só admin), rótulo **"Configuração"** no menu (abaixo de Meu perfil). `ui-tabs` **[Usuários | Transferências]**: Usuários = CRUD de usuários; **Transferências** = CRUD dos **tipos de transferência** (4 base fixos como badges de referência + extras do usuário em tabela com Editar/Excluir; "+ Novo tipo" abre `tipo-transf-form`). Espaço pensado p/ crescer (várias configurações). |
+| `tipo-transf-form` | `.tipo` (edição); eventos `salvo`/`fechar` | **Modal** criar/editar um TIPO de transferência extra (ex.: Pix) → `dataStore.criarTipoTransferencia`/`atualizarTipoTransferencia`. Espelha `cargo-form`. |
+| `shared/confirmar.js` | — | `confirmar(opts)`→Promise&lt;boolean&gt; e `avisar(opts)`→Promise&lt;void&gt; (só OK). **Modal de aviso/confirmação reutilizável** (`ui-modal`) que substitui o `confirm()` nativo nas exclusões; aceita `listaHtml` (ex.: pagamentos que serão excluídos), `perigo`, rótulos. |
 | `users-table` | `.usuarios`; eventos `editar`, `config` | Reutiliza `ui-data-table`. |
 | `user-form` | `.usuario`; eventos `salvo`, `fechar` | Modal criar/editar usuário. |
 | `user-config-form` | `.usuario`; evento `fechar` | Modal de configurações (chave-valor). |

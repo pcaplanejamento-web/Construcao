@@ -126,6 +126,14 @@ O Apps Script não tem websockets. O acompanhamento ao vivo é obtido por:
   (+ repasses + re-sync das despesas). Excluir um pagamento isolado (`pagamentosRemover`)
   ajusta a transferência — e a **remove se ficar vazia** (pagamento não existe sem
   transferência). O front sintetiza uma transferência 1:1 p/ pagamentos antigos/levas.
+- **Travas de exclusão** (servidor + UI com modal de aviso, `shared/confirmar.js`):
+  `despesasRemover` recusa despesa com pagamento vinculado; `pagamentosRemover` recusa
+  excluir um pagamento cuja transferência tem **>1 pagamento** (nesse caso exclui-se a
+  transferência inteira). Transferência de **1 pagamento** sai junto com o pagamento.
+- **Tipos de transferência configuráveis:** 4 base fixos (const `TIPOS_TRANSFERENCIA`)
+  + extras por usuário (tabela `TIPOS_TRANSF`, CRUD em Configuração → Transferências,
+  espelha `Cargos.gs`). O `tipo` da transferência guarda o NOME (string); os selects
+  leem `dataStore.tiposTransferencia()`.
 - `Pagamentos` (sob uma transferência) pode cobrir **VÁRIAS despesas**
   (`alocacoes` = `[{despesa_id, valor}]`), com pagador (contato/participante),
   recebedor (contato OU equipe/grupo), obra e fornecedor. `Repasses` registra o

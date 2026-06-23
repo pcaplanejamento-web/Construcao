@@ -95,8 +95,8 @@ function _ajustarTransferenciaAposRemocao(transferenciaId, pagamentoRemovidoId) 
 function transferenciasLancar(data, sessao) {
   const usuarioId = sessao.usuario_id;
 
-  const tipo = String((data && data.tipo) || "dinheiro");
-  if (TIPOS_TRANSFERENCIA.indexOf(tipo) < 0) lancar(ERRO.VALIDACAO, "Tipo de transferência inválido.");
+  // Tipo é um NOME livre (base ou definido pelo usuário); só não pode ser vazio.
+  const tipo = String((data && data.tipo) || "dinheiro").trim() || "dinheiro";
 
   const pagador = String((data && (data.pagador_chave || data.pagador)) || "");
   if (!pagador) lancar(ERRO.VALIDACAO, "Selecione quem pagou.");

@@ -83,6 +83,12 @@ const ROTAS = {
   "cargos.atualizar": { fn: cargosAtualizar },
   "cargos.remover": { fn: cargosRemover },
 
+  // Tipos de transferência (configuráveis)
+  "tiposTransferencia.listar": { fn: tiposTransferenciaListar },
+  "tiposTransferencia.criar": { fn: tiposTransferenciaCriar },
+  "tiposTransferencia.atualizar": { fn: tiposTransferenciaAtualizar },
+  "tiposTransferencia.remover": { fn: tiposTransferenciaRemover },
+
   // Itens (catálogo Material/Serviço)
   "itens.listar": { fn: itensListar },
   "itens.criar": { fn: itensCriar },

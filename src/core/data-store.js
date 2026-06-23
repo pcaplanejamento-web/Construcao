@@ -15,7 +15,7 @@ import { auth } from "./auth-store.js";
 import { bus, EVENTOS } from "./event-bus.js";
 import { obraIdDaOferta } from "../features/shared/rastreabilidade.js";
 
-const CACHE_VERSAO = 4; // bump: coleção transferencias (agrupa pagamentos)
+const CACHE_VERSAO = 5; // bump: coleção tiposTransferencia (configuráveis)
 
 const ESTADO_VAZIO = {
   carregado: false,
@@ -30,6 +30,7 @@ const ESTADO_VAZIO = {
   fornecedores: [], // módulo Compras (empresas/lojas do usuário)
   contatos: [], // módulo Compras (pessoas do usuário)
   cargos: [], // cargos de contatos (fixos + extras do usuário)
+  tiposTransferencia: [], // tipos de transferência (base fixos + extras do usuário)
   itens: [], // catálogo de itens (cada um Material ou Serviço)
   cotacoes: [], // módulo Compras (necessidades a cotar)
   ofertas: [], // módulo Compras — LISTA PLANA de ofertas (oferta independente da cotação)
@@ -68,6 +69,7 @@ function persistir() {
       fornecedores: s.fornecedores,
       contatos: s.contatos,
       cargos: s.cargos,
+      tiposTransferencia: s.tiposTransferencia,
       itens: s.itens,
       cotacoes: s.cotacoes,
       ofertas: s.ofertas,
@@ -127,6 +129,7 @@ function _aplicarSnapshot(d) {
     fornecedores: d.fornecedores || [],
     contatos: d.contatos || [],
     cargos: d.cargos || [],
+    tiposTransferencia: d.tiposTransferencia || [],
     itens: d.itens || [],
     cotacoes: d.cotacoes || [],
     ofertas: d.ofertas || [],
@@ -183,6 +186,11 @@ const fornecedoresAtivos = () => store.get().fornecedores.filter((f) => f.ativo 
 const contatos = () => store.get().contatos;
 const contatosAtivos = () => store.get().contatos.filter((c) => c.ativo !== false);
 const cargos = () => store.get().cargos;
+/** Tipos de transferência (base + extras); nomes p/ os selects. */
+const tiposTransferencia = () => {
+  const lista = store.get().tiposTransferencia || [];
+  return lista.length ? lista : ["dinheiro", "crédito", "débito", "boleto"].map((n) => ({ id: "builtin:" + n, nome: n, fixo: true }));
+};
 const itens = () => store.get().itens;
 const itensAtivos = () => store.get().itens.filter((i) => i.ativo !== false);
 const item = (id) => store.get().itens.find((i) => String(i.id) === String(id)) || null;
@@ -868,6 +876,33 @@ async function removerCargo(id) {
   bus.emit(EVENTOS.CONTATOS, { tipo: "cargo-removido" });
 }
 
+/* ----------------- Mutações: tipos de transferência ------------------ */
+
+async function criarTipoTransferencia(dados) {
+  const r = await api.call("tiposTransferencia.criar", dados);
+  const s = store.get();
+  store.set({ tiposTransferencia: [...s.tiposTransferencia, { ...r.tipo, fixo: false }] });
+  persistir();
+  return r.tipo;
+}
+
+async function atualizarTipoTransferencia(id, dados) {
+  const r = await api.call("tiposTransferencia.atualizar", { id, ...dados });
+  const s = store.get();
+  store.set({
+    tiposTransferencia: s.tiposTransferencia.map((t) => (String(t.id) === String(id) ? { ...r.tipo, fixo: false } : t)),
+  });
+  persistir();
+  return r.tipo;
+}
+
+async function removerTipoTransferencia(id) {
+  await api.call("tiposTransferencia.remover", { id });
+  const s = store.get();
+  store.set({ tiposTransferencia: s.tiposTransferencia.filter((t) => String(t.id) !== String(id)) });
+  persistir();
+}
+
 /* -------------------------- Mutações: itens -------------------------- */
 
 async function criarItem(dados) {
@@ -1156,7 +1191,7 @@ export const dataStore = {
   // getters
   usuario, config, categorias, categoriasItem, categoriasFornecedor, usuarios, obras, obra, despesas, todasDespesas, resumo, categoriasDaObra,
   participantesDaObra,
-  fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, itens, itensAtivos, item,
+  fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, tiposTransferencia, itens, itensAtivos, item,
   cotacoes, cotacao, precosDaCotacao, todasOfertas,
   historicoDaCotacao, itensDaSubclasse, precosDaCotacaoPorItem,
   orcamentos, orcamento, ofertasDoOrcamento,
@@ -1177,6 +1212,7 @@ export const dataStore = {
   criarFornecedor, atualizarFornecedor, removerFornecedor,
   criarContato, atualizarContato, removerContato,
   criarCargo, atualizarCargo, removerCargo,
+  criarTipoTransferencia, atualizarTipoTransferencia, removerTipoTransferencia,
   criarItem, atualizarItem, removerItem,
   criarCotacao, atualizarCotacao, removerCotacao,
   criarOferta, atualizarOferta, removerPreco, escolherPreco, registrarDespesaOferta,

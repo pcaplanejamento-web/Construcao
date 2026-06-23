@@ -12,7 +12,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { restoDespesa } from "../despesas/despesa-split.js";
 import { ofertanteNome } from "../orcamentos/orcamento-util.js";
-import { TIPOS_TRANSFERENCIA } from "./pagamento-util.js";
+import { nomeTipo } from "./pagamento-util.js";
 import { recebedorUniforme, totalAlocacoes } from "./transferencia-regra.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-modal.js";
@@ -89,10 +89,6 @@ class PagamentoForm extends BaseElement {
           .join("")
       : `<div class="vazio">Nenhuma despesa com saldo a pagar nesta obra.</div>`;
 
-    const optsTipo = TIPOS_TRANSFERENCIA.map(
-      (t) => `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
-    ).join("");
-
     return `
       <ui-modal open title="Registrar transferência">
         <div class="campos">
@@ -131,10 +127,11 @@ class PagamentoForm extends BaseElement {
     selPag.options = optsPag;
     if (optsPag.length) selPag.value = optsPag[0].value;
 
-    // Tipo: dinheiro (default) | crédito | débito | boleto.
+    // Tipo: lido do store (base + extras configurados em Configuração).
     const selTipo = this.$("#tipo");
-    selTipo.options = TIPOS_TRANSFERENCIA.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }));
-    selTipo.value = "dinheiro";
+    const tipos = dataStore.tiposTransferencia();
+    selTipo.options = tipos.map((t) => ({ value: t.nome, label: nomeTipo(t.nome) }));
+    selTipo.value = (tipos[0] && tipos[0].nome) || "dinheiro";
 
     // Data: padrão hoje + NÃO permite futuro (max no input interno).
     const hoje = new Date().toISOString().substring(0, 10);

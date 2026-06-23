@@ -8,7 +8,8 @@
  */
 import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
-import { notificarErro } from "../../core/event-bus.js";
+import { notificarErro, toastSucesso } from "../../core/event-bus.js";
+import { confirmar } from "../shared/confirmar.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-button.js";
 
@@ -304,12 +305,55 @@ export function abrirTransferencia(transferencia) {
 
   const rod = document.createElement("div");
   rod.setAttribute("slot", "rodape");
+  const excluir = document.createElement("ui-button");
+  excluir.setAttribute("variant", "perigo");
+  excluir.textContent = "Excluir transferência";
+  excluir.addEventListener("click", async () => {
+    if (await excluirTransferenciaComAviso(t)) modal.remove();
+  });
   const btn = document.createElement("ui-button");
   btn.textContent = "Fechar";
   btn.addEventListener("click", () => modal.remove());
+  rod.appendChild(excluir);
   rod.appendChild(btn);
   modal.appendChild(rod);
 
   modal.addEventListener("fechar", () => modal.remove());
   document.body.appendChild(modal);
+}
+
+/**
+ * Exclui uma transferência mostrando o AVISO (lista os pagamentos que serão excluídos).
+ * Após o aceite: exclui a transferência + todos os pagamentos + repasses (vínculos desfeitos).
+ * Retorna true se excluiu.
+ */
+export async function excluirTransferenciaComAviso(t) {
+  if (!t) return false;
+  const pags = dataStore.pagamentosDaTransferencia(t.id);
+  const listaHtml =
+    pags
+      .map((p) => {
+        const aloc = Array.isArray(p.alocacoes) ? p.alocacoes : [];
+        const d = aloc.length
+          ? dataStore.todasDespesas().find((x) => String(x.id) === String((aloc[0] || {}).despesa_id))
+          : null;
+        return `<span>• ${nomeDespesa(d)} — ${moeda(Number(p.valor) || 0)}</span>`;
+      })
+      .join("") || "<span>• (sem pagamentos)</span>";
+  const ok = await confirmar({
+    titulo: "Excluir transferência",
+    mensagem: `Isso exclui a transferência e os ${pags.length} pagamento(s) abaixo, desfazendo todos os vínculos (as despesas voltam a ficar em aberto):`,
+    listaHtml,
+    perigo: true,
+    rotuloOk: "Excluir tudo",
+  });
+  if (!ok) return false;
+  try {
+    await dataStore.excluirTransferencia(t);
+    toastSucesso("Transferência e pagamentos excluídos.");
+    return true;
+  } catch (e) {
+    notificarErro(e);
+    return false;
+  }
 }

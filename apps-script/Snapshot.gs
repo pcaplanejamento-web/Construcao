@@ -139,6 +139,7 @@ function dadosSnapshot(data, sessao) {
     fornecedores: listarFornecedoresUsuario(u.id),
     contatos: listarContatosUsuario(u.id),
     cargos: listarCargosUsuario(u.id),
+    tiposTransferencia: listarTiposTransferenciaUsuario(u.id),
     itens: listarItensUsuario(u.id),
     cotacoes: cotacoes,
     precosPorCotacao: precosPorCotacao,

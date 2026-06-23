@@ -256,6 +256,18 @@ function despesasRemover(data, sessao) {
   const id = data && data.id;
   const atual = _despesaAcessivel(id, sessao.usuario_id);
 
+  // Trava: não excluir despesa com pagamento vinculado (exclua o pagamento/transferência antes).
+  const temPagamento = repoListar(SCHEMA.PAGAMENTOS).some(function (p) {
+    return _parseJsonLista(p.alocacoes).some(function (a) {
+      return String(a.despesa_id) === String(id);
+    });
+  });
+  if (temPagamento)
+    lancar(
+      ERRO.VALIDACAO,
+      "Esta despesa tem pagamento vinculado. Exclua o pagamento ou a transferência antes de excluir a despesa."
+    );
+
   return comLock(function () {
     repoRemover(SCHEMA.DESPESAS, "id", id);
 

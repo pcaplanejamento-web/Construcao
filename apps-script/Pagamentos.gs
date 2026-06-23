@@ -241,6 +241,19 @@ function pagamentosRemover(data, sessao) {
   const obraId = String(pag.obra_id || "");
   const transferenciaId = String(pag.transferencia_id || "");
 
+  // Trava: pagamento isolado só pode ser excluído se a transferência tiver 1 pagamento.
+  // Com vários, exclua a transferência inteira (transferenciasRemover).
+  if (transferenciaId) {
+    const t = repoEncontrar(SCHEMA.TRANSFERENCIAS, function (x) {
+      return String(x.id) === String(transferenciaId);
+    });
+    if (t && _parseJsonLista(t.pagamento_ids).length > 1)
+      lancar(
+        ERRO.VALIDACAO,
+        "Este pagamento faz parte de uma transferência com vários pagamentos. Exclua a transferência inteira."
+      );
+  }
+
   return comLock(function () {
     const r = _pagamentoRemoverInterno(id);
     if (transferenciaId) _ajustarTransferenciaAposRemocao(transferenciaId, id);

@@ -37,7 +37,8 @@ import "./obra-share-form.js";
 import "./obra-participantes.js";
 import "../pagamentos/pagamento-form.js";
 import "../pagamentos/repasse-form.js";
-import { abrirTransferencia, nomeTipo } from "../pagamentos/pagamento-util.js";
+import { abrirTransferencia, nomeTipo, excluirTransferenciaComAviso } from "../pagamentos/pagamento-util.js";
+import { confirmar, avisar } from "../shared/confirmar.js";
 
 class ObraDetailView extends BaseElement {
   constructor() {
@@ -390,15 +391,8 @@ class ObraDetailView extends BaseElement {
   }
 
   async removerTransferenciaObra(transferencia) {
-    const n = (transferencia.pagamento_ids || []).length;
-    if (!confirm(`Excluir esta transferência? ${n} pagamento(s) serão excluídos e as despesas voltam a ficar em aberto.`))
-      return;
-    try {
-      await dataStore.excluirTransferencia(transferencia); // cascata: pagamentos + repasses
-      toastSucesso("Transferência excluída.");
-    } catch (e) {
-      notificarErro(e);
-    }
+    // Aviso lista os pagamentos; após aceite, cascata (pagamentos + repasses + vínculos).
+    await excluirTransferenciaComAviso(transferencia);
   }
 
   pintarTopo() {
@@ -503,7 +497,22 @@ class ObraDetailView extends BaseElement {
   }
 
   async remover(despesa) {
-    if (!confirm(`Excluir a despesa "${despesa.item}"?`)) return;
+    // Trava: não excluir despesa com pagamento vinculado.
+    if (dataStore.despesaTemPagamento(despesa)) {
+      await avisar({
+        titulo: "Despesa com pagamento vinculado",
+        mensagem:
+          "Esta despesa tem pagamento vinculado. Exclua o pagamento (ou a transferência) antes de excluir a despesa.",
+      });
+      return;
+    }
+    const ok = await confirmar({
+      titulo: "Excluir despesa",
+      mensagem: `Excluir a despesa "${despesa.item}"?`,
+      perigo: true,
+      rotuloOk: "Excluir",
+    });
+    if (!ok) return;
     try {
       await dataStore.removerDespesa(this.obraId, despesa.id);
     } catch (e) {
@@ -513,9 +522,19 @@ class ObraDetailView extends BaseElement {
 
   /** Exclusão em massa (a tabela já confirmou) — remove cada selecionada. */
   async removerMassa(despesas) {
+    const lista = despesas || [];
+    const comPag = lista.filter((d) => dataStore.despesaTemPagamento(d));
+    if (comPag.length) {
+      await avisar({
+        titulo: "Despesas com pagamento vinculado",
+        mensagem: `${comPag.length} das ${lista.length} despesas selecionadas têm pagamento vinculado. Exclua os pagamentos/transferências antes — nenhuma foi excluída.`,
+        listaHtml: comPag.map((d) => `<span>• ${d.item || "Despesa"}</span>`).join(""),
+      });
+      return;
+    }
     try {
-      for (const d of despesas || []) await dataStore.removerDespesa(this.obraId, d.id);
-      toastSucesso(`${(despesas || []).length} despesa(s) excluída(s).`);
+      for (const d of lista) await dataStore.removerDespesa(this.obraId, d.id);
+      toastSucesso(`${lista.length} despesa(s) excluída(s).`);
     } catch (e) {
       notificarErro(e);
     }
