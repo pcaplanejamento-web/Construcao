@@ -190,9 +190,10 @@ class UiDataTable extends BaseElement {
          cima da marcacao e da linha de soma. A marcacao em si NAO tem sombra. Sutil. */
       tbody tr::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0;
         border-radius: var(--raio-sm); pointer-events: none; z-index: 4;
-        transition: box-shadow var(--transicao); }
+        transition: box-shadow var(--transicao), transform var(--transicao); }
       :host([tem-selecao]) tbody tr::after { left: 36px; }
-      tbody tr:hover::after { box-shadow: var(--sombra-realce); }
+      /* a sombra (pseudo) sobe o MESMO tanto que o contorno (células) — ficam alinhados. */
+      tbody tr:hover::after { box-shadow: var(--sombra-realce); transform: translateY(-4px); }
       .dir { text-align: right; }
       td.dir { font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
       /* Coluna de marcação (seleção): fixa à esquerda, na cor da MESA (separada do card). */
