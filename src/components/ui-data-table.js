@@ -177,10 +177,10 @@ class UiDataTable extends BaseElement {
         border-top-left-radius: var(--raio-sm); border-bottom-left-radius: var(--raio-sm); }
       tbody tr td:last-child { border-right: 1px solid var(--cor-borda);
         border-top-right-radius: var(--raio-sm); border-bottom-right-radius: var(--raio-sm); }
-      /* ELEVAÇÃO no hover: o componente sobe como UMA peça. Como `<tr>` (table-row) não é
-         transformável, o "subir" vai nas CÉLULAS DE DADOS (sobem juntas, como um card só)
-         e a SOMBRA única vai no `<tr>` — nunca por célula. O contorno contínuo realça
-         (escurece) no componente inteiro. A marcação (.sel) NÃO sobe (fica na mesa). */
+      /* ELEVACAO no hover: o componente sobe como UMA peca. Como TR (table-row) nao e
+         transformavel, o "subir" vai nas CELULAS DE DADOS (sobem juntas, como um card so)
+         e a SOMBRA unica vai no TR — nunca por celula. O contorno continuo realca
+         (escurece) no componente inteiro. A marcacao (.sel) NAO sobe (fica na mesa). */
       tbody tr { transition: box-shadow var(--transicao); }
       tbody td:not(.sel) { transition: transform var(--transicao), border-color var(--transicao); }
       tbody tr:hover { box-shadow: var(--sombra-lg); }
