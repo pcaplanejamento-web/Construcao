@@ -169,7 +169,7 @@ class DespesaDetail extends BaseElement {
               <split-editor id="pagDist"></split-editor>` : ""}
               <ui-button id="lancarPag" variant="secundario" tamanho="sm">＋ Lançar pagamento</ui-button>
             </div>
-            <div class="pag-aviso" id="pagAviso" hidden>Para lançar outro pagamento, exclua o pagamento atual (a despesa volta ao estado sem pagamento).</div>
+            <div class="pag-aviso" id="pagAviso" hidden>Despesa quitada — todo o valor já foi pago. Para alterar, exclua um pagamento.</div>
           </div>
           <div class="secao">
             <label class="tx">Responsabilidade — % por participante (soma 100%)</label>
@@ -313,10 +313,16 @@ class DespesaDetail extends BaseElement {
       card.appendChild(btn);
       cont.appendChild(card);
     });
-    // Regra: não dá p/ lançar em despesa que já tem pagamento — exclua antes.
-    const tem = pags.length > 0;
-    if (this.$("#lancarBox")) this.$("#lancarBox").hidden = tem;
-    if (this.$("#pagAviso")) this.$("#pagAviso").hidden = !tem;
+    // Regra: pode lançar VÁRIOS pagamentos PARCIAIS até QUITAR (cada um vira uma
+    // transferência de 1 pagamento — lógica de transferência preservada). O form de
+    // lançar só some quando a despesa está QUITADA (sem saldo a pagar).
+    const resto = restoDespesa(this.despesa);
+    const quitada = resto <= 0.01;
+    if (this.$("#lancarBox")) this.$("#lancarBox").hidden = quitada;
+    if (this.$("#pagAviso")) this.$("#pagAviso").hidden = !quitada;
+    // Sugere o saldo restante como valor padrão (o usuário pode lançar menos = parcial).
+    const pv = this.$("#pagValor");
+    if (pv) pv.value = quitada ? "" : resto.toFixed(2);
   }
 
   /** Exclui o pagamento (entidade ou leva) — desvincula a despesa, que volta ao estado anterior. */
@@ -399,8 +405,7 @@ class DespesaDetail extends BaseElement {
       const atualizada = await dataStore.lancarPagamento(this.despesa.obra_id, this.despesa.id, dados);
       this._despesa = atualizada; // sem re-render total (preserva edições não salvas)
       this.atualizarStatusPag();
-      this.pintarLancamentos();
-      valorInp.value = "";
+      this.pintarLancamentos(); // re-sugere o novo saldo no valor (ou esconde se quitou)
       if (dist) dist.itens = [];
       toastSucesso("Pagamento lançado.");
     } catch (e) {
