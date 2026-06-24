@@ -69,12 +69,18 @@ export function previaPagamentoHtml(p) {
   const linhaTransf = t
     ? `<small>Transferência: ${nomeTipo(t.tipo)} · total ${moeda(Number(t.valor_total) || 0)}</small>`
     : "";
+  // Distribuição entre integrantes (quando o recebedor é equipe): mostra quem recebeu quanto.
+  const dist = (Array.isArray(o.distribuicao) ? o.distribuicao : []).filter((x) => Number(x.valor) > 0);
+  const linhaDist = dist.length
+    ? `<small>Distribuído: ${dist.map((x) => `${nomeChavePart(x.chave)} (${moeda(Number(x.valor) || 0)})`).join(" · ")}</small>`
+    : "";
   return `
     <span class="item">Pagamento · ${nomeRecebedor(o)}</span>
     <span class="val">${moeda(Number(o.valor) || 0)}</span>
     <small>${fmtData(o.data)} · Pagou: ${nomeChavePart(o.pagador_chave)}</small>
     <small>${aloc.length} despesa(s)${empresa ? " · Empresa: " + empresa : ""}</small>
-    ${linhaTransf}`;
+    ${linhaTransf}
+    ${linhaDist}`;
 }
 
 /* --------------------------- Card prévia: transferência -------------------- */
@@ -101,6 +107,7 @@ export function abrirPagamento(pagamento) {
   if (!pagamento) return;
   const p = pagamento;
   const aloc = Array.isArray(p.alocacoes) ? p.alocacoes : [];
+  const dist = (Array.isArray(p.distribuicao) ? p.distribuicao : []).filter((x) => Number(x.valor) > 0);
   const despesasMap = {};
   dataStore.todasDespesas().forEach((d) => (despesasMap[d.id] = d));
   const empresa = nomeFornecedor(p.fornecedor_id);
@@ -171,6 +178,16 @@ export function abrirPagamento(pagamento) {
         <label>Despesas cobertas (${aloc.length})</label>
         ${linhasDesp || `<p class="muted">—</p>`}
       </div>
+      ${
+        dist.length
+          ? `<div class="pg-sec">
+        <label>Distribuição entre integrantes (${dist.length})</label>
+        ${dist
+          .map((x) => `<div class="pg-row"><span>${nomeChavePart(x.chave)}</span><strong>${moeda(Number(x.valor) || 0)}</strong></div>`)
+          .join("")}
+      </div>`
+          : ""
+      }
       <div class="pg-sec">
         <label id="repLabel">Repasses (${repasses.length})</label>
         <div id="pgReps"></div>
