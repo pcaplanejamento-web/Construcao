@@ -217,9 +217,11 @@ class UiDataTable extends BaseElement {
         border-radius: var(--raio-sm); padding: 4px 10px; font-size: var(--fs-xs); color: var(--cor-texto-suave); }
       .btn-acao:hover { background: var(--cor-superficie-2); }
       .btn-acao.perigo { color: var(--cor-erro); border-color: var(--cor-erro-suave); }
-      /* Linha de SOMA (totais): fixa na base, na cor da MESA — SEM divisória (parte da mesa). */
+      /* Linha de SOMA (totais): fixa na base, na cor da MESA. Puxada p/ cima pelo
+         border-spacing (translateY) → encosta na última linha SEM fresta entre elas. */
       tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--cor-mesa);
-        font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
+        font-family: var(--fonte-titulo); font-weight: var(--peso-forte);
+        transform: translateY(calc(-1 * var(--esp-2))); }
       tfoot td.sel { z-index: 3; }
       tfoot .rotulo { font-family: var(--fonte-base); font-weight: var(--peso-semi);
         color: var(--cor-texto-suave); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
@@ -269,25 +271,30 @@ class UiDataTable extends BaseElement {
           border-radius: 0 !important; padding: var(--esp-2) 0; white-space: normal;
           transform: none !important; text-align: right; min-width: 0; }
         tbody td + td { border-top: 1px solid var(--cor-divisor) !important; } /* divisória sutil */
-        tbody td.sel + td { border-top: none !important; } /* 1ª célula de dados: sem divisória */
         tbody td::before { content: attr(data-label); flex: none; max-width: 42%; text-align: left;
           color: var(--cor-texto-suave); font-weight: var(--peso-semi);
           font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; }
         td.dir { font-family: var(--fonte-titulo); }
-        /* seleção: checkbox no canto superior do card */
-        tbody td.sel { position: absolute; top: var(--esp-2); right: var(--esp-3);
-          width: auto; min-width: 0; max-width: none; padding: 0; }
-        tbody td.sel::before { content: ""; }
+        /* SELEÇÃO: PRIMEIRA linha do card (rótulo "Selecionar" + checkbox), EM FLUXO,
+           no topo — não sobrepõe nada (antes era absolute e cobria a 1ª célula). */
+        tbody td.sel { width: auto; min-width: 0; max-width: none; padding: var(--esp-2) 0;
+          background: transparent; }
+        tbody td.sel::before { content: "Selecionar"; flex: none; text-align: left;
+          color: var(--cor-texto-suave); font-weight: var(--peso-semi);
+          font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; }
         /* ações: botões em linha cheia, fáceis de tocar */
         tbody td.acoes-td { padding-top: var(--esp-2); }
         tbody td.acoes-td::before { content: ""; }
         tbody td.acoes-td .acoes { width: 100%; }
         tbody td.acoes-td .btn-acao { flex: 1; padding: 8px 10px; text-align: center; }
-        /* totais como card na cor da mesa */
+        /* totais ENCOSTAM na última linha (sem fresta): última linha-card perde a margem
+           e os cantos de baixo; o rodapé vira a "base" do mesmo bloco (cantos de baixo). */
+        tbody tr:last-child { margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
         tfoot { display: block; }
-        tfoot tr { display: block; background: var(--cor-mesa); border-radius: var(--raio-sm);
-          padding: var(--esp-2) var(--esp-3); }
-        tfoot td { position: static; display: flex; justify-content: space-between;
+        tfoot tr { display: block; background: var(--cor-mesa); padding: var(--esp-2) var(--esp-4);
+          border: 1px solid var(--cor-borda); border-top: none;
+          border-radius: 0 0 var(--raio-md) var(--raio-md); }
+        tfoot td { position: static; transform: none; display: flex; justify-content: space-between;
           background: transparent; padding: var(--esp-1) 0; }
         tfoot td.vazia { display: none; }
         tfoot td[data-label]::before { content: attr(data-label); color: var(--cor-texto-suave);

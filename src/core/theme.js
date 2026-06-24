@@ -15,6 +15,21 @@ const mql = window.matchMedia("(prefers-color-scheme: dark)");
 function aplicar(modo) {
   if (modo === "claro" || modo === "escuro") root.dataset.tema = modo;
   else delete root.dataset.tema; // "sistema"
+  _corDoNavegador();
+}
+
+/** Tinge o chrome do navegador (status/endereço — incl. "liquid glass" do Safari
+ * iOS 26) com a cor de FUNDO efetiva → no modo escuro o navegador fica escuro.
+ * Lê o --cor-fundo já resolvido (cobre também o modo "sistema"). */
+function _corDoNavegador() {
+  let meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("name", "theme-color");
+    document.head.appendChild(meta);
+  }
+  const cor = getComputedStyle(root).getPropertyValue("--cor-fundo").trim();
+  if (cor) meta.setAttribute("content", cor);
 }
 
 export const tema = {
@@ -48,6 +63,7 @@ export const tema = {
     aplicar(this.atual());
     mql.addEventListener("change", () => {
       if (this.atual() === "sistema") {
+        _corDoNavegador();
         bus.emit(EVENTOS.TEMA, { modo: "sistema", efetivo: this.efetivo() });
       }
     });

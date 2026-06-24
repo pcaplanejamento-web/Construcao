@@ -55,8 +55,8 @@ class UiTabs extends BaseElement {
       /* Em telas estreitas as abas NÃO quebram: rolam na horizontal (sem barra
          de rolagem visível) — o conteúdo nunca estoura a proporção da tela. */
       .barra { display: flex; gap: var(--esp-1); border-bottom: 1px solid var(--cor-borda);
-        margin-bottom: var(--esp-5); flex-wrap: nowrap; overflow-x: auto;
-        -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        margin-bottom: var(--esp-5); flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+        -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; }
       .barra::-webkit-scrollbar { display: none; }
       button { display: inline-flex; align-items: center; gap: var(--esp-2); flex: none;
         white-space: nowrap; background: none; border: none; cursor: pointer;

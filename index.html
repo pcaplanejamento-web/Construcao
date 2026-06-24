@@ -36,12 +36,17 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
     />
 
-    <!-- Aplica o tema salvo antes do CSS (evita flash de tema errado). -->
+    <!-- Aplica o tema salvo antes do CSS (evita flash de tema errado) e já tinge o
+         chrome do navegador (theme-color) com a cor de fundo do tema → no escuro o
+         navegador fica escuro de imediato (sem flash). Depois theme.js mantém em sincronia. -->
     <script>
       try {
         var t = localStorage.getItem("obras.tema");
         if (t === "claro" || t === "escuro")
           document.documentElement.dataset.tema = t;
+        var escuro = t === "escuro" || (t !== "claro" && matchMedia("(prefers-color-scheme: dark)").matches);
+        var mc = document.querySelector('meta[name="theme-color"]');
+        if (mc) mc.setAttribute("content", escuro ? "#0b1220" : "#f3f5f8");
       } catch (e) {}
     </script>
 

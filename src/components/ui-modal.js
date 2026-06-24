@@ -37,6 +37,7 @@ class UiModal extends BaseElement {
         background: var(--cor-superficie); border-radius: var(--raio-lg);
         box-shadow: var(--sombra-lg); width: 100%; max-width: 520px;
         max-height: 90dvh; display: flex; flex-direction: column;
+        overflow: hidden; /* nada vaza na horizontal */
         animation: surgir .14s ease;
       }
       @keyframes surgir { from { transform: translateY(8px); opacity: 0; } }
@@ -47,7 +48,8 @@ class UiModal extends BaseElement {
       h2 { font-size: var(--fs-lg); font-weight: var(--peso-semi); }
       .fechar { background: none; border: none; font-size: 1.4rem; line-height: 1;
         color: var(--cor-texto-suave); padding: var(--esp-1); }
-      .corpo { padding: var(--esp-5); overflow: auto; }
+      /* Banner flutuante: rola só na VERTICAL (sem deriva horizontal). */
+      .corpo { padding: var(--esp-5); overflow-y: auto; overflow-x: hidden; touch-action: pan-y; }
       footer { padding: var(--esp-4) var(--esp-5); border-top: 1px solid var(--cor-borda);
         display: flex; justify-content: flex-end; gap: var(--esp-3); }
       footer:empty { display: none; }
