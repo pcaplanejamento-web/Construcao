@@ -8,8 +8,19 @@
 import { BaseElement } from "../components/base-element.js";
 import { auth } from "../core/auth-store.js";
 import { bus, EVENTOS } from "../core/event-bus.js";
+import { irPara } from "../core/router.js";
+import "../components/ui-icon.js";
 import "./app-header.js";
 import "./app-sidebar.js";
+
+// Barra inferior (mobile): atalhos rápidos. Centro = FAB de Obras.
+const BB_ITENS = [
+  { rota: "/contatos", rotulo: "Contatos", icone: "contato" },
+  { rota: "/fornecedores", rotulo: "Fornec.", icone: "fornecedor" },
+  { rota: "/obras", rotulo: "Obras", icone: "obra", fab: true },
+  { rota: "/pagamentos", rotulo: "Transf.", icone: "carteira" },
+  { rota: "/orcamentos", rotulo: "Orçam.", icone: "recibo" },
+];
 
 class AppShell extends BaseElement {
   estilos() {
@@ -21,19 +32,45 @@ class AppShell extends BaseElement {
       :host { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
       app-header { flex: none; }
       .corpo { flex: 1; display: flex; align-items: stretch; min-height: 0; overflow: hidden; }
-      /* folga inferior = área segura do iOS (home indicator / barra flutuante). */
       main { flex: 1; min-width: 0; min-height: 0; overflow: auto;
         padding-bottom: env(safe-area-inset-bottom); }
+
+      /* BARRA INFERIOR (só mobile autenticado; some no desktop, login e link público).
+         Atalhos: Contatos · Fornecedores · [OBRAS] · Transferências · Orçamentos. */
+      .bottombar { display: none; }
+      @media (max-width: 820px) {
+        .bottombar:not([hidden]) { display: flex; align-items: flex-end; justify-content: space-around;
+          flex: none; gap: var(--esp-1); background: var(--cor-superficie);
+          border-top: 1px solid var(--cor-borda); box-shadow: 0 -2px 12px rgba(16,24,40,.10);
+          padding: var(--esp-1) var(--esp-2);
+          padding-bottom: calc(var(--esp-1) + env(safe-area-inset-bottom)); }
+        .bb-item { display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 3px; flex: 1; min-height: 48px; padding: var(--esp-1) 0; text-decoration: none;
+          color: var(--cor-texto-suave); font-size: 10px; font-weight: var(--peso-medio); }
+        .bb-item.ativo { color: var(--cor-primaria); }
+        .bb-item span { white-space: nowrap; }
+        /* Centro: botão circular maior, verde da marca, elevado acima da barra. */
+        .bb-fab { flex: none; width: 60px; height: 60px; border-radius: var(--raio-completo);
+          background: var(--grad-primaria); color: #fff; display: flex; align-items: center;
+          justify-content: center; margin-top: -26px; box-shadow: var(--sombra-lg);
+          border: 4px solid var(--cor-superficie); }
+        .bb-fab.ativo { color: #fff; }
+      }
     `;
   }
 
   template() {
+    const bbLink = (it) =>
+      it.fab
+        ? `<a class="bb-fab" href="${it.rota}" data-rota="${it.rota}" title="${it.rotulo}" aria-label="${it.rotulo}"><ui-icon name="${it.icone}" size="26"></ui-icon></a>`
+        : `<a class="bb-item" href="${it.rota}" data-rota="${it.rota}"><ui-icon name="${it.icone}" size="22"></ui-icon><span>${it.rotulo}</span></a>`;
     return `
       <app-header id="hdr" hidden></app-header>
       <div class="corpo">
         <app-sidebar id="sb" hidden></app-sidebar>
         <main id="outlet"></main>
       </div>
+      <nav class="bottombar" id="bottombar" hidden>${BB_ITENS.map(bbLink).join("")}</nav>
     `;
   }
 
@@ -72,6 +109,25 @@ class AppShell extends BaseElement {
       }
     });
     sb.addEventListener("navegou", () => sb.removeAttribute("aberto"));
+
+    // Barra inferior (mobile): navega via roteador (SPA) e fecha o drawer.
+    this.$$("#bottombar a").forEach((a) =>
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        sb.removeAttribute("aberto");
+        irPara(a.dataset.rota);
+      })
+    );
+    this._marcarBottom();
+  }
+
+  /** Marca o item ativo da barra inferior pela rota atual. */
+  _marcarBottom() {
+    const atual = location.pathname || "/";
+    this.$$("#bottombar a").forEach((a) => {
+      const rota = a.dataset.rota;
+      a.classList.toggle("ativo", atual === rota || atual.startsWith(rota + "/"));
+    });
   }
 
   refletirAuth() {
@@ -88,6 +144,9 @@ class AppShell extends BaseElement {
     this.$("#hdr").hidden = !mostrarHeader;
     this.$("#sb").hidden = !mostrarSidebar;
     if (!mostrarSidebar) this.$("#sb").removeAttribute("aberto");
+    // Barra inferior: só nas telas internas (mobile); some no login e no link público.
+    this.$("#bottombar").hidden = !mostrarSidebar;
+    this._marcarBottom();
   }
 }
 

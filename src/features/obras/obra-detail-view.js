@@ -36,7 +36,6 @@ import "./obra-form.js";
 import "./obra-share-form.js";
 import "./obra-participantes.js";
 import "../pagamentos/pagamento-form.js";
-import "../pagamentos/repasse-form.js";
 import { abrirTransferencia, nomeTipo, excluirTransferenciaComAviso } from "../pagamentos/pagamento-util.js";
 import { confirmar, avisar } from "../../components/confirmar.js";
 
@@ -146,10 +145,6 @@ class ObraDetailView extends BaseElement {
                 <ui-data-table id="tabPag" fluido
                   empty-text="Nenhum pagamento registrado nesta obra."></ui-data-table>
               </ui-card>
-              <ui-card mesa title="Mesa com repasses">
-                <ui-data-table id="tabRep" fluido
-                  empty-text="Nenhum repasse registrado."></ui-data-table>
-              </ui-card>
             </div>
           </ui-tabs>
         </div>
@@ -194,7 +189,6 @@ class ObraDetailView extends BaseElement {
     // Aba Transferência → sub-abas [Transferências | Pagamentos].
     this._tabTransf = alvo.querySelector("#tabTransf");
     this._tabPag = alvo.querySelector("#tabPag");
-    this._tabRep = alvo.querySelector("#tabRep");
     alvo.querySelector("#addPag").addEventListener("click", () => this.abrirPagamentoForm());
     this._tabTransf.acoes = [{ nome: "remover", rotulo: "Excluir", variant: "perigo" }];
     this._tabTransf.columns = [
@@ -209,10 +203,7 @@ class ObraDetailView extends BaseElement {
     this._tabTransf.addEventListener("acao", (e) => {
       if (e.detail.acao === "remover") this.removerTransferenciaObra(e.detail.linha);
     });
-    this._tabPag.acoes = [
-      { nome: "repassar", rotulo: "Repassar" },
-      { nome: "remover", rotulo: "Excluir", variant: "perigo" },
-    ];
+    this._tabPag.acoes = [{ nome: "remover", rotulo: "Excluir", variant: "perigo" }];
     this._tabPag.columns = [
       { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
       { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
@@ -221,18 +212,7 @@ class ObraDetailView extends BaseElement {
       { chave: "alocacoes", titulo: "Despesas", alinhar: "dir", formato: (v) => String((v || []).length) },
     ];
     this._tabPag.addEventListener("acao", (e) => {
-      if (e.detail.acao === "repassar") this.abrirRepasseForm(e.detail.linha);
-      else this.removerPagamentoObra(e.detail.linha);
-    });
-    this._tabRep.acoes = [{ nome: "remover", rotulo: "Excluir", variant: "perigo" }];
-    this._tabRep.columns = [
-      { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
-      { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-      { chave: "recebedor_contato_id", titulo: "De", formato: (v) => this._nomeContato(v) },
-      { chave: "contatos_repassados", titulo: "Para", formato: (v) => (v || []).map((c) => this._nomeContato(c)).join(", ") || "—" },
-    ];
-    this._tabRep.addEventListener("acao", (e) => {
-      if (e.detail.acao === "remover") this.removerRepasseObra(e.detail.linha);
+      if (e.detail.acao === "remover") this.removerPagamentoObra(e.detail.linha);
     });
 
     this._montado = true;
@@ -273,10 +253,6 @@ class ObraDetailView extends BaseElement {
     dataStore.participantesDaObra(this.obraId).forEach((p) => (this._mapaPart[p.chave] = p.nome));
     if (this._tabTransf) this._tabTransf.rows = dataStore.transferenciasDaObra(this.obraId);
     if (this._tabPag) this._tabPag.rows = dataStore.pagamentosDaObra(this.obraId);
-    if (this._tabRep)
-      this._tabRep.rows = dataStore
-        .repasses()
-        .filter((r) => String(r.obra_id) === String(this.obraId));
     this.pintarTopo();
   }
 
@@ -385,35 +361,6 @@ class ObraDetailView extends BaseElement {
     modal.appendChild(rod);
     modal.addEventListener("fechar", () => modal.remove());
     document.body.appendChild(modal);
-  }
-
-  abrirRepasseForm(pagamento) {
-    const form = document.createElement("repasse-form");
-    form.pagamento = pagamento;
-    form.obra = this._obra;
-    const fechar = () => form.remove();
-    form.addEventListener("fechar", fechar);
-    form.addEventListener("salvo", fechar);
-    document.body.appendChild(form);
-  }
-
-  /** Excluir um repasse (da tabela de Repasses da obra) — desfaz o vínculo, volta ao
-   * estado original. Mesmo texto/aviso do banner do pagamento. */
-  async removerRepasseObra(repasse) {
-    if (!repasse) return;
-    const ok = await confirmar({
-      titulo: "Excluir repasse",
-      mensagem: "Excluir este repasse? O vínculo é desfeito (volta ao estado original).",
-      perigo: true,
-      rotuloOk: "Excluir",
-    });
-    if (!ok) return;
-    try {
-      await dataStore.removerRepasse(repasse.id);
-      toastSucesso("Repasse excluído.");
-    } catch (e) {
-      notificarErro(e);
-    }
   }
 
   async removerPagamentoObra(pagamento) {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <!-- viewport-fit=cover: o conteúdo ocupa a tela inteira (sob o notch/status bar e
          a barra transparente do Safari iOS) — combinado com env(safe-area-inset-*). -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="description" content="Sistema de Gestão de Obras — cadastre obras e acompanhe despesas em tempo real." />
     <meta name="theme-color" content="#0d9488" />
     <!-- Modo "app" no iOS/Android (tela cheia ao salvar na tela inicial; status bar translúcida). -->
@@ -48,6 +48,22 @@
         var mc = document.querySelector('meta[name="theme-color"]');
         if (mc) mc.setAttribute("content", escuro ? "#0b1220" : "#f3f5f8");
       } catch (e) {}
+    </script>
+
+    <!-- App sem ZOOM (mobile): além do viewport (maximum-scale/user-scalable), o iOS
+         ignora user-scalable; então bloqueamos a pinça (gesture*) e o double-tap. -->
+    <script>
+      (function () {
+        ["gesturestart", "gesturechange", "gestureend"].forEach(function (ev) {
+          document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false });
+        });
+        var ult = 0;
+        document.addEventListener("touchend", function (e) {
+          var agora = Date.now();
+          if (agora - ult <= 300) e.preventDefault(); // double-tap zoom
+          ult = agora;
+        }, { passive: false });
+      })();
     </script>
 
     <!-- Estilos globais (fora do Shadow DOM): tokens, reset e layout -->

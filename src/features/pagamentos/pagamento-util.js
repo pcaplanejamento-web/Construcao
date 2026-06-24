@@ -112,7 +112,6 @@ export function abrirPagamento(pagamento) {
   dataStore.todasDespesas().forEach((d) => (despesasMap[d.id] = d));
   const empresa = nomeFornecedor(p.fornecedor_id);
   const obra = dataStore.obra(p.obra_id);
-  const repasses = dataStore.repassesDoPagamento(p.id);
   const transf = dataStore.transferenciaDoPagamento(p.id);
 
   const modal = document.createElement("ui-modal");
@@ -188,57 +187,8 @@ export function abrirPagamento(pagamento) {
       </div>`
           : ""
       }
-      <div class="pg-sec">
-        <label id="repLabel">Repasses (${repasses.length})</label>
-        <div id="pgReps"></div>
-      </div>
     </div>`;
   modal.appendChild(corpo);
-
-  // Repasses: cards com ✕ (excluir → desvincula, volta ao estado original). Re-renderiza.
-  function pintarReps() {
-    const cont = corpo.querySelector("#pgReps");
-    const lista = dataStore.repassesDoPagamento(p.id);
-    const lbl = corpo.querySelector("#repLabel");
-    if (lbl) lbl.textContent = `Repasses (${lista.length})`;
-    if (!cont) return;
-    cont.innerHTML = "";
-    if (!lista.length) {
-      cont.innerHTML = `<p class="muted">Sem repasses.</p>`;
-      return;
-    }
-    lista.forEach((r) => {
-      const card = document.createElement("div");
-      card.className = "pg-card";
-      card.innerHTML = `
-        <span class="item">Repasse · ${moeda(Number(r.valor) || 0)}</span>
-        <small>${fmtData(r.data)} · de ${nomeContato(r.recebedor_contato_id)}</small>
-        <small>Para: ${(r.contatos_repassados || []).map((c) => nomeContato(c)).join(", ") || "—"}</small>`;
-      const x = document.createElement("button");
-      x.type = "button";
-      x.className = "rem";
-      x.textContent = "✕";
-      x.title = "Excluir repasse";
-      x.addEventListener("click", async () => {
-        const ok = await confirmar({
-          titulo: "Excluir repasse",
-          mensagem: "Excluir este repasse? O vínculo é desfeito (volta ao estado original).",
-          perigo: true,
-          rotuloOk: "Excluir",
-        });
-        if (!ok) return;
-        try {
-          await dataStore.removerRepasse(r.id);
-          pintarReps();
-        } catch (e) {
-          notificarErro(e);
-        }
-      });
-      card.appendChild(x);
-      cont.appendChild(card);
-    });
-  }
-  pintarReps();
 
   const rod = document.createElement("div");
   rod.setAttribute("slot", "rodape");

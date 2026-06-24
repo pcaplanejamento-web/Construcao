@@ -146,3 +146,6 @@ Regras de adaptação a telefone/toque (tudo escopado em `@media` → **desktop 
 - **`app-sidebar` (drawer)**: o `:host` cobre a viewport (`position:fixed; inset:0; z-index:z-nav+1; pointer-events:none`), quem desliza é o `<nav>`; o `.backdrop` (absolute, sem transform) cobre a tela toda → **tocar fora fecha**. Fechado, `pointer-events:none` deixa o conteúdo clicável.
 - **`app-header`**: ≤820px barra de **56px**; alvos de toque ≥ 44px; nome/cargo do chip ocultos (só avatar).
 - **Toque**: `ui-button[tamanho=sm]` sobe p/ **40px** de altura em ≤600px (inputs/selects já 42px).
+- **Sem ZOOM**: viewport com `maximum-scale=1, user-scalable=no` + bloqueio de pinça/double-tap em JS (`index.html`) — a página nunca dá zoom (não quebra o layout no celular).
+- **Barra inferior (`app-shell`)**: só **mobile autenticado** (some no desktop, login e link público). Atalhos: Contatos · Fornecedores · **[OBRAS]** (FAB central, circular, verde da marca, elevado) · Transferências · Orçamentos. Fixa no rodapé com `env(safe-area-inset-bottom)`; item ativo em `--cor-primaria`.
+- **KPIs clicáveis (`dashboard-summary`)**: cada cartão é um `<button>` (cursor + hover + ícone "ⓘ"); o clique abre **banner flutuante** (`ui-modal`) explicando **de onde vem o número** + composição (por classificação/subclassificação, ou Orçamento−Total=Saldo).
