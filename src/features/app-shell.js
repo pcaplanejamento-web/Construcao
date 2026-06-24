@@ -13,13 +13,14 @@ import "../components/ui-icon.js";
 import "./app-header.js";
 import "./app-sidebar.js";
 
-// Barra inferior (mobile): atalhos rápidos. Centro = FAB de Obras.
+// Dock flutuante (mobile + desktop): atalhos rápidos. Cada tile com um acento de
+// cor (estilo iOS), mantendo nossos tokens. Obras usa o verde da marca.
 const BB_ITENS = [
-  { rota: "/contatos", rotulo: "Contatos", icone: "contato" },
-  { rota: "/fornecedores", rotulo: "Fornec.", icone: "fornecedor" },
-  { rota: "/obras", rotulo: "Obras", icone: "obra", fab: true },
-  { rota: "/pagamentos", rotulo: "Transf.", icone: "carteira" },
-  { rota: "/orcamentos", rotulo: "Orçam.", icone: "recibo" },
+  { rota: "/contatos", rotulo: "Contatos", icone: "contato", cor: "info" },
+  { rota: "/fornecedores", rotulo: "Fornec.", icone: "fornecedor", cor: "roxo" },
+  { rota: "/obras", rotulo: "Obras", icone: "obra", cor: "primaria" },
+  { rota: "/pagamentos", rotulo: "Transf.", icone: "carteira", cor: "aviso" },
+  { rota: "/orcamentos", rotulo: "Orçam.", icone: "recibo", cor: "sucesso" },
 ];
 
 class AppShell extends BaseElement {
@@ -34,43 +35,52 @@ class AppShell extends BaseElement {
       .corpo { flex: 1; display: flex; align-items: stretch; min-height: 0; overflow: hidden; }
       main { flex: 1; min-width: 0; min-height: 0; overflow: auto;
         padding-bottom: env(safe-area-inset-bottom); }
+      /* Quando há dock flutuante, o conteúdo ganha folga p/ não ficar atrás dele. */
+      :host([com-barra]) main { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
 
-      /* BARRA INFERIOR (só mobile autenticado; some no desktop, login e link público).
-         Atalhos: Contatos · Fornecedores · [OBRAS] · Transferências · Orçamentos. */
+      /* DOCK FLUTUANTE (estilo iOS) — atalhos rápidos, FLUTUANDO centralizado acima do
+         conteúdo, em MOBILE e DESKTOP. Só aparece autenticado (some no login e no
+         link público). Pílula de vidro (blur), tiles com acento de cor por item. */
       .bottombar { display: none; }
-      @media (max-width: 820px) {
-        .bottombar:not([hidden]) { display: flex; align-items: flex-end; justify-content: space-around;
-          flex: none; gap: var(--esp-1); background: var(--cor-superficie);
-          border-top: 1px solid var(--cor-borda); box-shadow: 0 -2px 12px rgba(16,24,40,.10);
-          padding: var(--esp-1) var(--esp-2);
-          padding-bottom: calc(var(--esp-1) + env(safe-area-inset-bottom)); }
-        .bb-item { display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 3px; flex: 1; min-height: 48px; padding: var(--esp-1) 0; text-decoration: none;
-          color: var(--cor-texto-suave); font-size: 10px; font-weight: var(--peso-medio); }
-        .bb-item.ativo { color: var(--cor-primaria); }
-        .bb-item span { white-space: nowrap; }
-        /* Centro: botão circular maior, verde da marca, elevado acima da barra. */
-        .bb-fab { flex: none; width: 60px; height: 60px; border-radius: var(--raio-completo);
-          background: var(--grad-primaria); color: #fff; display: flex; align-items: center;
-          justify-content: center; margin-top: -26px; box-shadow: var(--sombra-lg);
-          border: 4px solid var(--cor-superficie); }
-        .bb-fab.ativo { color: #fff; }
+      :host([com-barra]) .bottombar {
+        display: flex; align-items: stretch; gap: var(--esp-1);
+        position: fixed; left: 50%; transform: translateX(-50%);
+        bottom: calc(var(--esp-4) + env(safe-area-inset-bottom));
+        z-index: var(--z-nav); max-width: calc(100vw - var(--esp-5));
+        padding: var(--esp-2) var(--esp-3);
+        background: color-mix(in srgb, var(--cor-superficie) 86%, transparent);
+        -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5);
+        border: 1px solid var(--cor-borda); border-radius: 26px; box-shadow: var(--sombra-lg);
       }
+      .bb-item { display: flex; flex-direction: column; align-items: center; gap: 4px;
+        padding: var(--esp-1) var(--esp-2); text-decoration: none; color: var(--cor-texto-suave);
+        border-radius: var(--raio-md); transition: transform var(--transicao); }
+      .bb-item:hover { transform: translateY(-2px); }
+      .bb-ico { width: 44px; height: 44px; border-radius: var(--raio-md);
+        display: flex; align-items: center; justify-content: center;
+        background: var(--bi-suave); color: var(--bi);
+        transition: box-shadow var(--transicao); }
+      .bb-lbl { font-size: 11px; font-weight: var(--peso-medio); white-space: nowrap;
+        line-height: 1; }
+      .bb-item.ativo .bb-ico { box-shadow: 0 0 0 2px var(--bi); }
+      .bb-item.ativo .bb-lbl { color: var(--bi); font-weight: var(--peso-semi); }
     `;
   }
 
   template() {
     const bbLink = (it) =>
-      it.fab
-        ? `<a class="bb-fab" href="${it.rota}" data-rota="${it.rota}" title="${it.rotulo}" aria-label="${it.rotulo}"><ui-icon name="${it.icone}" size="26"></ui-icon></a>`
-        : `<a class="bb-item" href="${it.rota}" data-rota="${it.rota}"><ui-icon name="${it.icone}" size="22"></ui-icon><span>${it.rotulo}</span></a>`;
+      `<a class="bb-item" href="${it.rota}" data-rota="${it.rota}" title="${it.rotulo}"
+          style="--bi: var(--cor-${it.cor}); --bi-suave: var(--cor-${it.cor}-suave)">
+        <span class="bb-ico"><ui-icon name="${it.icone}" size="22"></ui-icon></span>
+        <span class="bb-lbl">${it.rotulo}</span>
+      </a>`;
     return `
       <app-header id="hdr" hidden></app-header>
       <div class="corpo">
         <app-sidebar id="sb" hidden></app-sidebar>
         <main id="outlet"></main>
       </div>
-      <nav class="bottombar" id="bottombar" hidden>${BB_ITENS.map(bbLink).join("")}</nav>
+      <nav class="bottombar" id="bottombar">${BB_ITENS.map(bbLink).join("")}</nav>
     `;
   }
 
@@ -144,8 +154,8 @@ class AppShell extends BaseElement {
     this.$("#hdr").hidden = !mostrarHeader;
     this.$("#sb").hidden = !mostrarSidebar;
     if (!mostrarSidebar) this.$("#sb").removeAttribute("aberto");
-    // Barra inferior: só nas telas internas (mobile); some no login e no link público.
-    this.$("#bottombar").hidden = !mostrarSidebar;
+    // Dock flutuante: só nas telas internas (mobile + desktop); some no login e no público.
+    this.toggleAttribute("com-barra", mostrarSidebar);
     this._marcarBottom();
   }
 }
