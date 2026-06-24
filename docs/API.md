@@ -77,7 +77,7 @@ para dono **e** colaboradores.
 ### Público (sem login — somente leitura)
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `publico.obra` | `{ token }` | `{ obra:{nome,endereco,descricao,orcamento,status}, resumo, despesas:[{item,valor,data,categoria_nome,categoria_cor}] }` — **não** expõe usuários/observações |
+| `publico.obra` | `{ token }` | Obra INTEIRA p/ a visão pública somente-leitura (todas as abas): `{ obra:{id,nome,endereco,descricao,orcamento,status}, resumo, despesas:[{item,valor,data,classificacao,categoria_nome,categoria_cor}] (itens), despesasRaw (cru → balanços/acerto), participantes, categorias, fornecedores, contatos, equipes (estes três **só os referenciados** nesta obra — privacidade), orcamentos, transferencias, pagamentos, tiposTransferencia }` — **não** expõe usuários/observações nem dados de outras obras do dono |
 
 ### Usuários (autenticado)
 | Action | `data` | Retorno |

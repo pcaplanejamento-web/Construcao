@@ -351,8 +351,63 @@ function publicoObra(data) {
       return String(b.data).localeCompare(String(a.data));
     });
 
+  // Dados das DEMAIS abas (visão pública = todas as abas, somente leitura).
+  const dono = obra.usuario_id;
+  const despesasRaw = despesas.map(_lerDespesa); // mesma forma do snapshot autenticado
+  const participantes = listarParticipantesObra(obra.id);
+  const transferencias = listarTransferenciasUsuario(dono).filter(function (t) {
+    return String(t.obra_id) === String(obra.id);
+  });
+  const pagamentos = listarPagamentosUsuario(dono).filter(function (p) {
+    return String(p.obra_id) === String(obra.id);
+  });
+  const orcamentos = listarOrcamentosUsuario(dono).filter(function (o) {
+    return String(o.obra_id) === String(obra.id);
+  });
+
+  // Nomes (fornecedor/contato/equipe) — só os REFERENCIADOS nesta obra (privacidade:
+  // não vaza a lista completa de contatos/fornecedores do dono).
+  const fIds = {};
+  const cIds = {};
+  const eIds = {};
+  function _addChave(ch) {
+    const s = String(ch || "");
+    if (s.indexOf("c:") === 0) cIds[s.slice(2)] = true;
+    else if (s.indexOf("e:") === 0) eIds[s.slice(2)] = true;
+  }
+  participantes.forEach(function (p) {
+    _addChave(p.chave);
+  });
+  despesasRaw.forEach(function (d) {
+    if (d.fornecedor_id) fIds[d.fornecedor_id] = true;
+    if (d.ofertante_contato_id) cIds[d.ofertante_contato_id] = true;
+    if (d.ofertante_equipe_id) eIds[d.ofertante_equipe_id] = true;
+    (d.pagamentos_realizados || []).forEach(function (lv) {
+      _addChave(lv.pagador);
+      (lv.distribuicao || []).forEach(function (x) {
+        _addChave(x.chave);
+      });
+    });
+  });
+  transferencias.concat(pagamentos).forEach(function (t) {
+    if (t.fornecedor_id) fIds[t.fornecedor_id] = true;
+    if (t.recebedor_contato_id) cIds[t.recebedor_contato_id] = true;
+    if (t.recebedor_equipe_id) eIds[t.recebedor_equipe_id] = true;
+    _addChave(t.pagador_chave);
+  });
+  const fornecedores = listarFornecedoresUsuario(dono).filter(function (f) {
+    return fIds[f.id];
+  });
+  const contatos = listarContatosUsuario(dono).filter(function (c) {
+    return cIds[c.id];
+  });
+  const equipes = listarEquipesUsuario(dono).filter(function (e) {
+    return eIds[e.id];
+  });
+
   return {
     obra: {
+      id: obra.id,
       nome: obra.nome,
       endereco: obra.endereco,
       descricao: obra.descricao,
@@ -360,7 +415,17 @@ function publicoObra(data) {
       status: obra.status,
     },
     resumo: resumo,
-    despesas: lista,
+    despesas: lista, // itens (formatado p/ a tabela "Mesa com itens")
+    despesasRaw: despesasRaw, // cru (p/ balanços/acerto/fornecedores no front)
+    participantes: participantes,
+    categorias: listarCategoriasUsuario(dono),
+    fornecedores: fornecedores,
+    contatos: contatos,
+    equipes: equipes,
+    orcamentos: orcamentos,
+    transferencias: transferencias,
+    pagamentos: pagamentos,
+    tiposTransferencia: listarTiposTransferenciaUsuario(dono),
     servidor_em: agoraIso(),
   };
 }
