@@ -22,15 +22,15 @@ class AppHeader extends BaseElement {
         position: sticky; top: 0; z-index: var(--z-nav);
         display: block; background: var(--cor-superficie);
         border-bottom: 1px solid var(--cor-borda);
+        /* iOS: área segura — o header desce abaixo do status bar translúcido e
+           respeita o notch lateral (env() = 0 em telas sem recortes). */
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
       }
+      /* Só o ícone de menu à esquerda (a logo/marca vive no MENU lateral). */
       .barra { display: flex; align-items: center; gap: var(--esp-3);
-        height: 70px; padding: 0 var(--esp-5) 0 0; } /* esq.=0: o marca-bloco controla o gutter (alinha com a sidebar) */
-      /* Cluster logo+marca+menu com gaps IGUAIS (--esp-2 entre logo/texto e
-         texto/menu); largura natural do conteúdo. padding-left = --esp-5 alinha o
-         logo com a coluna de ícones da sidebar. A largura do nav (app-sidebar.js)
-         é igualada a este cluster, então o menu encosta no limite direito da sidebar. */
-      .marca-bloco { display: flex; align-items: center; gap: var(--esp-2);
-        flex: none; padding-left: var(--esp-5); }
+        height: 70px; padding: 0 var(--esp-5) 0 var(--esp-4); }
+      /* Marca (logo + "Dattaobra") só no modo SOMENTE LEITURA (público, sem sidebar). */
+      .marca-bloco { display: flex; align-items: center; gap: var(--esp-2); flex: none; }
       .menu-btn { display: inline-flex; align-items: center; justify-content: center;
         background: none; border: none; color: var(--cor-texto-suave);
         padding: 8px; border-radius: var(--raio-sm); }
@@ -94,10 +94,7 @@ class AppHeader extends BaseElement {
     const iconeTema = tema.efetivo() === "escuro" ? "sol" : "lua";
     return `
       <div class="barra">
-        <div class="marca-bloco">
-          <a class="marca" href="/obras">${logoImg} <span class="wordmark">Dattaobra</span></a>
-          <button class="menu-btn" id="menu" aria-label="Abrir menu"><ui-icon name="menu"></ui-icon></button>
-        </div>
+        <button class="menu-btn" id="menu" aria-label="Abrir menu"><ui-icon name="menu"></ui-icon></button>
         <span class="cresce"></span>
         <button class="icone-btn" id="tema" aria-label="Alternar tema claro/escuro"><ui-icon name="${iconeTema}"></ui-icon></button>
         <a class="chip" href="/perfil" title="Meu perfil">

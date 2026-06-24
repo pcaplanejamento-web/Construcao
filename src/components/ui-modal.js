@@ -28,12 +28,15 @@ class UiModal extends BaseElement {
       .backdrop {
         position: fixed; inset: 0; background: var(--cor-overlay);
         display: flex; align-items: center; justify-content: center;
-        padding: var(--esp-4); z-index: var(--z-modal);
+        z-index: var(--z-modal);
+        /* área segura iOS: o diálogo nunca encosta no notch/home indicator. */
+        padding: max(var(--esp-4), env(safe-area-inset-top)) max(var(--esp-4), env(safe-area-inset-right))
+                 max(var(--esp-4), env(safe-area-inset-bottom)) max(var(--esp-4), env(safe-area-inset-left));
       }
       .dialogo {
         background: var(--cor-superficie); border-radius: var(--raio-lg);
         box-shadow: var(--sombra-lg); width: 100%; max-width: 520px;
-        max-height: 90vh; display: flex; flex-direction: column;
+        max-height: 90dvh; display: flex; flex-direction: column;
         animation: surgir .14s ease;
       }
       @keyframes surgir { from { transform: translateY(8px); opacity: 0; } }

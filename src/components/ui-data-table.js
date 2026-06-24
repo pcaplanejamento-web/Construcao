@@ -256,15 +256,21 @@ class UiDataTable extends BaseElement {
         thead { display: none; }
         tbody { display: block; }
         tbody tr { display: block; position: relative; background: var(--cor-superficie);
-          border: 1px solid var(--cor-borda); border-radius: var(--raio-sm);
-          box-shadow: var(--sombra-sm); padding: var(--esp-2) var(--esp-3);
-          margin-bottom: var(--esp-2); }
+          border: 1px solid var(--cor-borda); border-radius: var(--raio-md);
+          box-shadow: var(--sombra-sm); padding: var(--esp-2) var(--esp-4);
+          margin-bottom: var(--esp-3); }
+        :host([clicavel]) tbody tr:active { background: var(--cor-superficie-2); } /* feedback de toque */
         tbody tr::after { display: none; } /* desliga sombra/hover do desktop */
-        tbody td, tbody td.sec { display: flex; align-items: center; justify-content: space-between;
+        /* Card CONCISO: mostra só as colunas principais (as .sec continuam ocultas,
+           regra de ≤820px) — o toque na linha abre o detalhe completo. Cada célula é
+           "RÓTULO ........ valor" (rótulo via data-label). */
+        tbody td { display: flex; align-items: center; justify-content: space-between;
           gap: var(--esp-4); width: auto; background: transparent; border: none !important;
-          border-radius: 0 !important; padding: var(--esp-1) 0; white-space: normal;
-          transform: none !important; text-align: right; }
-        tbody td::before { content: attr(data-label); flex: none; text-align: left;
+          border-radius: 0 !important; padding: var(--esp-2) 0; white-space: normal;
+          transform: none !important; text-align: right; min-width: 0; }
+        tbody td + td { border-top: 1px solid var(--cor-divisor) !important; } /* divisória sutil */
+        tbody td.sel + td { border-top: none !important; } /* 1ª célula de dados: sem divisória */
+        tbody td::before { content: attr(data-label); flex: none; max-width: 42%; text-align: left;
           color: var(--cor-texto-suave); font-weight: var(--peso-semi);
           font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; }
         td.dir { font-family: var(--fonte-titulo); }

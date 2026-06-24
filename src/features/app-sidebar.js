@@ -60,6 +60,13 @@ class AppSidebar extends BaseElement {
         transition: opacity .15s ease, max-width .2s ease; }
       role-guard { display: contents; }
       .sep { height: 1px; background: var(--cor-borda); margin: var(--esp-2) 0; }
+      /* MARCA (logo + "Dattaobra") no TOPO do menu — recolhe junto com os rótulos
+         (vira só o ícone no desktop recolhido). Substitui a marca antiga do header. */
+      .marca { color: var(--cor-primaria); font-family: var(--fonte-titulo);
+        font-weight: var(--peso-forte); font-size: var(--fs-lg); letter-spacing: -.02em;
+        margin-bottom: var(--esp-2); }
+      .marca:hover { background: none; }
+      .marca img { height: 28px; width: auto; flex: none; }
 
       /* DESKTOP: recolhido = régua de ícones (ícone fica no mesmo x). */
       @media (min-width: 821px) {
@@ -79,7 +86,11 @@ class AppSidebar extends BaseElement {
         :host([aberto]) { pointer-events: auto; }
         nav { position: relative; z-index: 1; width: 195px; height: 100%;
           box-shadow: var(--sombra-lg); transform: translateX(-100%);
-          transition: transform .2s ease; pointer-events: auto; }
+          transition: transform .2s ease; pointer-events: auto;
+          /* área segura iOS: marca abaixo do status bar; base acima do home indicator. */
+          padding-top: calc(var(--esp-3) + env(safe-area-inset-top));
+          padding-bottom: calc(var(--esp-4) + env(safe-area-inset-bottom));
+          padding-left: calc(var(--esp-3) + env(safe-area-inset-left)); }
         :host([aberto]) nav { transform: translateX(0); }
         .backdrop { display: block; position: absolute; inset: 0; z-index: 0;
           background: var(--cor-overlay); opacity: 0; pointer-events: none;
@@ -97,6 +108,9 @@ class AppSidebar extends BaseElement {
     return `
       <div class="backdrop" id="backdrop"></div>
       <nav>
+        <a class="marca" href="/obras" title="Dattaobra">
+          <img src="src/assets/dattaobra.png" alt="" onerror="this.style.display='none'" /><span class="rotulo">Dattaobra</span>
+        </a>
         ${ITENS.map(link).join("")}
         <div class="sep"></div>
         ${link(ITEM_PERFIL)}
