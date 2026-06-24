@@ -938,8 +938,13 @@ async function removerItem(id) {
 async function criarCotacao(dados) {
   const r = await api.call("cotacoes.criar", dados);
   const s = store.get();
+  // 1 cotação por subclassificação: o backend pode devolver uma JÁ existente —
+  // substitui no cache (não duplica).
+  const existe = s.cotacoes.some((c) => String(c.id) === String(r.cotacao.id));
   store.set({
-    cotacoes: [r.cotacao, ...s.cotacoes],
+    cotacoes: existe
+      ? s.cotacoes.map((c) => (String(c.id) === String(r.cotacao.id) ? r.cotacao : c))
+      : [r.cotacao, ...s.cotacoes],
   });
   persistir();
   bus.emit(EVENTOS.COTACOES, { tipo: "criada" });

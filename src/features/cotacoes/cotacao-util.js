@@ -28,6 +28,13 @@ export function totalOfertaCheio(preco, cotacao) {
   return (Number((preco || {}).valor_unit) || 0) * qtdOferta(preco, cotacao);
 }
 
+/** Menor VALOR UNITÁRIO final entre as ofertas (ou null se não houver). Usado na
+ * lista de cotações ("melhor oferta por valor unitário"), comparável mesmo entre itens. */
+export function melhorUnitario(precos) {
+  const vals = (Array.isArray(precos) ? precos : []).map(unitFinalOferta).filter((v) => v > 0);
+  return vals.length ? Math.min.apply(null, vals) : null;
+}
+
 /** Menor total entre as ofertas (ou null se não houver ofertas). */
 export function melhorTotal(precos, cotacao) {
   const lista = Array.isArray(precos) ? precos : [];

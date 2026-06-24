@@ -278,6 +278,10 @@ guarda só os **extras** criados pelo usuário (com log).
 | classificacao | string | vazio no modo único (a cotação mistura itens); legado = `Material`/`Serviço` |
 | modo | string | **`subclasse`** (modo ÚNICO atual). `item` = legado, convertido pela migração `mig_cotacoes_subclasse_v1` |
 
+> **1 cotação por subclassificação**: há no máximo UMA cotação por (`usuario_id`, `categoria_id`).
+> `cotacoes.criar` faz **get-or-create**; a migração `mig_cotacoes_unicas_v1` unifica
+> duplicatas pré-existentes (mantém a mais antiga, reatribui ofertas + histórico, remove as outras).
+
 ### Aba `CotacaoPrecos` (OFERTA — unidade independente)
 A oferta é a unidade atômica: nasce de um **item** e pode (opcional) vincular-se a uma
 cotação e/ou orçamento. `cotacao_id` e `orcamento_id` são **opcionais**.

@@ -110,6 +110,13 @@ function cotacoesCriar(data, sessao) {
   if (obraId) _obraAcessivel(obraId, sessao.usuario_id);
 
   return comLock(function () {
+    // 1 cotação por subclassificação: reaproveita a existente (todas as ofertas
+    // da subclasse ficam agrupadas na mesma cotação) — não cria duplicata.
+    const existente = listarCotacoesUsuario(sessao.usuario_id).find(function (c) {
+      return String(c.categoria_id || "") === categoriaId;
+    });
+    if (existente) return { cotacao: existente };
+
     const agora = agoraIso();
     const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const cotacao = {

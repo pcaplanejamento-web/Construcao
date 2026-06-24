@@ -7,10 +7,11 @@
 import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { numero } from "../../core/formatters.js";
+import { moeda } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
+import { melhorUnitario } from "./cotacao-util.js";
 import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
@@ -85,8 +86,6 @@ class CotacoesView extends BaseElement {
 
     const mapaCat = {};
     dataStore.categorias().forEach((c) => (mapaCat[c.id] = c));
-    const mapaObra = {};
-    dataStore.obras().forEach((o) => (mapaObra[o.id] = o.nome));
 
     const tabela = document.createElement("ui-data-table");
     tabela.setAttribute("fluido", "");
@@ -104,34 +103,22 @@ class CotacoesView extends BaseElement {
         },
       },
       {
-        chave: "quantidade",
-        titulo: "Qtd.",
-        formato: (q, l) => (Number(q) > 0 ? `${numero(q)} ${l.unidade || ""}`.trim() : "—"),
-      },
-      {
-        chave: "obra_id",
-        titulo: "Obra",
-        formato: (id) => mapaObra[id] || `<span style="color:var(--cor-texto-fraco)">—</span>`,
-      },
-      {
-        chave: "id",
-        titulo: "Itens",
-        alinhar: "dir",
-        formato: (id) => String(dataStore.precosDaCotacaoPorItem(id).length),
-      },
-      {
         chave: "id",
         titulo: "Ofertas",
         alinhar: "dir",
         formato: (id) => String(dataStore.precosDaCotacao(id).length),
       },
       {
-        chave: "status",
-        titulo: "Situação",
-        formato: (s) =>
-          s === "fechada"
-            ? `<span style="color:var(--cor-texto-fraco)">Fechada</span>`
-            : `<span style="color:var(--cor-sucesso)">Aberta</span>`,
+        chave: "id",
+        titulo: "Melhor oferta (unit.)",
+        alinhar: "dir",
+        moeda: true,
+        // Melhor preço por VALOR UNITÁRIO entre as ofertas (comparável mesmo entre itens).
+        valorNum: (linha) => melhorUnitario(dataStore.precosDaCotacao(linha.id)) || 0,
+        formato: (id) => {
+          const m = melhorUnitario(dataStore.precosDaCotacao(id));
+          return m == null ? "—" : moeda(m);
+        },
       },
       ...colunasLog(),
     ];
@@ -176,11 +163,16 @@ class CotacoesView extends BaseElement {
   }
 
   abrirForm(cotacao) {
+    const ehNova = !cotacao;
     const form = document.createElement("cotacao-form");
     form.cotacao = cotacao;
     const fechar = () => form.remove();
     form.addEventListener("fechar", fechar);
-    form.addEventListener("salvo", fechar);
+    form.addEventListener("salvo", (e) => {
+      fechar();
+      // 1 cotação por subclasse: ao criar, vai p/ a cotação (nova OU a já existente).
+      if (ehNova && e.detail && e.detail.cotacao) irPara("/cotacoes/" + e.detail.cotacao.id);
+    });
     document.body.appendChild(form);
   }
 

@@ -167,6 +167,50 @@ function _migrarCotacoesSubclasse_v1() {
   return migradas;
 }
 
+/**
+ * Garante 1 ÚNICA cotação por subclassificação (usuário + categoria_id): mantém a
+ * cotação mais ANTIGA como canônica, REATRIBUI as ofertas (e o histórico de preços)
+ * das duplicatas para ela e REMOVE as duplicatas. Cotações sem categoria_id não são
+ * agrupadas. Idempotente (depois de rodar não há duplicatas). Roda DEPOIS de
+ * `mig_cotacoes_subclasse_v1` (que define categoria_id). Retorna nº de duplicatas removidas.
+ */
+function _migrarCotacoesUnicas_v1() {
+  const todas = repoListar(SCHEMA.COTACOES);
+  const canon = {}; // "usuario|categoria" -> cotação canônica (mais antiga)
+  todas.forEach(function (c) {
+    const cat = String(c.categoria_id || "");
+    if (!cat) return;
+    const k = String(c.usuario_id || "") + "|" + cat;
+    const atual = canon[k];
+    if (!atual || String(c.criado_em || "") < String(atual.criado_em || "")) canon[k] = c;
+  });
+  const idCanonDe = {}; // cotacaoId duplicada -> id da canônica
+  todas.forEach(function (c) {
+    const cat = String(c.categoria_id || "");
+    if (!cat) return;
+    const can = canon[String(c.usuario_id || "") + "|" + cat];
+    if (can && String(can.id) !== String(c.id)) idCanonDe[String(c.id)] = String(can.id);
+  });
+  if (!Object.keys(idCanonDe).length) return 0;
+  // Ofertas das duplicatas → canônica.
+  repoListar(SCHEMA.COTACAO_PRECOS).forEach(function (p) {
+    const novo = idCanonDe[String(p.cotacao_id || "")];
+    if (novo) repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", p.id, { cotacao_id: novo });
+  });
+  // Histórico de preços acompanha.
+  repoListar(SCHEMA.COTACAO_PRECO_HISTORICO).forEach(function (h) {
+    const novo = idCanonDe[String(h.cotacao_id || "")];
+    if (novo) repoAtualizar(SCHEMA.COTACAO_PRECO_HISTORICO, "id", h.id, { cotacao_id: novo });
+  });
+  // Remove as cotações duplicadas (já esvaziadas).
+  let removidas = 0;
+  Object.keys(idCanonDe).forEach(function (dupId) {
+    repoRemover(SCHEMA.COTACOES, "id", dupId);
+    removidas++;
+  });
+  return removidas;
+}
+
 /** Roda as migrações pendentes UMA vez (double-checked via flag + lock). */
 function _migrarUmaVez() {
   const props = PropertiesService.getScriptProperties();
@@ -197,6 +241,14 @@ function _migrarUmaVez() {
       if (props.getProperty("mig_cotacoes_subclasse_v1") === "1") return;
       _migrarCotacoesSubclasse_v1();
       props.setProperty("mig_cotacoes_subclasse_v1", "1");
+    });
+  }
+  // Depois de subclasse_v1 (precisa do categoria_id já preenchido) — unifica 1 por subclasse.
+  if (props.getProperty("mig_cotacoes_unicas_v1") !== "1") {
+    comLock(function () {
+      if (props.getProperty("mig_cotacoes_unicas_v1") === "1") return;
+      _migrarCotacoesUnicas_v1();
+      props.setProperty("mig_cotacoes_unicas_v1", "1");
     });
   }
 }
