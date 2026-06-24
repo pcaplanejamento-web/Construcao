@@ -51,6 +51,11 @@ class AppShell extends BaseElement {
         background: color-mix(in srgb, var(--cor-superficie) 86%, transparent);
         -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5);
         border: 1px solid var(--cor-borda); border-radius: 26px; box-shadow: var(--sombra-lg);
+        transition: transform var(--transicao), opacity var(--transicao);
+      }
+      /* iOS 26: ao ROLAR PARA BAIXO o dock desliza e some; reaparece ao subir. */
+      :host([com-barra]) .bottombar.oculto {
+        transform: translateX(-50%) translateY(180%); opacity: 0; pointer-events: none;
       }
       .bb-item { display: flex; flex-direction: column; align-items: center; gap: 4px;
         padding: var(--esp-1) var(--esp-2); text-decoration: none; color: var(--cor-texto-suave);
@@ -129,6 +134,21 @@ class AppShell extends BaseElement {
       })
     );
     this._marcarBottom();
+
+    // iOS 26: o dock some ao rolar p/ baixo e reaparece ao subir (ou no topo).
+    const outlet = this.$("#outlet");
+    const bb = this.$("#bottombar");
+    this._bbLastY = 0;
+    outlet.addEventListener(
+      "scroll",
+      () => {
+        const y = outlet.scrollTop;
+        if (y > this._bbLastY + 6 && y > 48) bb.classList.add("oculto");
+        else if (y < this._bbLastY - 6 || y <= 8) bb.classList.remove("oculto");
+        this._bbLastY = y;
+      },
+      { passive: true }
+    );
   }
 
   /** Marca o item ativo da barra inferior pela rota atual. */
@@ -156,6 +176,10 @@ class AppShell extends BaseElement {
     if (!mostrarSidebar) this.$("#sb").removeAttribute("aberto");
     // Dock flutuante: só nas telas internas (mobile + desktop); some no login e no público.
     this.toggleAttribute("com-barra", mostrarSidebar);
+    // Ao trocar de rota o dock reaparece (e recalibra o scroll).
+    const bb = this.$("#bottombar");
+    if (bb) bb.classList.remove("oculto");
+    this._bbLastY = (this.$("#outlet") || {}).scrollTop || 0;
     this._marcarBottom();
   }
 }
