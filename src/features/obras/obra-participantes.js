@@ -57,11 +57,11 @@ class ObraParticipantes extends BaseElement {
     const resp = this.modo === "responsaveis";
     return `
       <div class="grupos">
-        <ui-card title="${resp ? "Responsáveis" : "Participantes"} — acerto de contas">
+        <ui-card mesa title="${resp ? "Responsáveis" : "Participantes"} — acerto de contas">
           <ui-button slot="acoes" id="acao">${resp ? "Definir responsáveis" : "+ Adicionar contato"}</ui-button>
           <div id="lista"></div>
         </ui-card>
-        <ui-card title="Quem deve a quem"><div id="acertos"></div></ui-card>
+        <ui-card mesa title="Quem deve a quem"><div id="acertos"></div></ui-card>
       </div>
     `;
   }

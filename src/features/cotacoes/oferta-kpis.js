@@ -22,6 +22,7 @@ class OfertaKpis extends BaseElement {
       :host { display: block; }
       .grid { display: grid; gap: var(--esp-5);
         grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+      @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); gap: var(--esp-3); } }
       .cartao { position: relative; overflow: hidden; color: #fff;
         border-radius: var(--raio-lg); padding: var(--esp-5); box-shadow: var(--sombra-md);
         min-height: 128px; display: flex; flex-direction: column; gap: var(--esp-2); }

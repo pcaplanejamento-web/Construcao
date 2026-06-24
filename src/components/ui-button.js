@@ -46,6 +46,8 @@ class UiButton extends BaseElement {
       button:not(:disabled):active { transform: scale(.96); transition-duration: 80ms;
         box-shadow: 0 1px 3px rgba(16, 24, 40, .12), 0 2px 8px -2px rgba(16, 24, 40, .22); }
       :host([tamanho="sm"]) button { height: 34px; font-size: var(--fs-sm); padding: 0 var(--esp-3); }
+      /* Toque: no mobile o botão pequeno cresce para um alvo confortável (~40px). */
+      @media (max-width: 600px) { :host([tamanho="sm"]) button { height: 40px; } }
 
       .primario { background: var(--grad-primaria); color: #fff;
         box-shadow: 0 8px 18px -10px rgba(5, 150, 105, .6); }

@@ -68,13 +68,20 @@ class AppSidebar extends BaseElement {
         :host([recolhido]) .rotulo { opacity: 0; max-width: 0; }
       }
 
-      /* MOBILE: drawer (sempre com rótulos; ignora "recolhido"). */
+      /* MOBILE: drawer (sempre com rótulos; ignora "recolhido"). O :host cobre a
+         VIEWPORT inteira (acima do header), mas quem desliza é o <nav>. Assim o
+         .backdrop (absolute dentro do host, SEM transform) cobre a tela toda —
+         tocar fora (ou no header) fecha. (Antes o transform ficava no :host e o
+         backdrop só cobria os 195px do drawer → toque fora não fechava.) */
       @media (max-width: 820px) {
-        :host { position: fixed; inset: 0 auto 0 0; z-index: var(--z-nav);
-          transform: translateX(-100%); transition: transform .2s ease; }
-        :host([aberto]) { transform: translateX(0); }
-        nav { box-shadow: var(--sombra-lg); width: 195px; }
-        .backdrop { display: block; position: fixed; inset: 0; z-index: -1;
+        :host { position: fixed; inset: 0; z-index: calc(var(--z-nav) + 1);
+          pointer-events: none; }
+        :host([aberto]) { pointer-events: auto; }
+        nav { position: relative; z-index: 1; width: 195px; height: 100%;
+          box-shadow: var(--sombra-lg); transform: translateX(-100%);
+          transition: transform .2s ease; pointer-events: auto; }
+        :host([aberto]) nav { transform: translateX(0); }
+        .backdrop { display: block; position: absolute; inset: 0; z-index: 0;
           background: var(--cor-overlay); opacity: 0; pointer-events: none;
           transition: opacity .2s; }
         :host([aberto]) .backdrop { opacity: 1; pointer-events: auto; }

@@ -52,10 +52,15 @@ class UiTabs extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
+      /* Em telas estreitas as abas NÃO quebram: rolam na horizontal (sem barra
+         de rolagem visível) — o conteúdo nunca estoura a proporção da tela. */
       .barra { display: flex; gap: var(--esp-1); border-bottom: 1px solid var(--cor-borda);
-        margin-bottom: var(--esp-5); }
-      button { display: inline-flex; align-items: center; gap: var(--esp-2);
-        background: none; border: none; cursor: pointer; padding: var(--esp-3) var(--esp-4);
+        margin-bottom: var(--esp-5); flex-wrap: nowrap; overflow-x: auto;
+        -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .barra::-webkit-scrollbar { display: none; }
+      button { display: inline-flex; align-items: center; gap: var(--esp-2); flex: none;
+        white-space: nowrap; background: none; border: none; cursor: pointer;
+        padding: var(--esp-3) var(--esp-4);
         font-size: var(--fs-sm); font-weight: var(--peso-medio); color: var(--cor-texto-suave);
         border-bottom: 2.5px solid transparent; margin-bottom: -1px; }
       button:hover { color: var(--cor-texto); }

@@ -23,6 +23,8 @@ class DashboardSummary extends BaseElement {
       :host { display: block; }
       .grid { display: grid; gap: var(--esp-5);
         grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+      /* Mobile: KPIs sempre em grade 2 colunas (2×2), com gap menor. */
+      @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); gap: var(--esp-3); } }
       .cartao {
         position: relative; overflow: hidden; color: #fff;
         border-radius: var(--raio-lg); padding: var(--esp-5);

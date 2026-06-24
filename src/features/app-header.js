@@ -61,10 +61,18 @@ class AppHeader extends BaseElement {
         font-size: var(--fs-sm); color: var(--cor-texto-suave);
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-completo);
         padding: 6px 14px; margin-right: var(--esp-5); }
+      /* MOBILE: header compacto e sem estouro — só logo + tema + avatar + Sair.
+         Wordmark e nome do usuário escondidos; alvos de toque ≥ 44px. */
       @media (max-width: 820px) {
-        .papel { display: none; }
-        /* no mobile a sidebar é drawer: o cluster vira compacto (sem trancar 230px). */
-        .marca-bloco { width: auto; padding-left: var(--esp-3); }
+        .barra { height: 56px; gap: var(--esp-2); padding-right: var(--esp-3); }
+        .marca-bloco { width: auto; padding-left: var(--esp-3); gap: var(--esp-1); }
+        .wordmark { display: none; }
+        .chip-txt { display: none; }
+        .chip { padding: 4px; }
+        .menu-btn { padding: 10px; }
+        .icone-btn { width: 44px; height: 44px; }
+        .sair { padding: 8px 12px; }
+        .somente-leitura { margin-right: var(--esp-3); }
       }
     `;
   }
@@ -76,7 +84,7 @@ class AppHeader extends BaseElement {
     if (!auth.estaAutenticado()) {
       return `
         <div class="barra">
-          <div class="marca-bloco"><span class="marca">${logoImg} Dattaobra</span></div>
+          <div class="marca-bloco"><span class="marca">${logoImg} <span class="wordmark">Dattaobra</span></span></div>
           <span class="cresce"></span>
           <span class="somente-leitura"><ui-icon name="olho" size="14"></ui-icon> Somente leitura</span>
         </div>
@@ -87,14 +95,14 @@ class AppHeader extends BaseElement {
     return `
       <div class="barra">
         <div class="marca-bloco">
-          <a class="marca" href="/obras">${logoImg} Dattaobra</a>
+          <a class="marca" href="/obras">${logoImg} <span class="wordmark">Dattaobra</span></a>
           <button class="menu-btn" id="menu" aria-label="Abrir menu"><ui-icon name="menu"></ui-icon></button>
         </div>
         <span class="cresce"></span>
         <button class="icone-btn" id="tema" aria-label="Alternar tema claro/escuro"><ui-icon name="${iconeTema}"></ui-icon></button>
         <a class="chip" href="/perfil" title="Meu perfil">
           ${avatarHtml(u.nome, 32)}
-          <span>
+          <span class="chip-txt">
             <span class="nome">${u.nome || ""}</span>
             <span class="papel">${u.role === "admin" ? "Administrador" : "Usuário"}</span>
           </span>

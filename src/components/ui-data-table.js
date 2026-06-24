@@ -245,7 +245,51 @@ class UiDataTable extends BaseElement {
         background: var(--cor-superficie); color: var(--cor-erro); border-radius: var(--raio-sm);
         padding: 4px 12px; font-size: var(--fs-xs); cursor: pointer; }
       .vazio { padding: var(--esp-6); text-align: center; color: var(--cor-texto-fraco); }
+      /* TABLET: esconde colunas secundárias (a tabela ainda rola na horizontal). */
       @media (max-width: 820px) { th.sec, td.sec { display: none; } }
+      /* MOBILE (≤600px): cada LINHA vira um CARD EMPILHADO ("Rótulo: valor"). Sem
+         rolagem horizontal, sem hover (toque). O cabeçalho some (os rótulos vêm das
+         células via data-label) e TODAS as colunas reaparecem (espaço é vertical). */
+      @media (max-width: 600px) {
+        .wrap { overflow: visible; max-height: none; padding-bottom: 0; }
+        table { display: block; border-spacing: 0; }
+        thead { display: none; }
+        tbody { display: block; }
+        tbody tr { display: block; position: relative; background: var(--cor-superficie);
+          border: 1px solid var(--cor-borda); border-radius: var(--raio-sm);
+          box-shadow: var(--sombra-sm); padding: var(--esp-2) var(--esp-3);
+          margin-bottom: var(--esp-2); }
+        tbody tr::after { display: none; } /* desliga sombra/hover do desktop */
+        tbody td, tbody td.sec { display: flex; align-items: center; justify-content: space-between;
+          gap: var(--esp-4); width: auto; background: transparent; border: none !important;
+          border-radius: 0 !important; padding: var(--esp-1) 0; white-space: normal;
+          transform: none !important; text-align: right; }
+        tbody td::before { content: attr(data-label); flex: none; text-align: left;
+          color: var(--cor-texto-suave); font-weight: var(--peso-semi);
+          font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; }
+        td.dir { font-family: var(--fonte-titulo); }
+        /* seleção: checkbox no canto superior do card */
+        tbody td.sel { position: absolute; top: var(--esp-2); right: var(--esp-3);
+          width: auto; min-width: 0; max-width: none; padding: 0; }
+        tbody td.sel::before { content: ""; }
+        /* ações: botões em linha cheia, fáceis de tocar */
+        tbody td.acoes-td { padding-top: var(--esp-2); }
+        tbody td.acoes-td::before { content: ""; }
+        tbody td.acoes-td .acoes { width: 100%; }
+        tbody td.acoes-td .btn-acao { flex: 1; padding: 8px 10px; text-align: center; }
+        /* totais como card na cor da mesa */
+        tfoot { display: block; }
+        tfoot tr { display: block; background: var(--cor-mesa); border-radius: var(--raio-sm);
+          padding: var(--esp-2) var(--esp-3); }
+        tfoot td { position: static; display: flex; justify-content: space-between;
+          background: transparent; padding: var(--esp-1) 0; }
+        tfoot td.vazia { display: none; }
+        tfoot td[data-label]::before { content: attr(data-label); color: var(--cor-texto-suave);
+          font-weight: var(--peso-semi); font-size: var(--fs-xs); text-transform: uppercase; }
+        /* "nenhum resultado" ocupa o card inteiro, centralizado */
+        tr.sem-result td { display: block; text-align: center; }
+        tr.sem-result td::before { content: ""; }
+      }
     `;
   }
 
@@ -312,11 +356,13 @@ class UiDataTable extends BaseElement {
         const celulas = cols
           .map((c) => {
             const v = c.formato ? c.formato(linha[c.chave], linha) : linha[c.chave];
-            return `<td class="${classe(c)}"${estilo(c)}>${v == null ? "" : v}</td>`;
+            // data-label = título da coluna → vira o rótulo "Coluna: valor" no card mobile.
+            const lbl = String(c.titulo || "").replace(/"/g, "&quot;");
+            return `<td class="${classe(c)}"${estilo(c)} data-label="${lbl}">${v == null ? "" : v}</td>`;
           })
           .join("");
         const botoes = temAcoes
-          ? `<td><div class="acoes">${acoes
+          ? `<td class="acoes-td"><div class="acoes">${acoes
               .map(
                 (a) =>
                   `<button class="btn-acao ${a.variant || ""}" data-acao="${a.nome}" data-idx="${i}">${a.rotulo}</button>`
@@ -340,9 +386,10 @@ class UiDataTable extends BaseElement {
         if (c.moeda) {
           const soma = vis.reduce((s, l) => s + this._num(c, l), 0);
           primeira = false;
-          return `<td class="dir">${moeda(soma)}</td>`;
+          const lbl = String(c.titulo || "").replace(/"/g, "&quot;");
+          return `<td class="dir" data-label="${lbl}">${moeda(soma)}</td>`;
         }
-        const cel = primeira ? `<td class="rotulo">Total</td>` : `<td></td>`;
+        const cel = primeira ? `<td class="rotulo">Total</td>` : `<td class="vazia"></td>`;
         primeira = false;
         return cel;
       })

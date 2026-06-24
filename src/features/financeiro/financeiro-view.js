@@ -31,6 +31,7 @@ class FinanceiroView extends BaseElement {
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       p.sub { color: var(--cor-texto-suave); margin-top: var(--esp-2); }
       .kpis { display: grid; gap: var(--esp-5); grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+      @media (max-width: 600px) { .kpis { grid-template-columns: repeat(2, 1fr); gap: var(--esp-3); } }
       .cartao { position: relative; overflow: hidden; color: #fff; border-radius: var(--raio-lg);
         padding: var(--esp-5); box-shadow: var(--sombra-md); min-height: 120px;
         display: flex; flex-direction: column; gap: var(--esp-2); }

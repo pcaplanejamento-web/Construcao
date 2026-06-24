@@ -130,4 +130,14 @@ usam `--cor-mesa`; a marcação fica SEPARADA e **não sobe**.
 ## Breakpoints (proporcionalidade)
 Convenção (CSS não aceita `var()` em `@media`): **sm 600 · md 900 · lg 1100**.
 Layout fluido com `max-width`, `%`, `minmax`, `clamp`. Sidebar vira drawer no
-mobile; grids `auto-fill/minmax`; tabelas com scroll horizontal.
+mobile; grids `auto-fill/minmax`.
+
+### Mobile / touch (≤600px, drawer ≤820px)
+Regras de adaptação a telefone/toque (tudo escopado em `@media` → **desktop intacto**):
+- **`--esp-tela` cai p/ `--esp-4`** (16px) em ≤600px (`tokens.css`) → mais espaço útil.
+- **`ui-tabs`**: a barra de abas faz **scroll horizontal** (`overflow-x:auto; flex-wrap:nowrap; white-space:nowrap`; scrollbar oculta) — abas nunca quebram/estouram.
+- **`ui-data-table`**: ≤600px cada **linha vira um CARD empilhado** — `thead` some, `tr` vira card (borda+sombra), cada `td` é `display:flex` com o rótulo via `::before { content: attr(data-label) }` (o `data-label` = título da coluna); colunas secundárias **reaparecem** (há espaço vertical); seleção no canto do card e ações em linha cheia; totais (`tfoot`) viram card. Sem rolagem horizontal, sem hover (toque). 601–820px: tabela ainda rola na horizontal, escondendo `.sec`.
+- **KPIs** (`dashboard-summary`, `financeiro`, `oferta-kpis`): grade fixa **2 colunas** (`repeat(2,1fr)`) em ≤600px.
+- **`app-sidebar` (drawer)**: o `:host` cobre a viewport (`position:fixed; inset:0; z-index:z-nav+1; pointer-events:none`), quem desliza é o `<nav>`; o `.backdrop` (absolute, sem transform) cobre a tela toda → **tocar fora fecha**. Fechado, `pointer-events:none` deixa o conteúdo clicável.
+- **`app-header`**: ≤820px barra de **56px**, **esconde o wordmark "Dattaobra"** (só logo) e o **nome/cargo** do chip (só avatar); alvos de toque ≥ 44px.
+- **Toque**: `ui-button[tamanho=sm]` sobe p/ **40px** de altura em ≤600px (inputs/selects já 42px).
