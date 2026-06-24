@@ -95,10 +95,21 @@ class ItemDetailView extends BaseElement {
       .filter((d) => String(d.item_id) === id);
   }
 
-  /** Cotações deste item. */
+  /** Cotações deste item. A cotação é por subclassificação → relaciona-se ao item
+   * pelas SUAS OFERTAS (offer.item_id); `c.item_id` direto cobre cotações legadas. */
   _cotacoesDoItem() {
     const id = String(this.itemId);
-    return dataStore.cotacoes().filter((c) => String(c.item_id) === id);
+    const idsCot = new Set();
+    dataStore.todasOfertas().forEach((o) => {
+      if (String(o.item_id) === id && o.cotacao_id) idsCot.add(String(o.cotacao_id));
+    });
+    return dataStore.cotacoes().filter((c) => String(c.item_id) === id || idsCot.has(String(c.id)));
+  }
+
+  /** Ofertas DESTE item dentro de uma cotação (a cotação por subclasse mistura itens). */
+  _ofertasDoItemNaCotacao(cotacaoId) {
+    const id = String(this.itemId);
+    return dataStore.precosDaCotacao(cotacaoId).filter((o) => String(o.item_id) === id);
   }
 
   aoConectar() {
@@ -180,8 +191,8 @@ class ItemDetailView extends BaseElement {
 
     this._tabCotacoes = alvo.querySelector("#tabCotacoes");
     this._tabCotacoes.columns = [
-      // Nome ao vivo (é sempre este item); `descricao` denormalizado é fallback.
-      { chave: "descricao", titulo: "Cotação", formato: (v) => (this._item || {}).nome || v || "—" },
+      // Cotação por subclassificação: o rótulo é o nome da subclasse (`descricao`).
+      { chave: "descricao", titulo: "Subclassificação", formato: (v) => v || "—" },
       {
         chave: "obra_id",
         titulo: "Obra",
@@ -194,12 +205,13 @@ class ItemDetailView extends BaseElement {
       },
       {
         chave: "id",
-        titulo: "Melhor preço",
+        titulo: "Melhor preço (deste item)",
         alinhar: "dir",
         moeda: true,
-        valorNum: (linha) => melhorTotal(dataStore.precosDaCotacao(linha.id), linha) || 0,
+        // Melhor preço APENAS das ofertas deste item dentro da cotação (a cotação mistura itens).
+        valorNum: (linha) => melhorTotal(this._ofertasDoItemNaCotacao(linha.id), linha) || 0,
         formato: (id, linha) => {
-          const min = melhorTotal(dataStore.precosDaCotacao(id), linha);
+          const min = melhorTotal(this._ofertasDoItemNaCotacao(id), linha);
           return min == null ? "—" : moeda(min);
         },
       },

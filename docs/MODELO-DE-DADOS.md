@@ -184,7 +184,7 @@ Categorias semente (`GLOBAL`) são criadas no bootstrap. A listagem de um usuár
 ## Aba `Itens` (catálogo)
 Cada item é classificado como **Material** ou **Serviço** (constante
 `CLASSIFICACOES_ITEM = ["Material","Serviço"]`; cores em `CLASSIFICACAO_COR`).
-Despesas e cotações **referenciam um item** (`item_id`, obrigatório). Por usuário.
+Despesas referenciam **um item** (`item_id`, obrigatório); a **cotação** referencia uma **subclassificação** (`categoria_id`) e cada **oferta** referencia o seu item. Por usuário.
 
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
@@ -268,14 +268,15 @@ guarda só os **extras** criados pelo usuário (com log).
 | id | UUID | PK |
 | usuario_id | UUID | FK → Usuarios.id (dono) |
 | obra_id | UUID | FK → Obras.id (**opcional**; vazio = cotação geral) |
-| descricao | string | **nome do item** (desnormalizado de Itens.nome) |
+| descricao | string | **nome da subclassificação** (desnormalizado de Categorias.nome) |
 | quantidade | number | opcional |
 | unidade | string | texto livre (un, m², kg, saco…) |
-| categoria_id | UUID | FK → Categorias.id = **Subclassificação** (opcional) |
+| categoria_id | UUID | FK → Categorias.id = **Subclassificação (OBRIGATÓRIA)** — a cotação É por subclassificação |
 | status | `aberta` \| `fechada` | |
 | criado_em / atualizado_em | ISO datetime | |
-| item_id | UUID | **FK → Itens.id (obrigatório p/ novas cotações)** |
-| classificacao | string | `Material` \| `Serviço` (desnormalizado de Itens.classificacao) |
+| item_id | UUID | **vazio** no modo único (cada OFERTA define o próprio item, dentro da subclasse); preenchido só em cotações legadas |
+| classificacao | string | vazio no modo único (a cotação mistura itens); legado = `Material`/`Serviço` |
+| modo | string | **`subclasse`** (modo ÚNICO atual). `item` = legado, convertido pela migração `mig_cotacoes_subclasse_v1` |
 
 ### Aba `CotacaoPrecos` (OFERTA — unidade independente)
 A oferta é a unidade atômica: nasce de um **item** e pode (opcional) vincular-se a uma

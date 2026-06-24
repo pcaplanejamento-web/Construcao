@@ -7,11 +7,10 @@
 import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { moeda, numero } from "../../core/formatters.js";
+import { numero } from "../../core/formatters.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
-import { melhorTotal } from "./cotacao-util.js";
 import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
@@ -45,7 +44,7 @@ class CotacoesView extends BaseElement {
         <div class="cabecalho">
           <div>
             <h1>Cotações</h1>
-            <p class="sub">Compare preços de ofertas para cada item. Orçamentos e ofertas têm abas próprias no menu.</p>
+            <p class="sub">Cada cotação é por subclassificação e agrupa as ofertas por item. Orçamentos e ofertas têm abas próprias no menu.</p>
           </div>
         </div>
         <ui-card mesa title="Mesa com cotações">
@@ -94,33 +93,20 @@ class CotacoesView extends BaseElement {
     tabela.setAttribute("clicavel", "");
     tabela.columns = [
       {
-        chave: "descricao",
-        titulo: "Item",
-        // Nome ao vivo do catálogo; `descricao` denormalizado é fallback.
-        formato: (v, l) => (l.item_id && (dataStore.item(l.item_id) || {}).nome) || v || "—",
-      },
-      {
-        chave: "classificacao",
-        titulo: "Classificação",
-        formato: (v) =>
-          v
-            ? `<category-badge nome="${v}" cor="${COR_CLASSIFICACAO[v] || "var(--cor-neutro)"}"></category-badge>`
-            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+        chave: "categoria_id",
+        titulo: "Subclassificação",
+        // A cotação É por subclassificação; `descricao` (nome da subclasse) é fallback.
+        formato: (id, l) => {
+          const c = mapaCat[id];
+          return c
+            ? `<category-badge nome="${c.nome}" cor="${c.cor}"></category-badge>`
+            : l.descricao || `<span style="color:var(--cor-texto-fraco)">—</span>`;
+        },
       },
       {
         chave: "quantidade",
         titulo: "Qtd.",
         formato: (q, l) => (Number(q) > 0 ? `${numero(q)} ${l.unidade || ""}`.trim() : "—"),
-      },
-      {
-        chave: "categoria_id",
-        titulo: "Subclassificação",
-        formato: (id) => {
-          const c = mapaCat[id];
-          return c
-            ? `<category-badge nome="${c.nome}" cor="${c.cor}"></category-badge>`
-            : `<span style="color:var(--cor-texto-fraco)">—</span>`;
-        },
       },
       {
         chave: "obra_id",
@@ -129,20 +115,15 @@ class CotacoesView extends BaseElement {
       },
       {
         chave: "id",
-        titulo: "Ofertas",
+        titulo: "Itens",
         alinhar: "dir",
-        formato: (id) => String(dataStore.precosDaCotacao(id).length),
+        formato: (id) => String(dataStore.precosDaCotacaoPorItem(id).length),
       },
       {
         chave: "id",
-        titulo: "Melhor preço",
+        titulo: "Ofertas",
         alinhar: "dir",
-        moeda: true,
-        valorNum: (linha) => melhorTotal(dataStore.precosDaCotacao(linha.id), linha) || 0,
-        formato: (id, linha) => {
-          const min = melhorTotal(dataStore.precosDaCotacao(id), linha);
-          return min == null ? "—" : moeda(min);
-        },
+        formato: (id) => String(dataStore.precosDaCotacao(id).length),
       },
       {
         chave: "status",

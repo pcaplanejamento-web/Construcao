@@ -95,28 +95,16 @@ function cotacoesListar(data, sessao) {
   return { cotacoes: listarCotacoesUsuario(sessao.usuario_id) };
 }
 
-/** cotacoes.criar -> { cotacao }. modo "item" (1 item) ou "subclasse" (categoria → vários itens). */
+/** cotacoes.criar -> { cotacao }. Modo ÚNICO: SEMPRE por subclassificação
+ * (cada oferta define o próprio item; o detalhe agrupa as ofertas por item). */
 function cotacoesCriar(data, sessao) {
-  const modo = String((data && data.modo) || "") === "subclasse" ? "subclasse" : "item";
-  let itemId = "";
-  let descricao = "";
-  let classificacao = "";
-  let categoriaId = String((data && data.categoria_id) || "");
-
-  if (modo === "subclasse") {
-    if (!categoriaId) lancar(ERRO.VALIDACAO, "Selecione a subclassificação da cotação.");
-    const cat = listarCategoriasUsuario(sessao.usuario_id).find(function (c) {
-      return String(c.id) === categoriaId && String(c.tipo || "") !== "fornecedor";
-    });
-    if (!cat) lancar(ERRO.VALIDACAO, "Subclassificação inválida.");
-    descricao = cat.nome; // rótulo = nome da subclassificação
-  } else {
-    itemId = String((data && data.item_id) || "");
-    if (!itemId) lancar(ERRO.VALIDACAO, "Selecione um item para a cotação.");
-    const item = _itemPorId(itemId, sessao.usuario_id); // deriva nome+classificacao
-    descricao = item.nome;
-    classificacao = item.classificacao;
-  }
+  const categoriaId = String((data && data.categoria_id) || "");
+  if (!categoriaId) lancar(ERRO.VALIDACAO, "Selecione a subclassificação da cotação.");
+  const cat = listarCategoriasUsuario(sessao.usuario_id).find(function (c) {
+    return String(c.id) === categoriaId && String(c.tipo || "") !== "fornecedor";
+  });
+  if (!cat) lancar(ERRO.VALIDACAO, "Subclassificação inválida.");
+  const descricao = cat.nome; // rótulo = nome da subclassificação
 
   const obraId = String((data && data.obra_id) || "");
   if (obraId) _obraAcessivel(obraId, sessao.usuario_id);
@@ -135,11 +123,11 @@ function cotacoesCriar(data, sessao) {
       status: _statusCotacaoValido(data && data.status),
       criado_em: agora,
       atualizado_em: agora,
-      item_id: itemId,
-      classificacao: classificacao,
+      item_id: "", // a oferta é que define o item, dentro da subclassificação
+      classificacao: "",
       autor_nome: nomeUsuario,
       editor_nome: nomeUsuario,
-      modo: modo,
+      modo: "subclasse",
     };
     repoInserir(SCHEMA.COTACOES, cotacao);
     return { cotacao: cotacao };
@@ -171,8 +159,17 @@ function cotacoesAtualizar(data, sessao) {
   if (data.quantidade !== undefined)
     patch.quantidade = Number(data.quantidade) || 0;
   if (data.unidade !== undefined) patch.unidade = String(data.unidade);
-  if (data.categoria_id !== undefined)
-    patch.categoria_id = String(data.categoria_id);
+  if (data.categoria_id !== undefined) {
+    const cid = String(data.categoria_id || "");
+    patch.categoria_id = cid;
+    // Rótulo da cotação acompanha o nome da subclassificação (modo único).
+    const cat = cid
+      ? listarCategoriasUsuario(sessao.usuario_id).find(function (c) {
+          return String(c.id) === cid && String(c.tipo || "") !== "fornecedor";
+        })
+      : null;
+    if (cat) patch.descricao = cat.nome;
+  }
   if (data.status !== undefined) patch.status = _statusCotacaoValido(data.status);
   patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 

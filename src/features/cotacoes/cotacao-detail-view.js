@@ -78,6 +78,10 @@ class CotacaoDetailView extends BaseElement {
       .registrada { display: inline-flex; align-items: center; gap: 6px;
         color: var(--cor-sucesso); font-weight: var(--peso-semi); font-size: var(--fs-sm); }
       .dica { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
+      /* Ofertas AGRUPADAS por item (uma seção/mesa por item da subclassificação). */
+      .barra-ofertas { display: flex; justify-content: flex-end; margin-bottom: var(--esp-3); }
+      #grupos { display: flex; flex-direction: column; gap: var(--esp-5); }
+      .vazio-of { color: var(--cor-texto-fraco); padding: var(--esp-4); text-align: center; }
     `;
   }
 
@@ -107,11 +111,8 @@ class CotacaoDetailView extends BaseElement {
           <ui-card><category-breakdown id="comparacao"></category-breakdown></ui-card>
         </div>
         <div slot="ofertas">
-          <ui-card mesa title="Mesa com ofertas">
-            <ui-button slot="acoes" id="addOferta">+ Adicionar oferta</ui-button>
-            <ui-data-table id="tabela" fluido
-              empty-text="Nenhuma oferta ainda. Adicione ofertas de contatos para comparar."></ui-data-table>
-          </ui-card>
+          <div class="barra-ofertas"><ui-button id="addOferta">+ Adicionar oferta</ui-button></div>
+          <div id="grupos"></div>
           <div id="escolhida"></div>
         </div>
       </ui-tabs>
@@ -124,27 +125,36 @@ class CotacaoDetailView extends BaseElement {
     this._kpis = alvo.querySelector("#kpis");
     this._evolucao = alvo.querySelector("#evolucao");
     this._comparacao = alvo.querySelector("#comparacao");
-    this._tabela = alvo.querySelector("#tabela");
-    // Tabela PADRÃO de ofertas (mesmas colunas em todo o sistema).
-    this._tabela.columns = colunasOferta();
-    this._tabela.setAttribute("clicavel", "");
-    this._tabela.acoes = [
+    this._grupos = alvo.querySelector("#grupos");
+    this._montado = true;
+  }
+
+  /** Cria uma tabela PADRÃO de ofertas para UM grupo (item) — colunas Item/Subclasse
+   * são omitidas (viram o título da seção). Mesmas ações de toda oferta. */
+  _tabelaGrupo(ofertas) {
+    const t = document.createElement("ui-data-table");
+    t.setAttribute("fluido", "");
+    t.setAttribute("clicavel", "");
+    // Item e Subclassificação são constantes no grupo → ficam no título da seção.
+    t.columns = colunasOferta().filter((col) => col.titulo !== "Item" && col.titulo !== "Subclassificação");
+    t.acoes = [
       { nome: "registrar", rotulo: "Registrar" },
       { nome: "escolher", rotulo: "Escolher" },
       { nome: "remover", rotulo: "Excluir", variant: "perigo" },
     ];
-    this._tabela.addEventListener("acao", (e) => {
+    t.rows = ofertas;
+    t.addEventListener("acao", (e) => {
       const acao = e.detail.acao;
       const preco = e.detail.linha;
       if (acao === "registrar") abrirRegistrarDespesa(preco);
       else if (acao === "escolher") this.escolher(preco);
       else this.removerPreco(preco);
     });
-    // Clique na oferta → banner único (a cotação trava o item).
-    this._tabela.addEventListener("linha", (e) => abrirOferta(e.detail.linha, { cotacao: this._cotacao }));
+    // Clique na oferta → banner único (a cotação restringe o item à subclasse).
+    t.addEventListener("linha", (e) => abrirOferta(e.detail.linha, { cotacao: this._cotacao }));
     // Edição em massa: reusa o preco-form; campos alterados valem p/ todas.
-    this._tabela.setAttribute("editar-massa", "");
-    this._tabela.addEventListener("editar-massa", (e) =>
+    t.setAttribute("editar-massa", "");
+    t.addEventListener("editar-massa", (e) =>
       editarEmMassa(e.detail.linhas, {
         criarForm: (ref) => {
           const f = document.createElement("preco-form");
@@ -157,8 +167,8 @@ class CotacaoDetailView extends BaseElement {
       })
     );
     // Exclusão em massa (a tabela já confirmou).
-    this._tabela.setAttribute("excluir-massa", "");
-    this._tabela.addEventListener("excluir-massa", async (e) => {
+    t.setAttribute("excluir-massa", "");
+    t.addEventListener("excluir-massa", async (e) => {
       let ok = 0;
       for (const p of e.detail.linhas || []) {
         try {
@@ -170,7 +180,33 @@ class CotacaoDetailView extends BaseElement {
       }
       if (ok) toastSucesso(`${ok} oferta(s) excluída(s).`);
     });
-    this._montado = true;
+    return t;
+  }
+
+  /** Renderiza as ofertas AGRUPADAS por item — uma "mesa" por item da subclassificação,
+   * com nº de ofertas e melhor preço (do grupo) no título; cada grupo ordenado do menor
+   * total p/ o maior (melhor preço no topo). */
+  _montarGrupos(precos, c) {
+    const cont = this._grupos;
+    if (!cont) return;
+    if (!precos.length) {
+      cont.innerHTML = `<ui-card mesa title="Mesa com ofertas"><div class="vazio-of">Nenhuma oferta ainda. Adicione ofertas de contatos (de itens desta subclassificação) para comparar.</div></ui-card>`;
+      return;
+    }
+    cont.replaceChildren();
+    dataStore.precosDaCotacaoPorItem(this.cotacaoId).forEach((g) => {
+      const itemNome = (g.itemId && (dataStore.item(g.itemId) || {}).nome) || "Sem item definido";
+      const melhor = melhorTotal(g.ofertas, c);
+      const card = document.createElement("ui-card");
+      card.setAttribute("mesa", "");
+      card.setAttribute(
+        "title",
+        `${itemNome} · ${g.ofertas.length} oferta(s)` + (melhor != null ? ` · melhor ${moeda(melhor)}` : "")
+      );
+      const ordenadas = g.ofertas.slice().sort((a, b) => totalOferta(a, c) - totalOferta(b, c));
+      card.appendChild(this._tabelaGrupo(ordenadas));
+      cont.appendChild(card);
+    });
   }
 
   sincronizar() {
@@ -187,10 +223,9 @@ class CotacaoDetailView extends BaseElement {
     dataStore.fornecedores().forEach((f) => (this._mapaForn[f.id] = f.nome));
 
     const precos = dataStore.precosDaCotacao(this.cotacaoId);
-    // Por subclassificação as ofertas são de itens DIFERENTES → não há um único
-    // "melhor preço" global (a coluna Item + o dropdown agrupam/ordenam por item).
-    this._min = String(c.modo || "") === "subclasse" ? null : melhorTotal(precos, c);
-    this._tabela.rows = precos; // formato lê this._min/_mapas (já definidos)
+    // Ofertas AGRUPADAS por item (a cotação é por subclassificação): cada grupo tem o
+    // seu próprio "melhor preço" (mesmo item = comparável).
+    this._montarGrupos(precos, c);
 
     // Cores estáveis por contato (mesma cor no gráfico, na comparação e legenda).
     // Inclui contatos do histórico (mesmo os de ofertas já excluídas).
@@ -228,15 +263,14 @@ class CotacaoDetailView extends BaseElement {
     const cat = (dataStore.categorias().find((x) => String(x.id) === String(c.categoria_id)) || null);
     const obra = c.obra_id ? dataStore.obra(c.obra_id) : null;
     const qtd = Number(c.quantidade) > 0 ? `${numero(c.quantidade)} ${c.unidade || ""}`.trim() : "";
-    // Nome ao vivo do item (reflete renome); `descricao` é fallback.
-    const nomeItem = (c.item_id && (dataStore.item(c.item_id) || {}).nome) || c.descricao || "";
+    // Título = SUBCLASSIFICAÇÃO da cotação (nome ao vivo da categoria); `descricao` é fallback.
+    const nomeSub = (cat && cat.nome) || c.descricao || "Cotação";
     topo.innerHTML = `
       <div>
-        <h1>${nomeItem}</h1>
+        <h1>${nomeSub}</h1>
         <div class="meta">
-          ${qtd ? `<span>${qtd}</span>` : ""}
-          ${c.classificacao ? `<category-badge nome="${c.classificacao}" cor="${COR_CLASSIFICACAO[c.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
-          ${cat ? `<category-badge nome="${cat.nome}" cor="${cat.cor}"></category-badge>` : ""}
+          <span>Cotação por subclassificação</span>
+          ${qtd ? `<span>· ${qtd}</span>` : ""}
           ${obra ? `· <a href="/obras/${obra.id}"><ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</a>` : ""}
           <span>· ${c.status === "fechada" ? "Fechada" : "Aberta"}</span>
           ${c.criado_em ? `<span>· <ui-icon name="relogio" size="13"></ui-icon> Criada em ${fmtData(c.criado_em)}</span>` : ""}

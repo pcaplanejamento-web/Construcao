@@ -123,6 +123,50 @@ function _migrarTransferencias_v1() {
   return criadas;
 }
 
+/**
+ * Unifica as cotações no modo ÚNICO "subclasse" (elimina o antigo "por item"):
+ * cada cotação passa a ser por subclassificação e as ofertas agrupam por item.
+ * Para cada cotação com modo != "subclasse":
+ *  - define `categoria_id` (se vazio) a partir da subclassificação do item da cotação;
+ *  - marca `modo = "subclasse"`;
+ *  - ofertas sem `item_id` próprio HERDAM o `item_id` da cotação (p/ agruparem por item).
+ * Idempotente (filtro `modo !== "subclasse"`). Retorna o nº de cotações migradas.
+ */
+function _migrarCotacoesSubclasse_v1() {
+  const itensPorId = {};
+  repoListar(SCHEMA.ITENS).forEach(function (i) {
+    itensPorId[String(i.id)] = i;
+  });
+  const ofertasPorCotacao = {};
+  repoListar(SCHEMA.COTACAO_PRECOS).forEach(function (p) {
+    const cid = String(p.cotacao_id || "");
+    if (!cid) return;
+    (ofertasPorCotacao[cid] = ofertasPorCotacao[cid] || []).push(p);
+  });
+  let migradas = 0;
+  repoListar(SCHEMA.COTACOES).forEach(function (c) {
+    if (String(c.modo || "") === "subclasse") return; // já no modo único
+    const itemId = String(c.item_id || "");
+    const item = itensPorId[itemId];
+    const catId = String(c.categoria_id || "") || (item ? String(item.categoria_id || "") : "");
+    repoAtualizar(SCHEMA.COTACOES, "id", c.id, {
+      modo: "subclasse",
+      categoria_id: catId,
+      atualizado_em: agoraIso(),
+    });
+    // Ofertas sem item próprio herdam o item da cotação (para agruparem por item).
+    if (itemId) {
+      (ofertasPorCotacao[String(c.id)] || []).forEach(function (p) {
+        if (!String(p.item_id || "")) {
+          repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", p.id, { item_id: itemId });
+        }
+      });
+    }
+    migradas++;
+  });
+  return migradas;
+}
+
 /** Roda as migrações pendentes UMA vez (double-checked via flag + lock). */
 function _migrarUmaVez() {
   const props = PropertiesService.getScriptProperties();
@@ -146,6 +190,13 @@ function _migrarUmaVez() {
       if (props.getProperty("mig_transferencias_v1") === "1") return;
       _migrarTransferencias_v1();
       props.setProperty("mig_transferencias_v1", "1");
+    });
+  }
+  if (props.getProperty("mig_cotacoes_subclasse_v1") !== "1") {
+    comLock(function () {
+      if (props.getProperty("mig_cotacoes_subclasse_v1") === "1") return;
+      _migrarCotacoesSubclasse_v1();
+      props.setProperty("mig_cotacoes_subclasse_v1", "1");
     });
   }
 }

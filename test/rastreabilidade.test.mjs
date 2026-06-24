@@ -30,7 +30,9 @@ const ctx = {
     { id: "it2", nome: "Item 2", categoria_id: "sub1" },
   ],
   equipes: [{ id: "e1", lider_id: "k2", membros: ["k1"], obras: ["ob2"] }],
-  cotacoes: [{ id: "c1", item_id: "it1", obra_id: "ob1", categoria_id: "sub1" }],
+  // Modo ÚNICO: cotação por subclassificação (item_id vazio); relaciona-se ao item it1
+  // pela oferta of1 (item_id "it1"). categoria_id = subclasse "sub1".
+  cotacoes: [{ id: "c1", item_id: "", obra_id: "ob1", categoria_id: "sub1", modo: "subclasse" }],
   orcamentos: [{ id: "orc1", obra_id: "ob2", fornecedor_id: "f1", contato_id: "k1", equipe_id: "" }],
   ofertas: [
     { id: "of1", cotacao_id: "c1", contato_id: "k1", fornecedor_id: "f1", item_id: "it1", despesa_id: "d1", obra_id: "" },

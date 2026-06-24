@@ -173,8 +173,8 @@ para dono **e** colaboradores.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `cotacoes.listar` | `{}` | `{ cotacoes: [...] }` |
-| `cotacoes.criar` | `{ item_id, quantidade?, unidade?, categoria_id?, obra_id?, status? }` | `{ cotacao }` — **`item_id` obrigatório**; servidor deriva `descricao`(nome)+`classificacao`; `categoria_id` = subclassificação |
-| `cotacoes.atualizar` | `{ id, ...campos }` (`item_id` re-deriva descrição+classificação) | `{ cotacao }` |
+| `cotacoes.criar` | `{ categoria_id, quantidade?, unidade?, obra_id?, status? }` | `{ cotacao }` — **modo ÚNICO `subclasse`**: `categoria_id` (subclassificação) **obrigatório**; `descricao` = nome da subclasse; `item_id` fica vazio (cada oferta define o item). Migração `mig_cotacoes_subclasse_v1` converte cotações antigas "por item" → subclasse (categoria do item + ofertas herdam o item) |
+| `cotacoes.atualizar` | `{ id, ...campos }` (ao mudar `categoria_id`, re-deriva `descricao` = nome da subclasse) | `{ cotacao }` |
 | `cotacoes.remover` | `{ id }` | `{ id }` (remove a cotação e suas ofertas) |
 | `cotacoes.adicionarPreco` | `{ item_id, cotacao_id?, orcamento_id?, contato_id?, equipe_id?, fornecedor_id?, valor_unit, quantidade?, valor_unit_desconto?, prazo_entrega, observacao? }` | `{ preco, historico }`. **Criar oferta** (universal): `item_id` obrigatório; cotação/orçamento opcionais. Pela classificação do item — **Material**: fornecedor obrigatório, ofertante opcional; **Serviço**: ofertante obrigatório, fornecedor opcional. `prazo_entrega` obrigatório. Dentro de orçamento, herda ofertante/fornecedor dele. Grava `usuario_id`. |
 | `cotacoes.atualizarPreco` | `{ id, item_id?, contato_id?, equipe_id?, fornecedor_id?, valor_unit?, quantidade?, valor_unit_desconto?, prazo_entrega?, observacao? }` | `{ preco, historico }` (`historico` só se o valor mudou; senão `null`) |
