@@ -74,7 +74,7 @@ const COL_CONTATO = [
   { chave: "nome", titulo: "Contato" },
   { chave: "cargo", titulo: "Cargo", formato: (v) => v || "—" },
 ];
-const COL_FORNECEDOR = [{ chave: "nome", titulo: "Fornecedor" }];
+const COL_FORNECEDOR = [{ chave: "nome", titulo: "Empresa" }];
 const COL_EQUIPE = [{ chave: "nome", titulo: "Equipe" }];
 const COL_ORCAMENTO = [{ chave: "titulo", titulo: "Orçamento", formato: (v, l) => v || l.tipo || "—" }];
 const COL_PAGAMENTO = [
@@ -130,7 +130,7 @@ export function vinculosDaSubclassificacao(id) {
     _grupo("Itens", [{ chave: "nome", titulo: "Item" }], r.itens, (l) => "/itens/" + l.id),
     _grupo("Despesas", COL_DESPESA, _comObra(r.despesas), (l) => "/obras/" + l.obra_id),
     _grupo("Cotações", COL_COTACAO, r.cotacoes, (l) => "/cotacoes/" + l.id),
-    _grupo("Fornecedores", COL_FORNECEDOR, r.fornecedores, (l) => "/fornecedores/" + l.id),
+    _grupo("Empresas", COL_FORNECEDOR, r.fornecedores, (l) => "/fornecedores/" + l.id),
   ];
 }
 

@@ -126,7 +126,7 @@ export function colunasOferta() {
     },
     { chave: "item_id", titulo: "Subclassificação", secundaria: true, formato: (id, l) => _subclasseOferta(l) || _fraco("—") },
     { chave: "contato_id", titulo: "Ofertante", formato: (id, l) => ofertanteNome(l.contato_id, l.equipe_id) },
-    { chave: "fornecedor_id", titulo: "Fornecedor", formato: (id, l) => _fornecedorOferta(l) || _fraco("—") },
+    { chave: "fornecedor_id", titulo: "Empresa", formato: (id, l) => _fornecedorOferta(l) || _fraco("—") },
     {
       chave: "quantidade",
       titulo: "Qtd",
@@ -286,7 +286,7 @@ export function colunasOrcamento() {
           ? `<category-badge nome="${v}" cor="${COR_CLASSIFICACAO[v] || "var(--cor-neutro)"}"></category-badge>`
           : `<span style="color:var(--cor-texto-fraco)">—</span>`,
     },
-    { chave: "fornecedor_id", titulo: "Fornecedor", formato: (id) => (id ? fornNome(id) : "—") },
+    { chave: "fornecedor_id", titulo: "Empresa", formato: (id) => (id ? fornNome(id) : "—") },
     { chave: "contato_id", titulo: "Ofertante", formato: (id, l) => ofertanteNome(l.contato_id, l.equipe_id) },
     { chave: "obra_id", titulo: "Obra", formato: (id) => (id ? obraNome(id) : "—") },
     { chave: "id", titulo: "Ofertas", alinhar: "dir", formato: (id) => String(dataStore.ofertasDoOrcamento(id).length) },

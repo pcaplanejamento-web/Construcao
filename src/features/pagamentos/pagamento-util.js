@@ -330,3 +330,49 @@ export async function excluirTransferenciaComAviso(t) {
     return false;
   }
 }
+
+/* --------------------- Grade de cards (transf/pagamento) ------------------ */
+
+/* Estilo da grade de cards-resumo — injetado no shadow de quem usa o helper
+   (página Transferências do menu E aba Transferência da obra usam o MESMO visual).
+   Classes próprias (card-resumo) p/ não colidir com outros .resumo do sistema. */
+const ESTILO_RESUMOS = `<style>
+  .grade-resumos { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--esp-3); }
+  .grade-resumos .card-resumo { position: relative; border-radius: var(--raio-md); box-shadow: var(--sombra-sm);
+    padding: var(--esp-3) var(--esp-4); display: flex; flex-direction: column; gap: 4px; cursor: pointer;
+    transition: background var(--transicao), box-shadow var(--transicao), transform var(--transicao); }
+  .grade-resumos .card-resumo:hover { transform: translateY(-4px); box-shadow: var(--sombra-md); }
+  .grade-resumos .card-resumo .item { font-weight: var(--peso-semi); }
+  .grade-resumos .card-resumo .val { font-size: var(--fs-lg); font-weight: var(--peso-forte); }
+  .grade-resumos .card-resumo small { color: var(--cor-texto-suave); }
+  .grade-resumos .card-resumo.pag { background: var(--cor-sucesso-suave, rgba(22,163,74,.10)); border: 1px solid var(--cor-sucesso); }
+  .grade-resumos .card-resumo.pag:hover { background: rgba(22,163,74,.16); }
+  .grade-resumos .card-resumo.pag .val { color: var(--cor-sucesso); }
+  .grade-resumos .card-resumo.transf { background: color-mix(in srgb, var(--cor-neutro) 30%, var(--cor-superficie)); border: 1px solid var(--cor-neutro); }
+  .grade-resumos .card-resumo.transf:hover { background: color-mix(in srgb, var(--cor-neutro) 40%, var(--cor-superficie)); }
+  .grade-resumos .card-resumo.transf .val { color: var(--cor-texto); }
+  .grade-resumos .vazio-resumos { color: var(--cor-texto-fraco); padding: var(--esp-6); text-align: center; }
+</style>`;
+
+/**
+ * Renderiza uma GRADE de cards-resumo (transferências ou pagamentos) dentro de `el`.
+ * `classe` = "transf" | "pag"; `previaHtml(it)` = conteúdo do card; `abrir(it)` = clique.
+ * Componente ÚNICO reusado pela página /pagamentos e pela aba Transferência da obra.
+ */
+export function montarGradeResumos(el, itens, classe, previaHtml, abrir, vazio) {
+  if (!el) return;
+  if (!itens || !itens.length) {
+    el.innerHTML = ESTILO_RESUMOS + `<div class="grade-resumos"><div class="vazio-resumos">${vazio}</div></div>`;
+    return;
+  }
+  el.innerHTML = ESTILO_RESUMOS + `<div class="grade-resumos"></div>`;
+  const grade = el.querySelector(".grade-resumos");
+  itens.forEach((it) => {
+    const card = document.createElement("div");
+    card.className = "card-resumo " + classe;
+    card.title = "Ver detalhes";
+    card.innerHTML = previaHtml(it);
+    card.addEventListener("click", () => abrir(it));
+    grade.appendChild(card);
+  });
+}

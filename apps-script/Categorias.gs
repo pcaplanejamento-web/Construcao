@@ -136,7 +136,7 @@ function categoriasRemover(data, sessao) {
   const atual = _categoriaEditavel(id, sessao.usuario_id);
   const ehGlobal = String(atual.usuario_id) === CATEGORIA_GLOBAL;
   if (_categoriaEmUso(id)) {
-    lancar(ERRO.VALIDACAO, "Subclassificação vinculada a despesas/cotações/fornecedores; remova os vínculos primeiro.");
+    lancar(ERRO.VALIDACAO, "Subclassificação vinculada a despesas/cotações/empresas; remova os vínculos primeiro.");
   }
 
   return comLock(function () {

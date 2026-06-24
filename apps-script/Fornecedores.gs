@@ -28,7 +28,7 @@ function _fornecedorDoUsuario(fornecedorId, usuarioId) {
     return String(x.id) === String(fornecedorId);
   });
   if (!f || String(f.usuario_id) !== String(usuarioId)) {
-    lancar(ERRO.NAO_AUTORIZADO, "Fornecedor não pode ser alterado.");
+    lancar(ERRO.NAO_AUTORIZADO, "Empresa não pode ser alterada.");
   }
   return f;
 }
@@ -41,7 +41,7 @@ function fornecedoresListar(data, sessao) {
 /** fornecedores.criar -> { fornecedor }. */
 function fornecedoresCriar(data, sessao) {
   const nome = String((data && data.nome) || "").trim();
-  if (!nome) lancar(ERRO.VALIDACAO, "Informe o nome do fornecedor.");
+  if (!nome) lancar(ERRO.VALIDACAO, "Informe o nome da empresa.");
 
   return comLock(function () {
     const agora = agoraIso();
@@ -107,7 +107,7 @@ function fornecedoresRemover(data, sessao) {
   const id = data && data.id;
   _fornecedorDoUsuario(id, sessao.usuario_id);
   if (_fornecedorEmUso(id)) {
-    lancar(ERRO.VALIDACAO, "Fornecedor vinculado a contatos; remova os vínculos primeiro.");
+    lancar(ERRO.VALIDACAO, "Empresa vinculada a contatos; remova os vínculos primeiro.");
   }
 
   return comLock(function () {

@@ -46,7 +46,7 @@ function contatosListar(data, sessao) {
  */
 function _validarVinculosContato(cargo, fornecedorId, superiorId, usuarioId) {
   if (cargo === "Vendedor") {
-    if (!fornecedorId) lancar(ERRO.VALIDACAO, "Vendedor deve ser vinculado a um fornecedor.");
+    if (!fornecedorId) lancar(ERRO.VALIDACAO, "Vendedor deve ser vinculado a uma empresa.");
     _fornecedorDoUsuario(fornecedorId, usuarioId);
   } else if (fornecedorId) {
     _fornecedorDoUsuario(fornecedorId, usuarioId); // permitido, mas valida posse

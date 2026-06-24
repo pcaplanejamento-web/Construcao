@@ -48,10 +48,10 @@ function _validarVinculosOrcamento(tipo, fornecedorId, contatoId, equipeId, usua
   if (tipo === "Material") {
     if (!contatoId) lancar(ERRO.VALIDACAO, "Selecione o contato (ofertante).");
     const contato = _contatoDoUsuario(contatoId, usuarioId);
-    if (!fornecedorId) lancar(ERRO.VALIDACAO, "Selecione o fornecedor.");
+    if (!fornecedorId) lancar(ERRO.VALIDACAO, "Selecione a empresa.");
     _fornecedorDoUsuario(fornecedorId, usuarioId);
     if (String(contato.fornecedor_id) !== String(fornecedorId)) {
-      lancar(ERRO.VALIDACAO, "O contato deve ser um vendedor do fornecedor selecionado.");
+      lancar(ERRO.VALIDACAO, "O contato deve ser um vendedor da empresa selecionada.");
     }
   } else {
     // Serviço: contato OU equipe.

@@ -133,7 +133,7 @@ class PublicoView extends BaseElement {
           <ui-card mesa title="Mesa com equipes"><ui-data-table id="tEq" fluido empty-text="Nenhuma equipe."></ui-data-table></ui-card>
         </div>
         <div slot="fornecedores">
-          <ui-card mesa title="Mesa com fornecedores"><ui-data-table id="tForn" fluido empty-text="Nenhum fornecedor."></ui-data-table></ui-card>
+          <ui-card mesa title="Mesa com empresas"><ui-data-table id="tForn" fluido empty-text="Nenhuma empresa."></ui-data-table></ui-card>
         </div>
         <div slot="transferencias">
           <ui-card mesa title="Mesa com transferências"><ui-data-table id="tTransf" fluido empty-text="Nenhuma transferência."></ui-data-table></ui-card>
@@ -146,7 +146,7 @@ class PublicoView extends BaseElement {
       { id: "acerto", rotulo: "Acerto de contas", icone: "usuarios" },
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
       { id: "equipes", rotulo: "Equipes", icone: "usuarios" },
-      { id: "fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
+      { id: "fornecedores", rotulo: "Empresas", icone: "fornecedor" },
       { id: "transferencias", rotulo: "Transferências", icone: "cifrao" },
     ];
 
@@ -230,7 +230,7 @@ class PublicoView extends BaseElement {
 
     // Fornecedores (Total / Recebido / Saldo a receber) — balancos.porFornecedor.
     this.$("#tForn").columns = [
-      { chave: "nome", titulo: "Fornecedor" },
+      { chave: "nome", titulo: "Empresa" },
       { chave: "_total", titulo: "Total", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
       { chave: "_recebido", titulo: "Recebido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
       { chave: "_saldoReceber", titulo: "Saldo a receber", alinhar: "dir", moeda: true,

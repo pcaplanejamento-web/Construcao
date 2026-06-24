@@ -140,14 +140,14 @@ class LoginView extends BaseElement {
           <div class="centro">
             <div class="eyebrow">Gestão de obras em tempo real</div>
             <h2>Cada obra. Cada real. <span class="verde">Sob controle.</span></h2>
-            <p class="lead">O Dattaobra reúne orçamento, gastos, fornecedores e cotações de
+            <p class="lead">O Dattaobra reúne orçamento, gastos, empresas e cotações de
               cada obra em uma única interface — para você acompanhar a execução em tempo
               real e decidir com dados atualizados.</p>
           </div>
 
           <div class="feats">
             ${feat("tendencia", "Gastos em tempo real", "Acompanhe orçamento e execução de cada obra, atualizados a cada lançamento.")}
-            ${feat("fornecedor", "Fornecedores e cotações", "Compare preços, centralize compras e negocie com o histórico na mão.")}
+            ${feat("fornecedor", "Empresas e cotações", "Compare preços, centralize compras e negocie com o histórico na mão.")}
             ${feat("usuarios", "Equipe e clientes juntos", "Compartilhe a obra e mantenha todos acompanhando o mesmo painel.")}
           </div>
 

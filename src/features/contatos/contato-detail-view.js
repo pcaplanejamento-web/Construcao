@@ -87,9 +87,9 @@ class ContatoDetailView extends BaseElement {
           </ui-card>
         </div>
         <div slot="fornecedores">
-          <ui-card mesa title="Mesa com fornecedor vinculado">
+          <ui-card mesa title="Mesa com empresa vinculada">
             <ui-data-table id="tabForn" fluido clicavel
-              empty-text="Sem fornecedor vinculado."></ui-data-table>
+              empty-text="Sem empresa vinculada."></ui-data-table>
           </ui-card>
         </div>
         <div slot="equipes">
@@ -118,7 +118,7 @@ class ContatoDetailView extends BaseElement {
     `;
 
     const abas = [{ id: "obras", rotulo: "Obras", icone: "obra" }];
-    if (c.fornecedor_id) abas.push({ id: "fornecedores", rotulo: "Fornecedores", icone: "fornecedor" });
+    if (c.fornecedor_id) abas.push({ id: "fornecedores", rotulo: "Empresa", icone: "fornecedor" });
     abas.push({ id: "equipes", rotulo: "Equipes", icone: "usuario" });
     abas.push({ id: "ofertas", rotulo: "Ofertas", icone: "cifrao" });
     abas.push({ id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" });
@@ -133,7 +133,7 @@ class ContatoDetailView extends BaseElement {
 
     this._tabForn = alvo.querySelector("#tabForn");
     this._tabForn.columns = [
-      { chave: "nome", titulo: "Fornecedor", formato: (v) => avatarNomeHtml(v) },
+      { chave: "nome", titulo: "Empresa", formato: (v) => avatarNomeHtml(v) },
       { chave: "telefone", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },
       { chave: "telefone", titulo: "Telefone", formato: (v) => v || "—" },
       { chave: "email", titulo: "E-mail", formato: (v) => v || "—" },

@@ -12,6 +12,7 @@ import {
   abrirPagamento,
   previaTransferenciaHtml,
   abrirTransferencia,
+  montarGradeResumos,
 } from "./pagamento-util.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -24,21 +25,6 @@ class PagamentosView extends BaseElement {
       .area { padding: var(--esp-tela); display: flex; flex-direction: column; gap: var(--esp-5); }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       p.sub { color: var(--cor-texto-suave); margin-top: var(--esp-2); }
-      .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--esp-3); }
-      .resumo { position: relative; border-radius: var(--raio-md); box-shadow: var(--sombra-sm);
-        padding: var(--esp-3) var(--esp-4); display: flex; flex-direction: column; gap: 4px;
-        cursor: pointer; transition: background var(--transicao), box-shadow var(--transicao), transform var(--transicao); }
-      .resumo:hover { transform: translateY(-4px); box-shadow: var(--sombra-md); }
-      .resumo .item { font-weight: var(--peso-semi); }
-      .resumo .val { font-size: var(--fs-lg); font-weight: var(--peso-forte); }
-      .resumo small { color: var(--cor-texto-suave); }
-      .resumo.pag { background: var(--cor-sucesso-suave, rgba(22,163,74,.10)); border: 1px solid var(--cor-sucesso); }
-      .resumo.pag:hover { background: rgba(22,163,74,.16); }
-      .resumo.pag .val { color: var(--cor-sucesso); }
-      .resumo.transf { background: color-mix(in srgb, var(--cor-neutro) 30%, var(--cor-superficie)); border: 1px solid var(--cor-neutro); }
-      .resumo.transf:hover { background: color-mix(in srgb, var(--cor-neutro) 40%, var(--cor-superficie)); }
-      .resumo.transf .val { color: var(--cor-texto); }
-      .vazio { color: var(--cor-texto-fraco); padding: var(--esp-6); text-align: center; }
     `;
   }
 
@@ -81,25 +67,8 @@ class PagamentosView extends BaseElement {
       elP.innerHTML = "";
       return;
     }
-    this._pintarGrade(elT, dataStore.transferencias(), "transf", previaTransferenciaHtml, abrirTransferencia, "Nenhuma transferência registrada.");
-    this._pintarGrade(elP, dataStore.pagamentos(), "pag", previaPagamentoHtml, abrirPagamento, "Nenhum pagamento registrado.");
-  }
-
-  _pintarGrade(el, itens, classe, previaHtml, abrir, vazio) {
-    if (!itens.length) {
-      el.innerHTML = `<div class="vazio">${vazio}</div>`;
-      return;
-    }
-    el.innerHTML = `<div class="grade"></div>`;
-    const grade = el.querySelector(".grade");
-    itens.forEach((it) => {
-      const card = document.createElement("div");
-      card.className = "resumo " + classe;
-      card.title = "Ver detalhes";
-      card.innerHTML = previaHtml(it);
-      card.addEventListener("click", () => abrir(it));
-      grade.appendChild(card);
-    });
+    montarGradeResumos(elT, dataStore.transferencias(), "transf", previaTransferenciaHtml, abrirTransferencia, "Nenhuma transferência registrada.");
+    montarGradeResumos(elP, dataStore.pagamentos(), "pag", previaPagamentoHtml, abrirPagamento, "Nenhum pagamento registrado.");
   }
 }
 

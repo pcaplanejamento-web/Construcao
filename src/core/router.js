@@ -43,7 +43,7 @@ export function irPara(caminho) {
 const ROTULOS = {
   "/obras": "Minhas obras",
   "/financeiro": "Financeiro",
-  "/fornecedores": "Fornecedores",
+  "/fornecedores": "Empresas",
   "/contatos": "Contatos",
   "/cotacoes": "Cotações",
   "/itens": "Itens",

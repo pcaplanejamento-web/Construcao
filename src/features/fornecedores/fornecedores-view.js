@@ -48,14 +48,14 @@ class FornecedoresView extends BaseElement {
       <div class="area">
         <div class="cabecalho">
           <div>
-            <h1>Fornecedores</h1>
-            <p class="sub">Cadastre as empresas/lojas de onde você compra.</p>
+            <h1>Empresas</h1>
+            <p class="sub">Cadastre as empresas de onde você compra.</p>
           </div>
         </div>
         <ui-tabs id="abas">
           <div slot="fornecedores">
-            <ui-card mesa title="Mesa com fornecedores">
-              <ui-button slot="acoes" id="novo">+ Novo fornecedor</ui-button>
+            <ui-card mesa title="Mesa com empresas">
+              <ui-button slot="acoes" id="novo">+ Nova empresa</ui-button>
               <div id="lista"></div>
             </ui-card>
           </div>
@@ -72,7 +72,7 @@ class FornecedoresView extends BaseElement {
 
   aoConectar() {
     this.$("#abas").abas = [
-      { id: "fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
+      { id: "fornecedores", rotulo: "Empresas", icone: "fornecedor" },
       { id: "classificacao", rotulo: "Classificação", icone: "tag" },
     ];
     this.$("#novo").addEventListener("click", () => this.abrirForm(null));
@@ -98,9 +98,9 @@ class FornecedoresView extends BaseElement {
     const fornecedores = dataStore.fornecedoresAtivos();
     if (!fornecedores.length) {
       el.innerHTML = `
-        <ui-empty-state icone="fornecedor" titulo="Nenhum fornecedor"
-          texto="Cadastre fornecedores para usá-los nas cotações.">
-          <ui-button slot="acao" id="vazioNovo">+ Cadastrar fornecedor</ui-button>
+        <ui-empty-state icone="fornecedor" titulo="Nenhuma empresa"
+          texto="Cadastre empresas para usá-las nas cotações.">
+          <ui-button slot="acao" id="vazioNovo">+ Cadastrar empresa</ui-button>
         </ui-empty-state>`;
       el.querySelector("#vazioNovo").addEventListener("click", () => this.abrirForm(null));
       return;
@@ -115,7 +115,7 @@ class FornecedoresView extends BaseElement {
     tabela.columns = [
       {
         chave: "nome",
-        titulo: "Fornecedor",
+        titulo: "Empresa",
         formato: (v) => avatarNomeHtml(v),
       },
       { chave: "telefone", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },
@@ -168,7 +168,7 @@ class FornecedoresView extends BaseElement {
           notificarErro(err);
         }
       }
-      if (ok) toastSucesso(`${ok} fornecedor(es) excluído(s).`);
+      if (ok) toastSucesso(`${ok} empresa(s) excluída(s).`);
     });
     el.replaceChildren(tabela);
   }
@@ -184,13 +184,13 @@ class FornecedoresView extends BaseElement {
 
   remover(fornecedor) {
     abrirBannerVinculos({
-      titulo: `O fornecedor "${fornecedor.nome}"`,
+      titulo: `A empresa "${fornecedor.nome}"`,
       grupos: vinculosDoFornecedor(fornecedor.id),
       aoExcluir: async () => {
-        if (!(await confirmar({ titulo: "Excluir fornecedor", mensagem: `Excluir o fornecedor "${fornecedor.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
+        if (!(await confirmar({ titulo: "Excluir empresa", mensagem: `Excluir a empresa "${fornecedor.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
         try {
           await dataStore.removerFornecedor(fornecedor.id);
-          toastSucesso("Fornecedor removido.");
+          toastSucesso("Empresa removida.");
         } catch (e) {
           notificarErro(e);
         }
@@ -213,7 +213,7 @@ class FornecedoresView extends BaseElement {
     if (!todas.length) {
       el.innerHTML = `
         <ui-empty-state icone="tag" titulo="Nenhuma classificação"
-          texto="Crie classificações para organizar seus fornecedores.">
+          texto="Crie classificações para organizar suas empresas.">
           <ui-button slot="acao" id="vaziaClass">+ Criar classificação</ui-button>
         </ui-empty-state>`;
       el.querySelector("#vaziaClass").addEventListener("click", () => this.abrirClassForm(null));

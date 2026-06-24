@@ -17,7 +17,7 @@ import "../components/ui-icon.js";
 const ITENS = [
   { rota: "/obras", rotulo: "Minhas obras", icone: "obra" },
   { rota: "/financeiro", rotulo: "Financeiro", icone: "carteira" },
-  { rota: "/fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
+  { rota: "/fornecedores", rotulo: "Empresas", icone: "fornecedor" },
   { rota: "/contatos", rotulo: "Contatos", icone: "contato" },
   { rota: "/cotacoes", rotulo: "Cotações", icone: "cotacao" },
   { rota: "/orcamentos", rotulo: "Orçamentos", icone: "carteira" },

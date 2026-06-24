@@ -13,7 +13,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { balancos, restoDespesa } from "../despesas/despesa-split.js";
-import { avatarNomeHtml } from "../shared/avatar.js";
+import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
 import "../../components/ui-card.js";
@@ -36,7 +36,14 @@ import "./obra-form.js";
 import "./obra-share-form.js";
 import "./obra-participantes.js";
 import "../pagamentos/pagamento-form.js";
-import { abrirTransferencia, nomeTipo, excluirTransferenciaComAviso } from "../pagamentos/pagamento-util.js";
+import {
+  abrirTransferencia,
+  abrirPagamento,
+  previaTransferenciaHtml,
+  previaPagamentoHtml,
+  montarGradeResumos,
+  excluirTransferenciaComAviso,
+} from "../pagamentos/pagamento-util.js";
 import { confirmar, avisar } from "../../components/confirmar.js";
 
 class ObraDetailView extends BaseElement {
@@ -126,9 +133,9 @@ class ObraDetailView extends BaseElement {
           </ui-card>
         </div>
         <div slot="fornecedores">
-          <ui-card mesa title="Mesa com fornecedores da obra">
+          <ui-card mesa title="Mesa com empresas da obra">
             <ui-data-table id="tabForn" fluido clicavel
-              empty-text="Nenhum fornecedor usado nesta obra ainda."></ui-data-table>
+              empty-text="Nenhuma empresa usada nesta obra ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="pagamentos">
@@ -136,14 +143,12 @@ class ObraDetailView extends BaseElement {
             <div slot="transferencias">
               <ui-card mesa title="Mesa com transferências da obra">
                 <ui-button slot="acoes" id="addPag">+ Registrar transferência</ui-button>
-                <ui-data-table id="tabTransf" fluido clicavel
-                  empty-text="Nenhuma transferência registrada nesta obra."></ui-data-table>
+                <div id="listaTransf"></div>
               </ui-card>
             </div>
             <div slot="pagamentos">
               <ui-card mesa title="Mesa com pagamentos da obra">
-                <ui-data-table id="tabPag" fluido
-                  empty-text="Nenhum pagamento registrado nesta obra."></ui-data-table>
+                <div id="listaPagTransf"></div>
               </ui-card>
             </div>
           </ui-tabs>
@@ -157,7 +162,7 @@ class ObraDetailView extends BaseElement {
       { id: "responsaveis", rotulo: "Responsáveis", icone: "seguranca" },
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
       { id: "equipes", rotulo: "Equipes", icone: "usuario" },
-      { id: "fornecedores", rotulo: "Fornecedores", icone: "fornecedor" },
+      { id: "fornecedores", rotulo: "Empresas", icone: "fornecedor" },
       { id: "pagamentos", rotulo: "Transferência", icone: "cifrao" },
     ];
     const abasPag = alvo.querySelector("#abasPag");
@@ -186,34 +191,11 @@ class ObraDetailView extends BaseElement {
     this._tabela.addEventListener("excluir-massa", (e) => this.removerMassa(e.detail.despesas));
     this._tabela.addEventListener("acao-massa", (e) => this.acaoMassa(e.detail.acao, e.detail.despesas));
 
-    // Aba Transferência → sub-abas [Transferências | Pagamentos].
-    this._tabTransf = alvo.querySelector("#tabTransf");
-    this._tabPag = alvo.querySelector("#tabPag");
+    // Aba Transferência → sub-abas [Transferências | Pagamentos], com os MESMOS cards
+    // da página /pagamentos do menu (clique → banner; excluir dentro do banner da transf).
+    this._listaTransf = alvo.querySelector("#listaTransf");
+    this._listaPagTransf = alvo.querySelector("#listaPagTransf");
     alvo.querySelector("#addPag").addEventListener("click", () => this.abrirPagamentoForm());
-    this._tabTransf.acoes = [{ nome: "remover", rotulo: "Excluir", variant: "perigo" }];
-    this._tabTransf.columns = [
-      { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
-      { chave: "valor_total", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-      { chave: "tipo", titulo: "Tipo", formato: (v) => nomeTipo(v) },
-      { chave: "pagador_chave", titulo: "Pagou", formato: (v) => this._nomeChave(v) },
-      { chave: "_recebedor", titulo: "Recebedor", formato: (_, l) => this._nomeRecebedor(l) },
-      { chave: "pagamento_ids", titulo: "Pagamentos", alinhar: "dir", formato: (v) => String((v || []).length) },
-    ];
-    this._tabTransf.addEventListener("linha", (e) => abrirTransferencia(e.detail.linha));
-    this._tabTransf.addEventListener("acao", (e) => {
-      if (e.detail.acao === "remover") this.removerTransferenciaObra(e.detail.linha);
-    });
-    this._tabPag.acoes = [{ nome: "remover", rotulo: "Excluir", variant: "perigo" }];
-    this._tabPag.columns = [
-      { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
-      { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-      { chave: "pagador_chave", titulo: "Pagou", formato: (v) => this._nomeChave(v) },
-      { chave: "_recebedor", titulo: "Recebedor", formato: (_, l) => this._nomeRecebedor(l) },
-      { chave: "alocacoes", titulo: "Despesas", alinhar: "dir", formato: (v) => String((v || []).length) },
-    ];
-    this._tabPag.addEventListener("acao", (e) => {
-      if (e.detail.acao === "remover") this.removerPagamentoObra(e.detail.linha);
-    });
 
     this._montado = true;
   }
@@ -251,8 +233,22 @@ class ObraDetailView extends BaseElement {
     // Pagamentos / Repasses da obra.
     this._mapaPart = {};
     dataStore.participantesDaObra(this.obraId).forEach((p) => (this._mapaPart[p.chave] = p.nome));
-    if (this._tabTransf) this._tabTransf.rows = dataStore.transferenciasDaObra(this.obraId);
-    if (this._tabPag) this._tabPag.rows = dataStore.pagamentosDaObra(this.obraId);
+    montarGradeResumos(
+      this._listaTransf,
+      dataStore.transferenciasDaObra(this.obraId),
+      "transf",
+      previaTransferenciaHtml,
+      abrirTransferencia,
+      "Nenhuma transferência registrada nesta obra."
+    );
+    montarGradeResumos(
+      this._listaPagTransf,
+      dataStore.pagamentosDaObra(this.obraId),
+      "pag",
+      previaPagamentoHtml,
+      abrirPagamento,
+      "Nenhum pagamento registrado nesta obra."
+    );
     this.pintarTopo();
   }
 
@@ -463,7 +459,8 @@ class ObraDetailView extends BaseElement {
       if (d.fornecedor_id) qtd[d.fornecedor_id] = (qtd[d.fornecedor_id] || 0) + 1;
     });
     tab.columns = [
-      { chave: "_nome", titulo: "Fornecedor", formato: (v) => avatarNomeHtml(v) },
+      { chave: "_nome", titulo: "Empresa", formato: (v) => avatarNomeHtml(v) },
+      { chave: "_tel", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },
       { chave: "_qtd", titulo: "Despesas", alinhar: "dir" },
       { chave: "_total", titulo: "Total", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
       { chave: "_recebido", titulo: "Recebido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
@@ -482,7 +479,7 @@ class ObraDetailView extends BaseElement {
       .map((fid) => {
         const f = dataStore.fornecedores().find((x) => String(x.id) === String(fid)) || {};
         const v = porFornecedor[fid];
-        return { id: fid, _nome: f.nome || "—", _qtd: qtd[fid] || 0, _total: v.total, _recebido: v.recebido, _resto: v.saldoReceber };
+        return { id: fid, _nome: f.nome || "—", _tel: f.telefone || "", _qtd: qtd[fid] || 0, _total: v.total, _recebido: v.recebido, _resto: v.saldoReceber };
       })
       .sort((a, b) => b._resto - a._resto);
   }

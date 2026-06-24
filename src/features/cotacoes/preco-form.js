@@ -184,7 +184,7 @@ class PrecoForm extends BaseElement {
     const empresa = this._fornNome(p.fornecedor_id);
     const temDesc = Number(p.valor_unit_desconto) > 0;
     let html = linha("Ofertante", ofertanteNome(p.contato_id, p.equipe_id) || "—");
-    html += linha("Fornecedor", empresa || "—");
+    html += linha("Empresa", empresa || "—");
     html += linha("Quantidade", String(qtdOferta(p, cot)));
     html += linha("Valor unitário", moeda(p.valor_unit || 0));
     if (temDesc) html += linha("Valor unit. c/ desconto", moeda(p.valor_unit_desconto));
@@ -228,9 +228,9 @@ class PrecoForm extends BaseElement {
            <div class="lido">${ofertanteNome(orc.contato_id, orc.equipe_id)} <small>· definido pelo orçamento</small></div></div>`
       : `<ui-select id="ofertante" label="Ofertante (contato ou grupo)"></ui-select>`;
     const blocoFornecedor = this.ehOrcTravado
-      ? `<div><label class="tx">Fornecedor</label>
+      ? `<div><label class="tx">Empresa</label>
            <div class="lido">${this._fornNome(orc.fornecedor_id) || "—"} <small>· definido pelo orçamento</small></div></div>`
-      : `<ui-select id="fornecedor" label="Fornecedor"></ui-select>`;
+      : `<ui-select id="fornecedor" label="Empresa"></ui-select>`;
 
     return `
       <ui-modal open title="${titulo}">

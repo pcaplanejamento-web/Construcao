@@ -28,6 +28,8 @@ import "../../components/ui-spinner.js";
 import "../../components/ui-icon.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
+import "../../components/ui-modal.js";
+import "../../components/ui-select.js";
 import "../despesas/category-badge.js";
 import "./fornecedor-form.js";
 import "../contatos/contato-form.js";
@@ -61,12 +63,12 @@ class FornecedorDetailView extends BaseElement {
   }
 
   template() {
-    return `<div class="area"><div id="conteudo"><ui-spinner centro text="Carregando fornecedor..."></ui-spinner></div></div>`;
+    return `<div class="area"><div id="conteudo"><ui-spinner centro text="Carregando empresa..."></ui-spinner></div></div>`;
   }
 
   aoConectar() {
     if (!this._buscar()) {
-      this.$("#conteudo").innerHTML = `<p>Fornecedor não encontrado. <a href="/fornecedores">Voltar</a></p>`;
+      this.$("#conteudo").innerHTML = `<p>Empresa não encontrada. <a href="/fornecedores">Voltar</a></p>`;
       return;
     }
     this.montarConteudo();
@@ -85,20 +87,21 @@ class FornecedorDetailView extends BaseElement {
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="contatos" class="aba">
-          <ui-card mesa title="Mesa com contatos do fornecedor">
+          <ui-card mesa title="Mesa com contatos da empresa">
+            <ui-button slot="acoes" id="vincularContato" variant="secundario">+ Vincular contato</ui-button>
             <ui-button slot="acoes" id="novoContato">+ Novo contato</ui-button>
             <ui-data-table id="tabContatos" fluido
-              empty-text="Nenhum contato deste fornecedor ainda."></ui-data-table>
+              empty-text="Nenhum contato desta empresa ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="ofertas" class="aba">
-          <ui-card mesa title="Mesa com ofertas deste fornecedor">
+          <ui-card mesa title="Mesa com ofertas desta empresa">
             <ui-data-table id="tabOfertas" fluido clicavel
-              empty-text="Nenhuma oferta de contatos deste fornecedor ainda."></ui-data-table>
+              empty-text="Nenhuma oferta de contatos desta empresa ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="orcamentos" class="aba">
-          <ui-card mesa title="Mesa com orçamentos deste fornecedor">
+          <ui-card mesa title="Mesa com orçamentos desta empresa">
             <div id="gradeOrc"></div>
           </ui-card>
         </div>
@@ -163,9 +166,12 @@ class FornecedorDetailView extends BaseElement {
       irPara("/obras/" + e.detail.linha.id);
     });
 
+    // Novo contato JÁ vinculado a esta empresa (mesmo form de Contatos → aparece lá também).
     alvo.querySelector("#novoContato").addEventListener("click", () =>
-      this.abrirContatoForm({ fornecedor_id: this.fornecedorId, cargo: "Vendedor" })
+      this.abrirContatoForm({ fornecedor_id: this.fornecedorId })
     );
+    // Vincular um contato EXISTENTE a esta empresa.
+    alvo.querySelector("#vincularContato").addEventListener("click", () => this.vincularContato());
 
     this._montado = true;
   }
@@ -232,7 +238,7 @@ class FornecedorDetailView extends BaseElement {
       </div>
       <div class="acoes-topo">
         ${whatsappBtnHtml(f.telefone, 42)}
-        <ui-button id="editarForn" variant="secundario">Editar fornecedor</ui-button>
+        <ui-button id="editarForn" variant="secundario">Editar empresa</ui-button>
       </div>
     `;
     topo.querySelector("#editarForn").addEventListener("click", () => this.editarFornecedor());
@@ -247,6 +253,58 @@ class FornecedorDetailView extends BaseElement {
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", fechar);
     document.body.appendChild(form);
+  }
+
+  /** Vincula um contato JÁ EXISTENTE a esta empresa (banner inline com ui-select). */
+  vincularContato() {
+    const candidatos = dataStore
+      .contatosAtivos()
+      .filter((c) => String(c.fornecedor_id || "") !== String(this.fornecedorId));
+    const modal = document.createElement("ui-modal");
+    modal.setAttribute("open", "");
+    modal.setAttribute("title", "Vincular contato existente");
+    const corpo = document.createElement("div");
+    if (!candidatos.length) {
+      corpo.innerHTML = `<p style="color:var(--cor-texto-suave)">Todos os contatos já estão vinculados a esta empresa. Use "+ Novo contato" para criar um.</p>`;
+    } else {
+      const sel = document.createElement("ui-select");
+      sel.id = "selVinc";
+      sel.setAttribute("label", "Contato");
+      sel.options = [{ value: "", label: "— Selecione —" }].concat(
+        candidatos.map((c) => ({ value: c.id, label: c.cargo ? `${c.nome} · ${c.cargo}` : c.nome }))
+      );
+      corpo.appendChild(sel);
+    }
+    modal.appendChild(corpo);
+
+    const rod = document.createElement("div");
+    rod.setAttribute("slot", "rodape");
+    const cancelar = document.createElement("ui-button");
+    cancelar.setAttribute("variant", "secundario");
+    cancelar.textContent = candidatos.length ? "Cancelar" : "Fechar";
+    cancelar.addEventListener("click", () => modal.remove());
+    rod.appendChild(cancelar);
+    if (candidatos.length) {
+      const salvar = document.createElement("ui-button");
+      salvar.textContent = "Vincular";
+      salvar.addEventListener("click", async () => {
+        const id = corpo.querySelector("#selVinc").value;
+        if (!id) return;
+        salvar.setAttribute("loading", "");
+        try {
+          await dataStore.atualizarContato(id, { fornecedor_id: this.fornecedorId });
+          toastSucesso("Contato vinculado à empresa.");
+          modal.remove();
+        } catch (e) {
+          notificarErro(e);
+        }
+        salvar.removeAttribute("loading");
+      });
+      rod.appendChild(salvar);
+    }
+    modal.appendChild(rod);
+    modal.addEventListener("fechar", () => modal.remove());
+    document.body.appendChild(modal);
   }
 
   async removerContato(contato) {

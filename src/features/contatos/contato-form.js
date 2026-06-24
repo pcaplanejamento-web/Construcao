@@ -1,8 +1,8 @@
 /**
  * <contato-form> — Modal para criar/editar um contato (pessoa).
  *
- * O Cargo é escolhido numa lista (cargos fixos + extras). Campo condicional:
- *  - Vendedor → vínculo OBRIGATÓRIO a um Fornecedor (só aparece p/ Vendedor).
+ * O Cargo é escolhido numa lista (cargos fixos + extras). Campo "Empresa":
+ *  - vínculo OPCIONAL a uma Empresa p/ qualquer contato (obrigatório só p/ Vendedor).
  * (Pedreiro agora é organizado por Equipes — sem campo de superior aqui.)
  * Auto-contido: chama o data-store e emite "salvo"/"fechar".
  *
@@ -62,9 +62,7 @@ class ContatoForm extends BaseElement {
               placeholder="joao@empresa.com"></ui-input>
           </div>
           <ui-select id="cargo" label="Cargo"></ui-select>
-          <div id="campoFornecedor" hidden>
-            <ui-select id="fornecedor" label="Empresa (fornecedor)"></ui-select>
-          </div>
+          <ui-select id="fornecedor" label="Empresa"></ui-select>
           <div>
             <label class="tx">Observação</label>
             <textarea id="observacao" placeholder="Detalhes (opcional)">${c.observacao || ""}</textarea>
@@ -88,22 +86,14 @@ class ContatoForm extends BaseElement {
     selCargo.value = c.cargo || "";
 
     const selForn = this.$("#fornecedor");
-    selForn.options = [{ value: "", label: "— Selecione —" }].concat(
+    selForn.options = [{ value: "", label: "— Sem empresa —" }].concat(
       dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
     );
     selForn.value = c.fornecedor_id || "";
 
-    this.atualizarCondicionais();
-    selCargo.addEventListener("change", () => this.atualizarCondicionais());
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
-  }
-
-  /** Mostra Fornecedor só p/ Vendedor. */
-  atualizarCondicionais() {
-    const cargo = this.$("#cargo").value;
-    this.$("#campoFornecedor").hidden = cargo !== "Vendedor";
   }
 
   async salvar() {
@@ -118,11 +108,11 @@ class ContatoForm extends BaseElement {
     this.$("#nome").removeAttribute("error");
 
     const cargo = this.$("#cargo").value;
-    const ehVendedor = cargo === "Vendedor";
-    const fornecedor_id = ehVendedor ? this.$("#fornecedor").value : "";
+    // Empresa é opcional p/ qualquer contato; obrigatória apenas p/ Vendedor.
+    const fornecedor_id = this.$("#fornecedor").value;
 
-    if (ehVendedor && !fornecedor_id) {
-      alerta.mensagem = "Vendedor deve ser vinculado a um fornecedor.";
+    if (cargo === "Vendedor" && !fornecedor_id) {
+      alerta.mensagem = "Vendedor deve ser vinculado a uma empresa.";
       return;
     }
 

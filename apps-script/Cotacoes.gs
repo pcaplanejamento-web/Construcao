@@ -258,7 +258,7 @@ function cotacoesAdicionarPreco(data, sessao) {
 
   // Regras por classificação do item.
   if (classificacao === "Material") {
-    if (!fornecedorId) lancar(ERRO.VALIDACAO, "Material exige um fornecedor.");
+    if (!fornecedorId) lancar(ERRO.VALIDACAO, "Material exige uma empresa.");
   } else {
     if (!contatoId && !equipeId)
       lancar(ERRO.VALIDACAO, "Serviço exige um ofertante (contato ou equipe).");

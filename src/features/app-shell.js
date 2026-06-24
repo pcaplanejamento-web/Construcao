@@ -17,7 +17,7 @@ import "./app-sidebar.js";
 // cor (estilo iOS), mantendo nossos tokens. Obras usa o verde da marca.
 const BB_ITENS = [
   { rota: "/contatos", rotulo: "Contatos", icone: "contato", cor: "info" },
-  { rota: "/fornecedores", rotulo: "Fornec.", icone: "fornecedor", cor: "roxo" },
+  { rota: "/fornecedores", rotulo: "Empresas", icone: "fornecedor", cor: "roxo" },
   { rota: "/obras", rotulo: "Obras", icone: "obra", cor: "primaria" },
   { rota: "/pagamentos", rotulo: "Transf.", icone: "carteira", cor: "aviso" },
   { rota: "/orcamentos", rotulo: "Orçam.", icone: "recibo", cor: "sucesso" },

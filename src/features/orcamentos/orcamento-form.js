@@ -60,7 +60,7 @@ class OrcamentoForm extends BaseElement {
             placeholder="Ex.: Cimento e areia — Loja X"></ui-input>
           <div class="linha">
             <ui-select id="tipo" label="Tipo"></ui-select>
-            <ui-select id="fornecedor" label="Fornecedor"></ui-select>
+            <ui-select id="fornecedor" label="Empresa"></ui-select>
           </div>
           <ui-select id="contato" label="Ofertante (contato; ou equipe no Serviço)"></ui-select>
           ${

@@ -46,9 +46,9 @@ class FornecedorForm extends BaseElement {
     const f = this.fornecedor || {};
     const esc = (v) => String(v || "").replace(/"/g, "&quot;");
     return `
-      <ui-modal open title="${this.ehEdicao ? "Editar fornecedor" : "Novo fornecedor"}">
+      <ui-modal open title="${this.ehEdicao ? "Editar empresa" : "Nova empresa"}">
         <div class="campos">
-          <ui-input id="nome" label="Nome / Empresa" value="${esc(f.nome)}"
+          <ui-input id="nome" label="Nome da empresa" value="${esc(f.nome)}"
             placeholder="Ex.: Casa do Construtor"></ui-input>
           <div class="linha">
             <ui-input id="telefone" label="Telefone" value="${esc(f.telefone)}"
@@ -111,10 +111,10 @@ class FornecedorForm extends BaseElement {
     try {
       if (this.ehEdicao) {
         await dataStore.atualizarFornecedor(this.fornecedor.id, dados);
-        toastSucesso("Fornecedor atualizado.");
+        toastSucesso("Empresa atualizada.");
       } else {
         await dataStore.criarFornecedor(dados);
-        toastSucesso("Fornecedor criado.");
+        toastSucesso("Empresa criada.");
       }
       this.emitir("salvo");
       this.emitir("fechar");

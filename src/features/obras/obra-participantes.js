@@ -11,10 +11,11 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
+import { irPara } from "../../core/router.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { acerto, rotuloOrigem, balancos } from "../despesas/despesa-split.js";
-import { avatarNomeHtml } from "../shared/avatar.js";
+import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
@@ -97,18 +98,28 @@ class ObraParticipantes extends BaseElement {
     } else {
       const rows = visiveis.map((p) => {
         const b = porChave[p.chave] || { pago: 0, recebido: 0, saldoApagar: 0, saldoReceber: 0 };
+        // Resolve contato/equipe pela CHAVE ("c:<id>"/"e:<id>") p/ navegação + WhatsApp.
+        const ch = String(p.chave || "");
+        const cid = ch.indexOf("c:") === 0 ? ch.slice(2) : "";
+        const eid = ch.indexOf("e:") === 0 ? ch.slice(2) : "";
+        const c = cid ? dataStore.contatos().find((x) => String(x.id) === String(cid)) : null;
         return {
           ...p,
           _pago: b.pago,
           _recebido: b.recebido,
           _saldoApagar: b.saldoApagar,
           _saldoReceber: b.saldoReceber,
+          _cid: cid,
+          _eid: eid,
+          _tel: c ? c.telefone : "",
         };
       });
       const tabela = document.createElement("ui-data-table");
       tabela.setAttribute("fluido", "");
+      tabela.setAttribute("clicavel", "");
       tabela.columns = [
         { chave: "nome", titulo: "Participante", formato: (v) => avatarNomeHtml(v) },
+        { chave: "_tel", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },
         {
           chave: "origem",
           titulo: "Origem",
@@ -145,6 +156,12 @@ class ObraParticipantes extends BaseElement {
       ];
       tabela.rows = rows;
       tabela.addEventListener("acao", (e) => this.acao(e.detail.acao, e.detail.linha));
+      // Linha clicável → tela do contato (ou da equipe). Dono/usuários não têm página.
+      tabela.addEventListener("linha", (e) => {
+        const l = e.detail.linha || {};
+        if (l._cid) irPara("/contatos/" + l._cid);
+        else if (l._eid) irPara("/equipes/" + l._eid);
+      });
       lista.replaceChildren(tabela);
     }
 
