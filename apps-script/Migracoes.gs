@@ -211,6 +211,78 @@ function _migrarCotacoesUnicas_v1() {
   return removidas;
 }
 
+/**
+ * ESTOQUE — backfill: para cada despesa Material (a) preenche quantidade/unidade a
+ * partir da oferta (preco_id) se estiverem vazias; (b) se já QUITADA com qtd>0 e
+ * ainda sem `entrada_despesa`, cria a entrada no livro-razão. Idempotente (flag +
+ * checagem de existência da entrada). Roda DEPOIS das migrações de cotação (precisa
+ * de preco.quantidade já consolidado). Retorna nº de entradas criadas.
+ */
+function _migrarEstoqueBackfill_v1() {
+  const ofertas = {};
+  repoListar(SCHEMA.COTACAO_PRECOS).forEach(function (p) {
+    ofertas[String(p.id)] = p;
+  });
+  const cotacoes = {};
+  repoListar(SCHEMA.COTACOES).forEach(function (c) {
+    cotacoes[String(c.id)] = c;
+  });
+  const jaTemEntrada = {};
+  repoListar(SCHEMA.ESTOQUE).forEach(function (m) {
+    if (String(m.tipo) === "entrada_despesa" && String(m.despesa_id))
+      jaTemEntrada[String(m.despesa_id)] = true;
+  });
+  let entradas = 0;
+  repoListar(SCHEMA.DESPESAS).forEach(function (d) {
+    if (String(d.classificacao || "") !== "Material") return;
+    let qtd = Number(d.quantidade) || 0;
+    let unidade = String(d.unidade || "");
+    // (a) backfill quantidade/unidade da despesa a partir da oferta.
+    if ((!qtd || !unidade) && String(d.preco_id || "")) {
+      const p = ofertas[String(d.preco_id)];
+      if (p) {
+        const c = cotacoes[String(p.cotacao_id)] || null;
+        if (!qtd)
+          qtd = Number(p.quantidade) > 0 ? Number(p.quantidade) : (c && Number(c.quantidade) > 0 ? Number(c.quantidade) : 0);
+        if (!unidade) unidade = String(p.unidade || (c && c.unidade) || "");
+        const patch = {};
+        if (!(Number(d.quantidade) > 0) && qtd > 0) patch.quantidade = qtd;
+        if (!String(d.unidade || "") && unidade) patch.unidade = unidade;
+        if (Object.keys(patch).length) repoAtualizar(SCHEMA.DESPESAS, "id", d.id, patch);
+      }
+    }
+    // (b) entrada de estoque p/ as quitadas com qtd>0 ainda sem entrada.
+    const pago = d.pago === true || d.pago === "TRUE" || d.pago === "true";
+    if (pago && qtd > 0 && !jaTemEntrada[String(d.id)]) {
+      const agora = agoraIso();
+      repoInserir(SCHEMA.ESTOQUE, {
+        id: novoId(),
+        usuario_id: d.usuario_id,
+        obra_id: d.obra_id,
+        item_id: d.item_id,
+        classificacao: d.classificacao,
+        categoria_id: d.categoria_id || "",
+        unidade: unidade,
+        tipo: "entrada_despesa",
+        quantidade: qtd,
+        despesa_id: String(d.id),
+        obra_origem_id: "",
+        obra_destino_id: "",
+        par_id: "",
+        data: String(d.data || agora.substring(0, 10)),
+        observacao: "",
+        criado_em: agora,
+        autor_nome: d.autor_nome || "",
+        atualizado_em: agora,
+        editor_nome: "",
+      });
+      jaTemEntrada[String(d.id)] = true;
+      entradas++;
+    }
+  });
+  return entradas;
+}
+
 /** Roda as migrações pendentes UMA vez (double-checked via flag + lock). */
 function _migrarUmaVez() {
   const props = PropertiesService.getScriptProperties();
@@ -249,6 +321,14 @@ function _migrarUmaVez() {
       if (props.getProperty("mig_cotacoes_unicas_v1") === "1") return;
       _migrarCotacoesUnicas_v1();
       props.setProperty("mig_cotacoes_unicas_v1", "1");
+    });
+  }
+  // Depois das migrações de cotação (precisa de preco.quantidade) — backfill do estoque.
+  if (props.getProperty("mig_estoque_v1") !== "1") {
+    comLock(function () {
+      if (props.getProperty("mig_estoque_v1") === "1") return;
+      _migrarEstoqueBackfill_v1();
+      props.setProperty("mig_estoque_v1", "1");
     });
   }
 }

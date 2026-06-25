@@ -86,6 +86,8 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | ofertante_equipe_id | UUID | ofertante **equipe** (XOR contato) |
 | recebidos | JSON | _(legado/sem uso)_ — a distribuição por integrante vive nas **levas** (`pagamentos_realizados[].distribuicao`) |
 | pagamentos_realizados | JSON | `[{id,data,valor,**pagador**,contato_id,fornecedor_id,distribuicao:[{chave,valor}],autor_nome,criado_em}]` — pagamentos **parciais (levas)** pagos ao ofertante; `pagador` = quem pagou (chave de participante) |
+| quantidade | number | **(estoque)** quantitativo da oferta, congelado no registro; ao QUITAR uma despesa Material, vira entrada de Estoque |
+| unidade | string | **(estoque)** unidade da oferta (un, m², kg…) |
 
 > **Despesa = registro de uma oferta (inteira).** Não há mais cadastro manual: a
 > despesa nasce de uma oferta (`preco_id`) e herda o **ofertante** (contato XOR
@@ -404,6 +406,28 @@ Registra cada acesso ao link público de uma obra (log).
 | obra_id | UUID | FK → Obras.id |
 | token | string | token do link usado no acesso |
 | acessado_em | ISO datetime | quando foi acessado |
+
+## Aba `Estoque` (livro-razão de movimentos)
+Controle de estoque por obra como **livro-razão append-only**: cada linha é um movimento; a "lista do estoque" e os "consumidos" são **sempre derivados** por `(obra_id, item_id)` — nunca um contador mutável. `em_estoque = adquirido − consumido`, onde `adquirido = Σ entradas − Σ saida_transferencia` e `consumido = Σ consumo − Σ retorno`.
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| usuario_id | UUID | FK → Usuarios.id (dono) |
+| obra_id | UUID | FK → Obras.id (obra "dona" do movimento) |
+| item_id | UUID | FK → Itens.id |
+| classificacao | string | `Material` \| `Serviço` (desnormalizado do item) |
+| categoria_id | UUID | subclassificação (desnormalizada do item) |
+| unidade | string | un, m², kg… |
+| tipo | enum | `entrada_despesa` \| `entrada_manual` \| `entrada_transferencia` \| `saida_transferencia` \| `consumo` \| `retorno` |
+| quantidade | number | **sempre > 0** |
+| despesa_id | UUID | FK → Despesas.id (só p/ `entrada_despesa`) |
+| obra_origem_id | UUID | só p/ `entrada_transferencia` (de qual obra veio) |
+| obra_destino_id | UUID | só p/ `saida_transferencia` (para qual obra foi) |
+| par_id | UUID | casa os 2 lados de uma transferência (saída ↔ entrada) |
+| data / observacao / criado_em / autor_nome / atualizado_em / editor_nome | — | padrão |
+
+> **Gatilho automático:** ao QUITAR uma despesa **Material** com `quantidade > 0`, o backend cria a `entrada_despesa` (idempotente — 1 por `despesa_id`, em `_sincronizarEstoqueDaDespesa`/Pagamentos.gs). Ao despagar, remove a entrada **só se ainda couber** (`em_estoque ≥ quantidade`). Migração `mig_estoque_v1` faz o backfill das despesas Material já quitadas + preenche `quantidade`/`unidade` a partir da oferta.
 
 ## Aba `Sessoes`
 | Coluna | Tipo | Descrição |

@@ -498,6 +498,9 @@ function cotacoesRegistrarDespesa(data, sessao) {
       ofertante_contato_id: ofertanteContatoId,
       ofertante_equipe_id: ofertanteEquipeId,
       responsaveis: responsaveis,
+      // Estoque: quantidade/unidade da oferta congeladas (vira estoque ao quitar).
+      quantidade: qtd,
+      unidade: String(preco.unidade || (cotacao && cotacao.unidade) || ""),
     });
     if (cotacao) {
       // Marca esta oferta como registrada/escolhida, desmarca as demais e fecha a cotação.

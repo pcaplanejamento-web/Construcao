@@ -79,6 +79,10 @@ const SCHEMA = {
       "recebidos", // (DEPRECADO — sempre []; a distribuição por integrante vive em pagamentos_realizados[].distribuicao)
       // Pagamentos parciais (append): cada lançamento = uma "leva" paga ao ofertante.
       "pagamentos_realizados", // JSON [{id,data,valor,contato_id,fornecedor_id,distribuicao:[{chave,valor}],autor_nome,criado_em}]
+      // Estoque (append): quantidade/unidade da OFERTA (Material) — congeladas no registro.
+      // Quando a despesa Material é QUITADA, a quantidade vira entrada no Estoque.
+      "quantidade", // número (qtd da oferta); "" p/ legado sem qtd
+      "unidade", // texto livre (un, m², kg, saco…)
     ],
   },
 
@@ -363,6 +367,31 @@ const SCHEMA = {
     ],
   },
 
+  ESTOQUE: {
+    aba: "Estoque", // LIVRO-RAZÃO de movimentos de estoque (append-only; consolidação derivada por obra+item)
+    colunas: [
+      "id",
+      "usuario_id",
+      "obra_id", // obra "dona" do movimento (na transferência: origem grava origem; destino grava destino)
+      "item_id", // FK → Itens.id
+      "classificacao", // Material | Serviço (desnormalizado do item)
+      "categoria_id", // subclassificação (desnormalizada do item)
+      "unidade", // texto livre (un, m², kg…)
+      "tipo", // entrada_despesa | entrada_manual | entrada_transferencia | saida_transferencia | consumo | retorno
+      "quantidade", // SEMPRE > 0
+      "despesa_id", // FK → Despesas.id (só p/ entrada_despesa)
+      "obra_origem_id", // só p/ entrada_transferencia (de qual obra veio)
+      "obra_destino_id", // só p/ saida_transferencia (para qual obra foi)
+      "par_id", // casa os 2 lados de uma transferência (saida ↔ entrada)
+      "data",
+      "observacao",
+      "criado_em",
+      "autor_nome",
+      "atualizado_em",
+      "editor_nome",
+    ],
+  },
+
   SESSOES: {
     aba: "Sessoes",
     colunas: [
@@ -387,6 +416,16 @@ const STATUS_COTACAO = ["aberta", "fechada"];
 
 /** Formas de transferência/pagamento válidas. */
 const TIPOS_TRANSFERENCIA = ["dinheiro", "crédito", "débito", "boleto"];
+
+/** Tipos de movimento de estoque (livro-razão). */
+const TIPOS_MOVIMENTO_ESTOQUE = [
+  "entrada_despesa",
+  "entrada_manual",
+  "entrada_transferencia",
+  "saida_transferencia",
+  "consumo",
+  "retorno",
+];
 
 /** Classificações de item (fixas). Toda despesa/item é Material ou Serviço. */
 const CLASSIFICACOES_ITEM = ["Material", "Serviço"];

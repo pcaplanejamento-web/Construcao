@@ -88,6 +88,7 @@ function _lerDespesa(d) {
     responsaveis: _parseJsonLista(d.responsaveis),
     recebidos: _parseJsonLista(d.recebidos),
     pagamentos_realizados: _parseJsonLista(d.pagamentos_realizados),
+    quantidade: Number(d.quantidade) || 0, // estoque (qtd congelada da oferta)
   });
 }
 
@@ -160,6 +161,9 @@ function _novaDespesa(obraId, usuarioId, dados) {
       dados && Array.isArray(dados.recebidos) ? dados.recebidos : []
     ),
     pagamentos_realizados: "[]", // pagamentos lançados depois (despesas.lancarPagamento)
+    // Estoque: quantidade/unidade congeladas (Material vira estoque ao quitar).
+    quantidade: Number(dados && dados.quantidade) || 0,
+    unidade: String((dados && dados.unidade) || ""),
   };
   repoInserir(SCHEMA.DESPESAS, despesa);
   return despesa;

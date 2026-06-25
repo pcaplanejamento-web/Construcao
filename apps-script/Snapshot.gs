@@ -150,6 +150,7 @@ function dadosSnapshot(data, sessao) {
     transferencias: listarTransferenciasUsuario(u.id),
     pagamentos: listarPagamentosUsuario(u.id),
     repasses: listarRepassesUsuario(u.id),
+    estoque: listarMovimentosDeObras(idsAcc), // livro-razão das obras acessíveis
     servidor_em: agoraIso(),
   };
 

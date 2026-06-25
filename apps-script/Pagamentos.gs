@@ -96,11 +96,19 @@ function _sincronizarMirrorDespesa(despesaId) {
   const somaTotal = levas.reduce(function (s, l) {
     return s + (Number(l.valor) || 0);
   }, 0);
-  return repoAtualizar(SCHEMA.DESPESAS, "id", despesaId, {
+  const pago = somaTotal - (Number(desp.valor) || 0) >= -0.01;
+  const atualizada = repoAtualizar(SCHEMA.DESPESAS, "id", despesaId, {
     pagamentos_realizados: JSON.stringify(levas),
     pagamentos: JSON.stringify(_pagamentosDeLevas(levas)),
-    pago: somaTotal - (Number(desp.valor) || 0) >= -0.01,
+    pago: pago,
   });
+  // ESTOQUE: ao QUITAR uma despesa Material, sua quantidade vira entrada de estoque
+  // (idempotente). Ao despagar, tenta remover a entrada. NUNCA lança (não pode
+  // quebrar o fluxo de pagamento). Roda sob o comLock do chamador.
+  try {
+    _sincronizarEstoqueDaDespesa(atualizada || desp, pago);
+  } catch (e) {}
+  return atualizada;
 }
 
 /* ------------------------------ Pagamentos ---------------------------------- */
