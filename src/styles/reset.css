@@ -19,8 +19,8 @@ body {
   font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--cor-texto);
-  /* --cor-fundo (sólido) é o fallback E o valor lido pelo theme-color; o gradiente
-     sutil (--fundo-app) fica POR CIMA, dando profundidade p/ o "liquid glass" ler. */
+  /* --cor-fundo (sólido) é o fallback; o gradiente sutil (--fundo-app) fica POR CIMA,
+     dando profundidade p/ o "liquid glass" ler. */
   background-color: var(--cor-fundo);
   background-image: var(--fundo-app);
   background-attachment: fixed;

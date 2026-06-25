@@ -112,7 +112,7 @@ transparente), via tokens em `tokens.css` (claro + os **dois** blocos escuros):
 - `--vidro-blur` = `blur(18px) saturate(1.6)` (cai p/ `blur(12px)` em ≤600px — leve no celular).
 - `--vidro-borda` (hairline) + `--vidro-realce` (sheen interno de topo) + sombra empilhada.
 - **`--fundo-app`**: gradiente sutil no `body` (`reset.css`) p/ o vidro "ler" (não chapado);
-  `--cor-fundo` segue **cor sólida** (fallback + valor lido pelo `theme-color`).
+  `--cor-fundo` segue **cor sólida** (fallback do `body`).
 - **Padrão de uso:** `background: var(--vidro-fundo[-forte|-mesa])` + `-webkit-backdrop-filter`
   e `backdrop-filter: var(--vidro-blur)` + `border: 1px solid var(--vidro-borda)` +
   `box-shadow: var(--vidro-realce), var(--sombra-*)`. **Fallback:** sem `backdrop-filter` o
@@ -157,7 +157,7 @@ mobile; grids `auto-fill/minmax`.
 ### Mobile / touch (≤600px, drawer ≤820px)
 Regras de adaptação a telefone/toque (tudo escopado em `@media` → **desktop intacto**):
 - **iOS / barra transparente (iOS 26, liquid glass)**: `index.html` usa `viewport-fit=cover` + metas `apple-mobile-web-app-*` (status bar translúcida). O `app-shell` usa **`100dvh`** (dynamic viewport — acompanha a barra do Safari que some/aparece; **header SEMPRE fixo no topo**), e **`env(safe-area-inset-*)`** dá folga ao header (topo/laterais), ao `<main>` (base) e ao drawer/`ui-modal`, para nada ficar sob o notch / home indicator / barra flutuante.
-- **Chrome do navegador segue o tema**: `theme.js` mantém `<meta name="theme-color">` = `--cor-fundo` efetivo (e o anti-FOUC do `index.html` já tinge no load) → **no modo escuro o navegador inteiro fica escuro** (e a barra "liquid glass" do Safari tinge junto). Cobre o modo "sistema" (repinta na troca do SO).
+- **Barra do navegador TRANSLÚCIDA (Safari iOS 26)**: o app **NÃO define `theme-color`** (removido do `<meta>`, do anti-FOUC e do `theme.js`) — assim o Safari renderiza sua barra **liquid glass nativa**, que desfoca o conteúdo da página (no tema escuro a barra fica escura porque a página atrás é escura). Trade-off: o Chrome (Android) não tinge a barra (usa o padrão). Combina com `viewport-fit=cover` + `env(safe-area-inset-*)` + `apple-mobile-web-app-status-bar-style: black-translucent`.
 - **`--esp-tela` cai p/ `--esp-4`** (16px) em ≤600px (`tokens.css`) → mais espaço útil.
 - **Marca no MENU**: a logo + "Dattaobra" ficam no **topo do `app-sidebar`** (recolhe para só o ícone no desktop recolhido). O **`app-header` autenticado mostra só o ícone de menu** (☰) à esquerda + tema/avatar/Sair à direita — header minimalista (formato app). (Modo público/somente-leitura mantém a marca no header, pois não há sidebar.)
 - **`ui-tabs`**: a barra de abas faz **scroll SÓ horizontal** (`overflow-x:auto; overflow-y:hidden; flex-wrap:nowrap; touch-action:pan-x`; scrollbar oculta) — abas nunca quebram, estouram nem deslizam na vertical.

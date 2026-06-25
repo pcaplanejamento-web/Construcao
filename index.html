@@ -6,7 +6,8 @@
          a barra transparente do Safari iOS) — combinado com env(safe-area-inset-*). -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="description" content="Sistema de Gestão de Obras — cadastre obras e acompanhe despesas em tempo real." />
-    <meta name="theme-color" content="#0d9488" />
+    <!-- SEM theme-color (opaco) de propósito: no Safari iOS 26 a barra do navegador
+         fica TRANSLÚCIDA (liquid glass), desfocando o conteúdo (escura no tema escuro). -->
     <!-- Modo "app" no iOS/Android (tela cheia ao salvar na tela inicial; status bar translúcida). -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -36,17 +37,13 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
     />
 
-    <!-- Aplica o tema salvo antes do CSS (evita flash de tema errado) e já tinge o
-         chrome do navegador (theme-color) com a cor de fundo do tema → no escuro o
-         navegador fica escuro de imediato (sem flash). Depois theme.js mantém em sincronia. -->
+    <!-- Aplica o tema salvo antes do CSS (evita flash de tema errado). NÃO tinge o
+         chrome do navegador (sem theme-color) → barra do Safari iOS 26 translúcida. -->
     <script>
       try {
         var t = localStorage.getItem("obras.tema");
         if (t === "claro" || t === "escuro")
           document.documentElement.dataset.tema = t;
-        var escuro = t === "escuro" || (t !== "claro" && matchMedia("(prefers-color-scheme: dark)").matches);
-        var mc = document.querySelector('meta[name="theme-color"]');
-        if (mc) mc.setAttribute("content", escuro ? "#0b1220" : "#f3f5f8");
       } catch (e) {}
     </script>
 
