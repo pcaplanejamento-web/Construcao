@@ -188,13 +188,17 @@ class UiDataTable extends BaseElement {
       :host { display: block; }
       /* Área rolável com altura limitada: cabeçalho e totais ficam fixos (sticky)
          e a barra de rolagem horizontal fica sempre na base da tabela. */
-      /* SEM padding-bottom: a linha de TOTAIS (tfoot sticky) cola no fundo da área
-         rolável, logo acima da barra de rolagem horizontal — sem fresta nem linha
-         "vazando" por baixo dela. */
-      .wrap { overflow: auto; max-height: 70vh; -webkit-overflow-scrolling: touch; }
+      /* padding-bottom = ao border-spacing: junto com o translateY do tfoot (abaixo),
+         a linha de TOTAIS cola na base da rolagem TANTO no meio QUANTO no FIM do scroll
+         (o Chrome ignora margem negativa p/ a área rolável; este par resolve o "gap de 8px"
+         que sobrava no fim sem cortar o total no meio). */
+      .wrap { overflow: auto; max-height: 70vh; -webkit-overflow-scrolling: touch; padding-bottom: var(--esp-2); }
       .sem-result td { text-align: center; color: var(--cor-texto-fraco); padding: var(--esp-5); }
-      /* Tabela = MESA: cada LINHA do corpo é um card branco; leve espaçamento entre elas. */
-      table { width: 100%; border-collapse: separate; border-spacing: 0 var(--esp-2); font-size: var(--fs-sm); }
+      /* Tabela = MESA: cada LINHA do corpo é um card branco; leve espaçamento entre elas.
+         margin-bottom negativo (= border-spacing) + padding-bottom da .wrap + translateY do
+         tfoot formam o TRIO que cola o total na base no meio E no fim do scroll. */
+      table { width: 100%; border-collapse: separate; border-spacing: 0 var(--esp-2);
+        font-size: var(--fs-sm); margin-bottom: calc(-1 * var(--esp-2)); }
       th, td { padding: var(--esp-3) var(--esp-3); text-align: left; white-space: nowrap; vertical-align: middle; }
       :host([fluido]) table { table-layout: auto; }
       :host([fluido]) td { white-space: normal; }
@@ -256,10 +260,12 @@ class UiDataTable extends BaseElement {
       .btn-acao.perigo { color: var(--cor-erro); border-color: var(--cor-erro-suave); }
       /* Linha de SOMA (totais): FIXA na base da área rolável (sticky bottom:0), na cor
          da MESA, OPACA — cola logo acima da barra de rolagem horizontal e NÃO se move.
-         (Sem transform: o translateY antigo "vazava" a última linha por baixo dela.) */
+         O translateY(+esp-2) ocupa o padding-bottom da .wrap, colando o total na base
+         no MEIO e no FIM do scroll (sem o gap de 8px do border-spacing). É p/ BAIXO
+         (o antigo era p/ cima, que "vazava" a última linha por baixo do total). */
       tfoot td { position: sticky; bottom: 0; z-index: 6; background: var(--cor-mesa);
         font-family: var(--fonte-titulo); font-weight: var(--peso-forte);
-        box-shadow: 0 -1px 0 var(--cor-divisor); }
+        box-shadow: 0 -1px 0 var(--cor-divisor); transform: translateY(var(--esp-2)); }
       tfoot td.sel { z-index: 7; }
       tfoot .rotulo { font-family: var(--fonte-base); font-weight: var(--peso-semi);
         color: var(--cor-texto-suave); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
@@ -310,7 +316,7 @@ class UiDataTable extends BaseElement {
          células via data-label) e TODAS as colunas reaparecem (espaço é vertical). */
       @media (max-width: 600px) {
         .wrap { overflow: visible; max-height: none; padding-bottom: 0; }
-        table { display: block; border-spacing: 0; }
+        table { display: block; border-spacing: 0; margin-bottom: 0; }
         thead { display: none; }
         tbody { display: block; }
         tbody tr { display: block; position: relative; background: var(--cor-superficie);
