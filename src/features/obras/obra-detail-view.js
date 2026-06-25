@@ -738,6 +738,25 @@ class ObraDetailView extends BaseElement {
     document.body.appendChild(banner);
   }
 
+  /**
+   * Bloqueio de estoque (itens 18/19/20): se a despesa virou estoque e parte já foi
+   * CONSUMIDA, retorna { qtd, em_estoque, faltam }; senão null (pode excluir — a
+   * entrada será removida e o saldo reduzido).
+   */
+  _bloqueioEstoqueDespesa(d) {
+    if (!d) return null;
+    const entrada = dataStore
+      .movimentosEstoque()
+      .find((m) => String(m.tipo) === "entrada_despesa" && String(m.despesa_id) === String(d.id));
+    if (!entrada) return null;
+    const saldo = dataStore.saldoEstoqueItem(d.obra_id || this.obraId, d.item_id);
+    const qtd = Number(entrada.quantidade) || 0;
+    const faltam = qtd - saldo.em_estoque;
+    if (faltam > 0.0001)
+      return { qtd, em_estoque: saldo.em_estoque, faltam: Math.round(faltam * 1000) / 1000 };
+    return null;
+  }
+
   async remover(despesa) {
     // Trava: não excluir despesa com pagamento vinculado.
     if (dataStore.despesaTemPagamento(despesa)) {
@@ -745,6 +764,21 @@ class ObraDetailView extends BaseElement {
         titulo: "Despesa com pagamento vinculado",
         mensagem:
           "Esta despesa tem pagamento vinculado. Exclua o pagamento (ou a transferência) antes de excluir a despesa.",
+      });
+      return;
+    }
+    // Trava de estoque (itens 18/19/20): bloqueia se o item já foi consumido.
+    const bloq = this._bloqueioEstoqueDespesa(despesa);
+    if (bloq) {
+      await avisar({
+        titulo: "Item já consumido do estoque",
+        mensagem:
+          `Esta despesa virou estoque e ${bloq.faltam} já foi consumido. Devolva ${bloq.faltam} ao estoque na aba ` +
+          `Estoque › Consumidos desta obra (botão Aumentar) antes de excluir a despesa.`,
+        listaHtml:
+          `<span>• Em estoque agora: ${bloq.em_estoque}</span>` +
+          `<span>• Quantidade desta despesa: ${bloq.qtd}</span>` +
+          `<span>• Falta devolver: <strong>${bloq.faltam}</strong></span>`,
       });
       return;
     }
@@ -771,6 +805,18 @@ class ObraDetailView extends BaseElement {
         titulo: "Despesas com pagamento vinculado",
         mensagem: `${comPag.length} das ${lista.length} despesas selecionadas têm pagamento vinculado. Exclua os pagamentos/transferências antes — nenhuma foi excluída.`,
         listaHtml: comPag.map((d) => `<span>• ${d.item || "Despesa"}</span>`).join(""),
+      });
+      return;
+    }
+    // Trava de estoque (itens 18/19/20): bloqueia as que já tiveram item consumido.
+    const comEstoque = lista.map((d) => ({ d, bloq: this._bloqueioEstoqueDespesa(d) })).filter((x) => x.bloq);
+    if (comEstoque.length) {
+      await avisar({
+        titulo: "Itens já consumidos do estoque",
+        mensagem: `${comEstoque.length} das ${lista.length} despesas viraram estoque e já tiveram item consumido. Devolva-os na aba Estoque › Consumidos (botão Aumentar) antes de excluir — nenhuma foi excluída.`,
+        listaHtml: comEstoque
+          .map((x) => `<span>• ${x.d.item || "Despesa"} — falta devolver ${x.bloq.faltam}</span>`)
+          .join(""),
       });
       return;
     }

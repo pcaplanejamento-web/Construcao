@@ -272,8 +272,33 @@ function despesasRemover(data, sessao) {
       "Esta despesa tem pagamento vinculado. Exclua o pagamento ou a transferência antes de excluir a despesa."
     );
 
+  // ESTOQUE (itens 18/19/20): se esta despesa virou estoque (entrada_despesa) e parte
+  // já foi CONSUMIDA, só pode excluir se o quantitativo ainda couber no que há em estoque.
+  // Senão, bloqueia com instrução de onde resolver (devolver na aba Estoque › Consumidos).
+  const entradaEstoque = _entradaDespesaExistente(id);
+  if (entradaEstoque) {
+    const saldoEst = _saldoEstoque(atual.obra_id, atual.item_id);
+    const qtdEntrada = Number(entradaEstoque.quantidade) || 0;
+    if (qtdEntrada - saldoEst.em_estoque > 0.0001) {
+      const faltam = Math.round((qtdEntrada - saldoEst.em_estoque) * 1000) / 1000;
+      lancar(
+        ERRO.VALIDACAO,
+        "Esta despesa virou estoque e parte já foi consumida. Devolva " +
+          faltam +
+          " ao estoque na aba Estoque › Consumidos da obra antes de excluir. " +
+          "(em estoque: " +
+          saldoEst.em_estoque +
+          " · desta despesa: " +
+          qtdEntrada +
+          ")"
+      );
+    }
+  }
+
   return comLock(function () {
     repoRemover(SCHEMA.DESPESAS, "id", id);
+    // Reduz o saldo do estoque (item 18): remove a entrada vinculada a esta despesa.
+    if (entradaEstoque) repoRemover(SCHEMA.ESTOQUE, "id", entradaEstoque.id);
 
     // Reverte o que cotacoesRegistrarDespesa fez na oferta de origem.
     let preco = null;
