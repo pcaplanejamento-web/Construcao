@@ -27,6 +27,7 @@ import { moeda } from "../core/formatters.js";
 import "./ui-coluna-menu.js";
 import { injetarBuscaNoCard } from "./ui-busca.js";
 import { confirmar } from "./confirmar.js";
+import { baixarTabela } from "../features/shared/exportar-tabela.js";
 
 class UiDataTable extends BaseElement {
   static get observedAttributes() {
@@ -247,6 +248,24 @@ class UiDataTable extends BaseElement {
         background: var(--cor-superficie); color: var(--cor-erro); border-radius: var(--raio-sm);
         padding: 4px 12px; font-size: var(--fs-xs); cursor: pointer; }
       .vazio { padding: var(--esp-6); text-align: center; color: var(--cor-texto-fraco); }
+      /* Barra de exportar (canto inferior ESQUERDO da mesa, logo após o Total). */
+      .barra-exportar { display: flex; align-items: center; gap: var(--esp-2); flex-wrap: wrap;
+        padding-top: var(--esp-3); }
+      .barra-exportar .exp-lbl { font-size: 11px; color: var(--cor-texto-fraco);
+        text-transform: uppercase; letter-spacing: .06em; font-weight: var(--peso-semi);
+        margin-right: var(--esp-1); }
+      .btn-export { border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
+        color: var(--cor-texto-suave); border-radius: var(--raio-sm); padding: 5px 12px;
+        font-size: var(--fs-xs); font-weight: var(--peso-semi); cursor: pointer;
+        transition: background var(--transicao), border-color var(--transicao), color var(--transicao); }
+      .btn-export:hover { background: var(--cor-superficie-2); border-color: var(--cor-primaria);
+        color: var(--cor-primaria); }
+      /* MOBILE: alvos de toque grandes (≥44px), ocupando a largura. */
+      @media (max-width: 600px) {
+        .barra-exportar { padding-top: var(--esp-4); }
+        .barra-exportar .exp-lbl { width: 100%; }
+        .btn-export { flex: 1; min-width: 64px; min-height: 44px; }
+      }
       /* TABLET: esconde colunas secundárias (a tabela ainda rola na horizontal). */
       @media (max-width: 820px) { th.sec, td.sec { display: none; } }
       /* MOBILE (≤600px): cada LINHA vira um CARD EMPILHADO ("Rótulo: valor"). Sem
@@ -338,7 +357,37 @@ class UiDataTable extends BaseElement {
 
     const selbar = this._sel.size ? this._selbarHtml() : "";
 
-    return `${selbar}<div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${this._corpoHtml()}</tbody>${this._rodapeHtml()}</table></div>`;
+    return `${selbar}<div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${this._corpoHtml()}</tbody>${this._rodapeHtml()}</table></div>${this._barraExportarHtml()}`;
+  }
+
+  /** Barra de exportação (canto inferior esquerdo, após o Total): CSV/XLS/XLSX/PDF. */
+  _barraExportarHtml() {
+    if (!this.rows.length) return "";
+    return (
+      `<div class="barra-exportar"><span class="exp-lbl">Baixar</span>` +
+      `<button class="btn-export" data-fmt="xls" type="button">XLS</button>` +
+      `<button class="btn-export" data-fmt="xlsx" type="button">XLSX</button>` +
+      `<button class="btn-export" data-fmt="csv" type="button">CSV</button>` +
+      `<button class="btn-export" data-fmt="pdf" type="button">PDF</button></div>`
+    );
+  }
+
+  /** Colunas exportáveis (só as de dados, com título) — ignora ações/ícones sem rótulo. */
+  _colsExport() {
+    return this.columns.filter((c) => String(c.titulo || "").trim());
+  }
+
+  /** Monta { titulo, colunas, linhas } da MESA atual (linhas VISÍVEIS = filtro/busca/ordem). */
+  _dadosExport() {
+    const cols = this._colsExport();
+    const card = this.closest && this.closest("ui-card");
+    const titulo =
+      (card && card.getAttribute("title")) || this.getAttribute("titulo") || "Tabela";
+    return {
+      titulo,
+      colunas: cols.map((c) => c.titulo),
+      linhas: this._visiveis().map(({ linha }) => cols.map((c) => this._texto(c, linha))),
+    };
   }
 
   /** Busca global (chamada pela <ui-busca> no cabeçalho do card) — só atualiza o corpo. */
@@ -482,6 +531,17 @@ class UiDataTable extends BaseElement {
     // Cabeçalho → dropdown de ordenar/filtrar.
     this.$$(".th-btn").forEach((btn) => {
       btn.addEventListener("click", () => this._abrirMenu(Number(btn.dataset.col), btn));
+    });
+    // Exportar (CSV/XLS/XLSX/PDF) — usa as linhas VISÍVEIS (filtro/busca/ordem aplicados).
+    this.$$(".btn-export").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        try {
+          baixarTabela(btn.dataset.fmt, this._dadosExport());
+        } catch (err) {
+          console.error("Falha ao exportar a tabela:", err);
+        }
+      });
     });
     // Busca: vai no cabeçalho do card (à esquerda do botão), ligada a esta tabela.
     // (Re)liga em todo render; é idempotente. A <ui-busca> vive no card → preserva foco.
