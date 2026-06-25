@@ -33,13 +33,36 @@ test("CSV — cabeçalho + escape de aspas/separador/quebra", () => {
   assert.ok(csv.includes('"linha\nquebrada"'), "quebra de linha é citada");
 });
 
-test("XLS — documento HTML com tabela e MIME do Excel", () => {
-  const xls = gerarXLS(dados);
-  assert.ok(xls.startsWith("<html"), "é documento HTML");
-  assert.ok(xls.includes("<th>Item</th>"), "cabeçalho presente");
-  assert.ok(xls.includes("Cimento CP-II"), "linha presente");
-  assert.ok(xls.includes("&quot;aspas&quot;"), "HTML-escape de aspas");
-  assert.ok(xls.includes("urn:schemas-microsoft-com:office:excel"), "namespace do Excel");
+test("XLS — binário OLE2/BIFF8 válido (abre limpo no Excel)", () => {
+  const u8 = gerarXLS(dados);
+  assert.ok(u8 instanceof Uint8Array && u8.length > 0);
+  // Assinatura do contêiner OLE2/CFB.
+  assert.deepEqual(Array.from(u8.slice(0, 8)), [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+  assert.equal(u8.length % 512, 0, "tamanho múltiplo de 512 (setores)");
+  // O stream Workbook está após cabeçalho + FAT(1) + diretório(1) = setor 2 → offset 512*3.
+  const wbInicio = 512 * 3;
+  const rd16 = (o) => u8[o] | (u8[o + 1] << 8);
+  const rd32 = (o) => u8[o] | (u8[o + 1] << 8) | (u8[o + 2] << 16) | (u8[o + 3] << 24);
+  assert.equal(rd16(wbInicio), 0x0809, "Workbook começa com BOF");
+  assert.equal(rd16(wbInicio + 4), 0x0600, "versão BIFF8");
+  // BOUNDSHEET (0x0085) aponta o offset onde há OUTRO BOF (a planilha).
+  const s = Array.from(u8.slice(wbInicio), (b) => String.fromCharCode(b)).join("");
+  // o nome da planilha (Latin-1) aparece literal no stream
+  assert.ok(s.includes("Mesa com despesas da obra".slice(0, 31)), "nome da planilha presente");
+  // texto das células (LABEL comprimido = Latin-1) aparece literal
+  assert.ok(s.includes("Cimento CP-II"), "célula de texto presente");
+  // localiza o BOUNDSHEET e valida que o lbPlyPos aponta para um BOF
+  let off = wbInicio;
+  let achou = -1;
+  while (off < u8.length - 4) {
+    const tipo = rd16(off);
+    const len = rd16(off + 2);
+    if (tipo === 0x0085) { achou = rd32(off + 4); break; }
+    if (tipo === 0 && len === 0) break;
+    off += 4 + len;
+  }
+  assert.ok(achou > 0, "BOUNDSHEET encontrado");
+  assert.equal(rd16(wbInicio + achou), 0x0809, "lbPlyPos aponta para o BOF da planilha");
 });
 
 test("XLSX — ZIP válido (PK) contendo a planilha e os valores", () => {

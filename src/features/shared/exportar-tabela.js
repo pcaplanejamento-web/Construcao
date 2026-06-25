@@ -61,24 +61,257 @@ export function gerarCSV({ colunas, linhas }) {
 }
 
 /* --------------------------------- XLS ------------------------------------- */
-// Tabela HTML com MIME do Excel — abre como planilha no Excel/LibreOffice.
+// .xls BINÁRIO real (BIFF8) dentro de um contêiner OLE2/CFB — abre LIMPO no Excel
+// (sem o aviso "formato e extensão não conferem" do antigo truque HTML-as-xls).
+
+/** Escritor de bytes little-endian (array → Uint8Array). */
+function _bytes() {
+  const a = [];
+  return {
+    a,
+    u8: (v) => a.push(v & 0xff),
+    u16: (v) => a.push(v & 0xff, (v >>> 8) & 0xff),
+    u32: (v) => a.push(v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff),
+    push: (arr) => arr.forEach((b) => a.push(b & 0xff)),
+    /** string Latin-1 (1 byte/char; >255 → "?"). */
+    latin1: (s) => {
+      for (let i = 0; i < s.length; i++) {
+        const c = s.charCodeAt(i);
+        a.push(c <= 255 ? c : 63);
+      }
+    },
+  };
+}
+const _latin1Bytes = (s) => {
+  const w = _bytes();
+  w.latin1(String(s || ""));
+  return w.a;
+};
+/** Registro BIFF: tipo(2) + tamanho(2) + dados. */
+const _biffRec = (tipo, dados) => {
+  const w = _bytes();
+  w.u16(tipo);
+  w.u16(dados.length);
+  w.push(dados);
+  return w.a;
+};
+
+/** Monta o stream "Workbook" (BIFF8): globais (BOF/WINDOW1/FONT/16×XF/BOUNDSHEET/EOF) + planilha. */
+function _xlsWorkbook(nomePlanilha, colunas, linhas) {
+  const bof = (dt) => {
+    const w = _bytes();
+    w.u16(0x0600); // versão BIFF8
+    w.u16(dt); // 0x0005 globais | 0x0010 worksheet
+    w.u16(0);
+    w.u16(0);
+    w.u32(0);
+    w.u32(0);
+    return _biffRec(0x0809, w.a);
+  };
+  const EOF = _biffRec(0x000a, []);
+
+  // ---- Globais (menos o offset do BOUNDSHEET, calculado depois) ----
+  const window1 = (() => {
+    const w = _bytes();
+    [0, 0, 0x4000, 0x2000, 0x38, 0, 0, 1, 0x0258].forEach((v) => w.u16(v));
+    return _biffRec(0x003d, w.a);
+  })();
+  const font = (() => {
+    const w = _bytes();
+    w.u16(200); // altura
+    w.u16(0);
+    w.u16(0x7fff); // cor automática
+    w.u16(400); // peso normal
+    w.u16(0);
+    w.u8(0);
+    w.u8(0);
+    w.u8(0);
+    w.u8(0);
+    const nome = "Arial";
+    w.u8(nome.length);
+    w.u8(0); // string comprimida (1 byte/char)
+    w.latin1(nome);
+    return _biffRec(0x0031, w.a);
+  })();
+  const xf = (estilo) => {
+    const w = _bytes();
+    w.u16(0); // ifnt
+    w.u16(0); // ifmt
+    w.u16(estilo ? 0xfff4 : 0x0000); // fStyle + ixfParent (estilo) | XF de célula
+    w.u8(0);
+    w.u8(0);
+    w.u8(0);
+    w.u8(0);
+    w.u32(0);
+    w.u16(0);
+    w.u16(0);
+    w.u16(0);
+    return _biffRec(0x00e0, w.a);
+  };
+  const xfs = [];
+  for (let i = 0; i < 16; i++) xfs.push(xf(i < 15)); // 15 XF de estilo + 1 de célula (índice 15)
+
+  const nomeBytes = _latin1Bytes(nomePlanilha);
+  const boundsheetLen = 4 + (4 + 2 + 1 + 1 + nomeBytes.length); // header + dados
+  const globaisAntesLen =
+    bof(0x0005).length + window1.length + font.length + xfs.reduce((s, r) => s + r.length, 0);
+  const sheetOffset = globaisAntesLen + boundsheetLen + EOF.length; // onde começa o BOF da planilha
+
+  const boundsheet = (() => {
+    const w = _bytes();
+    w.u32(sheetOffset); // lbPlyPos (offset absoluto do BOF da planilha no stream)
+    w.u16(0); // grbit: visível, worksheet
+    w.u8(nomeBytes.length);
+    w.u8(0); // string comprimida
+    w.push(nomeBytes);
+    return _biffRec(0x0085, w.a);
+  })();
+
+  // ---- Planilha ----
+  const nRows = Math.min(linhas.length + 1, 65536); // +1 = cabeçalho
+  const nCols = Math.min(colunas.length, 256);
+  const dimension = (() => {
+    const w = _bytes();
+    w.u32(0); // rwMic
+    w.u32(nRows); // rwMac (última linha + 1)
+    w.u16(0); // colMic
+    w.u16(nCols); // colMac (última coluna + 1)
+    w.u16(0);
+    return _biffRec(0x0200, w.a);
+  })();
+  const label = (r, c, texto) => {
+    const s = String(texto == null ? "" : texto).slice(0, 255);
+    const sb = _latin1Bytes(s);
+    const w = _bytes();
+    w.u16(r);
+    w.u16(c);
+    w.u16(15); // ixfe = XF de célula
+    w.u16(sb.length); // cch
+    w.u8(0); // grbit: comprimida (Latin-1)
+    w.push(sb);
+    return _biffRec(0x0204, w.a);
+  };
+  const celulas = [];
+  const linha0 = [colunas, ...linhas];
+  for (let r = 0; r < nRows; r++) {
+    const arr = linha0[r] || [];
+    for (let c = 0; c < nCols; c++) celulas.push(label(r, c, arr[c]));
+  }
+
+  // ---- Junta tudo ----
+  const out = _bytes();
+  out.push(bof(0x0005));
+  out.push(window1);
+  out.push(font);
+  xfs.forEach((r) => out.push(r));
+  out.push(boundsheet);
+  out.push(EOF);
+  out.push(bof(0x0010));
+  out.push(dimension);
+  celulas.forEach((r) => out.push(r));
+  out.push(EOF);
+  return Uint8Array.from(out.a);
+}
+
+/** Empacota um stream "Workbook" num arquivo OLE2/CFB (.xls). */
+function _ole2Workbook(workbook) {
+  const SETOR = 512;
+  const NOSTREAM = 0xffffffff;
+  const ENDOFCHAIN = 0xfffffffe;
+  const FATSECT = 0xfffffffd;
+  const FREESECT = 0xffffffff;
+  const nData = Math.max(1, Math.ceil(workbook.length / SETOR));
+  // Quantos setores de FAT são necessários (itera até estabilizar).
+  let nFAT = 1;
+  for (;;) {
+    const total = nFAT + 1 + nData; // FAT + diretório + dados
+    const need = Math.ceil(total / 128);
+    if (need <= nFAT) break;
+    nFAT = need;
+  }
+  const dirSetor = nFAT;
+  const dataInicio = nFAT + 1;
+
+  // FAT
+  const fat = new Array(nFAT * 128).fill(FREESECT);
+  for (let i = 0; i < nFAT; i++) fat[i] = FATSECT;
+  fat[dirSetor] = ENDOFCHAIN;
+  for (let i = 0; i < nData; i++) {
+    const s = dataInicio + i;
+    fat[s] = i === nData - 1 ? ENDOFCHAIN : s + 1;
+  }
+
+  // Cabeçalho (512 bytes)
+  const H = _bytes();
+  H.push([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+  for (let i = 0; i < 16; i++) H.u8(0); // CLSID
+  H.u16(0x003e);
+  H.u16(0x0003); // versão 3 (setores de 512)
+  H.u16(0xfffe); // byte order
+  H.u16(0x0009); // sectorShift (512)
+  H.u16(0x0006); // miniSectorShift (64)
+  H.u16(0);
+  H.u32(0); // reservado (6 bytes)
+  H.u32(0); // numDirSectors (0 na v3)
+  H.u32(nFAT);
+  H.u32(dirSetor);
+  H.u32(0); // transaction sig
+  H.u32(0x1000); // corte do mini-stream (4096)
+  H.u32(ENDOFCHAIN); // 1º setor mini-FAT (nenhum)
+  H.u32(0); // num mini-FAT
+  H.u32(ENDOFCHAIN); // 1º DIFAT
+  H.u32(0); // num DIFAT
+  for (let i = 0; i < 109; i++) H.u32(i < nFAT ? i : FREESECT); // DIFAT inline
+
+  // Setores de FAT
+  const F = _bytes();
+  fat.forEach((v) => F.u32(v));
+
+  // Diretório (1 setor = 4 entradas × 128)
+  const entrada = (nome, tipo, startSec, tam, child) => {
+    const e = _bytes();
+    for (let i = 0; i < 32; i++) e.u16(i < nome.length ? nome.charCodeAt(i) : 0);
+    e.u16(nome.length ? (nome.length + 1) * 2 : 0); // nameLen (com terminador)
+    e.u8(tipo); // 5=root, 2=stream, 0=vazio
+    e.u8(1); // cor preta
+    e.u32(NOSTREAM); // irmão esq.
+    e.u32(NOSTREAM); // irmão dir.
+    e.u32(child); // filho
+    for (let i = 0; i < 16; i++) e.u8(0); // CLSID
+    e.u32(0); // state
+    e.u32(0);
+    e.u32(0); // creation
+    e.u32(0);
+    e.u32(0); // modified
+    e.u32(startSec);
+    e.u32(tam);
+    e.u32(0); // streamSize hi
+    return e.a;
+  };
+  const D = _bytes();
+  D.push(entrada("Root Entry", 5, ENDOFCHAIN, 0, 1)); // child = Workbook (índice 1)
+  D.push(entrada("Workbook", 2, dataInicio, workbook.length, NOSTREAM));
+  D.push(entrada("", 0, ENDOFCHAIN, 0, NOSTREAM));
+  D.push(entrada("", 0, ENDOFCHAIN, 0, NOSTREAM));
+
+  // Monta o arquivo: cabeçalho + FAT + diretório + dados (padded).
+  const total = SETOR + nFAT * SETOR + SETOR + nData * SETOR;
+  const buf = new Uint8Array(total);
+  let p = 0;
+  const escreve = (arr) => {
+    buf.set(Uint8Array.from(arr), p);
+    p += arr.length;
+  };
+  escreve(H.a); // 512
+  escreve(F.a); // nFAT*512
+  escreve(D.a); // 512
+  buf.set(workbook, p); // dados (resto fica 0 = padding)
+  return buf;
+}
 
 export function gerarXLS({ titulo, colunas, linhas }) {
-  const th = colunas.map((c) => `<th>${_xmlEscape(c)}</th>`).join("");
-  const trs = linhas
-    .map((r) => `<tr>${r.map((v) => `<td>${_xmlEscape(v)}</td>`).join("")}</tr>`)
-    .join("");
-  return (
-    '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
-    'xmlns:x="urn:schemas-microsoft-com:office:excel" ' +
-    'xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8">' +
-    "<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>" +
-    `<x:Name>${_xmlEscape(_sheetName(titulo))}</x:Name>` +
-    "<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>" +
-    "</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->" +
-    "<style>th{background:#eef;font-weight:bold;text-align:left}td,th{border:1px solid #ccc;padding:4px}</style>" +
-    `</head><body><table><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table></body></html>`
-  );
+  const workbook = _xlsWorkbook(_sheetName(titulo), colunas, linhas);
+  return _ole2Workbook(workbook);
 }
 
 function _sheetName(titulo) {
