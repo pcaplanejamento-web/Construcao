@@ -345,6 +345,10 @@ const SCHEMA = {
       "autor_nome",
       "atualizado_em",
       "editor_nome",
+      // Comprovante (append): arquivo anexado salvo no Google Drive.
+      "comprovante_file_id", // id do arquivo no Drive (vazio = sem anexo)
+      "comprovante_nome", // nome original do arquivo
+      "comprovante_url", // link de visualização (Drive)
     ],
   },
 

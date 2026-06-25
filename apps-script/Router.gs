@@ -54,6 +54,8 @@ const ROTAS = {
   // Transferências (agrupam pagamentos) / Pagamentos / Repasses (entidades próprias)
   "transferencias.lancar": { fn: transferenciasLancar },
   "transferencias.remover": { fn: transferenciasRemover },
+  "transferencias.anexarComprovante": { fn: transferenciasAnexarComprovante },
+  "transferencias.removerComprovante": { fn: transferenciasRemoverComprovante },
   "pagamentos.lancar": { fn: pagamentosLancar },
   "pagamentos.remover": { fn: pagamentosRemover },
   "repasses.lancar": { fn: repassesLancar },

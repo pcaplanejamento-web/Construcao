@@ -67,6 +67,7 @@ function _ajustarTransferenciaAposRemocao(transferenciaId, pagamentoRemovidoId) 
     return String(pid) !== String(pagamentoRemovidoId);
   });
   if (!restantes.length) {
+    _excluirComprovante(t.comprovante_file_id); // sem pagamentos → some a transf + o arquivo
     repoRemover(SCHEMA.TRANSFERENCIAS, "id", transferenciaId);
     return;
   }
@@ -125,6 +126,9 @@ function transferenciasLancar(data, sessao) {
       lancar(ERRO.VALIDACAO, "Todos os recebedores e a empresa devem ser os mesmos para uma transferência.");
   });
 
+  // Comprovante (opcional): valida ANTES do lock (tamanho/mime) → falha cedo, nada gravado.
+  if (data && data.comprovante) _validarComprovante(data.comprovante);
+
   const agora = agoraIso();
   const dataTransf = String((data && data.data) || agora.substring(0, 10));
   // Distribuição por integrante só vale p/ transferência de 1 despesa com recebedor-equipe.
@@ -182,6 +186,23 @@ function transferenciasLancar(data, sessao) {
 
   return comLock(function () {
     repoInserir(SCHEMA.TRANSFERENCIAS, transferencia);
+    // Comprovante no Drive: salva e vincula. Erro de Drive NÃO derruba a transferência
+    // (try/catch) — o usuário pode anexar depois pelo banner.
+    if (data && data.comprovante) {
+      try {
+        const cmp = _salvarComprovante(usuarioId, data.comprovante);
+        repoAtualizar(SCHEMA.TRANSFERENCIAS, "id", transferenciaId, {
+          comprovante_file_id: cmp.file_id,
+          comprovante_nome: cmp.nome,
+          comprovante_url: cmp.url,
+        });
+        transferencia.comprovante_file_id = cmp.file_id;
+        transferencia.comprovante_nome = cmp.nome;
+        transferencia.comprovante_url = cmp.url;
+      } catch (e) {
+        console.error("Falha ao salvar comprovante da transferência: " + e);
+      }
+    }
     let despesas = [];
     const pagamentosLidos = pagamentos.map(function (p) {
       const r = _pagamentoGravar(p);
@@ -220,10 +241,63 @@ function transferenciasRemover(data, sessao) {
       despesas = despesas.concat(r.despesas);
     });
     repoRemover(SCHEMA.TRANSFERENCIAS, "id", id);
+    _excluirComprovante(t.comprovante_file_id); // item 6: exclui o arquivo no Drive
     return {
       id: id,
       despesas: despesas,
       resumo: obraId ? _calcularResumo(obraId, sessao.usuario_id) : null,
     };
+  });
+}
+
+/** Acha a transferência do usuário (guarda de acesso). */
+function _transferenciaDoUsuario(id, usuarioId) {
+  const t = repoEncontrar(SCHEMA.TRANSFERENCIAS, function (x) {
+    return String(x.id) === String(id);
+  });
+  if (!t) lancar(ERRO.NAO_ENCONTRADO, "Transferência não encontrada.");
+  if (String(t.usuario_id) !== String(usuarioId))
+    lancar(ERRO.VALIDACAO, "Sem acesso a esta transferência.");
+  return t;
+}
+
+/**
+ * transferencias.anexarComprovante -> { transferencia }. Anexa (ou SUBSTITUI) o
+ * comprovante de uma transferência existente. Trash do antigo antes de salvar o novo.
+ */
+function transferenciasAnexarComprovante(data, sessao) {
+  const id = String((data && data.id) || "");
+  const t = _transferenciaDoUsuario(id, sessao.usuario_id);
+  _validarComprovante(data && data.comprovante); // antes do lock
+  const nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+  return comLock(function () {
+    if (t.comprovante_file_id) _excluirComprovante(t.comprovante_file_id); // substitui
+    const cmp = _salvarComprovante(sessao.usuario_id, data.comprovante);
+    const atualizado = repoAtualizar(SCHEMA.TRANSFERENCIAS, "id", id, {
+      comprovante_file_id: cmp.file_id,
+      comprovante_nome: cmp.nome,
+      comprovante_url: cmp.url,
+      atualizado_em: agoraIso(),
+      editor_nome: nome,
+    });
+    return { transferencia: _lerTransferencia(atualizado) };
+  });
+}
+
+/** transferencias.removerComprovante -> { transferencia }. Remove o anexo (e o arquivo). */
+function transferenciasRemoverComprovante(data, sessao) {
+  const id = String((data && data.id) || "");
+  const t = _transferenciaDoUsuario(id, sessao.usuario_id);
+  const nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+  return comLock(function () {
+    _excluirComprovante(t.comprovante_file_id);
+    const atualizado = repoAtualizar(SCHEMA.TRANSFERENCIAS, "id", id, {
+      comprovante_file_id: "",
+      comprovante_nome: "",
+      comprovante_url: "",
+      atualizado_em: agoraIso(),
+      editor_nome: nome,
+    });
+    return { transferencia: _lerTransferencia(atualizado) };
   });
 }
