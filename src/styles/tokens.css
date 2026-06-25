@@ -118,14 +118,15 @@
     radial-gradient(1000px 700px at 110% 10%, color-mix(in srgb, var(--cor-info) 7%, transparent), transparent 55%),
     linear-gradient(180deg, color-mix(in srgb, var(--cor-fundo) 60%, #ffffff), var(--cor-fundo));
 
-  /* DOCK flutuante (estilo iOS/Instagram) — cápsula ESCURA translúcida, IGUAL nos dois
-     temas (ícones monocromáticos claros; ativo = "pílula" clara atrás). Constantes:
-     não precisam de override no escuro. */
-  --dock-fundo: color-mix(in srgb, #0e1626 72%, transparent);
-  --dock-borda: rgba(255, 255, 255, 0.12);
-  --dock-ico: #f1f5f9;
-  --dock-ico-fraco: rgba(241, 245, 249, 0.6);
-  --dock-ativo: rgba(255, 255, 255, 0.16);
+  /* DOCK flutuante (estilo iOS/Instagram) — cápsula translúcida; segue o TEMA
+     (claro aqui no :root; escuro nos blocos de tema escuro). Ícones monocromáticos;
+     item ativo = "pílula" mais clara/elevada atrás. */
+  --dock-fundo: color-mix(in srgb, #d6e4f2 82%, transparent);
+  --dock-borda: rgba(255, 255, 255, 0.6);
+  --dock-ico: var(--cor-texto);
+  --dock-ico-fraco: color-mix(in srgb, var(--cor-texto) 52%, transparent);
+  --dock-ativo: rgba(255, 255, 255, 0.72);
+  --dock-ativo-sombra: 0 1px 3px rgba(16, 24, 40, 0.16);
 
   /* Camadas (z-index) */
   --z-nav: 100;
@@ -180,6 +181,13 @@
       radial-gradient(1200px 600px at 18% -10%, color-mix(in srgb, var(--cor-primaria) 14%, transparent), transparent 60%),
       radial-gradient(1000px 700px at 110% 10%, color-mix(in srgb, var(--cor-info) 12%, transparent), transparent 55%),
       linear-gradient(180deg, #0d1626, var(--cor-fundo));
+
+    --dock-fundo: color-mix(in srgb, #0e1626 72%, transparent);
+    --dock-borda: rgba(255, 255, 255, 0.12);
+    --dock-ico: #f1f5f9;
+    --dock-ico-fraco: rgba(241, 245, 249, 0.6);
+    --dock-ativo: rgba(255, 255, 255, 0.16);
+    --dock-ativo-sombra: none;
     color-scheme: dark;
   }
 }
@@ -223,6 +231,13 @@
     radial-gradient(1200px 600px at 18% -10%, color-mix(in srgb, var(--cor-primaria) 14%, transparent), transparent 60%),
     radial-gradient(1000px 700px at 110% 10%, color-mix(in srgb, var(--cor-info) 12%, transparent), transparent 55%),
     linear-gradient(180deg, #0d1626, var(--cor-fundo));
+
+  --dock-fundo: color-mix(in srgb, #0e1626 72%, transparent);
+  --dock-borda: rgba(255, 255, 255, 0.12);
+  --dock-ico: #f1f5f9;
+  --dock-ico-fraco: rgba(241, 245, 249, 0.6);
+  --dock-ativo: rgba(255, 255, 255, 0.16);
+  --dock-ativo-sombra: none;
   color-scheme: dark;
 }
 

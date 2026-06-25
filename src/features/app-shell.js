@@ -54,11 +54,12 @@ class AppShell extends BaseElement {
         -webkit-backdrop-filter: var(--vidro-blur); backdrop-filter: var(--vidro-blur);
         border: 1px solid var(--dock-borda); border-radius: var(--raio-completo);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--sombra-lg);
+        transform-origin: bottom center;
         transition: transform var(--transicao), opacity var(--transicao);
       }
-      /* iOS 26: ao ROLAR PARA BAIXO o dock desliza e some; reaparece ao subir. */
-      :host([com-barra]) .bottombar.oculto {
-        transform: translateX(-50%) translateY(180%); opacity: 0; pointer-events: none;
+      /* Ao ROLAR PARA BAIXO o dock apenas ENCOLHE (não some) e volta ao subir/topo. */
+      :host([com-barra]) .bottombar.reduzido {
+        transform: translateX(-50%) scale(0.78);
       }
       /* Só ícone; o item é o alvo de toque e vira a "pílula" quando ativo. */
       .bb-item { display: flex; align-items: center; justify-content: center;
@@ -67,7 +68,8 @@ class AppShell extends BaseElement {
         transition: background var(--transicao), color var(--transicao); }
       .bb-item:hover { color: var(--dock-ico); }
       .bb-ico { display: flex; align-items: center; justify-content: center; }
-      .bb-item.ativo { background: var(--dock-ativo); color: var(--dock-ico); }
+      .bb-item.ativo { background: var(--dock-ativo); color: var(--dock-ico);
+        box-shadow: var(--dock-ativo-sombra); }
     `;
   }
 
@@ -132,7 +134,7 @@ class AppShell extends BaseElement {
     );
     this._marcarBottom();
 
-    // iOS 26: o dock some ao rolar p/ baixo e reaparece ao subir (ou no topo).
+    // Ao rolar p/ baixo o dock ENCOLHE (não some) e volta ao tamanho ao subir/topo.
     const outlet = this.$("#outlet");
     const bb = this.$("#bottombar");
     this._bbLastY = 0;
@@ -140,8 +142,8 @@ class AppShell extends BaseElement {
       "scroll",
       () => {
         const y = outlet.scrollTop;
-        if (y > this._bbLastY + 6 && y > 48) bb.classList.add("oculto");
-        else if (y < this._bbLastY - 6 || y <= 8) bb.classList.remove("oculto");
+        if (y > this._bbLastY + 6 && y > 48) bb.classList.add("reduzido");
+        else if (y < this._bbLastY - 6 || y <= 8) bb.classList.remove("reduzido");
         this._bbLastY = y;
       },
       { passive: true }
@@ -175,7 +177,7 @@ class AppShell extends BaseElement {
     this.toggleAttribute("com-barra", mostrarSidebar);
     // Ao trocar de rota o dock reaparece (e recalibra o scroll).
     const bb = this.$("#bottombar");
-    if (bb) bb.classList.remove("oculto");
+    if (bb) bb.classList.remove("reduzido");
     this._bbLastY = (this.$("#outlet") || {}).scrollTop || 0;
     this._marcarBottom();
   }
