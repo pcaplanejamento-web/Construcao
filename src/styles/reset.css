@@ -14,6 +14,13 @@ body {
   height: 100%;
 }
 
+/* Cor de fundo explícita no ROOT: o Safari iOS 26 amostra a cor do `html` para
+   tingir a barra translúcida (liquid glass) quando não há elemento fixo na borda;
+   sem isto, em scrollY=0 ele cairia para BRANCO (bug das "barras brancas"). */
+html {
+  background-color: var(--cor-fundo);
+}
+
 body {
   font-family: var(--fonte-base);
   font-size: var(--fs-md);
