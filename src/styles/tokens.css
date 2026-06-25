@@ -118,6 +118,15 @@
     radial-gradient(1000px 700px at 110% 10%, color-mix(in srgb, var(--cor-info) 7%, transparent), transparent 55%),
     linear-gradient(180deg, color-mix(in srgb, var(--cor-fundo) 60%, #ffffff), var(--cor-fundo));
 
+  /* DOCK flutuante (estilo iOS/Instagram) — cápsula ESCURA translúcida, IGUAL nos dois
+     temas (ícones monocromáticos claros; ativo = "pílula" clara atrás). Constantes:
+     não precisam de override no escuro. */
+  --dock-fundo: color-mix(in srgb, #0e1626 72%, transparent);
+  --dock-borda: rgba(255, 255, 255, 0.12);
+  --dock-ico: #f1f5f9;
+  --dock-ico-fraco: rgba(241, 245, 249, 0.6);
+  --dock-ativo: rgba(255, 255, 255, 0.16);
+
   /* Camadas (z-index) */
   --z-nav: 100;
   --z-modal: 1000;

@@ -13,14 +13,15 @@ import "../components/ui-icon.js";
 import "./app-header.js";
 import "./app-sidebar.js";
 
-// Dock flutuante (mobile + desktop): atalhos rápidos. Cada tile com um acento de
-// cor (estilo iOS), mantendo nossos tokens. Obras usa o verde da marca.
+// Dock flutuante (mobile + desktop): atalhos rápidos numa CÁPSULA ESCURA translúcida
+// (estilo iOS/Instagram), só ícones monocromáticos; o item ATIVO ganha uma "pílula"
+// clara atrás. `rotulo` vira o title (tooltip/acessibilidade).
 const BB_ITENS = [
-  { rota: "/contatos", rotulo: "Contatos", icone: "contato", cor: "info" },
-  { rota: "/fornecedores", rotulo: "Empresas", icone: "fornecedor", cor: "roxo" },
-  { rota: "/obras", rotulo: "Obras", icone: "obra", cor: "primaria" },
-  { rota: "/pagamentos", rotulo: "Transf.", icone: "carteira", cor: "aviso" },
-  { rota: "/orcamentos", rotulo: "Orçam.", icone: "recibo", cor: "sucesso" },
+  { rota: "/contatos", rotulo: "Contatos", icone: "contato" },
+  { rota: "/fornecedores", rotulo: "Empresas", icone: "fornecedor" },
+  { rota: "/obras", rotulo: "Obras", icone: "obra" },
+  { rota: "/pagamentos", rotulo: "Transferências", icone: "carteira" },
+  { rota: "/orcamentos", rotulo: "Orçamentos", icone: "recibo" },
 ];
 
 class AppShell extends BaseElement {
@@ -38,47 +39,42 @@ class AppShell extends BaseElement {
       /* Quando há dock flutuante, o conteúdo ganha folga p/ não ficar atrás dele. */
       :host([com-barra]) main { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
 
-      /* DOCK FLUTUANTE (estilo iOS) — atalhos rápidos, FLUTUANDO centralizado acima do
-         conteúdo, em MOBILE e DESKTOP. Só aparece autenticado (some no login e no
-         link público). Pílula de vidro (blur), tiles com acento de cor por item. */
+      /* DOCK FLUTUANTE (estilo iOS/Instagram) — CÁPSULA ESCURA translúcida, FLUTUANDO
+         centralizada acima do conteúdo, em MOBILE e DESKTOP. Só aparece autenticado
+         (some no login e no link público). Vidro escuro (blur) + ícones monocromáticos;
+         o item ATIVO ganha uma "pílula" clara atrás. */
       .bottombar { display: none; }
       :host([com-barra]) .bottombar {
-        display: flex; align-items: stretch; gap: var(--esp-1);
+        display: flex; align-items: center; gap: var(--esp-1);
         position: fixed; left: 50%; transform: translateX(-50%);
         bottom: calc(var(--esp-4) + env(safe-area-inset-bottom));
         z-index: var(--z-nav); max-width: calc(100vw - var(--esp-5));
-        padding: var(--esp-2) var(--esp-3);
-        background: var(--vidro-fundo-forte);
+        padding: var(--esp-2);
+        background: var(--dock-fundo);
         -webkit-backdrop-filter: var(--vidro-blur); backdrop-filter: var(--vidro-blur);
-        border: 1px solid var(--vidro-borda); border-radius: 26px;
-        box-shadow: var(--vidro-realce), var(--sombra-lg);
+        border: 1px solid var(--dock-borda); border-radius: var(--raio-completo);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--sombra-lg);
         transition: transform var(--transicao), opacity var(--transicao);
       }
       /* iOS 26: ao ROLAR PARA BAIXO o dock desliza e some; reaparece ao subir. */
       :host([com-barra]) .bottombar.oculto {
         transform: translateX(-50%) translateY(180%); opacity: 0; pointer-events: none;
       }
-      .bb-item { display: flex; flex-direction: column; align-items: center; gap: 4px;
-        padding: var(--esp-1) var(--esp-2); text-decoration: none; color: var(--cor-texto-suave);
-        border-radius: var(--raio-md); transition: transform var(--transicao); }
-      .bb-item:hover { transform: translateY(-2px); }
-      .bb-ico { width: 44px; height: 44px; border-radius: var(--raio-md);
-        display: flex; align-items: center; justify-content: center;
-        background: var(--bi-suave); color: var(--bi);
-        transition: box-shadow var(--transicao); }
-      .bb-lbl { font-size: 11px; font-weight: var(--peso-medio); white-space: nowrap;
-        line-height: 1; }
-      .bb-item.ativo .bb-ico { box-shadow: 0 0 0 2px var(--bi); }
-      .bb-item.ativo .bb-lbl { color: var(--bi); font-weight: var(--peso-semi); }
+      /* Só ícone; o item é o alvo de toque e vira a "pílula" quando ativo. */
+      .bb-item { display: flex; align-items: center; justify-content: center;
+        width: 56px; height: 44px; flex: none; border-radius: var(--raio-completo);
+        text-decoration: none; color: var(--dock-ico-fraco);
+        transition: background var(--transicao), color var(--transicao); }
+      .bb-item:hover { color: var(--dock-ico); }
+      .bb-ico { display: flex; align-items: center; justify-content: center; }
+      .bb-item.ativo { background: var(--dock-ativo); color: var(--dock-ico); }
     `;
   }
 
   template() {
     const bbLink = (it) =>
-      `<a class="bb-item" href="${it.rota}" data-rota="${it.rota}" title="${it.rotulo}"
-          style="--bi: var(--cor-${it.cor}); --bi-suave: var(--cor-${it.cor}-suave)">
-        <span class="bb-ico"><ui-icon name="${it.icone}" size="22"></ui-icon></span>
-        <span class="bb-lbl">${it.rotulo}</span>
+      `<a class="bb-item" href="${it.rota}" data-rota="${it.rota}" title="${it.rotulo}" aria-label="${it.rotulo}">
+        <span class="bb-ico"><ui-icon name="${it.icone}" size="24"></ui-icon></span>
       </a>`;
     return `
       <app-header id="hdr" hidden></app-header>
