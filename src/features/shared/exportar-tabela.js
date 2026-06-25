@@ -254,16 +254,19 @@ function _winAnsiBytes(str) {
 }
 
 export function gerarPDF({ titulo, colunas, linhas }) {
-  const W = 842;
+  const W = 842; // A4 paisagem
   const H = 595;
   const M = 36;
   const usable = W - 2 * M;
   const ncol = Math.max(1, colunas.length);
-  const fs = 8; // corpo
-  const fsH = 9; // cabeçalho
-  const charW = fs * 0.5; // largura média aprox. (Helvetica)
+  const fs = 8.5; // corpo
+  const fsH = 8.5; // cabeçalho
   const lh = 13; // altura da linha
-  // Larguras proporcionais ao maior conteúdo de cada coluna (limitado).
+  const pad = 3; // recuo interno de cada coluna
+  // COURIER é monoespaçada: cada glifo = 600/1000 em → largura EXATA por caractere.
+  // Assim a truncagem por nº de caracteres NUNCA estoura a célula (nada fora dela).
+  const larguraChar = (size) => size * 0.6;
+  // Larguras proporcionais ao maior conteúdo de cada coluna (limitado p/ não dominar).
   const compr = colunas.map((t, i) => {
     let max = String(t || "").length;
     linhas.forEach((r) => (max = Math.max(max, String(r[i] == null ? "" : r[i]).length)));
@@ -277,13 +280,20 @@ export function gerarPDF({ titulo, colunas, linhas }) {
     colX.push(acc);
     acc += colW[i];
   }
-  const maxCh = colW.map((w) => Math.max(2, Math.floor((w - 4) / charW)));
-  const corta = (v, i) => {
+  // Máx. de caracteres por coluna (e por tamanho de fonte) que CABEM na largura útil.
+  const maxCh = (i, size) => Math.max(1, Math.floor((colW[i] - 2 * pad) / larguraChar(size)));
+  const corta = (v, i, size) => {
     const s = String(v == null ? "" : v);
-    return s.length > maxCh[i] ? s.slice(0, maxCh[i]) : s;
+    const m = maxCh(i, size);
+    return s.length > m ? s.slice(0, m) : s;
+  };
+  const cortaTitulo = (s) => {
+    const m = Math.max(1, Math.floor(usable / larguraChar(13)));
+    s = String(s || "");
+    return s.length > m ? s.slice(0, m) : s;
   };
 
-  // Monta as páginas (cada uma é um content stream).
+  // Monta as páginas (cada uma é um content stream). F1=Courier (corpo), F2=Courier-Bold.
   const paginas = [];
   let conteudo = "";
   let y = 0;
@@ -292,12 +302,11 @@ export function gerarPDF({ titulo, colunas, linhas }) {
     conteudo = "";
     y = H - M;
     if (primeira && titulo) {
-      conteudo += `BT /F1 14 Tf ${M} ${y - 12} Td (${_pdfEscape(titulo)}) Tj ET\n`;
+      conteudo += `BT /F2 13 Tf ${M} ${(y - 12).toFixed(1)} Td (${_pdfEscape(cortaTitulo(titulo))}) Tj ET\n`;
       y -= 28;
     }
-    // Cabeçalho da tabela.
     colunas.forEach((t, i) => {
-      conteudo += `BT /F1 ${fsH} Tf ${colX[i].toFixed(1)} ${(y - 10).toFixed(1)} Td (${_pdfEscape(corta(t, i))}) Tj ET\n`;
+      conteudo += `BT /F2 ${fsH} Tf ${(colX[i] + pad).toFixed(1)} ${(y - 10).toFixed(1)} Td (${_pdfEscape(corta(t, i, fsH))}) Tj ET\n`;
     });
     y -= 14;
     conteudo += `${M} ${y.toFixed(1)} m ${(W - M).toFixed(1)} ${y.toFixed(1)} l S\n`; // linha sob o cabeçalho
@@ -307,7 +316,7 @@ export function gerarPDF({ titulo, colunas, linhas }) {
   linhas.forEach((r) => {
     if (y < M + lh) novaPagina(false);
     for (let i = 0; i < ncol; i++) {
-      conteudo += `BT /F1 ${fs} Tf ${colX[i].toFixed(1)} ${(y - 10).toFixed(1)} Td (${_pdfEscape(corta(r[i], i))}) Tj ET\n`;
+      conteudo += `BT /F1 ${fs} Tf ${(colX[i] + pad).toFixed(1)} ${(y - 10).toFixed(1)} Td (${_pdfEscape(corta(r[i], i, fs))}) Tj ET\n`;
     }
     y -= lh;
   });
@@ -317,17 +326,17 @@ export function gerarPDF({ titulo, colunas, linhas }) {
   // Monta os objetos do PDF.
   const nPag = paginas.length;
   const objs = []; // strings dos objetos (1-based, índice 0 vazio)
-  const fonteNum = 3;
-  const pageNum = (p) => 4 + 2 * p;
-  const contNum = (p) => 5 + 2 * p;
+  const pageNum = (p) => 5 + 2 * p;
+  const contNum = (p) => 6 + 2 * p;
   objs[1] = "<< /Type /Catalog /Pages 2 0 R >>";
   const kids = paginas.map((_, p) => `${pageNum(p)} 0 R`).join(" ");
   objs[2] = `<< /Type /Pages /Kids [${kids}] /Count ${nPag} >>`;
-  objs[fonteNum] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+  objs[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>";
+  objs[4] = "<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold /Encoding /WinAnsiEncoding >>";
   paginas.forEach((c, p) => {
     objs[pageNum(p)] =
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] ` +
-      `/Resources << /Font << /F1 ${fonteNum} 0 R >> >> /Contents ${contNum(p)} 0 R >>`;
+      `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contNum(p)} 0 R >>`;
     objs[contNum(p)] = { stream: c };
   });
 

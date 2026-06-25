@@ -26,7 +26,9 @@ export function corAvatar(nome) {
 
 /** Só o disco do avatar (iniciais). `tam` em px (padrão 34). */
 export function avatarHtml(nome, tam = 34) {
-  return `<span style="width:${tam}px;height:${tam}px;flex:none;border-radius:50%;background:${corAvatar(
+  // aria-hidden: as iniciais são DECORATIVAS (o nome vem ao lado). Também faz a
+  // exportação de tabela ignorá-las (senão "AB" vazaria antes do nome no arquivo).
+  return `<span aria-hidden="true" style="width:${tam}px;height:${tam}px;flex:none;border-radius:50%;background:${corAvatar(
     nome
   )};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:var(--fonte-titulo);font-weight:700;font-size:12px">${iniciais(nome)}</span>`;
 }

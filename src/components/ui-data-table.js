@@ -377,6 +377,33 @@ class UiDataTable extends BaseElement {
     return this.columns.filter((c) => String(c.titulo || "").trim());
   }
 
+  /**
+   * Texto EXPORTÁVEL de uma célula. Diferente do `_texto` interno (regex, usado em
+   * filtro/ordem por performance), aqui resolvemos o texto REAL via DOM: badges
+   * (`category-badge`/`ui-badge`) guardam o rótulo no atributo `nome`/`text`, e
+   * elementos decorativos (`aria-hidden`, ex.: iniciais do avatar) são ignorados.
+   */
+  _textoExport(c, linha) {
+    const raw = c.formato ? c.formato(linha[c.chave], linha) : linha[c.chave];
+    const s = String(raw == null ? "" : raw);
+    if (s.indexOf("<") < 0) return s.replace(/\s+/g, " ").trim();
+    const tmp = document.createElement("div");
+    tmp.innerHTML = s;
+    tmp.querySelectorAll('[aria-hidden="true"]').forEach((el) => el.remove());
+    tmp.querySelectorAll("*").forEach((el) => {
+      if (!el.textContent.trim()) {
+        const rotulo =
+          el.getAttribute("nome") ||
+          el.getAttribute("text") ||
+          el.getAttribute("title") ||
+          el.getAttribute("aria-label") ||
+          el.getAttribute("alt");
+        if (rotulo) el.textContent = rotulo;
+      }
+    });
+    return (tmp.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
   /** Monta { titulo, colunas, linhas } da MESA atual (linhas VISÍVEIS = filtro/busca/ordem). */
   _dadosExport() {
     const cols = this._colsExport();
@@ -386,7 +413,7 @@ class UiDataTable extends BaseElement {
     return {
       titulo,
       colunas: cols.map((c) => c.titulo),
-      linhas: this._visiveis().map(({ linha }) => cols.map((c) => this._texto(c, linha))),
+      linhas: this._visiveis().map(({ linha }) => cols.map((c) => this._textoExport(c, linha))),
     };
   }
 

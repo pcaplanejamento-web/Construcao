@@ -61,7 +61,7 @@ test("PDF — estrutura 1.4 mínima válida + título e dados", () => {
   assert.ok(s.startsWith("%PDF-1."), "cabeçalho %PDF");
   assert.ok(s.includes("/Type /Catalog"), "catálogo");
   assert.ok(s.includes("/Type /Pages"), "páginas");
-  assert.ok(s.includes("/BaseFont /Helvetica"), "fonte");
+  assert.ok(s.includes("/BaseFont /Courier"), "fonte monoespaçada (largura exata)");
   assert.ok(s.includes("Mesa com despesas da obra"), "título desenhado");
   assert.ok(s.includes("Cimento"), "dado desenhado");
   assert.ok(s.trimEnd().endsWith("%%EOF"), "termina com %%EOF");
