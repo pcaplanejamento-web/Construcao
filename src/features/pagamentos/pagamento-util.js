@@ -55,6 +55,52 @@ function nomeDespesa(d) {
   return (d.item_id && (dataStore.item(d.item_id) || {}).nome) || d.item || "Despesa";
 }
 
+/** Lê um arquivo → { base64, nome, mime } (sem o prefixo data:). */
+function _lerArquivoBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      resolve({
+        base64: String(reader.result || "").split(",")[1] || "",
+        nome: file.name,
+        mime: file.type || "application/octet-stream",
+      });
+    reader.onerror = () => reject(new Error("Falha ao ler o arquivo."));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Pede um arquivo (file picker), valida ≤10MB e anexa/substitui o comprovante da
+ * transferência; em sucesso, reabre o banner com a transferência atualizada.
+ */
+function _escolherEAnexarComprovante(t, modal) {
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = "application/pdf,image/*";
+  inp.style.display = "none";
+  inp.addEventListener("change", async () => {
+    const file = inp.files && inp.files[0];
+    inp.remove();
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      notificarErro(new Error("Arquivo muito grande (máximo 10MB)."));
+      return;
+    }
+    try {
+      const cmp = await _lerArquivoBase64(file);
+      const atualizada = await dataStore.anexarComprovanteTransferencia(t.id, cmp);
+      toastSucesso("Comprovante anexado.");
+      modal.remove();
+      abrirTransferencia(atualizada);
+    } catch (e) {
+      notificarErro(e);
+    }
+  });
+  document.body.appendChild(inp);
+  inp.click();
+}
+
 /* ------------------------------- Card prévia ------------------------------ */
 
 /**
@@ -93,8 +139,9 @@ export function previaTransferenciaHtml(t) {
   const o = t || {};
   const ids = Array.isArray(o.pagamento_ids) ? o.pagamento_ids : [];
   const empresa = nomeFornecedor(o.fornecedor_id);
+  const anexo = o.comprovante_url ? `<span class="anexo">📎 comprovante</span>` : "";
   return `
-    <span class="item">Transferência · ${nomeTipo(o.tipo)}</span>
+    <span class="item">Transferência · ${nomeTipo(o.tipo)}${anexo}</span>
     <span class="val">${moeda(Number(o.valor_total) || 0)}</span>
     <small>${fmtData(o.data)} · Pagou: ${nomeChavePart(o.pagador_chave)} · Recebe: ${nomeRecebedor(o)}</small>
     <small>${ids.length} pagamento(s)${empresa ? " · Empresa: " + empresa : ""}</small>`;
@@ -227,7 +274,7 @@ export function abrirTransferencia(transferencia) {
   corpo.innerHTML = `
     <style>
       .tf-campos { display:flex; flex-direction:column; gap: var(--esp-4); }
-      .tf-val { font-size: var(--fs-2xl); font-weight: var(--peso-forte); color: var(--cor-texto); }
+      .tf-val { font-size: var(--fs-2xl); font-weight: var(--peso-forte); color: var(--cor-info); }
       .tf-meta { display:flex; flex-direction:column; gap:2px; color: var(--cor-texto-suave); font-size: var(--fs-sm); }
       .tf-sec label { font-size: var(--fs-sm); font-weight: var(--peso-medio); color: var(--cor-texto-suave); display:block; margin-bottom: var(--esp-2); }
       .tf-pag { background: var(--cor-sucesso-suave, rgba(22,163,74,.10)); border: 1px solid var(--cor-sucesso);
@@ -235,6 +282,16 @@ export function abrirTransferencia(transferencia) {
       .tf-pag .top { display:flex; justify-content:space-between; }
       .tf-pag .item { font-weight: var(--peso-semi); }
       .tf-pag small { color: var(--cor-texto-suave); }
+      /* Comprovante */
+      .tf-cmp { display:flex; align-items:center; gap: var(--esp-2); flex-wrap: wrap; }
+      .tf-cmp a.chip { display:inline-flex; align-items:center; gap:6px; min-height:44px; text-decoration:none;
+        background: var(--cor-info-suave); color: var(--cor-info); border: 1px solid color-mix(in srgb, var(--cor-info) 35%, var(--cor-borda));
+        border-radius: var(--raio-completo); padding: 6px 14px; font-weight: var(--peso-semi); font-size: var(--fs-sm); }
+      .tf-cmp a.chip:hover { background: color-mix(in srgb, var(--cor-info) 18%, var(--cor-superficie)); }
+      .tf-cmp button { min-height:44px; border:1px solid var(--cor-borda-forte); background: var(--cor-superficie);
+        color: var(--cor-texto-suave); border-radius: var(--raio-sm); padding: 6px 12px; font-size: var(--fs-xs); cursor:pointer; }
+      .tf-cmp button.rem { color: var(--cor-erro); border-color: var(--cor-erro-suave); }
+      .tf-cmp button:hover { background: var(--cor-superficie-2); }
       .muted { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
     </style>
     <div class="tf-campos">
@@ -247,6 +304,10 @@ export function abrirTransferencia(transferencia) {
           ${obra ? `<span>Obra: ${obra.nome}</span>` : ""}
           ${t.observacao ? `<span>Obs.: ${t.observacao}</span>` : ""}
         </div>
+      </div>
+      <div class="tf-sec">
+        <label>Comprovante</label>
+        <div class="tf-cmp" id="tfCmp"></div>
       </div>
       <div class="tf-sec">
         <label>Pagamentos desta transferência (${pagamentos.length})</label>
@@ -274,6 +335,39 @@ export function abrirTransferencia(transferencia) {
       });
       cont.appendChild(card);
     });
+  }
+
+  // Comprovante (item 3/7): ver, anexar, substituir, remover.
+  const cmp = corpo.querySelector("#tfCmp");
+  if (cmp) {
+    if (t.comprovante_url) {
+      const nome = t.comprovante_nome ? " (" + t.comprovante_nome + ")" : "";
+      cmp.innerHTML =
+        `<a class="chip" href="${t.comprovante_url}" target="_blank" rel="noopener">📎 Visualizar comprovante${nome}</a>` +
+        `<button type="button" id="cmpSubst">Substituir</button>` +
+        `<button type="button" class="rem" id="cmpRem">Remover</button>`;
+      cmp.querySelector("#cmpSubst").addEventListener("click", () => _escolherEAnexarComprovante(t, modal));
+      cmp.querySelector("#cmpRem").addEventListener("click", async () => {
+        const ok = await confirmar({
+          titulo: "Remover comprovante",
+          mensagem: "Remover o comprovante desta transferência? O arquivo será excluído do Drive.",
+          perigo: true,
+          rotuloOk: "Remover",
+        });
+        if (!ok) return;
+        try {
+          const at = await dataStore.removerComprovanteTransferencia(t.id);
+          toastSucesso("Comprovante removido.");
+          modal.remove();
+          abrirTransferencia(at);
+        } catch (e) {
+          notificarErro(e);
+        }
+      });
+    } else {
+      cmp.innerHTML = `<button type="button" id="cmpAdd">Anexar comprovante</button>`;
+      cmp.querySelector("#cmpAdd").addEventListener("click", () => _escolherEAnexarComprovante(t, modal));
+    }
   }
 
   const rod = document.createElement("div");
@@ -342,16 +436,27 @@ const ESTILO_RESUMOS = `<style>
     padding: var(--esp-3) var(--esp-4); display: flex; flex-direction: column; gap: 4px; cursor: pointer;
     transition: background var(--transicao), box-shadow var(--transicao), transform var(--transicao); }
   .grade-resumos .card-resumo:hover { transform: translateY(-4px); box-shadow: var(--sombra-md); }
-  .grade-resumos .card-resumo .item { font-weight: var(--peso-semi); }
+  .grade-resumos .card-resumo .item { font-weight: var(--peso-semi); display:flex; align-items:center; gap: var(--esp-2); flex-wrap: wrap; }
   .grade-resumos .card-resumo .val { font-size: var(--fs-lg); font-weight: var(--peso-forte); }
   .grade-resumos .card-resumo small { color: var(--cor-texto-suave); }
+  /* chip de anexo (comprovante) */
+  .grade-resumos .card-resumo .anexo { font-size: var(--fs-xs); font-weight: var(--peso-semi);
+    color: var(--cor-info); background: var(--cor-info-suave); border-radius: var(--raio-completo);
+    padding: 1px 8px; }
+  /* botão "Visualizar" do card (não dispara junto com o clique do card — stopPropagation) */
+  .grade-resumos .card-resumo .ver { align-self: flex-start; margin-top: var(--esp-1); min-height: 32px;
+    border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie); color: var(--cor-texto-suave);
+    border-radius: var(--raio-sm); padding: 4px 12px; font-size: var(--fs-xs); font-weight: var(--peso-semi); cursor: pointer; }
+  .grade-resumos .card-resumo .ver:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
   .grade-resumos .card-resumo.pag { background: var(--cor-sucesso-suave, rgba(22,163,74,.10)); border: 1px solid var(--cor-sucesso); }
   .grade-resumos .card-resumo.pag:hover { background: rgba(22,163,74,.16); }
   .grade-resumos .card-resumo.pag .val { color: var(--cor-sucesso); }
-  .grade-resumos .card-resumo.transf { background: color-mix(in srgb, var(--cor-neutro) 30%, var(--cor-superficie)); border: 1px solid var(--cor-neutro); }
-  .grade-resumos .card-resumo.transf:hover { background: color-mix(in srgb, var(--cor-neutro) 40%, var(--cor-superficie)); }
-  .grade-resumos .card-resumo.transf .val { color: var(--cor-texto); }
+  /* TRANSFERÊNCIA: tom INFO (azul) — distingue de pagamento (verde) em claro/escuro. */
+  .grade-resumos .card-resumo.transf { background: color-mix(in srgb, var(--cor-info) 8%, var(--cor-superficie)); border: 1px solid color-mix(in srgb, var(--cor-info) 35%, var(--cor-borda)); }
+  .grade-resumos .card-resumo.transf:hover { background: color-mix(in srgb, var(--cor-info) 14%, var(--cor-superficie)); box-shadow: var(--sombra-md); }
+  .grade-resumos .card-resumo.transf .val { color: var(--cor-info); }
   .grade-resumos .vazio-resumos { color: var(--cor-texto-fraco); padding: var(--esp-6); text-align: center; }
+  @media (max-width: 600px) { .grade-resumos .card-resumo .ver { min-height: 44px; align-self: stretch; text-align:center; } }
 </style>`;
 
 /**
@@ -372,6 +477,16 @@ export function montarGradeResumos(el, itens, classe, previaHtml, abrir, vazio) 
     card.className = "card-resumo " + classe;
     card.title = "Ver detalhes";
     card.innerHTML = previaHtml(it);
+    // Botão explícito "Visualizar" (além do clique no card) — descoberta + alvo de toque.
+    const ver = document.createElement("button");
+    ver.type = "button";
+    ver.className = "ver";
+    ver.textContent = "Visualizar";
+    ver.addEventListener("click", (e) => {
+      e.stopPropagation();
+      abrir(it);
+    });
+    card.appendChild(ver);
     card.addEventListener("click", () => abrir(it));
     grade.appendChild(card);
   });

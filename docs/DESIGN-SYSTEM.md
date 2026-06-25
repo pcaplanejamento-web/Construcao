@@ -131,6 +131,7 @@ mais escura que o card** (claro: #f3f5f8 < #f8fafc < #fff; escuro: #0b1220 < #0e
 **`--sombra-mesa`** (elevação moderna que a separa do fundo) + borda `--cor-borda-forte`.
 **A mesa NÃO levanta** no hover. Formulários/KPIs usam `ui-card` sem `mesa`.
 **Card** (clicável) = obra/equipe/orçamento, pagamento/transferência/oferta (`.resumo`) e
+**Cards-resumo** (`pagamento-util`): **pagamento = verde** (`--cor-sucesso`), **transferência = azul/info** (`color-mix` de `--cor-info` sobre a superfície; era cinza) — distinção clara em claro/escuro; cada card tem botão **Visualizar** e um **chip "📎 comprovante"** quando há anexo (`--cor-info-suave`/`--raio-completo`).
 **cada linha** das tabelas. Espec única de elevação: base `--sombra-md`, hover
 `box-shadow: var(--sombra-lg); transform: translateY(-4px)` (transição escopada). **KPIs
 coloridos não são clicáveis → não levantam.**

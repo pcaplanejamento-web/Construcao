@@ -249,6 +249,14 @@ class PublicoView extends BaseElement {
       { chave: "pagador_chave", titulo: "Pagou", formato: (v) => this._nomeChave(v) },
       { chave: "_recebedor", titulo: "Recebedor", formato: (_, l) => this._nomeRecebedor(l) },
       { chave: "pagamento_ids", titulo: "Pagamentos", alinhar: "dir", formato: (v) => String((v || []).length) },
+      {
+        chave: "comprovante_url",
+        titulo: "Comprovante",
+        formato: (v) =>
+          v
+            ? `<a href="${v}" target="_blank" rel="noopener">Ver comprovante</a>`
+            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
+      },
     ];
     this.$("#tTransf").rows = d.transferencias || [];
   }

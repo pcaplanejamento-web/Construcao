@@ -149,7 +149,7 @@ class ObraDetailView extends BaseElement {
           <ui-tabs id="abasPag">
             <div slot="transferencias">
               <ui-card mesa title="Mesa com transferências da obra">
-                <ui-button slot="acoes" id="addPag">+ Registrar transferência</ui-button>
+                <ui-button slot="acoes" id="addPag">Enviar transferência</ui-button>
                 <div id="listaTransf"></div>
               </ui-card>
             </div>

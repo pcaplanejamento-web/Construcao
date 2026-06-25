@@ -71,6 +71,16 @@ class PagamentoForm extends BaseElement {
       .total { font-family: var(--fonte-titulo); font-weight: var(--peso-forte); text-align:right; }
       input[type="checkbox"] { width:16px; height:16px; accent-color: var(--cor-primaria); }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
+      .arquivo { display:block; width:100%; min-height:44px; font: inherit; color: var(--cor-texto);
+        background: var(--cor-superficie); border: 1px solid var(--cor-borda-forte);
+        border-radius: var(--raio-sm); padding: var(--esp-2) var(--esp-3); cursor: pointer; }
+      .arquivo::file-selector-button { font: inherit; margin-right: var(--esp-3); cursor: pointer;
+        border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie-2);
+        color: var(--cor-texto-suave); border-radius: var(--raio-sm); padding: 6px 12px; }
+      .cmp-nome { margin-top: var(--esp-1); font-size: var(--fs-xs); color: var(--cor-info);
+        display: flex; align-items: center; gap: var(--esp-2); }
+      .cmp-nome button { border: none; background: none; color: var(--cor-erro); cursor: pointer;
+        font-size: var(--fs-sm); padding: 0 4px; }
     `;
   }
 
@@ -92,7 +102,7 @@ class PagamentoForm extends BaseElement {
       : `<div class="vazio">Nenhuma despesa com saldo a pagar nesta obra.</div>`;
 
     return `
-      <ui-modal open title="Registrar transferência">
+      <ui-modal open title="Enviar transferência">
         <div class="campos">
           ${this._aviso ? `<ui-alert tipo="aviso" message="${String(this._aviso).replace(/"/g, "&quot;")}"></ui-alert>` : ""}
           <ui-alert id="erroRec" tipo="erro" hidden></ui-alert>
@@ -109,6 +119,11 @@ class PagamentoForm extends BaseElement {
           <div id="distBox" hidden>
             <label class="tx">Distribuir entre integrantes (R$)</label>
             <split-editor id="dist"></split-editor>
+          </div>
+          <div>
+            <label class="tx">Comprovante (PDF ou imagem, até 10MB) — opcional</label>
+            <input type="file" id="comprovante" class="arquivo" accept="application/pdf,image/*" />
+            <div class="cmp-nome" id="cmpNome" hidden></div>
           </div>
         </div>
         <div slot="rodape">
@@ -155,10 +170,45 @@ class PagamentoForm extends BaseElement {
     });
     this.$$(".aloc").forEach((inp) => inp.addEventListener("input", () => this._recalcular()));
 
+    const inpFile = this.$("#comprovante");
+    if (inpFile) inpFile.addEventListener("change", () => this._aoEscolherArquivo(inpFile));
+
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
     this._recalcular(); // total inicial (despesas pré-marcadas)
+  }
+
+  /** Lê o comprovante escolhido (cap 10MB) → base64 em this._comprovante; mostra o nome. */
+  _aoEscolherArquivo(inp) {
+    const box = this.$("#cmpNome");
+    const limpar = () => {
+      inp.value = "";
+      this._comprovante = null;
+      if (box) { box.hidden = true; box.innerHTML = ""; }
+    };
+    const file = inp.files && inp.files[0];
+    if (!file) return limpar();
+    if (file.size > 10 * 1024 * 1024) {
+      notificarErro(new Error("Arquivo muito grande (máximo 10MB)."));
+      return limpar();
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = String(reader.result || "").split(",")[1] || "";
+      this._comprovante = { base64, nome: file.name, mime: file.type || "application/octet-stream" };
+      if (box) {
+        box.hidden = false;
+        box.innerHTML = `<span>📎 ${file.name}</span><button type="button" id="cmpDel" title="Remover">✕</button>`;
+        const del = box.querySelector("#cmpDel");
+        if (del) del.addEventListener("click", limpar);
+      }
+    };
+    reader.onerror = () => {
+      notificarErro(new Error("Falha ao ler o arquivo."));
+      limpar();
+    };
+    reader.readAsDataURL(file);
   }
 
   _alocInput(id) {
@@ -278,7 +328,9 @@ class PagamentoForm extends BaseElement {
     try {
       // 1 ÚNICA transferência agrupando N pagamentos (1 por despesa). Recebedor/empresa
       // derivados de cada despesa no servidor; pagador/tipo/data são comuns.
-      await dataStore.lancarTransferencia({ obra_id: obraId, alocacoes, pagador, tipo, data: dataPg, distribuicao });
+      const dados = { obra_id: obraId, alocacoes, pagador, tipo, data: dataPg, distribuicao };
+      if (this._comprovante) dados.comprovante = this._comprovante; // item 3: anexa comprovante
+      await dataStore.lancarTransferencia(dados);
       toastSucesso(`Transferência registrada (${alocacoes.length} pagamento(s)).`);
       this.emitir("salvo", {});
       this.emitir("fechar");

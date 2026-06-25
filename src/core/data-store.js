@@ -685,6 +685,31 @@ async function removerTransferencia(id) {
   return r;
 }
 
+/** Anexa/substitui o comprovante de uma transferência (Drive); atualiza-a no store. */
+async function anexarComprovanteTransferencia(id, comprovante) {
+  const r = await api.call("transferencias.anexarComprovante", { id, comprovante });
+  _substituirTransferencia(r.transferencia);
+  return r.transferencia;
+}
+
+/** Remove o comprovante de uma transferência (e o arquivo no Drive). */
+async function removerComprovanteTransferencia(id) {
+  const r = await api.call("transferencias.removerComprovante", { id });
+  _substituirTransferencia(r.transferencia);
+  return r.transferencia;
+}
+
+/** Substitui a transferência (por id) no store + persiste + emite. */
+function _substituirTransferencia(t) {
+  if (!t) return;
+  const s = store.get();
+  store.set({
+    transferencias: (s.transferencias || []).map((x) => (String(x.id) === String(t.id) ? t : x)),
+  });
+  persistir();
+  bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada" });
+}
+
 /** Exclui uma transferência — entidade (cascata no backend) OU sintetizada 1:1 (= excluir o pagamento). */
 async function excluirTransferencia(t) {
   if (t && t._sintetico) {
@@ -1286,6 +1311,7 @@ export const dataStore = {
   adicionarDespesa, atualizarDespesa, removerDespesa, lancarPagamento, removerPagamento,
   lancarPagamentoMulti, removerPagamentoV2, excluirPagamento, lancarRepasse, removerRepasse,
   lancarTransferencia, removerTransferencia, excluirTransferencia,
+  anexarComprovanteTransferencia, removerComprovanteTransferencia,
   consumirEstoque, devolverEstoque, adicionarEstoqueManual, transferirEstoque, removerMovimentoEstoque,
   criarCategoria, atualizarCategoria, removerCategoria,
   criarFornecedor, atualizarFornecedor, removerFornecedor,

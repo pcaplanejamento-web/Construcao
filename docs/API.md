@@ -205,6 +205,16 @@ para dono **e** colaboradores.
 > A antiga validação "Pedreiro → superior" foi **removida** de `contatos.*`;
 > o Pedreiro agora é organizado por Equipes. Snapshot inclui `equipes`.
 
+### Transferências (comprovante no Drive)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `transferencias.lancar` | `{ obra_id, alocacoes, pagador, tipo, data, distribuicao?, comprovante? }` | `{ transferencia, pagamentos, despesas, resumo }` — `comprovante` (opcional) = `{ base64, nome, mime }` (PDF/imagem ≤10MB); salvo no Drive e vinculado. Drive falhar **não** derruba a transferência |
+| `transferencias.remover` | `{ id }` | `{ id, despesas, resumo }` — cascata; **exclui o comprovante** do Drive |
+| `transferencias.anexarComprovante` | `{ id, comprovante:{base64,nome,mime} }` | `{ transferencia }` — anexa ou **substitui** (trasheia o antigo) |
+| `transferencias.removerComprovante` | `{ id }` | `{ transferencia }` — remove o anexo (e o arquivo no Drive) |
+
+> Arquivos vão para o Drive do dono (`drive.file`): pasta-raiz do app (`DRIVE_ROOT_FOLDER_ID` em Script Properties) + subpasta por usuário (`Configuracoes.drive_folder_id`). O `comprovante_url` (compartilhado por link) é exposto também em `publico.obra`. **Setup:** rodar `autorizarDrive()` no editor após adicionar o escopo.
+
 ### Estoque (livro-razão de movimentos por obra)
 | Action | `data` | Retorno |
 |--------|--------|---------|
