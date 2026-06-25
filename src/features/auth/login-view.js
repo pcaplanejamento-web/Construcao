@@ -53,7 +53,7 @@ class LoginView extends BaseElement {
 
       .card { width: 230px; flex: none; border-radius: 16px; padding: 14px 16px;
         background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.10);
-        backdrop-filter: blur(6px); box-shadow: 0 12px 30px rgba(0,0,0,.25); }
+        -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: 0 12px 30px rgba(0,0,0,.25); }
       .card .lin { display: flex; align-items: center; justify-content: space-between; }
       .card .rot { font-size: 12px; color: #a7c4b5; }
       .card .delta { font-size: 12px; font-weight: 700; color: #34d399; }

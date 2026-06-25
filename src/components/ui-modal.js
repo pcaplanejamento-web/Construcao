@@ -27,6 +27,7 @@ class UiModal extends BaseElement {
       :host([open]) { display: block; }
       .backdrop {
         position: fixed; inset: 0; background: var(--cor-overlay);
+        -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
         display: flex; align-items: center; justify-content: center;
         z-index: var(--z-modal);
         /* área segura iOS: o diálogo nunca encosta no notch/home indicator. */
@@ -34,13 +35,16 @@ class UiModal extends BaseElement {
                  max(var(--esp-4), env(safe-area-inset-bottom)) max(var(--esp-4), env(safe-area-inset-left));
       }
       .dialogo {
-        background: var(--cor-superficie); border-radius: var(--raio-lg);
-        box-shadow: var(--sombra-lg); width: 100%; max-width: 520px;
+        background: var(--vidro-fundo-forte);
+        -webkit-backdrop-filter: var(--vidro-blur); backdrop-filter: var(--vidro-blur);
+        border: 1px solid var(--vidro-borda); border-radius: var(--raio-lg);
+        box-shadow: var(--vidro-realce), var(--sombra-lg); width: 100%; max-width: 520px;
         max-height: 90dvh; display: flex; flex-direction: column;
         overflow: hidden; /* nada vaza na horizontal */
         animation: surgir .14s ease;
       }
       @keyframes surgir { from { transform: translateY(8px); opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .dialogo { animation: none; } }
       header {
         display: flex; align-items: center; justify-content: space-between;
         padding: var(--esp-4) var(--esp-5); border-bottom: 1px solid var(--cor-borda);

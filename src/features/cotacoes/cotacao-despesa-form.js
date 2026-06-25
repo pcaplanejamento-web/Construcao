@@ -25,11 +25,8 @@ import "../../components/ui-tabs.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
-import "../despesas/category-badge.js";
 import "../despesas/split-editor.js";
 
-/** Cor do badge por classificação (espelha itens-view / backend). */
-const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
 const CLASSIFICACOES = ["Material", "Serviço"];
 
 class CotacaoDespesaForm extends BaseElement {

@@ -48,9 +48,10 @@ class AppShell extends BaseElement {
         bottom: calc(var(--esp-4) + env(safe-area-inset-bottom));
         z-index: var(--z-nav); max-width: calc(100vw - var(--esp-5));
         padding: var(--esp-2) var(--esp-3);
-        background: color-mix(in srgb, var(--cor-superficie) 86%, transparent);
-        -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5);
-        border: 1px solid var(--cor-borda); border-radius: 26px; box-shadow: var(--sombra-lg);
+        background: var(--vidro-fundo-forte);
+        -webkit-backdrop-filter: var(--vidro-blur); backdrop-filter: var(--vidro-blur);
+        border: 1px solid var(--vidro-borda); border-radius: 26px;
+        box-shadow: var(--vidro-realce), var(--sombra-lg);
         transition: transform var(--transicao), opacity var(--transicao);
       }
       /* iOS 26: ao ROLAR PARA BAIXO o dock desliza e some; reaparece ao subir. */

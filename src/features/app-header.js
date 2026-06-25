@@ -20,8 +20,12 @@ class AppHeader extends BaseElement {
     return `
       :host {
         position: sticky; top: 0; z-index: var(--z-nav);
-        display: block; background: var(--cor-superficie);
-        border-bottom: 1px solid var(--cor-borda);
+        display: block;
+        /* Chrome "liquid glass": vidro forte (quase opaco) + blur do conteúdo que
+           rola por baixo + hairline + sheen de topo. */
+        background: var(--vidro-fundo-forte);
+        -webkit-backdrop-filter: var(--vidro-blur); backdrop-filter: var(--vidro-blur);
+        border-bottom: 1px solid var(--vidro-borda); box-shadow: var(--vidro-realce);
         /* iOS: área segura — o header desce abaixo do status bar translúcido e
            respeita o notch lateral (env() = 0 em telas sem recortes). */
         padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);

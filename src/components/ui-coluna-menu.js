@@ -42,8 +42,10 @@ class UiColunaMenu extends BaseElement {
       :host { position: fixed; inset: 0; z-index: var(--z-modal, 1000); }
       .backdrop { position: fixed; inset: 0; }
       .painel { position: fixed; width: 300px; max-width: calc(100vw - 16px);
-        background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-top: 2px solid var(--cor-primaria);
-        border-radius: 0 0 var(--raio-md) var(--raio-md); box-shadow: var(--sombra-lg);
+        background: var(--vidro-fundo-forte);
+        -webkit-backdrop-filter: var(--vidro-blur); backdrop-filter: var(--vidro-blur);
+        border: 1px solid var(--vidro-borda); border-top: 2px solid var(--cor-primaria);
+        border-radius: 0 0 var(--raio-md) var(--raio-md); box-shadow: var(--vidro-realce), var(--sombra-lg);
         display: flex; flex-direction: column; max-height: min(70vh, 460px); }
       .ordem { display: flex; gap: var(--esp-2); padding: var(--esp-3); }
       .ord { flex: 1; border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);

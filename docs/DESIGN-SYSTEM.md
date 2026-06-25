@@ -93,12 +93,34 @@ espaçamento (24px) acima e abaixo** automaticamente, sem `margin` avulso.
 
 ## Raio, sombra, camadas
 `--raio-sm`(8) `--raio-md`(12, botões/inputs) `--raio-lg`(20, cards) `--raio-completo`(999);
-`--sombra-sm/md/lg` (tonalizadas no escuro). **Card** usa `--sombra-md` (duas camadas:
-contorno suave + halo difuso). **Mesa** usa `--sombra-mesa` (elevação moderna) sobre
-`--cor-mesa` (superfície entre o fundo e o card). `--z-nav/modal/toast`; transição padrão `--transicao`.
+`--sombra-sm/md/lg` (tonalizadas no escuro) são **empilhadas estilo Apple** (contato 1px +
+chave curta + ambiente difusa) → aspecto mais sério/robusto. **Card** usa `--sombra-md`,
+**Mesa** usa `--sombra-mesa` sobre `--cor-mesa`. Contornos hairline um pouco mais nítidos
+(`--cor-borda`/`--cor-borda-forte`). `--z-nav/modal/toast`; transição padrão `--transicao`.
 **Transições sempre escopadas** às propriedades animadas (ex.: `transition: box-shadow, transform`)
 — **nunca `transition: all`**, senão o card anima largura no reflow (sidebar
 recolher) e as cores no troca de tema (efeito "bugado").
+**Acessibilidade:** `@media (prefers-reduced-motion: reduce)` no `reset.css` zera
+animações/transições no documento; componentes em Shadow DOM (`ui-modal`/`ui-toast`)
+repetem o guard internamente (Shadow DOM não herda regras do documento).
+
+## Liquid glass (vidro)
+Superfícies e chrome usam **"liquid glass"** — vidro **quase opaco** (não totalmente
+transparente), via tokens em `tokens.css` (claro + os **dois** blocos escuros):
+- `--vidro-fundo` (~90% claro/88% escuro), `--vidro-fundo-forte` (~94/93%, chrome),
+  `--vidro-mesa` — `color-mix(in srgb, var(--cor-superficie|mesa) X%, transparent)`.
+- `--vidro-blur` = `blur(18px) saturate(1.6)` (cai p/ `blur(12px)` em ≤600px — leve no celular).
+- `--vidro-borda` (hairline) + `--vidro-realce` (sheen interno de topo) + sombra empilhada.
+- **`--fundo-app`**: gradiente sutil no `body` (`reset.css`) p/ o vidro "ler" (não chapado);
+  `--cor-fundo` segue **cor sólida** (fallback + valor lido pelo `theme-color`).
+- **Padrão de uso:** `background: var(--vidro-fundo[-forte|-mesa])` + `-webkit-backdrop-filter`
+  e `backdrop-filter: var(--vidro-blur)` + `border: 1px solid var(--vidro-borda)` +
+  `box-shadow: var(--vidro-realce), var(--sombra-*)`. **Fallback:** sem `backdrop-filter` o
+  fundo continua quase sólido (nada fica ilegível).
+- **Aplicado em** (superfícies/chrome): `ui-card` (+ `mesa`), `ui-modal` (`.dialogo` + blur leve no `.backdrop`),
+  `app-header`, `app-sidebar` (`nav`), dock do `app-shell`, `ui-coluna-menu`, `ui-toast`, `ui-busca` (campo expandido).
+- **NÃO** vira vidro (continuam sólidos): `ui-input`/`ui-select`/`ui-button`/`ui-badge`,
+  cartões de KPI (`--grad-*`) e as linhas/thead/tfoot da `ui-data-table`.
 
 ## Mesa + cards (sistema baseado em cards)
 **Camadas (do mais escuro ao mais claro):** fundo do sistema `--cor-fundo` < **mesa

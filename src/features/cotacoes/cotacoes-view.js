@@ -21,9 +21,6 @@ import "../../components/ui-empty-state.js";
 import "../despesas/category-badge.js";
 import "./cotacao-form.js";
 
-/** Cor do badge por classificação (espelha itens-view / backend). */
-const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
-
 class CotacoesView extends BaseElement {
   estilos() {
     return `

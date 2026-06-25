@@ -24,7 +24,9 @@ class UiBusca extends BaseElement {
         justify-content: flex-end; height: 34px; width: 34px; }
       .campo { position: absolute; right: 0; top: 0; height: 34px; width: 0; opacity: 0;
         padding: 0; border: 1px solid transparent; border-radius: var(--raio-md);
-        background: var(--cor-superficie); color: var(--cor-texto);
+        background: var(--vidro-fundo-forte);
+        -webkit-backdrop-filter: var(--vidro-blur); backdrop-filter: var(--vidro-blur);
+        color: var(--cor-texto);
         font-family: inherit; font-size: var(--fs-sm);
         box-shadow: var(--sombra-md); transition: width .22s ease, opacity .16s ease, padding .22s ease; }
       .caixa.aberta .campo { width: 260px; max-width: 64vw; opacity: 1; padding: 0 40px 0 14px;

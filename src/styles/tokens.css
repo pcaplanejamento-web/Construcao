@@ -45,8 +45,8 @@
   /* MESA: superfície dos containers de tabela/grade — mais clara que o fundo do
      sistema e mais escura que o card branco (os cards "flutuam" sobre ela). */
   --cor-mesa: #f8fafc;
-  --cor-borda: #eef1f4;
-  --cor-borda-forte: #e2e8f0;
+  --cor-borda: #e7ebf0;      /* contorno hairline um pouco mais nítido */
+  --cor-borda-forte: #d7dee8;
   --cor-divisor: #f1f5f9; /* linhas internas (tabelas) */
   --cor-texto: #0f172a;
   --cor-texto-suave: #64748b;
@@ -93,14 +93,30 @@
   --raio-lg: 20px;
   --raio-completo: 999px;
 
-  /* Sombras — card em duas camadas (suave + halo difuso) */
-  --sombra-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
-  --sombra-md: 0 1px 2px rgba(16, 24, 40, 0.04), 0 14px 30px -22px rgba(16, 24, 40, 0.18);
-  --sombra-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
+  /* Sombras — empilhadas estilo Apple: contato (1px) + chave (curta) + ambiente (difusa). */
+  --sombra-sm: 0 1px 1px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --sombra-md: 0 1px 1px rgba(16, 24, 40, 0.04), 0 2px 6px -2px rgba(16, 24, 40, 0.10), 0 16px 32px -22px rgba(16, 24, 40, 0.22);
+  --sombra-lg: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 20px -6px rgba(16, 24, 40, 0.16), 0 28px 56px -24px rgba(16, 24, 40, 0.28);
   /* MESA: elevação moderna (contorno nítido + halo difuso) que separa a mesa do fundo. */
-  --sombra-mesa: 0 1px 3px rgba(16, 24, 40, 0.06), 0 18px 40px -16px rgba(16, 24, 40, 0.22);
+  --sombra-mesa: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 10px -4px rgba(16, 24, 40, 0.10), 0 22px 48px -18px rgba(16, 24, 40, 0.24);
   /* REALCE: sombra sutil/harmônica do card ao passar o mouse (hugs o componente). */
-  --sombra-realce: 0 2px 4px -2px rgba(16, 24, 40, 0.12), 0 8px 20px -6px rgba(16, 24, 40, 0.20);
+  --sombra-realce: 0 2px 4px -2px rgba(16, 24, 40, 0.10), 0 10px 24px -8px rgba(16, 24, 40, 0.22), 0 30px 60px -30px rgba(16, 24, 40, 0.26);
+
+  /* ---- VIDRO (liquid glass) — superfícies QUASE opacas (88–94%); o blur só dá o
+     "derretido" do que passa por baixo. Fallback: sem backdrop-filter o color-mix
+     continua quase sólido, nada fica ilegível. Controles (input/botão/badge/KPI)
+     NÃO usam vidro. */
+  --vidro-fundo: color-mix(in srgb, var(--cor-superficie) 90%, transparent);
+  --vidro-fundo-forte: color-mix(in srgb, var(--cor-superficie) 94%, transparent);
+  --vidro-mesa: color-mix(in srgb, var(--cor-mesa) 90%, transparent);
+  --vidro-blur: blur(18px) saturate(1.6);
+  --vidro-borda: color-mix(in srgb, var(--cor-borda-forte) 70%, transparent);
+  --vidro-realce: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 0 rgba(16, 24, 40, 0.04);
+  /* FUNDO do app: gradiente sutil/profissional p/ o vidro "ler" (não chapado). */
+  --fundo-app:
+    radial-gradient(1200px 600px at 18% -10%, color-mix(in srgb, var(--cor-primaria) 8%, transparent), transparent 60%),
+    radial-gradient(1000px 700px at 110% 10%, color-mix(in srgb, var(--cor-info) 7%, transparent), transparent 55%),
+    linear-gradient(180deg, color-mix(in srgb, var(--cor-fundo) 60%, #ffffff), var(--cor-fundo));
 
   /* Camadas (z-index) */
   --z-nav: 100;
@@ -131,19 +147,30 @@
     --cor-superficie: #111c2e;
     --cor-superficie-2: #1b2840;
     --cor-mesa: #0e1727; /* entre o fundo (#0b1220) e o card (#111c2e) */
-    --cor-borda: #2a3a55;
-    --cor-borda-forte: #3a4d6e;
+    --cor-borda: #314257;
+    --cor-borda-forte: #41587a;
     --cor-divisor: #1e2c44;
     --cor-texto: #e9eef5;
     --cor-texto-suave: #aab6c8;
     --cor-texto-fraco: #6b7a90;
 
     --cor-overlay: rgba(0, 0, 0, 0.6);
-    --sombra-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-    --sombra-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
-    --sombra-mesa: 0 1px 3px rgba(0, 0, 0, 0.5), 0 18px 42px -14px rgba(0, 0, 0, 0.65);
-    --sombra-realce: 0 2px 4px -2px rgba(0, 0, 0, 0.4), 0 8px 20px -6px rgba(0, 0, 0, 0.55);
+    --sombra-sm: 0 1px 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.45);
+    --sombra-md: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px -4px rgba(0, 0, 0, 0.55), 0 18px 36px -22px rgba(0, 0, 0, 0.6);
+    --sombra-lg: 0 2px 4px rgba(0, 0, 0, 0.5), 0 10px 24px -6px rgba(0, 0, 0, 0.55), 0 30px 60px -24px rgba(0, 0, 0, 0.65);
+    --sombra-mesa: 0 1px 3px rgba(0, 0, 0, 0.55), 0 6px 14px -6px rgba(0, 0, 0, 0.5), 0 24px 50px -18px rgba(0, 0, 0, 0.66);
+    --sombra-realce: 0 2px 4px -2px rgba(0, 0, 0, 0.5), 0 12px 28px -8px rgba(0, 0, 0, 0.6), 0 32px 64px -30px rgba(0, 0, 0, 0.7);
+
+    --vidro-fundo: color-mix(in srgb, var(--cor-superficie) 88%, transparent);
+    --vidro-fundo-forte: color-mix(in srgb, var(--cor-superficie) 93%, transparent);
+    --vidro-mesa: color-mix(in srgb, var(--cor-mesa) 88%, transparent);
+    --vidro-blur: blur(18px) saturate(1.5);
+    --vidro-borda: color-mix(in srgb, var(--cor-borda-forte) 80%, transparent);
+    --vidro-realce: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    --fundo-app:
+      radial-gradient(1200px 600px at 18% -10%, color-mix(in srgb, var(--cor-primaria) 14%, transparent), transparent 60%),
+      radial-gradient(1000px 700px at 110% 10%, color-mix(in srgb, var(--cor-info) 12%, transparent), transparent 55%),
+      linear-gradient(180deg, #0d1626, var(--cor-fundo));
     color-scheme: dark;
   }
 }
@@ -163,23 +190,36 @@
   --cor-superficie: #111c2e;
   --cor-superficie-2: #1b2840;
   --cor-mesa: #0e1727; /* entre o fundo (#0b1220) e o card (#111c2e) */
-  --cor-borda: #2a3a55;
-  --cor-borda-forte: #3a4d6e;
+  --cor-borda: #314257;
+  --cor-borda-forte: #41587a;
+  --cor-divisor: #1e2c44;
   --cor-texto: #e9eef5;
   --cor-texto-suave: #aab6c8;
   --cor-texto-fraco: #6b7a90;
 
   --cor-overlay: rgba(0, 0, 0, 0.6);
-  --sombra-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --sombra-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
-  --sombra-mesa: 0 1px 3px rgba(0, 0, 0, 0.5), 0 18px 42px -14px rgba(0, 0, 0, 0.65);
-  --sombra-realce: 0 2px 4px -2px rgba(0, 0, 0, 0.4), 0 8px 20px -6px rgba(0, 0, 0, 0.55);
+  --sombra-sm: 0 1px 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.45);
+  --sombra-md: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px -4px rgba(0, 0, 0, 0.55), 0 18px 36px -22px rgba(0, 0, 0, 0.6);
+  --sombra-lg: 0 2px 4px rgba(0, 0, 0, 0.5), 0 10px 24px -6px rgba(0, 0, 0, 0.55), 0 30px 60px -24px rgba(0, 0, 0, 0.65);
+  --sombra-mesa: 0 1px 3px rgba(0, 0, 0, 0.55), 0 6px 14px -6px rgba(0, 0, 0, 0.5), 0 24px 50px -18px rgba(0, 0, 0, 0.66);
+  --sombra-realce: 0 2px 4px -2px rgba(0, 0, 0, 0.5), 0 12px 28px -8px rgba(0, 0, 0, 0.6), 0 32px 64px -30px rgba(0, 0, 0, 0.7);
+
+  --vidro-fundo: color-mix(in srgb, var(--cor-superficie) 88%, transparent);
+  --vidro-fundo-forte: color-mix(in srgb, var(--cor-superficie) 93%, transparent);
+  --vidro-mesa: color-mix(in srgb, var(--cor-mesa) 88%, transparent);
+  --vidro-blur: blur(18px) saturate(1.5);
+  --vidro-borda: color-mix(in srgb, var(--cor-borda-forte) 80%, transparent);
+  --vidro-realce: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+  --fundo-app:
+    radial-gradient(1200px 600px at 18% -10%, color-mix(in srgb, var(--cor-primaria) 14%, transparent), transparent 60%),
+    radial-gradient(1000px 700px at 110% 10%, color-mix(in srgb, var(--cor-info) 12%, transparent), transparent 55%),
+    linear-gradient(180deg, #0d1626, var(--cor-fundo));
   color-scheme: dark;
 }
 
 /* Mobile (≤600px): distância padrão de tela menor → mais espaço útil no telefone.
    Vale p/ ambos os temas (independe de claro/escuro). */
 @media (max-width: 600px) {
-  :root { --esp-tela: var(--esp-4); }
+  /* blur menor no celular = vidro mais leve (perf), sem mexer em larguras/paddings. */
+  :root { --esp-tela: var(--esp-4); --vidro-blur: blur(12px) saturate(1.5); }
 }

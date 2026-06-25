@@ -10,7 +10,7 @@ import { rotuloVoltar } from "../../core/router.js";
 import { irPara } from "../../core/router.js";
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { moeda, data as fmtData } from "../../core/formatters.js";
+import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { balancos, restoDespesa } from "../despesas/despesa-split.js";
 import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
@@ -42,7 +42,6 @@ import {
   previaTransferenciaHtml,
   previaPagamentoHtml,
   montarGradeResumos,
-  excluirTransferenciaComAviso,
 } from "../pagamentos/pagamento-util.js";
 import { confirmar, avisar } from "../../components/confirmar.js";
 
@@ -230,9 +229,7 @@ class ObraDetailView extends BaseElement {
     // Tabela recebe TODAS as despesas; busca (campo da tabela) e filtro de
     // Classificação (dropdown do tópico) acontecem dentro da própria tabela.
     this._tabela.despesas = despesas;
-    // Pagamentos / Repasses da obra.
-    this._mapaPart = {};
-    dataStore.participantesDaObra(this.obraId).forEach((p) => (this._mapaPart[p.chave] = p.nome));
+    // Transferências e pagamentos da obra (cards iguais aos da página /pagamentos).
     montarGradeResumos(
       this._listaTransf,
       dataStore.transferenciasDaObra(this.obraId),
@@ -252,24 +249,7 @@ class ObraDetailView extends BaseElement {
     this.pintarTopo();
   }
 
-  /* ----------------------- Pagamentos / Repasses ----------------------- */
-
-  _nomeContato(id) {
-    if (!id) return "—";
-    return (dataStore.contatos().find((c) => String(c.id) === String(id)) || {}).nome || "—";
-  }
-  /** Nome de uma chave de participante ("c:"/"e:"/"u:") ou contato direto. */
-  _nomeChave(chave) {
-    const s = String(chave || "");
-    if (this._mapaPart && this._mapaPart[s]) return this._mapaPart[s];
-    if (s.indexOf("c:") === 0) return this._nomeContato(s.slice(2));
-    if (s.indexOf("e:") === 0) return (dataStore.equipe(s.slice(2)) || {}).nome || "—";
-    return s || "—";
-  }
-  _nomeRecebedor(p) {
-    if (p.recebedor_equipe_id) return ((dataStore.equipe(p.recebedor_equipe_id) || {}).nome || "—") + " (grupo)";
-    return this._nomeContato(p.recebedor_contato_id);
-  }
+  /* ----------------------- Transferências / Pagamentos ----------------------- */
 
   abrirPagamentoForm(despesasSelecionadas, aviso) {
     const form = document.createElement("pagamento-form");
@@ -357,38 +337,6 @@ class ObraDetailView extends BaseElement {
     modal.appendChild(rod);
     modal.addEventListener("fechar", () => modal.remove());
     document.body.appendChild(modal);
-  }
-
-  async removerPagamentoObra(pagamento) {
-    const t = dataStore.transferenciaDoPagamento(pagamento.id);
-    const nPags = t ? (t.pagamento_ids || []).length : 1;
-    if (nPags > 1) {
-      await avisar({
-        titulo: "Não é possível excluir só este pagamento",
-        mensagem:
-          "Este pagamento faz parte de uma transferência com vários pagamentos. Exclua a transferência inteira — todos os pagamentos saem juntos.",
-      });
-      return;
-    }
-    const ok = await confirmar({
-      titulo: "Excluir pagamento",
-      mensagem: "Isso exclui o pagamento e a transferência. As despesas cobertas voltam a ficar em aberto.",
-      perigo: true,
-      rotuloOk: "Excluir",
-    });
-    if (!ok) return;
-    try {
-      if (t) await dataStore.excluirTransferencia(t);
-      else await dataStore.excluirPagamento(pagamento);
-      toastSucesso("Pagamento e transferência excluídos.");
-    } catch (e) {
-      notificarErro(e);
-    }
-  }
-
-  async removerTransferenciaObra(transferencia) {
-    // Aviso lista os pagamentos; após aceite, cascata (pagamentos + repasses + vínculos).
-    await excluirTransferenciaComAviso(transferencia);
   }
 
   pintarTopo() {

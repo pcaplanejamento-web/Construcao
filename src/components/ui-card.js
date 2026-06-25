@@ -21,9 +21,14 @@ class UiCard extends BaseElement {
       :host { display: block; }
       /* card em coluna ocupando 100% da altura do host (quando o host tem
          altura definida, ex.: grade de gráficos) — corpo flexível e rolável. */
+      /* Superfície "liquid glass": quase opaca (--vidro-fundo) + blur do que passa
+         por baixo + borda hairline + realce de topo. Fallback: sem backdrop-filter o
+         fundo continua quase sólido. */
       .card {
-        background: var(--cor-superficie); border: 1px solid var(--cor-borda);
-        border-radius: var(--raio-lg); box-shadow: var(--sombra-md);
+        background: var(--vidro-fundo);
+        -webkit-backdrop-filter: var(--vidro-blur); backdrop-filter: var(--vidro-blur);
+        border: 1px solid var(--vidro-borda);
+        border-radius: var(--raio-lg); box-shadow: var(--vidro-realce), var(--sombra-md);
         overflow: hidden; display: flex; flex-direction: column; height: 100%;
       }
       header {
@@ -40,7 +45,7 @@ class UiCard extends BaseElement {
       /* MESA: card inteiro (incluindo o TÍTULO) na cor da mesa — entre o fundo e o card —
          + sombra moderna que a separa do fundo. A mesa NÃO levanta; só os cards/linhas
          sobre ela. */
-      :host([mesa]) .card { background: var(--cor-mesa); box-shadow: var(--sombra-mesa); border-color: var(--cor-borda-forte); }
+      :host([mesa]) .card { background: var(--vidro-mesa); box-shadow: var(--vidro-realce), var(--sombra-mesa); border-color: var(--vidro-borda); }
       .rodape { padding: var(--esp-4) var(--esp-5); border-top: 1px solid var(--cor-borda); }
       ::slotted([slot="rodape"]) { display: block; }
       slot[name="rodape"]:not(:empty) { display: block; }

@@ -46,7 +46,9 @@ class AppSidebar extends BaseElement {
          sanduíche (à dir.). Manter proporcional a esse cluster. */
       nav { display: flex; flex-direction: column; gap: var(--esp-2);
         width: 195px; padding: var(--esp-tela) var(--esp-3) var(--esp-4);
-        background: var(--cor-superficie); border-right: 1px solid var(--cor-borda);
+        background: var(--vidro-fundo-forte);
+        -webkit-backdrop-filter: var(--vidro-blur); backdrop-filter: var(--vidro-blur);
+        border-right: 1px solid var(--vidro-borda);
         height: 100%; overflow: hidden; transition: width .2s ease; }
       a { display: flex; align-items: center; gap: var(--esp-3);
         min-height: 48px; padding: 0 var(--esp-3); border-radius: var(--raio-md);

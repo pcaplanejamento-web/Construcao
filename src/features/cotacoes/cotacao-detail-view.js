@@ -23,7 +23,6 @@ import "../../components/ui-spinner.js";
 import "../../components/ui-icon.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-tabs.js";
-import "../despesas/category-badge.js";
 import "../dashboard/category-breakdown.js";
 import "./oferta-kpis.js";
 import "./grafico-evolucao-precos.js";
@@ -32,9 +31,6 @@ import "./preco-form.js";
 import { abrirRegistrarDespesa } from "./cotacao-despesa-form.js";
 import { abrirOferta } from "./preco-form.js";
 import { confirmar } from "../../components/confirmar.js";
-
-/** Cor do badge por classificação (espelha itens-view / backend). */
-const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
 
 class CotacaoDetailView extends BaseElement {
   constructor() {

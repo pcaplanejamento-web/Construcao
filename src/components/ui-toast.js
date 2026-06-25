@@ -22,11 +22,14 @@ class UiToast extends BaseElement {
       .toast {
         display: flex; align-items: center; gap: var(--esp-2);
         padding: var(--esp-3) var(--esp-4); border-radius: var(--raio-md);
-        box-shadow: var(--sombra-md); color: var(--cor-texto);
-        background: var(--cor-superficie); border-left: 4px solid var(--cor-info);
+        box-shadow: var(--vidro-realce), var(--sombra-md); color: var(--cor-texto);
+        background: var(--vidro-fundo-forte);
+        -webkit-backdrop-filter: var(--vidro-blur); backdrop-filter: var(--vidro-blur);
+        border: 1px solid var(--vidro-borda); border-left: 4px solid var(--cor-info);
         min-width: 240px; max-width: 380px; animation: entrar .16s ease;
       }
       @keyframes entrar { from { transform: translateX(12px); opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
       .sucesso { border-left-color: var(--cor-sucesso); }
       .erro { border-left-color: var(--cor-erro); }
       .aviso { border-left-color: var(--cor-aviso); }
