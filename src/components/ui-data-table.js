@@ -29,6 +29,42 @@ import { injetarBuscaNoCard } from "./ui-busca.js";
 import { confirmar } from "./confirmar.js";
 import { baixarTabela } from "../features/shared/exportar-tabela.js";
 
+/**
+ * HTML → texto VISÍVEL (com cache). Usado em filtro/ordenação/busca/totais E export,
+ * p/ que TODAS as colunas — inclusive as de `category-badge`/`ui-badge` (rótulo no
+ * atributo `nome`/`text`) — sejam filtráveis. Ignora elementos decorativos
+ * (`aria-hidden`, ex.: iniciais do avatar). Cache por string de saída (determinística).
+ */
+const _cacheTexto = new Map();
+function _htmlParaTexto(v) {
+  const s = String(v == null ? "" : v);
+  if (s.indexOf("<") < 0) return s.replace(/\s+/g, " ").trim();
+  if (_cacheTexto.has(s)) return _cacheTexto.get(s);
+  let txt;
+  if (typeof document !== "undefined") {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = s;
+    tmp.querySelectorAll('[aria-hidden="true"]').forEach((el) => el.remove());
+    tmp.querySelectorAll("*").forEach((el) => {
+      if (!el.textContent.trim()) {
+        const rotulo =
+          el.getAttribute("nome") ||
+          el.getAttribute("text") ||
+          el.getAttribute("title") ||
+          el.getAttribute("aria-label") ||
+          el.getAttribute("alt");
+        if (rotulo) el.textContent = rotulo;
+      }
+    });
+    txt = (tmp.textContent || "").replace(/\s+/g, " ").trim();
+  } else {
+    txt = s.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  }
+  if (_cacheTexto.size > 5000) _cacheTexto.clear();
+  _cacheTexto.set(s, txt);
+  return txt;
+}
+
 class UiDataTable extends BaseElement {
   static get observedAttributes() {
     return ["empty-text", "fluido", "clicavel", "editar-massa", "excluir-massa"];
@@ -91,12 +127,10 @@ class UiDataTable extends BaseElement {
   } // Set<linha (objeto)>
 
   /* ----------------------------- Helpers de valor ---------------------------- */
+  // Texto VISÍVEL da célula (resolve badges via atributo nome/text; ignora decorativos)
+  // — vale p/ filtro/ordenação/busca/totais/export, então TODAS as colunas filtram.
   _texto(c, linha) {
-    const v = c.formato ? c.formato(linha[c.chave], linha) : linha[c.chave];
-    return String(v == null ? "" : v)
-      .replace(/<[^>]*>/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+    return _htmlParaTexto(c.formato ? c.formato(linha[c.chave], linha) : linha[c.chave]);
   }
   _num(c, linha) {
     const n = c.valorNum ? c.valorNum(linha) : linha[c.chave];
@@ -154,8 +188,10 @@ class UiDataTable extends BaseElement {
       :host { display: block; }
       /* Área rolável com altura limitada: cabeçalho e totais ficam fixos (sticky)
          e a barra de rolagem horizontal fica sempre na base da tabela. */
-      /* padding-bottom dá folga p/ a sombra da última linha-card não ser cortada pelo overflow. */
-      .wrap { overflow: auto; max-height: 70vh; -webkit-overflow-scrolling: touch; padding-bottom: var(--esp-2); }
+      /* SEM padding-bottom: a linha de TOTAIS (tfoot sticky) cola no fundo da área
+         rolável, logo acima da barra de rolagem horizontal — sem fresta nem linha
+         "vazando" por baixo dela. */
+      .wrap { overflow: auto; max-height: 70vh; -webkit-overflow-scrolling: touch; }
       .sem-result td { text-align: center; color: var(--cor-texto-fraco); padding: var(--esp-5); }
       /* Tabela = MESA: cada LINHA do corpo é um card branco; leve espaçamento entre elas. */
       table { width: 100%; border-collapse: separate; border-spacing: 0 var(--esp-2); font-size: var(--fs-sm); }
@@ -218,12 +254,13 @@ class UiDataTable extends BaseElement {
         border-radius: var(--raio-sm); padding: 4px 10px; font-size: var(--fs-xs); color: var(--cor-texto-suave); }
       .btn-acao:hover { background: var(--cor-superficie-2); }
       .btn-acao.perigo { color: var(--cor-erro); border-color: var(--cor-erro-suave); }
-      /* Linha de SOMA (totais): fixa na base, na cor da MESA. Puxada p/ cima pelo
-         border-spacing (translateY) → encosta na última linha SEM fresta entre elas. */
-      tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--cor-mesa);
+      /* Linha de SOMA (totais): FIXA na base da área rolável (sticky bottom:0), na cor
+         da MESA, OPACA — cola logo acima da barra de rolagem horizontal e NÃO se move.
+         (Sem transform: o translateY antigo "vazava" a última linha por baixo dela.) */
+      tfoot td { position: sticky; bottom: 0; z-index: 6; background: var(--cor-mesa);
         font-family: var(--fonte-titulo); font-weight: var(--peso-forte);
-        transform: translateY(calc(-1 * var(--esp-2))); }
-      tfoot td.sel { z-index: 3; }
+        box-shadow: 0 -1px 0 var(--cor-divisor); }
+      tfoot td.sel { z-index: 7; }
       tfoot .rotulo { font-family: var(--fonte-base); font-weight: var(--peso-semi);
         color: var(--cor-texto-suave); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
       /* Barra de seleção (análise dos selecionados). */
@@ -314,7 +351,7 @@ class UiDataTable extends BaseElement {
           border: 1px solid var(--cor-borda); border-top: none;
           border-radius: 0 0 var(--raio-md) var(--raio-md); }
         tfoot td { position: static; transform: none; display: flex; justify-content: space-between;
-          background: transparent; padding: var(--esp-1) 0; }
+          background: transparent; padding: var(--esp-1) 0; box-shadow: none; }
         tfoot td.vazia { display: none; }
         tfoot td[data-label]::before { content: attr(data-label); color: var(--cor-texto-suave);
           font-weight: var(--peso-semi); font-size: var(--fs-xs); text-transform: uppercase; }
@@ -377,33 +414,6 @@ class UiDataTable extends BaseElement {
     return this.columns.filter((c) => String(c.titulo || "").trim());
   }
 
-  /**
-   * Texto EXPORTÁVEL de uma célula. Diferente do `_texto` interno (regex, usado em
-   * filtro/ordem por performance), aqui resolvemos o texto REAL via DOM: badges
-   * (`category-badge`/`ui-badge`) guardam o rótulo no atributo `nome`/`text`, e
-   * elementos decorativos (`aria-hidden`, ex.: iniciais do avatar) são ignorados.
-   */
-  _textoExport(c, linha) {
-    const raw = c.formato ? c.formato(linha[c.chave], linha) : linha[c.chave];
-    const s = String(raw == null ? "" : raw);
-    if (s.indexOf("<") < 0) return s.replace(/\s+/g, " ").trim();
-    const tmp = document.createElement("div");
-    tmp.innerHTML = s;
-    tmp.querySelectorAll('[aria-hidden="true"]').forEach((el) => el.remove());
-    tmp.querySelectorAll("*").forEach((el) => {
-      if (!el.textContent.trim()) {
-        const rotulo =
-          el.getAttribute("nome") ||
-          el.getAttribute("text") ||
-          el.getAttribute("title") ||
-          el.getAttribute("aria-label") ||
-          el.getAttribute("alt");
-        if (rotulo) el.textContent = rotulo;
-      }
-    });
-    return (tmp.textContent || "").replace(/\s+/g, " ").trim();
-  }
-
   /** Monta { titulo, colunas, linhas } da MESA atual (linhas VISÍVEIS = filtro/busca/ordem). */
   _dadosExport() {
     const cols = this._colsExport();
@@ -413,7 +423,7 @@ class UiDataTable extends BaseElement {
     return {
       titulo,
       colunas: cols.map((c) => c.titulo),
-      linhas: this._visiveis().map(({ linha }) => cols.map((c) => this._textoExport(c, linha))),
+      linhas: this._visiveis().map(({ linha }) => cols.map((c) => this._texto(c, linha))),
     };
   }
 

@@ -59,15 +59,28 @@ class UiColunaMenu extends BaseElement {
       .busca:focus { outline: none; border-color: var(--cor-primaria); box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
       .todos { display: flex; align-items: center; gap: var(--esp-2);
         padding: var(--esp-2) var(--esp-3); border-bottom: 1px solid var(--cor-divisor); font-size: var(--fs-sm); }
-      .lista { overflow-y: auto; padding: var(--esp-2) var(--esp-3); display: flex;
-        flex-direction: column; gap: var(--esp-1); flex: 1; min-height: 0; max-height: 220px; }
-      .item { display: flex; align-items: center; gap: var(--esp-2); font-size: var(--fs-sm);
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      /* A lista OCUPA o espaço restante do painel (flex:1, min-height:0) e ROLA
+         internamente (overflow-y:auto) — dá p/ ver/marcar todos os valores sem
+         empurrar o rodapé (Aplicar/Cancelar) p/ fora da tela. */
+      .lista { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+        padding: var(--esp-2) var(--esp-3); display: flex; flex-direction: column;
+        gap: var(--esp-1); flex: 1; min-height: 0; }
+      /* flex:none = NÃO encolher: numa lista flex-column com altura limitada, sem isto
+         os itens comprimiam (~3px) em vez de a lista ROLAR. Agora transbordam → scroll. */
+      .item { flex: none; min-height: 28px; display: flex; align-items: center; gap: var(--esp-2);
+        font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
       .vazio-lista { color: var(--cor-texto-fraco); font-size: var(--fs-sm); padding: var(--esp-2); }
       input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cor-primaria); flex: none; }
       .rodape { display: flex; gap: var(--esp-2); padding: var(--esp-3);
         border-top: 1px solid var(--cor-divisor); }
       .rodape ui-button { flex: 1; }
+      /* MOBILE/touch: painel quase full-width, alvos maiores e mais espaço de lista. */
+      @media (max-width: 600px) {
+        .painel { width: calc(100vw - 16px); max-height: 80vh; }
+        .item { padding: 6px 0; }
+        .todos { padding: var(--esp-3); }
+        input[type="checkbox"] { width: 20px; height: 20px; }
+      }
     `;
   }
 
@@ -98,8 +111,8 @@ class UiColunaMenu extends BaseElement {
     // Marcados: o filtro atual (Set) ou TODOS quando não há filtro.
     this._marcados = new Set(sel ? Array.from(sel) : this.valores);
 
-    this.posicionar();
     this.pintarLista();
+    this.posicionar(); // depois de pintar: mede a altura real p/ clampar à tela
 
     this.$$(".ord").forEach((b) =>
       b.addEventListener("click", () => {
@@ -164,10 +177,17 @@ class UiColunaMenu extends BaseElement {
     const r = this._ancora;
     const p = this.$(".painel");
     if (!r || !p) return;
-    const w = 300;
-    // Colado ao tópico: alinhado à esquerda do cabeçalho e SEM espaço (borda-topo encosta no th).
+    const w = p.offsetWidth || 300;
+    const h = p.offsetHeight || 460; // altura REAL (após pintar a lista)
+    // Alinhado à esquerda do cabeçalho, dentro da tela.
     const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
-    const top = Math.max(8, Math.min(r.bottom, window.innerHeight - 470));
+    // Abaixo do tópico; se não couber, sobe (acima do tópico) ou cola no topo —
+    // assim o rodapé (Aplicar) NUNCA fica fora da tela e a lista rola internamente.
+    let top = r.bottom;
+    if (top + h > window.innerHeight - 8) {
+      const acima = r.top - h;
+      top = acima >= 8 ? acima : Math.max(8, window.innerHeight - 8 - h);
+    }
     p.style.left = left + "px";
     p.style.top = top + "px";
   }
