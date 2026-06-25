@@ -19,6 +19,7 @@ export const EVENTOS = {
   COTACOES: "cotacoes:changed", // CRUD de cotações e ofertas
   ORCAMENTOS: "orcamentos:changed", // CRUD de orçamentos
   EQUIPES: "equipes:changed", // CRUD de equipes (grupos)
+  ESTOQUE: "estoque:changed", // movimentos de estoque (entrada/consumo/transferência)
   TEMA: "tema:changed", // troca de tema claro/escuro
   TOAST: "toast", // notificação para o usuário
 };

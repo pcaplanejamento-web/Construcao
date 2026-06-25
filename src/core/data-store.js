@@ -14,8 +14,15 @@ import { api } from "./api-client.js";
 import { auth } from "./auth-store.js";
 import { bus, EVENTOS } from "./event-bus.js";
 import { obraIdDaOferta } from "../features/shared/rastreabilidade.js";
+import {
+  consolidarObra as _consolidarObraEstoque,
+  emEstoqueDaObra as _emEstoqueDaObra,
+  consumidosDaObra as _consumidosDaObra,
+  saldoItem as _saldoItemEstoque,
+  origensDoItem as _origensDoItemEstoque,
+} from "../features/estoque/estoque.js";
 
-const CACHE_VERSAO = 5; // bump: coleção tiposTransferencia (configuráveis)
+const CACHE_VERSAO = 6; // bump: coleção estoque (livro-razão de movimentos)
 
 const ESTADO_VAZIO = {
   carregado: false,
@@ -40,6 +47,7 @@ const ESTADO_VAZIO = {
   transferencias: [], // transferências (agrupam N pagamentos de 1 recebedor/empresa)
   pagamentos: [], // pagamentos (entidade própria; 1 pagamento → várias despesas)
   repasses: [], // repasses de um pagamento a outros contatos
+  estoque: [], // livro-razão de movimentos de estoque (consolidação derivada por obra+item)
   usuarios: [], // admin
 };
 
@@ -79,6 +87,7 @@ function persistir() {
       transferencias: s.transferencias,
       pagamentos: s.pagamentos,
       repasses: s.repasses,
+      estoque: s.estoque,
       usuarios: s.usuarios,
     };
     localStorage.setItem(chave, JSON.stringify({ versao: CACHE_VERSAO, dados }));
@@ -139,6 +148,7 @@ function _aplicarSnapshot(d) {
     transferencias: d.transferencias || [],
     pagamentos: d.pagamentos || [],
     repasses: d.repasses || [],
+    estoque: d.estoque || [],
     usuarios: d.usuarios || [],
   });
   persistir();
@@ -334,6 +344,19 @@ const transferencias = () => {
   });
   return reais.concat(sint);
 };
+/* -------------------------- Estoque (getters) ------------------------- */
+// Livro-razão de movimentos; a "lista do estoque" e os "consumidos" são derivados.
+const movimentosEstoque = () => store.get().estoque || [];
+const estoqueConsolidadoDaObra = (obraId) => _consolidarObraEstoque(movimentosEstoque(), obraId);
+const estoqueDaObra = (obraId) => _emEstoqueDaObra(movimentosEstoque(), obraId);
+const estoqueConsumidoDaObra = (obraId) => _consumidosDaObra(movimentosEstoque(), obraId);
+const saldoEstoqueItem = (obraId, itemId) => _saldoItemEstoque(movimentosEstoque(), obraId, itemId);
+const origensDoEstoque = (obraId, itemId) => _origensDoItemEstoque(movimentosEstoque(), obraId, itemId);
+const movimentosDoItemEstoque = (obraId, itemId) =>
+  movimentosEstoque().filter(
+    (m) => String(m.obra_id) === String(obraId) && String(m.item_id) === String(itemId)
+  );
+
 const transferencia = (id) => transferencias().find((t) => String(t.id) === String(id)) || null;
 const transferenciasDaObra = (id) => transferencias().filter((t) => String(t.obra_id) === String(id));
 const transferenciaDoPagamento = (pagId) =>
@@ -1206,6 +1229,7 @@ export const dataStore = {
   pagamentos, repasses, pagamentosDaDespesa, pagamentosDoContato, pagamentosDaObra,
   repassesDoPagamento, repassesDoContato, despesaTemPagamento,
   transferencias, transferencia, transferenciasDaObra, transferenciaDoPagamento, pagamentosDaTransferencia,
+  movimentosEstoque, estoqueConsolidadoDaObra, estoqueDaObra, estoqueConsumidoDaObra, saldoEstoqueItem, origensDoEstoque, movimentosDoItemEstoque,
   // mutações
   criarObra, atualizarObra, removerObra,
   adicionarParticipante, removerParticipante, definirResponsavel,

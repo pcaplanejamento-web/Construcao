@@ -44,6 +44,11 @@ import {
   montarGradeResumos,
 } from "../pagamentos/pagamento-util.js";
 import { confirmar, avisar } from "../../components/confirmar.js";
+import { abrirOrigemEstoque } from "../shared/vinculos.js";
+import "../despesas/category-badge.js";
+
+// Cor das classificações (espelha despesa-table.js).
+const COR_CLASSIFICACAO_OBRA = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
 
 class ObraDetailView extends BaseElement {
   constructor() {
@@ -152,6 +157,22 @@ class ObraDetailView extends BaseElement {
             </div>
           </ui-tabs>
         </div>
+        <div slot="estoque">
+          <ui-tabs id="abasEstoque">
+            <div slot="emEstoque">
+              <ui-card mesa title="Mesa com itens em estoque">
+                <ui-data-table id="tabEstoque" fluido clicavel
+                  empty-text="Nenhum item em estoque. Itens de despesas Material entram aqui após o pagamento."></ui-data-table>
+              </ui-card>
+            </div>
+            <div slot="consumidos">
+              <ui-card mesa title="Mesa com itens consumidos">
+                <ui-data-table id="tabConsumido" fluido clicavel
+                  empty-text="Nenhum item consumido nesta obra."></ui-data-table>
+              </ui-card>
+            </div>
+          </ui-tabs>
+        </div>
       </ui-tabs>
     `;
     alvo.querySelector("#abas").abas = [
@@ -163,6 +184,7 @@ class ObraDetailView extends BaseElement {
       { id: "equipes", rotulo: "Equipes", icone: "usuario" },
       { id: "fornecedores", rotulo: "Empresas", icone: "fornecedor" },
       { id: "pagamentos", rotulo: "Transferência", icone: "cifrao" },
+      { id: "estoque", rotulo: "Estoque", icone: "tag" },
     ];
     const abasPag = alvo.querySelector("#abasPag");
     if (abasPag)
@@ -170,6 +192,18 @@ class ObraDetailView extends BaseElement {
         { id: "transferencias", rotulo: "Transferências", icone: "cifrao" },
         { id: "pagamentos", rotulo: "Pagamentos", icone: "recibo" },
       ];
+    const abasEstoque = alvo.querySelector("#abasEstoque");
+    if (abasEstoque)
+      abasEstoque.abas = [
+        { id: "emEstoque", rotulo: "Estoque", icone: "tag" },
+        { id: "consumidos", rotulo: "Consumidos", icone: "recibo" },
+      ];
+    this._tabEstoque = alvo.querySelector("#tabEstoque");
+    this._tabConsumido = alvo.querySelector("#tabConsumido");
+    if (this._tabEstoque)
+      this._tabEstoque.addEventListener("linha", (e) => this.abrirOrigemDoItem(e.detail.linha));
+    if (this._tabConsumido)
+      this._tabConsumido.addEventListener("linha", (e) => this.abrirOrigemDoItem(e.detail.linha));
     this._gradeOrc = alvo.querySelector("#gradeOrc");
     this._gradeEquipes = alvo.querySelector("#gradeEquipes");
     this._tabForn = alvo.querySelector("#tabForn");
@@ -246,7 +280,57 @@ class ObraDetailView extends BaseElement {
       abrirPagamento,
       "Nenhum pagamento registrado nesta obra."
     );
+    this.montarEstoque(categorias);
     this.pintarTopo();
+  }
+
+  /* ------------------------------ Estoque ------------------------------ */
+
+  /** Preenche as tabelas Estoque e Consumidos (consolidação derivada dos movimentos). */
+  montarEstoque(categorias) {
+    if (!this._tabEstoque || !this._tabConsumido) return;
+    const mapaCat = {};
+    (categorias || []).forEach((c) => (mapaCat[String(c.id)] = c));
+
+    const nomeItem = (it) => (dataStore.item(it.item_id) || {}).nome || "—";
+    const subBadge = (it) => {
+      const c = mapaCat[String(it.categoria_id)];
+      return c
+        ? `<category-badge nome="${c.nome}" cor="${c.cor || "var(--cor-neutro)"}"></category-badge>`
+        : `<span style="color:var(--cor-texto-fraco)">Sem subclassificação</span>`;
+    };
+    const classBadge = (it) =>
+      it.classificacao
+        ? `<category-badge nome="${it.classificacao}" cor="${COR_CLASSIFICACAO_OBRA[it.classificacao] || "var(--cor-neutro)"}"></category-badge>`
+        : "—";
+    // Unidade (sinaliza divergência quando o mesmo item entrou com unidades diferentes).
+    const unidade = (it) =>
+      (it.unidade || "—") + (it.unidades && it.unidades.length > 1 ? ` <span title="Unidades divergentes: ${it.unidades.join(", ")}" style="color:var(--cor-aviso)">⚠</span>` : "");
+    const nf = (n) => (Math.round((Number(n) || 0) * 1000) / 1000).toLocaleString("pt-BR");
+
+    const colunas = (chaveQtd, tituloQtd) => [
+      { chave: "_item", titulo: "Item" },
+      { chave: "_class", titulo: "Classificação", formato: (v, l) => classBadge(l) },
+      { chave: "_sub", titulo: "Subclassificação", formato: (v, l) => subBadge(l) },
+      { chave: "unidade", titulo: "Unidade", formato: (v, l) => unidade(l) },
+      { chave: chaveQtd, titulo: tituloQtd, alinhar: "dir", formato: (v) => `<strong>${nf(v)}</strong>` },
+    ];
+    const linha = (it) => Object.assign({}, it, { _item: nomeItem(it) });
+
+    this._tabEstoque.columns = colunas("em_estoque", "Em estoque");
+    this._tabEstoque.rows = dataStore.estoqueDaObra(this.obraId).map(linha).sort((a, b) => String(a._item).localeCompare(String(b._item)));
+    this._tabConsumido.columns = colunas("consumido", "Consumido");
+    this._tabConsumido.rows = dataStore.estoqueConsumidoDaObra(this.obraId).map(linha).sort((a, b) => String(a._item).localeCompare(String(b._item)));
+  }
+
+  /** Clique numa linha do estoque → banner com a ORIGEM do item (item 17). */
+  abrirOrigemDoItem(linha) {
+    if (!linha || !linha.item_id) return;
+    abrirOrigemEstoque({
+      tituloItem: linha._item || (dataStore.item(linha.item_id) || {}).nome || "item",
+      origens: dataStore.origensDoEstoque(this.obraId, linha.item_id),
+      obraId: this.obraId,
+    });
   }
 
   /* ----------------------- Transferências / Pagamentos ----------------------- */

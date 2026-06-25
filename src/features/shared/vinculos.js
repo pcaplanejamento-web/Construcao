@@ -170,6 +170,77 @@ export function vinculosDaOferta(preco) {
 
 /* ------------------------------ Banner ------------------------------- */
 
+/* --------------------------- Origem do estoque ----------------------------- */
+
+const ROTULO_ORIGEM_ESTOQUE = {
+  entrada_despesa: "Despesa paga",
+  entrada_manual: "Adição manual",
+  entrada_transferencia: "Transferência recebida",
+};
+
+/**
+ * Banner de ORIGEM de um item do estoque (item 17): lista as ENTRADAS — de quais
+ * despesas veio, se foi manual ou recebido por transferência (com a obra de origem).
+ * Read-only; compõe ui-modal + ui-data-table (sem componente novo).
+ *  origens = [{ tipo, quantidade, unidade, despesa_id, obra_origem_id, data }]
+ *  obraId  = obra atual (p/ abrir a despesa de origem na própria obra).
+ */
+export function abrirOrigemEstoque({ tituloItem, origens, obraId }) {
+  const linhas = (origens || []).map((o) => {
+    const obraOrigem = o.obra_origem_id ? (dataStore.obra(o.obra_origem_id) || {}).nome || "—" : "";
+    let de = ROTULO_ORIGEM_ESTOQUE[o.tipo] || "Entrada";
+    if (o.tipo === "entrada_transferencia" && obraOrigem) de += " · " + obraOrigem;
+    return {
+      _de: de,
+      _qtd: (Number(o.quantidade) || 0) + (o.unidade ? " " + o.unidade : ""),
+      _data: o.data || "—",
+      _rota: o.tipo === "entrada_transferencia" && o.obra_origem_id ? "/obras/" + o.obra_origem_id : "/obras/" + (obraId || ""),
+    };
+  });
+
+  const modal = document.createElement("ui-modal");
+  modal.setAttribute("open", "");
+  modal.setAttribute("title", "Origem · " + (tituloItem || "item"));
+
+  const corpo = document.createElement("div");
+  const alerta = document.createElement("ui-alert");
+  alerta.setAttribute("tipo", "info");
+  alerta.mensagem = "De onde este item do estoque veio (entradas consolidadas).";
+  corpo.appendChild(alerta);
+
+  const tab = document.createElement("ui-data-table");
+  tab.setAttribute("fluido", "");
+  tab.setAttribute("clicavel", "");
+  tab.setAttribute("empty-text", "Sem entradas registradas.");
+  tab.style.marginTop = "var(--esp-3)";
+  tab.columns = [
+    { chave: "_de", titulo: "Origem" },
+    { chave: "_qtd", titulo: "Quantidade", alinhar: "dir" },
+    { chave: "_data", titulo: "Data" },
+  ];
+  tab.rows = linhas;
+  tab.addEventListener("linha", (e) => {
+    const hash = (e.detail.linha || {})._rota;
+    if (hash) {
+      modal.remove();
+      irPara(hash);
+    }
+  });
+  corpo.appendChild(tab);
+  modal.appendChild(corpo);
+
+  const rod = document.createElement("div");
+  rod.setAttribute("slot", "rodape");
+  const btn = document.createElement("ui-button");
+  btn.textContent = "Fechar";
+  btn.addEventListener("click", () => modal.remove());
+  rod.appendChild(btn);
+  modal.appendChild(rod);
+
+  modal.addEventListener("fechar", () => modal.remove());
+  document.body.appendChild(modal);
+}
+
 /**
  * Abre o banner de vínculos. Se não houver vínculos, executa `aoExcluir`
  * (que deve conter a confirmação + a chamada ao data-store).
