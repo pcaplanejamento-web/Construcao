@@ -34,6 +34,7 @@ import "../despesas/split-editor.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-alert.js";
 import "../../components/ui-input.js";
+import "../../components/ui-select.js";
 import "./obra-form.js";
 import "./obra-share-form.js";
 import "./obra-participantes.js";
@@ -163,6 +164,10 @@ class ObraDetailView extends BaseElement {
           <ui-tabs id="abasEstoque">
             <div slot="emEstoque">
               <ui-card mesa title="Mesa com itens em estoque">
+                <div slot="acoes" style="display:flex;gap:var(--esp-2);flex-wrap:wrap">
+                  <ui-button id="addEstoqueManual" variant="secundario">+ Adicionar manual</ui-button>
+                  <ui-button id="transferirEstoque" variant="secundario">Transferir</ui-button>
+                </div>
                 <ui-data-table id="tabEstoque" fluido clicavel
                   empty-text="Nenhum item em estoque. Itens de despesas Material entram aqui após o pagamento."></ui-data-table>
               </ui-card>
@@ -216,6 +221,10 @@ class ObraDetailView extends BaseElement {
         if (e.detail.acao === "aumentar") this.abrirAjusteEstoque(e.detail.linha, "aumentar");
       });
     }
+    const btnManual = alvo.querySelector("#addEstoqueManual");
+    if (btnManual) btnManual.addEventListener("click", () => this.abrirEstoqueManual());
+    const btnTransf = alvo.querySelector("#transferirEstoque");
+    if (btnTransf) btnTransf.addEventListener("click", () => this.abrirTransferenciaEstoque());
     this._gradeOrc = alvo.querySelector("#gradeOrc");
     this._gradeEquipes = alvo.querySelector("#gradeEquipes");
     this._tabForn = alvo.querySelector("#tabForn");
@@ -413,6 +422,125 @@ class ObraDetailView extends BaseElement {
     });
     rod.appendChild(cancelar);
     rod.appendChild(ok);
+    modal.appendChild(rod);
+    modal.addEventListener("fechar", () => modal.remove());
+    document.body.appendChild(modal);
+  }
+
+  /** "+ Adicionar manual" (item 15): escolhe um item cadastrado + qtd/unidade. */
+  abrirEstoqueManual() {
+    const itens = dataStore.itensAtivos();
+    if (!itens.length) {
+      avisar({ titulo: "Sem itens", mensagem: "Cadastre itens no catálogo antes de adicionar estoque manual." });
+      return;
+    }
+    const modal = document.createElement("ui-modal");
+    modal.setAttribute("open", "");
+    modal.setAttribute("title", "Adicionar ao estoque (manual)");
+    const corpo = document.createElement("div");
+    const sel = document.createElement("ui-select");
+    sel.setAttribute("label", "Item");
+    sel.setAttribute("placeholder", "Selecione o item");
+    sel.options = itens.map((i) => ({ value: i.id, label: i.nome + (i.classificacao ? " · " + i.classificacao : "") }));
+    corpo.appendChild(sel);
+    const qtd = document.createElement("ui-input");
+    qtd.setAttribute("type", "number"); qtd.setAttribute("label", "Quantidade"); qtd.setAttribute("min", "0"); qtd.setAttribute("step", "any"); qtd.setAttribute("placeholder", "0");
+    qtd.style.cssText = "display:block;margin-top:var(--esp-3)";
+    corpo.appendChild(qtd);
+    const un = document.createElement("ui-input");
+    un.setAttribute("label", "Unidade (opcional)"); un.setAttribute("placeholder", "un, m², kg, saco…");
+    un.style.cssText = "display:block;margin-top:var(--esp-3)";
+    corpo.appendChild(un);
+    modal.appendChild(corpo);
+    const rod = document.createElement("div");
+    rod.setAttribute("slot", "rodape");
+    const cancelar = document.createElement("ui-button");
+    cancelar.setAttribute("variant", "secundario"); cancelar.textContent = "Cancelar";
+    cancelar.addEventListener("click", () => modal.remove());
+    const ok = document.createElement("ui-button");
+    ok.textContent = "Adicionar";
+    ok.addEventListener("click", async () => {
+      const itemId = sel.value;
+      const q = Number(qtd.value);
+      if (!itemId) { notificarErro(new Error("Selecione o item.")); return; }
+      if (!(q > 0)) { notificarErro(new Error("Informe uma quantidade maior que zero.")); return; }
+      ok.setAttribute("loading", "");
+      try {
+        await dataStore.adicionarEstoqueManual({ obra_id: this.obraId, item_id: itemId, quantidade: q, unidade: un.value || "" });
+        toastSucesso("Item adicionado ao estoque.");
+        modal.remove();
+      } catch (e) { notificarErro(e); }
+      ok.removeAttribute("loading");
+    });
+    rod.appendChild(cancelar); rod.appendChild(ok);
+    modal.appendChild(rod);
+    modal.addEventListener("fechar", () => modal.remove());
+    document.body.appendChild(modal);
+  }
+
+  /** "Transferir" (item 14): move o saldo de um item desta obra p/ outra obra. */
+  abrirTransferenciaEstoque() {
+    const itens = dataStore.estoqueDaObra(this.obraId); // só itens COM saldo
+    const outras = dataStore.obras().filter((o) => String(o.id) !== String(this.obraId));
+    if (!itens.length) {
+      avisar({ titulo: "Sem estoque", mensagem: "Não há itens em estoque para transferir nesta obra." });
+      return;
+    }
+    if (!outras.length) {
+      avisar({ titulo: "Sem destino", mensagem: "Você precisa de outra obra para transferir o estoque." });
+      return;
+    }
+    const nomeItem = (it) => (dataStore.item(it.item_id) || {}).nome || "—";
+    const modal = document.createElement("ui-modal");
+    modal.setAttribute("open", "");
+    modal.setAttribute("title", "Transferir estoque para outra obra");
+    const corpo = document.createElement("div");
+    const selItem = document.createElement("ui-select");
+    selItem.setAttribute("label", "Item");
+    selItem.setAttribute("placeholder", "Selecione o item");
+    selItem.options = itens.map((it) => ({ value: it.item_id, label: nomeItem(it) + " · " + it.em_estoque + (it.unidade ? " " + it.unidade : "") + " em estoque" }));
+    corpo.appendChild(selItem);
+    const selObra = document.createElement("ui-select");
+    selObra.setAttribute("label", "Obra de destino");
+    selObra.setAttribute("placeholder", "Selecione a obra");
+    selObra.options = outras.map((o) => ({ value: o.id, label: o.nome }));
+    selObra.style.cssText = "display:block;margin-top:var(--esp-3)";
+    corpo.appendChild(selObra);
+    const qtd = document.createElement("ui-input");
+    qtd.setAttribute("type", "number"); qtd.setAttribute("label", "Quantidade"); qtd.setAttribute("min", "0"); qtd.setAttribute("step", "any"); qtd.setAttribute("placeholder", "0");
+    qtd.style.cssText = "display:block;margin-top:var(--esp-3)";
+    corpo.appendChild(qtd);
+    const dica = document.createElement("ui-alert");
+    dica.setAttribute("tipo", "info");
+    dica.style.cssText = "display:block;margin-top:var(--esp-3)";
+    dica.mensagem = "A obra de destino registra de qual obra o item veio.";
+    corpo.appendChild(dica);
+    modal.appendChild(corpo);
+    const rod = document.createElement("div");
+    rod.setAttribute("slot", "rodape");
+    const cancelar = document.createElement("ui-button");
+    cancelar.setAttribute("variant", "secundario"); cancelar.textContent = "Cancelar";
+    cancelar.addEventListener("click", () => modal.remove());
+    const ok = document.createElement("ui-button");
+    ok.textContent = "Transferir";
+    ok.addEventListener("click", async () => {
+      const itemId = selItem.value;
+      const destino = selObra.value;
+      const q = Number(qtd.value);
+      if (!itemId) { notificarErro(new Error("Selecione o item.")); return; }
+      if (!destino) { notificarErro(new Error("Selecione a obra de destino.")); return; }
+      if (!(q > 0)) { notificarErro(new Error("Informe uma quantidade maior que zero.")); return; }
+      const limite = dataStore.saldoEstoqueItem(this.obraId, itemId).em_estoque;
+      if (q - limite > 0.0001) { notificarErro(new Error(`Máximo disponível: ${limite}.`)); return; }
+      ok.setAttribute("loading", "");
+      try {
+        await dataStore.transferirEstoque({ obra_id: this.obraId, item_id: itemId, quantidade: q, obra_destino_id: destino });
+        toastSucesso("Estoque transferido.");
+        modal.remove();
+      } catch (e) { notificarErro(e); }
+      ok.removeAttribute("loading");
+    });
+    rod.appendChild(cancelar); rod.appendChild(ok);
     modal.appendChild(rod);
     modal.addEventListener("fechar", () => modal.remove());
     document.body.appendChild(modal);

@@ -760,6 +760,30 @@ async function devolverEstoque(dados) {
   return r;
 }
 
+/** Adiciona estoque MANUAL (sem despesa) — escolhe um item cadastrado (item 15). */
+async function adicionarEstoqueManual(dados) {
+  const r = await api.call("estoque.criarMovimento", { ...dados, acao: "manual" });
+  _aplicarMovimentosEstoque(r.movimentos);
+  return r;
+}
+
+/** TRANSFERE estoque para outra obra (item 14): saída na origem + entrada no destino. */
+async function transferirEstoque(dados) {
+  const r = await api.call("estoque.criarMovimento", { ...dados, acao: "transferir" });
+  _aplicarMovimentosEstoque(r.movimentos);
+  return r;
+}
+
+/** Remove um movimento (manual/transferência); o backend bloqueia o que não pode. */
+async function removerMovimentoEstoque(id) {
+  const r = await api.call("estoque.remover", { id });
+  const remover = new Set((r.removidos || []).map((x) => String(x)));
+  store.set({ estoque: (store.get().estoque || []).filter((m) => !remover.has(String(m.id))) });
+  persistir();
+  bus.emit(EVENTOS.ESTOQUE, { tipo: "removido" });
+  return r;
+}
+
 /** Registra um repasse de um pagamento a outros contatos. */
 async function lancarRepasse(dados) {
   const r = await api.call("repasses.lancar", dados);
@@ -1262,7 +1286,7 @@ export const dataStore = {
   adicionarDespesa, atualizarDespesa, removerDespesa, lancarPagamento, removerPagamento,
   lancarPagamentoMulti, removerPagamentoV2, excluirPagamento, lancarRepasse, removerRepasse,
   lancarTransferencia, removerTransferencia, excluirTransferencia,
-  consumirEstoque, devolverEstoque,
+  consumirEstoque, devolverEstoque, adicionarEstoqueManual, transferirEstoque, removerMovimentoEstoque,
   criarCategoria, atualizarCategoria, removerCategoria,
   criarFornecedor, atualizarFornecedor, removerFornecedor,
   criarContato, atualizarContato, removerContato,
