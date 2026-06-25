@@ -32,6 +32,8 @@ import "../despesas/despesa-table.js";
 import "../despesas/despesa-detail.js";
 import "../despesas/split-editor.js";
 import "../../components/ui-modal.js";
+import "../../components/ui-alert.js";
+import "../../components/ui-input.js";
 import "./obra-form.js";
 import "./obra-share-form.js";
 import "./obra-participantes.js";
@@ -200,10 +202,20 @@ class ObraDetailView extends BaseElement {
       ];
     this._tabEstoque = alvo.querySelector("#tabEstoque");
     this._tabConsumido = alvo.querySelector("#tabConsumido");
-    if (this._tabEstoque)
+    if (this._tabEstoque) {
+      this._tabEstoque.acoes = [{ nome: "reduzir", rotulo: "Reduzir" }];
       this._tabEstoque.addEventListener("linha", (e) => this.abrirOrigemDoItem(e.detail.linha));
-    if (this._tabConsumido)
+      this._tabEstoque.addEventListener("acao", (e) => {
+        if (e.detail.acao === "reduzir") this.abrirAjusteEstoque(e.detail.linha, "reduzir");
+      });
+    }
+    if (this._tabConsumido) {
+      this._tabConsumido.acoes = [{ nome: "aumentar", rotulo: "Aumentar" }];
       this._tabConsumido.addEventListener("linha", (e) => this.abrirOrigemDoItem(e.detail.linha));
+      this._tabConsumido.addEventListener("acao", (e) => {
+        if (e.detail.acao === "aumentar") this.abrirAjusteEstoque(e.detail.linha, "aumentar");
+      });
+    }
     this._gradeOrc = alvo.querySelector("#gradeOrc");
     this._gradeEquipes = alvo.querySelector("#gradeEquipes");
     this._tabForn = alvo.querySelector("#tabForn");
@@ -331,6 +343,79 @@ class ObraDetailView extends BaseElement {
       origens: dataStore.origensDoEstoque(this.obraId, linha.item_id),
       obraId: this.obraId,
     });
+  }
+
+  /**
+   * Banner Reduzir/Aumentar (itens 5/6/7): input numérico + LIMITE (item 10).
+   * Reduzir → consumir (limite = em estoque); Aumentar → devolver (limite = consumido).
+   */
+  abrirAjusteEstoque(linha, modo) {
+    if (!linha || !linha.item_id) return;
+    const reduzir = modo === "reduzir";
+    const saldo = dataStore.saldoEstoqueItem(this.obraId, linha.item_id);
+    const limite = reduzir ? saldo.em_estoque : saldo.consumido;
+    const nomeItem = linha._item || (dataStore.item(linha.item_id) || {}).nome || "item";
+    const un = linha.unidade && linha.unidade !== "—" ? " " + linha.unidade : "";
+    if (!(limite > 0)) {
+      avisar({ titulo: reduzir ? "Sem estoque" : "Nada a devolver", mensagem: reduzir ? "Não há saldo em estoque para reduzir." : "Este item não tem quantidade consumida para devolver." });
+      return;
+    }
+    const nf = (n) => (Math.round((Number(n) || 0) * 1000) / 1000).toLocaleString("pt-BR");
+
+    const modal = document.createElement("ui-modal");
+    modal.setAttribute("open", "");
+    modal.setAttribute("title", (reduzir ? "Reduzir · " : "Aumentar · ") + nomeItem);
+    const corpo = document.createElement("div");
+    const info = document.createElement("ui-alert");
+    info.setAttribute("tipo", "info");
+    info.mensagem = (reduzir ? "Disponível em estoque: " : "Consumido (máximo a devolver): ") + nf(limite) + un + ".";
+    corpo.appendChild(info);
+    const inp = document.createElement("ui-input");
+    inp.setAttribute("type", "number");
+    inp.setAttribute("label", reduzir ? "Quantidade a reduzir" : "Quantidade a devolver");
+    inp.setAttribute("min", "0");
+    inp.setAttribute("step", "any");
+    inp.setAttribute("placeholder", "0");
+    inp.style.marginTop = "var(--esp-3)";
+    inp.style.display = "block";
+    corpo.appendChild(inp);
+    modal.appendChild(corpo);
+
+    const rod = document.createElement("div");
+    rod.setAttribute("slot", "rodape");
+    const cancelar = document.createElement("ui-button");
+    cancelar.setAttribute("variant", "secundario");
+    cancelar.textContent = "Cancelar";
+    cancelar.addEventListener("click", () => modal.remove());
+    const ok = document.createElement("ui-button");
+    ok.textContent = reduzir ? "Reduzir" : "Aumentar";
+    ok.addEventListener("click", async () => {
+      const qtd = Number(inp.value);
+      if (!(qtd > 0)) {
+        notificarErro(new Error("Informe uma quantidade maior que zero."));
+        return;
+      }
+      if (qtd - limite > 0.0001) {
+        notificarErro(new Error(`Máximo permitido: ${nf(limite)}${un}.`));
+        return;
+      }
+      ok.setAttribute("loading", "");
+      try {
+        const dados = { obra_id: this.obraId, item_id: linha.item_id, quantidade: qtd, classificacao: linha.classificacao || "", categoria_id: linha.categoria_id || "" };
+        if (reduzir) await dataStore.consumirEstoque(dados);
+        else await dataStore.devolverEstoque(dados);
+        toastSucesso(reduzir ? "Item reduzido (movido para Consumidos)." : "Item devolvido ao estoque.");
+        modal.remove();
+      } catch (e) {
+        notificarErro(e);
+      }
+      ok.removeAttribute("loading");
+    });
+    rod.appendChild(cancelar);
+    rod.appendChild(ok);
+    modal.appendChild(rod);
+    modal.addEventListener("fechar", () => modal.remove());
+    document.body.appendChild(modal);
   }
 
   /* ----------------------- Transferências / Pagamentos ----------------------- */

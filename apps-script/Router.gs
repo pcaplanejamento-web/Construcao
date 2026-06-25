@@ -118,6 +118,11 @@ const ROTAS = {
   "equipes.atualizar": { fn: equipesAtualizar },
   "equipes.remover": { fn: equipesRemover },
 
+  // Estoque (livro-razão de movimentos por obra)
+  "estoque.listar": { fn: estoqueListar },
+  "estoque.criarMovimento": { fn: estoqueCriarMovimento },
+  "estoque.remover": { fn: estoqueRemover },
+
   // Usuários (autenticado)
   "usuarios.listar": { fn: usuariosListar },
 

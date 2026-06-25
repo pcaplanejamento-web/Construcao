@@ -205,6 +205,15 @@ para dono **e** colaboradores.
 > A antiga validação "Pedreiro → superior" foi **removida** de `contatos.*`;
 > o Pedreiro agora é organizado por Equipes. Snapshot inclui `equipes`.
 
+### Estoque (livro-razão de movimentos por obra)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `estoque.listar` | `{ obra_id }` | `{ movimentos: [...] }` (da obra acessível) |
+| `estoque.criarMovimento` | `{ acao, obra_id, item_id, quantidade, obra_destino_id?, observacao? }` | `{ movimentos: [...] }` — `acao` ∈ `consumir` \| `devolver` \| `manual` \| `transferir`. **Limites (item 10):** consumir ≤ em_estoque; devolver ≤ consumido; transferir ≤ em_estoque(origem). `transferir` grava 2 movimentos (saída na origem + entrada no destino com `obra_origem_id`, casados por `par_id`); `manual` herda classificação/subclasse do item (item 16) |
+| `estoque.remover` | `{ id }` | `{ removidos: [ids] }` — remove `entrada_manual` ou estorna a transferência (par_id); **bloqueia** `entrada_despesa` (gerida pela despesa) e **bloqueia** se já consumido (devolva antes) |
+
+> O estoque é **automático**: ao QUITAR uma despesa **Material** com `quantidade>0`, o backend cria a `entrada_despesa` (em `_sincronizarEstoqueDaDespesa`/Pagamentos.gs). O snapshot inclui `estoque` (movimentos das obras acessíveis); o cliente consolida por `(obra,item)` no helper puro `estoque.js`.
+
 ### E-mail do app (Resend)
 | Action | `data` | Retorno |
 |--------|--------|---------|
