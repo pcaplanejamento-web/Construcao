@@ -3,9 +3,10 @@
  *
  * O web app roda como USER_DEPLOYING (o dono), então os arquivos vivem no Drive do
  * dono, organizados em UMA pasta-raiz do app + uma SUBPASTA por usuário (usuario_id).
- * Escopo `drive.file` (menor privilégio): o app só enxerga o que ELE cria — por isso
- * a pasta-raiz é criada pelo próprio script (id em Script Properties) e a subpasta de
- * cada usuário tem o id guardado em CONFIGURACOES (chave `drive_folder_id`).
+ * Escopo `drive` (o `DriveApp.createFolder` exige o escopo amplo — `drive.file` não
+ * cobre criação de pastas). Roda como o dono, no Drive dele: a pasta-raiz é criada pelo
+ * próprio script (id em Script Properties) e a subpasta de cada usuário tem o id
+ * guardado em CONFIGURACOES (chave `drive_folder_id`).
  *
  * IMPORTANTE: estas funções NÃO usam comLock — os chamadores (Transferencias.gs)
  * já rodam dentro de um comLock; relockar aqui causaria lock aninhado.
@@ -122,7 +123,7 @@ function _salvarComprovante(usuarioId, comprovante) {
 
 /**
  * SETUP (uma vez): rode esta função NO EDITOR do Apps Script após adicionar o escopo
- * `drive.file` — ela dispara o consentimento do Drive e cria/garante a pasta-raiz.
+ * `drive` — ela dispara o consentimento do Drive e cria/garante a pasta-raiz.
  * Sem isso, o primeiro upload de comprovante falha (a transferência ainda é salva).
  */
 function autorizarDrive() {

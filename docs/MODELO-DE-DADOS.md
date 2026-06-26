@@ -438,7 +438,7 @@ A transferência agrupa N pagamentos (1 por despesa). Colunas relevantes ao **co
 | comprovante_nome | string | nome original do arquivo |
 | comprovante_url | string | link de visualização (Drive, `ANYONE_WITH_LINK`) — exposto também no link público da obra |
 
-> **Drive:** o web app roda como o dono (`USER_DEPLOYING`); os comprovantes ficam numa **pasta-raiz do app** (id em Script Property `DRIVE_ROOT_FOLDER_ID`) com uma **subpasta por usuário** (`Configuracoes.drive_folder_id`). Escopo `drive.file`. Ao **excluir** a transferência (ou seu último pagamento), o arquivo vai para a **lixeira** do Drive. Ver `apps-script/Drive.gs`.
+> **Drive:** o web app roda como o dono (`USER_DEPLOYING`); os comprovantes ficam numa **pasta-raiz do app** (id em Script Property `DRIVE_ROOT_FOLDER_ID`) com uma **subpasta por usuário** (`Configuracoes.drive_folder_id`). Escopo `drive` (o `DriveApp.createFolder` exige o escopo amplo). Ao **excluir** a transferência (ou seu último pagamento), o arquivo vai para a **lixeira** do Drive. Ver `apps-script/Drive.gs`.
 
 ## Aba `Sessoes`
 | Coluna | Tipo | Descrição |

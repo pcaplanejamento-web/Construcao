@@ -213,7 +213,7 @@ para dono **e** colaboradores.
 | `transferencias.anexarComprovante` | `{ id, comprovante:{base64,nome,mime} }` | `{ transferencia }` — anexa ou **substitui** (trasheia o antigo) |
 | `transferencias.removerComprovante` | `{ id }` | `{ transferencia }` — remove o anexo (e o arquivo no Drive) |
 
-> Arquivos vão para o Drive do dono (`drive.file`): pasta-raiz do app (`DRIVE_ROOT_FOLDER_ID` em Script Properties) + subpasta por usuário (`Configuracoes.drive_folder_id`). O `comprovante_url` (compartilhado por link) é exposto também em `publico.obra`. **Setup:** rodar `autorizarDrive()` no editor após adicionar o escopo.
+> Arquivos vão para o Drive do dono (escopo `drive`): pasta-raiz do app (`DRIVE_ROOT_FOLDER_ID` em Script Properties) + subpasta por usuário (`Configuracoes.drive_folder_id`). O `comprovante_url` (compartilhado por link) é exposto também em `publico.obra`. **Setup:** rodar `autorizarDrive()` no editor após adicionar o escopo.
 
 ### Estoque (livro-razão de movimentos por obra)
 | Action | `data` | Retorno |
