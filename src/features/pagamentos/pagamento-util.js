@@ -286,7 +286,8 @@ export function abrirTransferencia(transferencia) {
       .tf-cmp { display:flex; flex-direction:column; gap: var(--esp-2); }
       .tf-cmp-acoes { display:flex; align-items:center; gap: var(--esp-2); flex-wrap: wrap; }
       .tf-cmp-preview { width:100%; height: 380px; border:1px solid var(--cor-borda);
-        border-radius: var(--raio-sm); background: var(--cor-superficie-2); }
+        border-radius: var(--raio-sm); background: var(--cor-superficie-2); display:block;
+        object-fit: contain; } /* object-fit afeta só o <img> (imagem); inócuo no iframe (PDF) */
       @media (max-width: 600px) { .tf-cmp-preview { height: 300px; } }
       .tf-cmp a.chip { display:inline-flex; align-items:center; gap:6px; min-height:44px; text-decoration:none;
         background: var(--cor-info-suave); color: var(--cor-info); border: 1px solid color-mix(in srgb, var(--cor-info) 35%, var(--cor-borda));
@@ -346,17 +347,21 @@ export function abrirTransferencia(transferencia) {
   if (cmp) {
     if (t.comprovante_url) {
       const nome = t.comprovante_nome ? " (" + t.comprovante_nome + ")" : "";
-      // URL de PREVIEW embutível (iframe) a partir do id do arquivo no Drive.
-      const previewUrl = t.comprovante_file_id
-        ? "https://drive.google.com/file/d/" + t.comprovante_file_id + "/preview"
-        : String(t.comprovante_url).replace("/view", "/preview");
+      const fid = t.comprovante_file_id || "";
+      // IMAGEM → <img> (thumbnail do Drive; leve e confiável no MOBILE).
+      // PDF/outros → <iframe> /preview. Ambos com fallback "Abrir em nova aba".
+      const ehImagem = /\.(jpe?g|png|webp|gif|bmp|tiff?|heic|heif|avif)$/i.test(String(t.comprovante_nome || ""));
+      const previewHtml =
+        ehImagem && fid
+          ? `<img class="tf-cmp-preview" src="https://drive.google.com/thumbnail?id=${fid}&sz=w1600" alt="Comprovante" loading="lazy">`
+          : `<iframe class="tf-cmp-preview" src="${fid ? "https://drive.google.com/file/d/" + fid + "/preview" : String(t.comprovante_url).replace("/view", "/preview")}" title="Comprovante" loading="lazy"></iframe>`;
       cmp.innerHTML =
         `<div class="tf-cmp-acoes">` +
         `<a class="chip" href="${t.comprovante_url}" target="_blank" rel="noopener">📎 Abrir em nova aba${nome}</a>` +
         `<button type="button" id="cmpSubst">Substituir</button>` +
         `<button type="button" class="rem" id="cmpRem">Remover</button>` +
         `</div>` +
-        `<iframe class="tf-cmp-preview" src="${previewUrl}" title="Comprovante" loading="lazy"></iframe>`;
+        previewHtml;
       cmp.querySelector("#cmpSubst").addEventListener("click", () => _escolherEAnexarComprovante(t, modal));
       cmp.querySelector("#cmpRem").addEventListener("click", async () => {
         const ok = await confirmar({
