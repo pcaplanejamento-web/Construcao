@@ -11,8 +11,34 @@
  * já rodam dentro de um comLock; relockar aqui causaria lock aninhado.
  */
 
-const _DRIVE_MIMES_OK = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const _DRIVE_MAX_BYTES = 10 * 1024 * 1024; // 10MB
+// Mapa extensão → mime (fallback quando o navegador não informa o tipo).
+const _DRIVE_EXT_MIME = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  bmp: "image/bmp",
+  tiff: "image/tiff",
+  tif: "image/tiff",
+  heic: "image/heic",
+  heif: "image/heif",
+  svg: "image/svg+xml",
+};
+
+/** Resolve o mime do comprovante: usa o informado; se vazio/desconhecido, infere pela extensão. */
+function _mimeComprovante(comprovante) {
+  let mime = String((comprovante && comprovante.mime) || "").trim().toLowerCase();
+  const ehAceito = mime === "application/pdf" || mime.indexOf("image/") === 0;
+  if (!ehAceito) {
+    const nome = String((comprovante && comprovante.nome) || "").toLowerCase();
+    const ext = nome.indexOf(".") >= 0 ? nome.slice(nome.lastIndexOf(".") + 1) : "";
+    if (_DRIVE_EXT_MIME[ext]) mime = _DRIVE_EXT_MIME[ext];
+  }
+  return mime;
+}
 
 /** Pasta-raiz do app (cria 1× e guarda o id em Script Properties). */
 function _driveRoot() {
@@ -63,14 +89,14 @@ function _pastaDoUsuario(usuarioId) {
   return pasta;
 }
 
-/** Valida o comprovante recebido do cliente (mime + tamanho). */
+/** Valida o comprovante recebido do cliente: aceita PDF e QUALQUER imagem; ≤10MB. */
 function _validarComprovante(comprovante) {
   if (!comprovante || !comprovante.base64) lancar(ERRO.VALIDACAO, "Comprovante inválido.");
-  const nome = String(comprovante.nome || "").trim();
-  const mime = String(comprovante.mime || "").trim();
+  const nome = String((comprovante && comprovante.nome) || "").trim();
   if (!nome) lancar(ERRO.VALIDACAO, "Comprovante sem nome.");
-  if (_DRIVE_MIMES_OK.indexOf(mime) < 0)
-    lancar(ERRO.VALIDACAO, "Tipo de arquivo não permitido (use PDF, JPG, PNG ou WEBP).");
+  const mime = _mimeComprovante(comprovante);
+  if (mime !== "application/pdf" && mime.indexOf("image/") !== 0)
+    lancar(ERRO.VALIDACAO, "Anexe um PDF ou uma imagem.");
   const bytes = Math.floor((String(comprovante.base64).length * 3) / 4);
   if (bytes > _DRIVE_MAX_BYTES) lancar(ERRO.VALIDACAO, "Arquivo muito grande (máximo 10MB).");
 }
@@ -82,8 +108,9 @@ function _validarComprovante(comprovante) {
  */
 function _salvarComprovante(usuarioId, comprovante) {
   _validarComprovante(comprovante);
+  const mime = _mimeComprovante(comprovante) || "application/octet-stream";
   const bytes = Utilities.base64Decode(comprovante.base64);
-  const blob = Utilities.newBlob(bytes, String(comprovante.mime), String(comprovante.nome));
+  const blob = Utilities.newBlob(bytes, mime, String(comprovante.nome));
   const arquivo = _pastaDoUsuario(usuarioId).createFile(blob);
   try {
     arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
