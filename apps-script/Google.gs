@@ -292,6 +292,10 @@ function _mapearEvento(ev) {
     lembreteMin: lembreteMin,
     convidados: (ev.attendees || []).map(function (a) { return a.email; }),
     link: ev.htmlLink || "",
+    // sincronizado = evento gerado pela sincronização de marcações do app (tem
+    // dattaobra_tipo). O front NÃO o mostra como evento avulso (já aparece como
+    // marcação derivada), evitando duplicar.
+    sincronizado: !!(ev.extendedProperties && ev.extendedProperties.private && ev.extendedProperties.private.dattaobra_tipo),
   };
 }
 
@@ -469,4 +473,104 @@ function googleAgendaRemover(data, sessao) {
     lancar(ERRO.INTERNO, "Falha ao remover o evento (" + code + ").");
   }
   return { removido: true };
+}
+
+/* -------- Sincronização de marcações do app -> Google (push idempotente) ------- */
+/*
+ * O cliente envia as marcações derivadas da obra (despesas/transferências/notas/
+ * prazo — ver marcacoes.js). Cada uma vira/atualiza um evento de DIA INTEIRO no
+ * Google Calendar, tagueado por extendedProperties.private = { dattaobra_obra,
+ * dattaobra_tipo, dattaobra_ref }. Idempotente: casa a fonte com o Google (cria/
+ * atualiza os presentes; APAGA os tagueados que sumiram). Não toca em eventos
+ * avulsos (sem dattaobra_tipo). Cor por tipo (colorId do Google).
+ */
+var _CAL_COR_TIPO = { despesa: "7", transferencia: "3", nota: "5", prazo: "11" };
+
+/** google.agenda.sincronizarObra — { obraId, marcacoes:[{ref:{tipo,id},titulo,inicio}] }. */
+function googleAgendaSincronizarObra(data, sessao) {
+  const obraId = String((data && data.obraId) || "");
+  if (!obraId) lancar(ERRO.VALIDACAO, "Obra não informada.");
+  _obraAcessivel(obraId, sessao.usuario_id);
+  const marc = (data && data.marcacoes) || [];
+  const acesso = _refrescarAccessToken(sessao.usuario_id);
+
+  const existentes = _calListarMarcacoes(acesso, obraId); // "tipo:ref" -> eventId
+  var criados = 0, atualizados = 0, removidos = 0;
+  const vistos = {};
+
+  marc.forEach(function (m) {
+    if (!m || !m.ref || !m.ref.tipo) return;
+    const chave = String(m.ref.tipo) + ":" + String(m.ref.id);
+    vistos[chave] = true;
+    const evId = existentes[chave];
+    const resp = UrlFetchApp.fetch(
+      evId ? _CAL_BASE + "/" + encodeURIComponent(evId) : _CAL_BASE,
+      {
+        method: evId ? "put" : "post",
+        contentType: "application/json",
+        headers: { Authorization: "Bearer " + acesso },
+        payload: JSON.stringify(_corpoMarcacao(obraId, m)),
+        muteHttpExceptions: true,
+      }
+    );
+    if (resp.getResponseCode() < 300) { if (evId) atualizados++; else criados++; }
+  });
+
+  Object.keys(existentes).forEach(function (chave) {
+    if (vistos[chave]) return;
+    const resp = UrlFetchApp.fetch(_CAL_BASE + "/" + encodeURIComponent(existentes[chave]), {
+      method: "delete",
+      headers: { Authorization: "Bearer " + acesso },
+      muteHttpExceptions: true,
+    });
+    const c = resp.getResponseCode();
+    if (c === 200 || c === 204 || c === 410) removidos++;
+  });
+
+  return { criados: criados, atualizados: atualizados, removidos: removidos };
+}
+
+/** Lê os eventos tagueados (sincronizados) da obra: { "tipo:ref": eventId }. */
+function _calListarMarcacoes(acesso, obraId) {
+  const mapa = {};
+  var pageToken = "";
+  var guarda = 0;
+  do {
+    var url = _CAL_BASE + "?singleEvents=true&maxResults=250" +
+      "&privateExtendedProperty=" + encodeURIComponent("dattaobra_obra=" + obraId);
+    if (pageToken) url += "&pageToken=" + encodeURIComponent(pageToken);
+    var resp = UrlFetchApp.fetch(url, {
+      headers: { Authorization: "Bearer " + acesso },
+      muteHttpExceptions: true,
+    });
+    if (resp.getResponseCode() !== 200) break;
+    var json = JSON.parse(resp.getContentText() || "{}");
+    (json.items || []).forEach(function (ev) {
+      var pr = (ev.extendedProperties && ev.extendedProperties.private) || {};
+      if (pr.dattaobra_tipo) mapa[pr.dattaobra_tipo + ":" + String(pr.dattaobra_ref)] = ev.id;
+    });
+    pageToken = json.nextPageToken || "";
+  } while (pageToken && ++guarda < 12);
+  return mapa;
+}
+
+/** Corpo do evento de dia inteiro para uma marcação (tagueado + cor por tipo). */
+function _corpoMarcacao(obraId, m) {
+  const ini = String(m.inicio || "").slice(0, 10);
+  const corpo = {
+    summary: String(m.titulo || "").slice(0, 240),
+    start: { date: ini },
+    end: { date: _somarDias(ini, 1) },
+    reminders: { useDefault: false },
+    extendedProperties: {
+      private: {
+        dattaobra_obra: String(obraId),
+        dattaobra_tipo: String(m.ref.tipo),
+        dattaobra_ref: String(m.ref.id),
+      },
+    },
+  };
+  const cor = _CAL_COR_TIPO[m.ref.tipo];
+  if (cor) corpo.colorId = cor;
+  return corpo;
 }

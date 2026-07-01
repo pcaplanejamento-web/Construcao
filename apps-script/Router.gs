@@ -146,6 +146,7 @@ const ROTAS = {
   "google.agenda.criar": { fn: googleAgendaCriar },
   "google.agenda.atualizar": { fn: googleAgendaAtualizar },
   "google.agenda.remover": { fn: googleAgendaRemover },
+  "google.agenda.sincronizarObra": { fn: googleAgendaSincronizarObra },
 
   // Usuários (autenticado)
   "usuarios.listar": { fn: usuariosListar },

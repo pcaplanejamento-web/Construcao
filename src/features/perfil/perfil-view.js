@@ -13,6 +13,7 @@ import "../../components/ui-badge.js";
 import "../../components/ui-button.js";
 import "../../components/ui-switch.js";
 import "./senha-form.js";
+import { sincronizarTodasObrasGoogle } from "../obras/sync-agenda.js";
 
 function _liga(v) {
   return v === true || v === "TRUE" || v === "true";
@@ -128,7 +129,13 @@ class PerfilView extends BaseElement {
   async _definirSync(chave, valor) {
     try {
       await auth.definirConfig(chave, valor);
-      toastSucesso(valor ? "Sincronização ligada." : "Sincronização desligada.");
+      if (_liga((auth.config() || {}).sync_agenda)) {
+        toastAviso("Sincronizando com o Google Calendar…");
+        await sincronizarTodasObrasGoogle();
+        toastSucesso("Sincronização concluída.");
+      } else {
+        toastSucesso("Sincronização desligada. (Os eventos já enviados permanecem no Google.)");
+      }
     } catch (e) {
       notificarErro(e);
     }

@@ -13,6 +13,7 @@ import { irPara } from "../../core/router.js";
 import { toastSucesso, toastAviso, notificarErro } from "../../core/event-bus.js";
 import { avisar } from "../../components/confirmar.js";
 import { marcacoesDaObra, ROTULO_TIPO } from "./marcacoes.js";
+import { sincronizarObraGoogle, syncAgendaLigada } from "./sync-agenda.js";
 import { corEvento } from "./agenda-cores.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
@@ -76,9 +77,12 @@ class ObraAgenda extends BaseElement {
     }
     return `
       <ui-card mesa title="Agenda da obra">
-        <div slot="acoes" class="vistas">
-          <button class="vista ${this._vista === "calendario" ? "ativo" : ""}" data-vista="calendario" type="button">Calendário</button>
-          <button class="vista ${this._vista === "historico" ? "ativo" : ""}" data-vista="historico" type="button">Histórico</button>
+        <div slot="acoes" class="agenda-acoes">
+          <div class="vistas">
+            <button class="vista ${this._vista === "calendario" ? "ativo" : ""}" data-vista="calendario" type="button">Calendário</button>
+            <button class="vista ${this._vista === "historico" ? "ativo" : ""}" data-vista="historico" type="button">Histórico</button>
+          </div>
+          ${this.conectado && syncAgendaLigada() ? `<ui-button id="sincronizar" variant="secundario" tamanho="sm">Sincronizar agora</ui-button>` : ""}
         </div>
         ${
           this.conectado
@@ -99,8 +103,16 @@ class ObraAgenda extends BaseElement {
       const st = await api.call("google.status");
       this._google = { conectado: !!(st && st.conectado) };
       if (this._google.conectado) {
+        // Sincroniza esta obra UMA vez por montagem (se ligado) — importa as
+        // marcações novas antes de listar; os sincronizados são filtrados abaixo.
+        if (!this._jaSincronizou && syncAgendaLigada()) {
+          this._jaSincronizou = true;
+          try { await sincronizarObraGoogle(this.obraId); } catch (e) { /* best-effort */ }
+        }
         const r = await api.call("google.agenda.listar", { obraId: this.obraId });
-        this._googleEventos = (r.eventos || []).map((ev) => ({ ...ev, tipo: "evento", origem: "google" }));
+        this._googleEventos = (r.eventos || [])
+          .filter((ev) => !ev.sincronizado) // sincronizados já aparecem como marcação derivada
+          .map((ev) => ({ ...ev, tipo: "evento", origem: "google" }));
       } else {
         this._googleEventos = [];
       }
@@ -120,6 +132,8 @@ class ObraAgenda extends BaseElement {
   aposRender() {
     const perfil = this.$("#irPerfil");
     if (perfil) perfil.addEventListener("click", () => irPara("/perfil"));
+    const sinc = this.$("#sincronizar");
+    if (sinc) sinc.addEventListener("click", () => this._sincronizarAgora());
     this.$$(".vista").forEach((b) =>
       b.addEventListener("click", () => {
         if (this._vista === b.dataset.vista) return;
@@ -200,6 +214,19 @@ class ObraAgenda extends BaseElement {
       titulo: ROTULO_TIPO[m.tipo] || "Marcação",
       mensagem: m.titulo + "\n\n" + quando + "\n\nGerida na aba de origem desta obra.",
     });
+  }
+
+  async _sincronizarAgora() {
+    const btn = this.$("#sincronizar");
+    if (btn) btn.setAttribute("loading", "");
+    try {
+      const r = await sincronizarObraGoogle(this.obraId);
+      toastSucesso(`Sincronizado com o Google (${r.criados} novos, ${r.atualizados} atualizados, ${r.removidos} removidos).`);
+      await this.carregar();
+    } catch (e) {
+      notificarErro(e);
+      if (btn) btn.removeAttribute("loading");
+    }
   }
 
   /** Cria/edita evento avulso no Google (exige conexão). */
