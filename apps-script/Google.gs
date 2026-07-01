@@ -268,12 +268,29 @@ var _CAL_BASE = "https://www.googleapis.com/calendar/v3/calendars/primary/events
 var _CAL_TZ = "America/Sao_Paulo";
 
 function _mapearEvento(ev) {
+  const inicio = (ev.start && (ev.start.dateTime || ev.start.date)) || "";
+  const fimRaw = (ev.end && (ev.end.dateTime || ev.end.date)) || "";
+  const diaInteiro = !!(ev.start && ev.start.date);
+  // No all-day o fim vem EXCLUSIVO; devolvemos o último dia INCLUSIVO p/ exibir/editar.
+  const fim = diaInteiro && fimRaw ? _somarDias(fimRaw, -1) : fimRaw;
+  const rec = (ev.recurrence && ev.recurrence[0]) || "";
+  const freq = (/FREQ=([A-Z]+)/.exec(rec) || [])[1] || "";
+  let lembreteMin = 0;
+  if (ev.reminders && ev.reminders.overrides && ev.reminders.overrides.length) {
+    lembreteMin = Number(ev.reminders.overrides[0].minutes) || 0;
+  }
   return {
     id: ev.id,
     titulo: ev.summary || "(sem título)",
-    inicio: (ev.start && (ev.start.dateTime || ev.start.date)) || "",
-    fim: (ev.end && (ev.end.dateTime || ev.end.date)) || "",
+    diaInteiro: diaInteiro,
+    inicio: inicio,
+    fim: fim,
+    local: ev.location || "",
     descricao: ev.description || "",
+    cor: ev.colorId || "",
+    recorrencia: freq,
+    lembreteMin: lembreteMin,
+    convidados: (ev.attendees || []).map(function (a) { return a.email; }),
     link: ev.htmlLink || "",
   };
 }
@@ -295,15 +312,82 @@ function _somarUmaHora(iso) {
   );
 }
 
+/** Soma n dias a um "YYYY-MM-DD", devolvendo "YYYY-MM-DD". */
+function _somarDias(ymd, n) {
+  const d = new Date(String(ymd).slice(0, 10) + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  const p = function (x) { return (x < 10 ? "0" : "") + x; };
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+
+/**
+ * Monta o corpo de um evento do Calendar a partir dos campos do formulário:
+ * { obraId, obraNome, titulo, diaInteiro, inicio, fim, local, descricao, cor,
+ *   recorrencia (DAILY|WEEKLY|MONTHLY|YEARLY), lembreteMin, convidados[] }.
+ */
+function _montarCorpoEvento(data) {
+  const titulo = String((data && data.titulo) || "").trim();
+  const inicio = String((data && data.inicio) || "").trim();
+  if (!titulo) lancar(ERRO.VALIDACAO, "Informe o título do evento.");
+  if (!inicio) lancar(ERRO.VALIDACAO, "Informe a data de início.");
+
+  const obraId = data && data.obraId;
+  const corpo = { summary: titulo };
+
+  const local = String((data && data.local) || "").trim();
+  if (local) corpo.location = local;
+
+  const nome = String((data && data.obraNome) || "").trim();
+  const desc = String((data && data.descricao) || "").trim();
+  corpo.description =
+    (desc ? desc + "\n\n" : "") + "Obra: " + (nome || obraId || "") + " · via Dattaobra";
+
+  if (data && data.diaInteiro) {
+    const ini = inicio.slice(0, 10);
+    let fimInc = String((data && data.fim) || "").slice(0, 10) || ini;
+    if (fimInc < ini) fimInc = ini;
+    corpo.start = { date: ini };
+    corpo.end = { date: _somarDias(fimInc, 1) }; // end.date é EXCLUSIVO
+  } else {
+    const inicioIso = _normalizarDataHora(inicio);
+    const fimIso = data && data.fim ? _normalizarDataHora(String(data.fim)) : _somarUmaHora(inicioIso);
+    corpo.start = { dateTime: inicioIso, timeZone: _CAL_TZ };
+    corpo.end = { dateTime: fimIso, timeZone: _CAL_TZ };
+  }
+
+  const freq = String((data && data.recorrencia) || "").trim().toUpperCase();
+  if (["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].indexOf(freq) >= 0) {
+    corpo.recurrence = ["RRULE:FREQ=" + freq];
+  }
+
+  const cor = String((data && data.cor) || "").trim();
+  if (cor) corpo.colorId = cor;
+
+  const lembreteMin = Number(data && data.lembreteMin);
+  corpo.reminders = lembreteMin > 0
+    ? { useDefault: false, overrides: [{ method: "popup", minutes: lembreteMin }] }
+    : { useDefault: true };
+
+  const conv = (data && data.convidados) || [];
+  const emails = (Array.isArray(conv) ? conv : String(conv).split(","))
+    .map(function (e) { return String(e).trim(); })
+    .filter(function (e) { return e.indexOf("@") > 0; });
+  if (emails.length) corpo.attendees = emails.map(function (e) { return { email: e }; });
+
+  if (obraId) corpo.extendedProperties = { private: { dattaobra_obra: String(obraId) } };
+
+  return corpo;
+}
+
 /** google.agenda.listar — { obraId } -> { eventos:[...] } desta obra. */
 function googleAgendaListar(data, sessao) {
   const obraId = data && data.obraId;
   if (!obraId) lancar(ERRO.VALIDACAO, "Obra não informada.");
   const acesso = _refrescarAccessToken(sessao.usuario_id);
-  const desde = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+  const desde = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
   const url =
     _CAL_BASE +
-    "?singleEvents=true&orderBy=startTime&maxResults=50" +
+    "?singleEvents=true&orderBy=startTime&maxResults=250" +
     "&timeMin=" + encodeURIComponent(desde) +
     "&privateExtendedProperty=" + encodeURIComponent("dattaobra_obra=" + obraId);
   const resp = UrlFetchApp.fetch(url, {
@@ -317,34 +401,16 @@ function googleAgendaListar(data, sessao) {
   return { eventos: (json.items || []).map(_mapearEvento) };
 }
 
-/** google.agenda.criar — { obraId, obraNome, titulo, inicio, fim, descricao } -> { evento }. */
+/**
+ * google.agenda.criar — cria o evento vinculado à obra com todos os campos
+ * (dia inteiro, recorrência, lembrete, convidados, local, cor). `sendUpdates=all`
+ * envia convite por e-mail aos convidados (intenção do usuário ao adicioná-los).
+ */
 function googleAgendaCriar(data, sessao) {
-  const obraId = data && data.obraId;
-  const titulo = String((data && data.titulo) || "").trim();
-  const inicio = String((data && data.inicio) || "").trim();
-  if (!obraId) lancar(ERRO.VALIDACAO, "Obra não informada.");
-  if (!titulo) lancar(ERRO.VALIDACAO, "Informe o título do evento.");
-  if (!inicio) lancar(ERRO.VALIDACAO, "Informe a data e hora de início.");
-
-  const inicioIso = _normalizarDataHora(inicio);
-  const fimIso = data && data.fim
-    ? _normalizarDataHora(String(data.fim))
-    : _somarUmaHora(inicioIso);
-
-  const nome = String((data && data.obraNome) || "").trim();
-  const desc = String((data && data.descricao) || "").trim();
-  const descricao =
-    (desc ? desc + "\n\n" : "") + "Obra: " + (nome || obraId) + " · via Dattaobra";
-
+  if (!(data && data.obraId)) lancar(ERRO.VALIDACAO, "Obra não informada.");
+  const corpo = _montarCorpoEvento(data);
   const acesso = _refrescarAccessToken(sessao.usuario_id);
-  const corpo = {
-    summary: titulo,
-    description: descricao,
-    start: { dateTime: inicioIso, timeZone: _CAL_TZ },
-    end: { dateTime: fimIso, timeZone: _CAL_TZ },
-    extendedProperties: { private: { dattaobra_obra: String(obraId) } },
-  };
-  const resp = UrlFetchApp.fetch(_CAL_BASE, {
+  const resp = UrlFetchApp.fetch(_CAL_BASE + "?sendUpdates=all", {
     method: "post",
     contentType: "application/json",
     headers: { Authorization: "Bearer " + acesso },
@@ -353,6 +419,33 @@ function googleAgendaCriar(data, sessao) {
   });
   if (resp.getResponseCode() >= 300) {
     lancar(ERRO.INTERNO, "Falha ao criar o evento: " + resp.getContentText());
+  }
+  return { evento: _mapearEvento(JSON.parse(resp.getContentText() || "{}")) };
+}
+
+/**
+ * google.agenda.atualizar — { eventoId, ...campos } -> { evento }. Substitui o
+ * evento (events.update / PUT) com o corpo montado dos campos do formulário.
+ * Em eventos recorrentes (lista com singleEvents=true), o id é da OCORRÊNCIA →
+ * a edição afeta a ocorrência mostrada (comportamento v1).
+ */
+function googleAgendaAtualizar(data, sessao) {
+  const eventoId = String((data && data.eventoId) || "").trim();
+  if (!eventoId) lancar(ERRO.VALIDACAO, "Evento não informado.");
+  const corpo = _montarCorpoEvento(data);
+  const acesso = _refrescarAccessToken(sessao.usuario_id);
+  const resp = UrlFetchApp.fetch(
+    _CAL_BASE + "/" + encodeURIComponent(eventoId) + "?sendUpdates=all",
+    {
+      method: "put",
+      contentType: "application/json",
+      headers: { Authorization: "Bearer " + acesso },
+      payload: JSON.stringify(corpo),
+      muteHttpExceptions: true,
+    }
+  );
+  if (resp.getResponseCode() >= 300) {
+    lancar(ERRO.INTERNO, "Falha ao atualizar o evento: " + resp.getContentText());
   }
   return { evento: _mapearEvento(JSON.parse(resp.getContentText() || "{}")) };
 }
