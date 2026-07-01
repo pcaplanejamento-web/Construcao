@@ -10,6 +10,7 @@
 const ROTAS = {
   // Autenticação
   "auth.login": { fn: authLogin, publica: true },
+  "auth.loginGoogle": { fn: authLoginGoogle, publica: true },
   "auth.logout": { fn: authLogout },
   "auth.me": { fn: authMe },
   "auth.alterarSenha": { fn: authAlterarSenha },
@@ -124,6 +125,12 @@ const ROTAS = {
   "estoque.listar": { fn: estoqueListar },
   "estoque.criarMovimento": { fn: estoqueCriarMovimento },
   "estoque.remover": { fn: estoqueRemover },
+
+  // Conexão Google (OAuth2 por usuário — agenda)
+  "google.iniciarOAuth": { fn: googleIniciarOAuth },
+  "google.status": { fn: googleStatus },
+  "google.desconectar": { fn: googleDesconectar },
+  "google.testarConexao": { fn: googleTestarConexao },
 
   // Usuários (autenticado)
   "usuarios.listar": { fn: usuariosListar },

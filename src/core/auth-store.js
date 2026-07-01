@@ -100,6 +100,25 @@ export const auth = {
     return data.usuario;
   },
 
+  /**
+   * Autentica pela conta Google (GIS): envia o ID token ao backend, que só
+   * aceita e-mails já cadastrados. Mesmo caminho pós-login de auth.login.
+   * @param {string} idToken  credential (JWT) devolvido pelo Google Identity.
+   * @param {boolean} lembrar  true (padrão) → localStorage; false → sessionStorage.
+   */
+  async loginGoogle(idToken, lembrar = true) {
+    const data = await api.call("auth.loginGoogle", { idToken });
+    usarSessao = !lembrar;
+    estado = {
+      token: data.token,
+      usuario: data.usuario,
+      config: data.config || {},
+    };
+    persistir();
+    bus.emit(EVENTOS.AUTH, { autenticado: true, usuario: data.usuario });
+    return data.usuario;
+  },
+
   /** Altera a própria senha (exige a senha atual). */
   async alterarSenha(senhaAtual, novaSenha) {
     return api.call("auth.alterarSenha", { senhaAtual, novaSenha });

@@ -40,11 +40,16 @@ Usuarios 1───* Cotacoes (obra_id opcional) 1───* CotacaoPrecos *─�
 |--------|------|-----------|
 | id | UUID | PK |
 | usuario_id | UUID | FK → Usuarios.id |
-| chave | string | ex.: `moeda`, `tema`, `limite_obras`, `categorias_padrao`, **`drive_folder_id`** (id da subpasta do usuário no Drive, p/ comprovantes) |
+| chave | string | ex.: `moeda`, `tema`, `limite_obras`, `categorias_padrao`, **`drive_folder_id`** (subpasta do Drive), **`google_sub`/`google_email`** (identidade do login Google), **`google_refresh_token`** (agenda — **segredo**) |
 | valor | string | valor (JSON quando composto) |
 | atualizado_em | ISO datetime | |
 
 Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
+
+> **Segredos:** `montarConfigUsuario` (Auth.gs) devolve o `config` ao cliente em
+> `auth.login`/`auth.me`/snapshot. Chaves na blocklist `CONFIG_CHAVES_SECRETAS`
+> (hoje `google_refresh_token`) são **omitidas** — só o servidor as lê, via
+> `_lerConfig` (Config.gs). Ver `apps-script/Google.gs`.
 
 ## Aba `Obras`
 | Coluna | Tipo | Descrição |

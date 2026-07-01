@@ -10,8 +10,17 @@
  * o sucesso/erro é semântico no corpo.
  */
 
-/** doGet — health-check (útil para validar o deploy abrindo a URL no browser). */
+/**
+ * doGet — health-check (validar o deploy abrindo a URL) E callback do OAuth do
+ * Google ("Conectar Google" no perfil): quando chega ?code=&state= (ou ?error=),
+ * delega ao googleTratarCallback (Google.gs), que devolve uma página HTML que
+ * avisa a janela-mãe e se fecha. Sem esses parâmetros, mantém o health-check JSON.
+ */
 function doGet(e) {
+  const p = (e && e.parameter) || {};
+  if (p.state && (p.code || p.error)) {
+    return googleTratarCallback(p.code, p.state, p.error);
+  }
   return ok({
     service: "gestao-obras",
     status: "online",

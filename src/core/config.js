@@ -10,6 +10,14 @@ export const CONFIG = {
   API_URL:
     "https://script.google.com/macros/s/AKfycbxDCNTuP8GLFU3grKNDtYXf_CjpHq5INgB2EJdbGyckCLec0ricpmmBWbAMh5W8X0gxFg/exec",
 
+  /**
+   * Client ID público do OAuth (Google Cloud → Credenciais → "Web application").
+   * Só o ID (o secret fica nas Script Properties, nunca no front). Habilita o
+   * botão "Entrar com Google". Enquanto ficar "COLE_AQUI...", o botão fica oculto.
+   * Veja docs/SETUP-E-DEPLOY.md (origens e redirect a autorizar no GCP).
+   */
+  GOOGLE_CLIENT_ID: "COLE_AQUI.apps.googleusercontent.com",
+
   /** Chaves usadas no localStorage para persistir a sessão. */
   STORAGE: {
     TOKEN: "obras.token",

@@ -60,13 +60,13 @@ sobem por `CustomEvent`**.
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
 | `login-view` | — | Tela `/login` **split-screen** (igual ao design): esquerda clara com a marca + `login-form`; direita verde-escura com card "Execução das obras" (sparkline SVG), título, 3 destaques e o fundo animado `login-grafo-bg`. Visual **fixo** (não segue tema). `< 900px` esconde o painel direito. |
-| `login-form` | — | Formulário; campos próprios com ícone (e-mail/usuário, senha com olho), checkbox **"Manter-me conectado"** e botão "Entrar →" (`ui-button`, gradiente via `::part`). Chama `auth.login(email, senha, lembrar)`. **O carregamento acontece nesta tela** (o botão fica em loading até o snapshot chegar — ver [app.js](../src/app.js)); em sucesso a view é substituída ao navegar. |
+| `login-form` | — | Formulário; campos próprios com ícone (e-mail/usuário, senha com olho), checkbox **"Manter-me conectado"** e botão "Entrar →" (`ui-button`, gradiente via `::part`). Chama `auth.login(email, senha, lembrar)`. **O carregamento acontece nesta tela** (o botão fica em loading até o snapshot chegar — ver [app.js](../src/app.js)); em sucesso a view é substituída ao navegar. Abaixo do "Entrar", um bloco **"ou / Entrar com Google"** (GIS) aparece só quando `CONFIG.GOOGLE_CLIENT_ID` está configurado e o script `gsi/client` carregou; o callback chama `auth.loginGoogle(idToken, lembrar)`. |
 | `login-grafo-bg` | — | Fundo animado de "grafos" (canvas: ~52 nós à deriva + arestas) do painel direito do login. Respeita `prefers-reduced-motion`; pausa com a aba oculta; cleanup de `rAF`/observer via `aoLimpar`. |
 
 ### Perfil — `features/perfil/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `perfil-view` | — | Rota `/perfil`. Dados do usuário (do data-store) + segurança. |
+| `perfil-view` | — | Rota `/perfil`. Dados do usuário (do data-store) + segurança + card **"Conta Google"** (busca `google.status`; conectar via popup OAuth + `postMessage`, testar conexão e desconectar). |
 | `senha-form` | — | Troca de senha (atual/nova/confirmar) → `auth.alterarSenha`. Reusa `ui-input`/`ui-button`. |
 
 ### Obras — `features/obras/`

@@ -11,6 +11,7 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { auth } from "../../core/auth-store.js";
+import { CONFIG } from "../../core/config.js";
 import { notificarErro, toastAviso } from "../../core/event-bus.js";
 import { obrigatorio, primeiroErro } from "../../core/validators.js";
 import "../../components/ui-button.js";
@@ -60,6 +61,13 @@ class LoginForm extends BaseElement {
         background: none; border: 0; cursor: pointer; color: var(--cor-primaria);
         font-size: 14px; font-weight: 600; font-family: inherit; }
       .link:hover { text-decoration: underline; }
+
+      /* Bloco "Entrar com Google" (oculto até o GIS carregar/estar configurado). */
+      .google { display: flex; flex-direction: column; gap: var(--esp-3); }
+      .ou { display: flex; align-items: center; gap: 12px; color: #94a3b8;
+        font-size: 13px; }
+      .ou::before, .ou::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; }
+      .gbtn { display: flex; justify-content: center; min-height: 44px; }
     `;
   }
 
@@ -96,6 +104,11 @@ class LoginForm extends BaseElement {
 
         <ui-button id="btn" full>Entrar <ui-icon name="seta-direita" size="18"></ui-icon></ui-button>
 
+        <div class="google" id="googleBloco" hidden>
+          <div class="ou"><span>ou</span></div>
+          <div class="gbtn" id="googleBtn"></div>
+        </div>
+
         <button class="link" id="esqueci" type="button">Primeiro acesso ou esqueci a senha</button>
       </form>
     `;
@@ -115,6 +128,78 @@ class LoginForm extends BaseElement {
         "O acesso é provisionado pelo administrador da obra. Para primeiro acesso ou redefinição de senha, fale com ele."
       )
     );
+    this._initGoogle();
+  }
+
+  /**
+   * Inicializa o botão "Entrar com Google" (GIS). Só aparece quando o Client ID
+   * está configurado e o script accounts.google.com/gsi/client já carregou;
+   * caso contrário o login por senha segue intacto (bloco fica oculto).
+   */
+  async _initGoogle() {
+    const cid = CONFIG.GOOGLE_CLIENT_ID;
+    const bloco = this.$("#googleBloco");
+    if (!bloco || !cid || cid.indexOf("COLE_AQUI") === 0) return;
+    const g = await this._aguardarGoogle();
+    if (!g || !this.isConnected) return;
+    const alvo = this.$("#googleBtn");
+    try {
+      g.accounts.id.initialize({
+        client_id: cid,
+        callback: (resp) => this._onGoogleCredential(resp),
+      });
+      const largura = Math.min(400, Math.max(240, alvo.clientWidth || 320));
+      g.accounts.id.renderButton(alvo, {
+        type: "standard",
+        theme: "outline", // painel de login é sempre claro
+        size: "large",
+        text: "signin_with",
+        shape: "rectangular",
+        logo_alignment: "center",
+        width: largura,
+        locale: "pt-BR",
+      });
+      bloco.hidden = false;
+    } catch (e) {
+      bloco.hidden = true;
+    }
+  }
+
+  /** Aguarda window.google.accounts.id (script async); resolve null se demorar. */
+  _aguardarGoogle() {
+    const pronto = () =>
+      window.google && window.google.accounts && window.google.accounts.id;
+    return new Promise((resolve) => {
+      if (pronto()) return resolve(window.google);
+      let tentativas = 0;
+      const id = setInterval(() => {
+        if (pronto()) {
+          clearInterval(id);
+          resolve(window.google);
+        } else if (++tentativas > 50) {
+          clearInterval(id);
+          resolve(null);
+        }
+      }, 100);
+      this.aoLimpar(() => clearInterval(id));
+    });
+  }
+
+  /** Recebe o ID token do Google e autentica (só e-mails já cadastrados). */
+  async _onGoogleCredential(resp) {
+    const idToken = resp && resp.credential;
+    if (!idToken) return;
+    const lembrar = this.$("#lembrar").checked;
+    this.mostrarErro("");
+    this.$("#btn").setAttribute("loading", "");
+    try {
+      await auth.loginGoogle(idToken, lembrar);
+      // Sucesso: mantém o loading — app.js carrega os dados e troca a view.
+    } catch (e) {
+      this.$("#btn").removeAttribute("loading");
+      this.mostrarErro(e.message || "Não foi possível entrar com o Google.");
+      notificarErro(e);
+    }
   }
 
   alternarSenha() {

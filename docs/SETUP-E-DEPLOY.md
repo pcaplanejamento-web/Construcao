@@ -123,6 +123,49 @@ categoria"). Cada push na `main` dispara o workflow.
 
 ---
 
+## Parte 3 — Integração Google (login + agenda)
+
+Dois recursos que dependem de **um** OAuth Client ID do Google (opcionais; se não
+configurados, o login por senha e o resto do app seguem normais):
+
+- **Entrar com Google** (`login-form`) — login pela conta Google. Aceita **só
+  e-mails já cadastrados** em `Usuarios` (sem auto-cadastro). Verifica o ID token
+  no Google (`tokeninfo`) e cria a mesma sessão do login por senha.
+- **Conectar Google** (`perfil-view` → card "Conta Google") — autoriza a agenda
+  do usuário (escopo `calendar.events`) e guarda um **refresh token por usuário**
+  em `Configuracoes` (chave `google_refresh_token`, **nunca** enviada ao front).
+
+### 3.1 — Google Cloud Console (uma vez, feito pelo dono)
+
+1. **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth →
+   Tipo: Aplicativo da Web.**
+   - **Origens JavaScript autorizadas** (botão de login GIS): `https://dattaobra.com.br`,
+     `https://pcaplanejamento-web.github.io` e `http://localhost:8123` (preview).
+   - **URIs de redirecionamento autorizados** (callback do "Conectar"): a **mesma
+     URL do Web App** terminada em `/exec` (a `API_URL`).
+2. **APIs e serviços → Biblioteca → habilitar "Google Calendar API".**
+3. **Tela de consentimento OAuth:** publicar OU adicionar os e-mails da empresa
+   como *usuários de teste* (o login já é restrito a cadastrados de qualquer forma).
+
+### 3.2 — Segredos (Script Properties do Apps Script)
+
+| Propriedade | Valor |
+|-------------|-------|
+| `GOOGLE_CLIENT_ID` | `....apps.googleusercontent.com` (o Client ID) |
+| `GOOGLE_CLIENT_SECRET` | o *client secret* (nunca vai ao front) |
+| `OAUTH_REDIRECT_URI` | (opcional) a URL `/exec`; padrão = URL do Web App |
+
+### 3.3 — Frontend
+
+Em [`src/core/config.js`](../src/core/config.js), cole **só o Client ID** (público)
+em `GOOGLE_CLIENT_ID`. Enquanto ficar `COLE_AQUI...`, o botão "Entrar com Google"
+fica oculto (login por senha intacto).
+
+> Após configurar, **crie uma nova versão** da implantação do Web App para que o
+> callback OAuth no `doGet` e as rotas `google.*`/`auth.loginGoogle` entrem no ar.
+
+---
+
 ## Validação ponta a ponta
 
 1. **Health-check:** abrir a URL `/exec` no navegador → JSON `status: online`.

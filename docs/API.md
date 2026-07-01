@@ -16,10 +16,13 @@ A API é um **único Web App** do Apps Script. Um `doPost` despacha por `action`
 ```
 
 `doGet` retorna um health-check: `{ ok:true, data:{ service, status, versao, horario } }`.
+Quando chamado com `?code=&state=` (ou `?error=&state=`), o `doGet` trata o
+**callback OAuth do Google** ("Conectar Google") e devolve uma página HTML que
+avisa a janela-mãe (`postMessage`) e se fecha.
 
 ## Autenticação
 
-- Toda action **exceto `auth.login`** exige `token`.
+- Toda action **exceto `auth.login`/`auth.loginGoogle`/`publico.obra`** exige `token`.
 - O token é validado em cache → aba `Sessoes` → checagem de `expira_em`.
 - Actions `admin.*` exigem `role === "admin"` (verificado no servidor).
 - O `usuario_id` vem **sempre da sessão**; valores de cliente são ignorados.
@@ -37,9 +40,22 @@ A API é um **único Web App** do Apps Script. Um `doPost` despacha por `action`
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `auth.login` | `{ email, senha }` | `{ token, usuario, config }` |
+| `auth.loginGoogle` | `{ idToken }` | `{ token, usuario, config }` (pública; **só e-mails já cadastrados**) |
 | `auth.logout` | `{}` | `{ encerrada: true }` |
 | `auth.me` | `{}` | `{ usuario, config }` |
 | `auth.alterarSenha` | `{ senhaAtual, novaSenha }` | `{ alterada: true }` (o próprio usuário) |
+
+### Conexão Google (agenda — OAuth2 por usuário)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `google.iniciarOAuth` | `{}` | `{ authUrl }` (front abre em popup; consentimento) |
+| `google.status` | `{}` | `{ conectado, google_email }` |
+| `google.testarConexao` | `{}` | `{ agenda, eventos }` (lê 1 evento da agenda principal) |
+| `google.desconectar` | `{}` | `{ conectado: false }` (apaga o refresh token + revoga) |
+
+> O refresh token vive em `Configuracoes` (chave `google_refresh_token`) e é
+> **omitido** de `montarConfigUsuario` — nunca chega ao cliente. O access token é
+> renovado sob demanda via `UrlFetchApp` (grant_type=refresh_token).
 
 > **Auditoria universal:** toda entidade grava `criado_em`/`autor_nome` (criação) e
 > `atualizado_em`/`editor_nome` (edição), com o nome resolvido no servidor

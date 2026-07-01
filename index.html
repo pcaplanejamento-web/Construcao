@@ -37,6 +37,10 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
     />
 
+    <!-- Google Identity Services (botão "Entrar com Google" no login-form). Carrega
+         async: o login-form aguarda window.google e esconde o botão se indisponível. -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
     <!-- Aplica o tema salvo antes do CSS (evita flash de tema errado). NÃO tinge o
          chrome do navegador (sem theme-color) → barra do Safari iOS 26 translúcida. -->
     <script>

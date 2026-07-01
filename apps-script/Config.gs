@@ -28,34 +28,55 @@ function adminConfigDefinir(data, sessao) {
   if (!buscarUsuarioPorId(usuarioId)) {
     lancar(ERRO.NAO_ENCONTRADO, "Usuário não encontrado.");
   }
-  // Valor pode ser objeto/array -> serializa em JSON; senão grava como string.
-  let valor = data.valor;
-  if (valor !== null && typeof valor === "object") {
-    valor = JSON.stringify(valor);
-  } else {
-    valor = String(valor === undefined || valor === null ? "" : valor);
-  }
-
   return comLock(function () {
-    const existente = repoEncontrar(SCHEMA.CONFIGURACOES, function (c) {
-      return (
-        String(c.usuario_id) === String(usuarioId) && c.chave === chave
-      );
-    });
-    if (existente) {
-      repoAtualizar(SCHEMA.CONFIGURACOES, "id", existente.id, {
-        valor: valor,
-        atualizado_em: agoraIso(),
-      });
-    } else {
-      repoInserir(SCHEMA.CONFIGURACOES, {
-        id: novoId(),
-        usuario_id: usuarioId,
-        chave: chave,
-        valor: valor,
-        atualizado_em: agoraIso(),
-      });
-    }
+    _definirConfig(usuarioId, chave, data.valor);
     return { config: montarConfigUsuario(usuarioId) };
   });
+}
+
+/**
+ * Upsert interno de UMA configuração (usuario_id + chave). SEM verificação de
+ * admin e SEM lock próprio — o chamador DEVE estar dentro de comLock(). Reusado
+ * por adminConfigDefinir (após exigirAdmin) e pelos fluxos Google (Auth/Google).
+ * Valor objeto/array vira string JSON; demais viram string.
+ */
+function _definirConfig(usuarioId, chave, valor) {
+  const ch = String(chave || "").trim();
+  if (!usuarioId || !ch) lancar(ERRO.VALIDACAO, "Informe usuário e chave.");
+  let v = valor;
+  if (v !== null && typeof v === "object") {
+    v = JSON.stringify(v);
+  } else {
+    v = String(v === undefined || v === null ? "" : v);
+  }
+  const existente = repoEncontrar(SCHEMA.CONFIGURACOES, function (c) {
+    return String(c.usuario_id) === String(usuarioId) && c.chave === ch;
+  });
+  if (existente) {
+    repoAtualizar(SCHEMA.CONFIGURACOES, "id", existente.id, {
+      valor: v,
+      atualizado_em: agoraIso(),
+    });
+  } else {
+    repoInserir(SCHEMA.CONFIGURACOES, {
+      id: novoId(),
+      usuario_id: usuarioId,
+      chave: ch,
+      valor: v,
+      atualizado_em: agoraIso(),
+    });
+  }
+}
+
+/**
+ * Lê UMA configuração (usuario_id + chave) direto do repo, INCLUSIVE segredos
+ * (ex.: google_refresh_token) que montarConfigUsuario omite do cliente. Uso
+ * apenas server-side. Retorna a string armazenada ou null se ausente.
+ */
+function _lerConfig(usuarioId, chave) {
+  const ch = String(chave || "").trim();
+  const linha = repoEncontrar(SCHEMA.CONFIGURACOES, function (c) {
+    return String(c.usuario_id) === String(usuarioId) && c.chave === ch;
+  });
+  return linha ? linha.valor : null;
 }

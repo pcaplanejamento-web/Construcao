@@ -79,13 +79,22 @@ function buscarUsuarioPorId(id) {
   });
 }
 
-/** Monta { chave: valor } com as configurações de um usuário. */
+/**
+ * Chaves de CONFIGURACOES que NUNCA podem ir ao cliente: o objeto config é
+ * devolvido ao browser em auth.login/auth.me/snapshot, então segredos (ex.: o
+ * refresh token do Google) precisam ser omitidos aqui. Leitura server-side
+ * desses valores usa _lerConfig (Config.gs).
+ */
+const CONFIG_CHAVES_SECRETAS = { google_refresh_token: true };
+
+/** Monta { chave: valor } com as configurações de um usuário (sem segredos). */
 function montarConfigUsuario(usuarioId) {
   const linhas = repoFiltrar(SCHEMA.CONFIGURACOES, function (c) {
     return String(c.usuario_id) === String(usuarioId);
   });
   const cfg = {};
   linhas.forEach(function (c) {
+    if (CONFIG_CHAVES_SECRETAS[c.chave]) return; // segredo: não expõe ao front
     cfg[c.chave] = c.valor;
   });
   return cfg;
@@ -175,6 +184,86 @@ function authLogin(data) {
       config: montarConfigUsuario(u.id),
     };
   });
+}
+
+/**
+ * auth.loginGoogle — { idToken } -> { token, usuario, config }.
+ * Login pela conta Google (GIS): verifica o ID token no Google e SÓ autentica
+ * e-mails já cadastrados em USUARIOS (sem auto-cadastro). Vincula a identidade
+ * Google (google_sub/google_email) ao usuário, para exibição no perfil.
+ */
+function authLoginGoogle(data) {
+  const idToken = data && data.idToken;
+  if (!idToken) lancar(ERRO.VALIDACAO, "Token do Google ausente.");
+
+  const info = _verificarIdToken(idToken);
+
+  const u = buscarUsuarioPorEmail(info.email);
+  if (!u) {
+    lancar(
+      ERRO.NAO_AUTORIZADO,
+      "E-mail do Google não cadastrado. Contate o administrador."
+    );
+  }
+  const ativo = u.ativo === true || u.ativo === "TRUE" || u.ativo === "true";
+  if (!ativo) {
+    lancar(ERRO.NAO_AUTORIZADO, "Usuário desativado. Contate o administrador.");
+  }
+
+  return comLock(function () {
+    const sessao = _criarSessao(u);
+    _definirConfig(u.id, "google_sub", info.sub);
+    _definirConfig(u.id, "google_email", info.email);
+    return {
+      token: sessao.token,
+      usuario: usuarioPublico(u),
+      config: montarConfigUsuario(u.id),
+    };
+  });
+}
+
+/**
+ * Verifica um ID token do Google (GIS) via endpoint oficial `tokeninfo` e
+ * devolve { sub, email, nome }. Lança CREDENCIAIS_INVALIDAS se inválido,
+ * expirado, e-mail não verificado ou audiência (aud) diferente do nosso
+ * GOOGLE_CLIENT_ID (Script Properties).
+ */
+function _verificarIdToken(idToken) {
+  const clientId = PropertiesService.getScriptProperties().getProperty(
+    "GOOGLE_CLIENT_ID"
+  );
+  if (!clientId) {
+    lancar(ERRO.INTERNO, "GOOGLE_CLIENT_ID não configurado nas Script Properties.");
+  }
+
+  const resp = UrlFetchApp.fetch(
+    "https://oauth2.googleapis.com/tokeninfo?id_token=" +
+      encodeURIComponent(idToken),
+    { muteHttpExceptions: true }
+  );
+  if (resp.getResponseCode() !== 200) {
+    lancar(ERRO.CREDENCIAIS_INVALIDAS, "Token do Google inválido ou expirado.");
+  }
+  let dados;
+  try {
+    dados = JSON.parse(resp.getContentText() || "{}");
+  } catch (e) {
+    lancar(ERRO.CREDENCIAIS_INVALIDAS, "Resposta inválida do Google.");
+  }
+  if (dados.aud !== clientId) {
+    lancar(ERRO.CREDENCIAIS_INVALIDAS, "Token emitido para outro aplicativo.");
+  }
+  if (Number(dados.exp) * 1000 < Date.now()) {
+    lancar(ERRO.CREDENCIAIS_INVALIDAS, "Token do Google expirado.");
+  }
+  if (String(dados.email_verified) !== "true") {
+    lancar(ERRO.CREDENCIAIS_INVALIDAS, "E-mail do Google não verificado.");
+  }
+  return {
+    sub: dados.sub,
+    email: String(dados.email || "").trim().toLowerCase(),
+    nome: dados.name,
+  };
 }
 
 /** auth.logout — encerra a sessão atual. */

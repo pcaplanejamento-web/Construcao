@@ -1,12 +1,15 @@
 /**
  * <perfil-view> — Página do usuário (rota /perfil).
- * Mostra os dados do usuário (do data-store) e permite trocar a senha.
- * Reusa ui-card + <senha-form>.
+ * Mostra os dados do usuário (do data-store), permite trocar a senha e conectar
+ * a conta Google (agenda). Reusa ui-card + <senha-form> + ui-button/ui-badge.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
+import { api } from "../../core/api-client.js";
+import { toastSucesso, toastAviso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-badge.js";
+import "../../components/ui-button.js";
 import "./senha-form.js";
 
 class PerfilView extends BaseElement {
@@ -22,6 +25,16 @@ class PerfilView extends BaseElement {
       .campo .rotulo { font-size: var(--fs-xs); text-transform: uppercase;
         letter-spacing: .04em; color: var(--cor-texto-fraco); font-weight: var(--peso-semi); }
       .campo .valor { font-size: var(--fs-md); margin-top: 2px; }
+
+      /* Card "Conta Google". */
+      .google { display: flex; flex-direction: column; gap: var(--esp-4); max-width: 520px; }
+      .g-status { display: flex; align-items: center; gap: var(--esp-3); flex-wrap: wrap; }
+      .g-sub { color: var(--cor-texto-suave); font-size: var(--fs-sm); line-height: 1.5; }
+      .g-acoes { display: flex; gap: var(--esp-3); flex-wrap: wrap; }
+      @media (max-width: 560px) {
+        .g-acoes { flex-direction: column; align-items: stretch; }
+        .g-acoes ui-button { width: 100%; }
+      }
     `;
   }
 
@@ -49,10 +62,118 @@ class PerfilView extends BaseElement {
         <ui-card title="Segurança">
           <senha-form></senha-form>
         </ui-card>
+        <ui-card title="Conta Google">
+          <div class="google">${this._googleConteudo()}</div>
+        </ui-card>
       </div>
     `;
   }
 
+  /** Conteúdo do card Google conforme o estado carregado (this._google). */
+  _googleConteudo() {
+    const g = this._google;
+    if (!g) return `<p class="g-sub">Verificando conexão…</p>`;
+    if (g.conectado) {
+      const quem = g.google_email ? ` (${g.google_email})` : "";
+      return `
+        <div class="g-status">
+          <ui-badge color="var(--cor-sucesso)" text="Conectado"></ui-badge>
+          <span class="g-sub">Sua conta Google está conectada${quem}.</span>
+        </div>
+        <div class="g-acoes">
+          <ui-button id="gTestar" variant="secundario">Testar conexão</ui-button>
+          <ui-button id="gDesconectar" variant="perigo-contorno">Desconectar</ui-button>
+        </div>`;
+    }
+    return `
+      <p class="g-sub">Conecte sua conta Google para vincular sua agenda às obras.</p>
+      <div class="g-acoes">
+        <ui-button id="gConectar">Conectar Google</ui-button>
+      </div>`;
+  }
+
+  aposRender() {
+    // Primeira renderização: busca o status e re-renderiza (evita laço com a guarda).
+    if (this._google === undefined) {
+      this._buscarStatus();
+      return;
+    }
+    const conectar = this.$("#gConectar");
+    if (conectar) conectar.addEventListener("click", () => this._conectar());
+    const testar = this.$("#gTestar");
+    if (testar) testar.addEventListener("click", () => this._testar());
+    const desconectar = this.$("#gDesconectar");
+    if (desconectar) desconectar.addEventListener("click", () => this._desconectar());
+  }
+
+  async _buscarStatus() {
+    try {
+      this._google = await api.call("google.status");
+    } catch (e) {
+      this._google = { conectado: false, google_email: "" };
+    }
+    this.renderizar();
+  }
+
+  /** Abre a janela de consentimento e ouve o retorno (postMessage do callback). */
+  async _conectar() {
+    const btn = this.$("#gConectar");
+    if (btn) btn.setAttribute("loading", "");
+    try {
+      const { authUrl } = await api.call("google.iniciarOAuth");
+      this._ouvirMensagem();
+      const pop = window.open(authUrl, "gconnect", "width=480,height=640");
+      if (!pop) toastAviso("Permita pop-ups para conectar sua conta Google.");
+    } catch (e) {
+      notificarErro(e);
+    } finally {
+      if (btn) btn.removeAttribute("loading");
+    }
+  }
+
+  /** Registra (uma vez) o ouvinte de mensagens da janela de callback. */
+  _ouvirMensagem() {
+    if (this._msgHandler) return;
+    this._msgHandler = (e) => {
+      const d = e && e.data;
+      if (!d || (d.tipo !== "google_conectado" && d.tipo !== "google_erro")) return;
+      if (d.tipo === "google_conectado") {
+        toastSucesso("Conta Google conectada.");
+        this._buscarStatus();
+      } else {
+        toastAviso("Não foi possível conectar. Tente novamente.");
+      }
+    };
+    window.addEventListener("message", this._msgHandler);
+    this.aoLimpar(() => window.removeEventListener("message", this._msgHandler));
+  }
+
+  async _testar() {
+    const btn = this.$("#gTestar");
+    if (btn) btn.setAttribute("loading", "");
+    try {
+      const r = await api.call("google.testarConexao");
+      toastSucesso(`Conexão OK — agenda "${r.agenda}".`);
+    } catch (e) {
+      notificarErro(e);
+    } finally {
+      if (btn) btn.removeAttribute("loading");
+    }
+  }
+
+  async _desconectar() {
+    const btn = this.$("#gDesconectar");
+    if (btn) btn.setAttribute("loading", "");
+    try {
+      await api.call("google.desconectar");
+      toastSucesso("Conta Google desconectada.");
+      this._google = { conectado: false, google_email: "" };
+      this.renderizar();
+    } catch (e) {
+      notificarErro(e);
+      if (btn) btn.removeAttribute("loading");
+    }
+  }
 }
 
 customElements.define("perfil-view", PerfilView);
