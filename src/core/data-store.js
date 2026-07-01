@@ -22,7 +22,7 @@ import {
   origensDoItem as _origensDoItemEstoque,
 } from "../features/estoque/estoque.js";
 
-const CACHE_VERSAO = 6; // bump: coleção estoque (livro-razão de movimentos)
+const CACHE_VERSAO = 7; // bump: coleção notas (anotações por obra)
 
 const ESTADO_VAZIO = {
   carregado: false,
@@ -34,6 +34,7 @@ const ESTADO_VAZIO = {
   resumos: {}, // obraId -> resumo
   categoriasPorObra: {}, // obraId -> [categoria do dono]
   participantesPorObra: {}, // obraId -> [participante] (dono + compartilhados + contatos)
+  notas: {}, // obraId -> [nota] (anotações compartilhadas da obra)
   fornecedores: [], // módulo Compras (empresas/lojas do usuário)
   contatos: [], // módulo Compras (pessoas do usuário)
   cargos: [], // cargos de contatos (fixos + extras do usuário)
@@ -74,6 +75,7 @@ function persistir() {
       resumos: s.resumos,
       categoriasPorObra: s.categoriasPorObra,
       participantesPorObra: s.participantesPorObra,
+      notas: s.notas,
       fornecedores: s.fornecedores,
       contatos: s.contatos,
       cargos: s.cargos,
@@ -135,6 +137,7 @@ function _aplicarSnapshot(d) {
     resumos: d.resumos || {},
     categoriasPorObra: d.categoriasPorObra || {},
     participantesPorObra: d.participantesPorObra || {},
+    notas: d.notasPorObra || {},
     fornecedores: d.fornecedores || [],
     contatos: d.contatos || [],
     cargos: d.cargos || [],
@@ -190,6 +193,11 @@ const categoriasItem = () => store.get().categorias.filter((c) => String(c.tipo 
 /** Classificações de FORNECEDOR (tipo == fornecedor). */
 const categoriasFornecedor = () => store.get().categorias.filter((c) => String(c.tipo || "") === "fornecedor");
 const participantesDaObra = (obraId) => store.get().participantesPorObra[obraId] || [];
+/** Notas (anotações compartilhadas) da obra, mais recentes primeiro. */
+const notasDaObra = (obraId) =>
+  [...((store.get().notas || {})[obraId] || [])].sort((a, b) =>
+    String(b.atualizado_em).localeCompare(String(a.atualizado_em))
+  );
 // Módulo Compras
 const fornecedores = () => store.get().fornecedores;
 const fornecedoresAtivos = () => store.get().fornecedores.filter((f) => f.ativo !== false);
@@ -510,6 +518,43 @@ async function definirResponsavel(obraId, chave, ehResponsavel) {
   });
   _setParticipantes(obraId, r.participantes || participantesDaObra(obraId));
   return r.participantes;
+}
+
+/* -------------------------- Notas da obra ---------------------------- */
+
+function _setNotas(obraId, lista) {
+  const s = store.get();
+  store.set({ notas: { ...(s.notas || {}), [obraId]: lista } });
+}
+
+async function adicionarNota(obraId, dados) {
+  const r = await api.call("notas.criar", {
+    obra_id: obraId, titulo: dados.titulo, texto: dados.texto,
+  });
+  _setNotas(obraId, [r.nota, ...notasDaObra(obraId)]);
+  persistir();
+  bus.emit(EVENTOS.NOTAS, { tipo: "criada", obra_id: obraId });
+  return r.nota;
+}
+
+async function atualizarNota(obraId, id, dados) {
+  const r = await api.call("notas.atualizar", {
+    id, titulo: dados.titulo, texto: dados.texto,
+  });
+  _setNotas(
+    obraId,
+    notasDaObra(obraId).map((n) => (String(n.id) === String(id) ? r.nota : n))
+  );
+  persistir();
+  bus.emit(EVENTOS.NOTAS, { tipo: "atualizada", obra_id: obraId });
+  return r.nota;
+}
+
+async function removerNota(obraId, id) {
+  await api.call("notas.remover", { id });
+  _setNotas(obraId, notasDaObra(obraId).filter((n) => String(n.id) !== String(id)));
+  persistir();
+  bus.emit(EVENTOS.NOTAS, { tipo: "removida", obra_id: obraId });
 }
 
 /** Atualiza o link_token de uma obra no store (write-through). */
@@ -1293,6 +1338,7 @@ export const dataStore = {
   // getters
   usuario, config, categorias, categoriasItem, categoriasFornecedor, usuarios, obras, obra, despesas, todasDespesas, resumo, categoriasDaObra,
   participantesDaObra,
+  notasDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, tiposTransferencia, itens, itensAtivos, item,
   cotacoes, cotacao, precosDaCotacao, todasOfertas,
   historicoDaCotacao, itensDaSubclasse, precosDaCotacaoPorItem,
@@ -1307,6 +1353,7 @@ export const dataStore = {
   // mutações
   criarObra, atualizarObra, removerObra,
   adicionarParticipante, removerParticipante, definirResponsavel,
+  adicionarNota, atualizarNota, removerNota,
   gerarLinkPublico, removerLinkPublico,
   adicionarDespesa, atualizarDespesa, removerDespesa, lancarPagamento, removerPagamento,
   lancarPagamentoMulti, removerPagamentoV2, excluirPagamento, lancarRepasse, removerRepasse,

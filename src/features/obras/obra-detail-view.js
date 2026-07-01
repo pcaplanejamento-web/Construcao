@@ -39,6 +39,7 @@ import "./obra-form.js";
 import "./obra-share-form.js";
 import "./obra-participantes.js";
 import "./obra-agenda.js";
+import "./obra-notas.js";
 import "../pagamentos/pagamento-form.js";
 import {
   abrirTransferencia,
@@ -184,6 +185,9 @@ class ObraDetailView extends BaseElement {
         <div slot="agenda">
           <obra-agenda obra-id="${this.obraId}"></obra-agenda>
         </div>
+        <div slot="notas">
+          <obra-notas obra-id="${this.obraId}"></obra-notas>
+        </div>
       </ui-tabs>
     `;
     alvo.querySelector("#abas").abas = [
@@ -197,6 +201,7 @@ class ObraDetailView extends BaseElement {
       { id: "pagamentos", rotulo: "Transferência", icone: "cifrao" },
       { id: "estoque", rotulo: "Estoque", icone: "tag" },
       { id: "agenda", rotulo: "Agenda", icone: "relogio" },
+      { id: "notas", rotulo: "Notas", icone: "recibo" },
     ];
     const abasPag = alvo.querySelector("#abasPag");
     if (abasPag)
