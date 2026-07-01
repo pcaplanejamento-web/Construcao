@@ -45,6 +45,7 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 | `auth.me` | `{}` | `{ usuario, config }` |
 | `auth.alterarSenha` | `{ senhaAtual, novaSenha }` | `{ alterada: true }` (o próprio usuário) |
 | `config.publico` | `{}` | `{ googleClientId }` (pública; o botão de login lê o Client ID daqui) |
+| `config.definir` | `{ chave, valor }` | `{ config }` (o próprio usuário grava chaves da allowlist: `sync_agenda`, `sync_notas`) |
 
 ### Conexão Google (agenda — OAuth2 por usuário)
 | Action | `data` | Retorno |
@@ -57,6 +58,9 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 | `google.agenda.criar` | `{ obraId, obraNome, titulo, diaInteiro, inicio, fim, local, descricao, cor, recorrencia, lembreteMin, convidados[] }` | `{ evento }` |
 | `google.agenda.atualizar` | `{ eventoId, ...campos }` | `{ evento }` (events.update / PUT) |
 | `google.agenda.remover` | `{ eventoId }` | `{ removido:true }` |
+| `google.agenda.sincronizarObra` | `{ obraId, marcacoes:[{ref:{tipo,id},titulo,inicio}] }` | `{ criados, atualizados, removidos }` |
+
+> **Sincronização (push app→Google, idempotente):** o cliente envia as marcações da obra (despesas/transferências/notas/prazo — `marcacoes.js`); o backend faz **upsert** de 1 evento de dia inteiro por item, tagueado por `extendedProperties.private = { dattaobra_obra, dattaobra_tipo, dattaobra_ref }`, e **apaga** os tagueados que sumiram da fonte (não toca nos avulsos). `_mapearEvento` marca `sincronizado` (o front não os mostra como avulsos). Ligada por usuário (`config.sync_agenda`/`sync_notas`).
 
 > **Agenda por obra:** eventos marcados com `extendedProperties.private.dattaobra_obra = obraId`; `listar` filtra por isso (janela −90d, `singleEvents=true`). Campos completos do Google Calendar: **dia inteiro** (`start/end.date`, fim exclusivo), **recorrência** (`recorrencia`=DAILY|WEEKLY|MONTHLY|YEARLY → RRULE), **lembrete** (`lembreteMin` → reminders popup), **convidados** (`convidados[]` de e-mails → `sendUpdates=all`, **envia convite**), **local**, **cor** (colorId 1–11). Fuso `America/Sao_Paulo`; timed → `YYYY-MM-DDTHH:MM`. Em recorrentes, editar/remover afeta a ocorrência (v1).
 

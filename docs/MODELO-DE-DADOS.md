@@ -40,7 +40,7 @@ Usuarios 1───* Cotacoes (obra_id opcional) 1───* CotacaoPrecos *─�
 |--------|------|-----------|
 | id | UUID | PK |
 | usuario_id | UUID | FK → Usuarios.id |
-| chave | string | ex.: `moeda`, `tema`, `limite_obras`, `categorias_padrao`, **`drive_folder_id`** (subpasta do Drive), **`google_sub`/`google_email`** (identidade do login Google), **`google_refresh_token`** (agenda — **segredo**) |
+| chave | string | ex.: `moeda`, `tema`, `limite_obras`, `categorias_padrao`, **`drive_folder_id`** (subpasta do Drive), **`google_sub`/`google_email`** (identidade do login Google), **`google_refresh_token`** (agenda — **segredo**), **`sync_agenda`/`sync_notas`** (interruptores de sincronização; gravados pelo usuário via `config.definir`) |
 | valor | string | valor (JSON quando composto) |
 | atualizado_em | ISO datetime | |
 
@@ -64,6 +64,9 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | criado_em | ISO datetime | |
 | atualizado_em | ISO datetime | |
 | link_token | string | token curto (12 chars) do link público de leitura (vazio = desativado) |
+| prazo | YYYY-MM-DD | (append) data esperada de término — contagem regressiva / atraso na tela da obra |
+| finalizada | bool | (append) marcada como concluída pelo usuário — **para/retoma** a contagem regressiva (independente de `status`) |
+| finalizada_em | ISO datetime | (append) quando foi finalizada |
 
 ## Aba `Despesas`
 | Coluna | Tipo | Descrição |
