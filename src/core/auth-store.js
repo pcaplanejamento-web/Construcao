@@ -124,6 +124,14 @@ export const auth = {
     return api.call("auth.alterarSenha", { senhaAtual, novaSenha });
   },
 
+  /** Grava uma preferência do próprio usuário (allowlist no backend) e atualiza o estado. */
+  async definirConfig(chave, valor) {
+    const data = await api.call("config.definir", { chave, valor });
+    estado.config = data.config || estado.config;
+    persistir();
+    return estado.config;
+  },
+
   /** Encerra a sessão (server-side e local). */
   async logout() {
     try {

@@ -5,12 +5,18 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
+import { auth } from "../../core/auth-store.js";
 import { api } from "../../core/api-client.js";
 import { toastSucesso, toastAviso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-badge.js";
 import "../../components/ui-button.js";
+import "../../components/ui-switch.js";
 import "./senha-form.js";
+
+function _liga(v) {
+  return v === true || v === "TRUE" || v === "true";
+}
 
 class PerfilView extends BaseElement {
   estilos() {
@@ -35,6 +41,9 @@ class PerfilView extends BaseElement {
         .g-acoes { flex-direction: column; align-items: stretch; }
         .g-acoes ui-button { width: 100%; }
       }
+      .g-sync { display: flex; flex-direction: column; gap: var(--esp-2);
+        border-top: 1px solid var(--cor-divisor); padding-top: var(--esp-4); }
+      .g-sync-tit { font-weight: var(--peso-semi); }
     `;
   }
 
@@ -83,6 +92,12 @@ class PerfilView extends BaseElement {
         <div class="g-acoes">
           <ui-button id="gTestar" variant="secundario">Testar conexão</ui-button>
           <ui-button id="gDesconectar" variant="perigo-contorno">Desconectar</ui-button>
+        </div>
+        <div class="g-sync">
+          <div class="g-sync-tit">Sincronização com o Google Calendar</div>
+          <ui-switch id="swAgenda" label="Sincronizar a agenda (despesas, transferências, prazos)" ${_liga((auth.config() || {}).sync_agenda) ? "checked" : ""}></ui-switch>
+          <ui-switch id="swNotas" label="Sincronizar as notas" ${_liga((auth.config() || {}).sync_notas) ? "checked" : ""}></ui-switch>
+          <p class="g-sub">Ao ligar, suas marcações são enviadas ao seu Google Calendar como eventos de dia inteiro.</p>
         </div>`;
     }
     return `
@@ -104,6 +119,19 @@ class PerfilView extends BaseElement {
     if (testar) testar.addEventListener("click", () => this._testar());
     const desconectar = this.$("#gDesconectar");
     if (desconectar) desconectar.addEventListener("click", () => this._desconectar());
+    const swA = this.$("#swAgenda");
+    if (swA) swA.addEventListener("change", (e) => this._definirSync("sync_agenda", e.detail.checked));
+    const swN = this.$("#swNotas");
+    if (swN) swN.addEventListener("change", (e) => this._definirSync("sync_notas", e.detail.checked));
+  }
+
+  async _definirSync(chave, valor) {
+    try {
+      await auth.definirConfig(chave, valor);
+      toastSucesso(valor ? "Sincronização ligada." : "Sincronização desligada.");
+    } catch (e) {
+      notificarErro(e);
+    }
   }
 
   async _buscarStatus() {

@@ -17,6 +17,8 @@ const ROTAS = {
 
   // Config pública (Client ID do Google p/ o botão de login — sem token)
   "config.publico": { fn: configPublico, publica: true },
+  // Config do próprio usuário (allowlist: sync_agenda/sync_notas)
+  "config.definir": { fn: configDefinir },
 
   // Estado inicial completo (carregamento único + cache no cliente)
   "dados.snapshot": { fn: dadosSnapshot },

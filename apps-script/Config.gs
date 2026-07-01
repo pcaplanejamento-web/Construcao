@@ -46,6 +46,24 @@ function adminConfigDefinir(data, sessao) {
   });
 }
 
+/** Chaves que o PRÓPRIO usuário pode gravar via config.definir (allowlist). */
+const CONFIG_CHAVES_USUARIO = { sync_agenda: true, sync_notas: true };
+
+/**
+ * config.definir -> { config }. O próprio usuário grava UMA das suas chaves
+ * permitidas (allowlist — nunca chaves sensíveis/de terceiros).
+ */
+function configDefinir(data, sessao) {
+  const chave = String((data && data.chave) || "").trim();
+  if (!CONFIG_CHAVES_USUARIO[chave]) {
+    lancar(ERRO.NAO_AUTORIZADO, "Configuração não permitida.");
+  }
+  return comLock(function () {
+    _definirConfig(sessao.usuario_id, chave, (data && data.valor) === true);
+    return { config: montarConfigUsuario(sessao.usuario_id) };
+  });
+}
+
 /**
  * Upsert interno de UMA configuração (usuario_id + chave). SEM verificação de
  * admin e SEM lock próprio — o chamador DEVE estar dentro de comLock(). Reusado
