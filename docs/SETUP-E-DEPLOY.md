@@ -147,16 +147,10 @@ configurados, o login por senha e o resto do app seguem normais):
 3. **Tela de consentimento OAuth:** publicar OU adicionar os e-mails da empresa
    como *usuários de teste* (o login já é restrito a cadastrados de qualquer forma).
 
-### 3.2 — Client ID + Secret
+### 3.2 — Segredos (Script Properties do Apps Script)
 
-**Jeito recomendado — pela tela (admin):** logado como admin, vá em
-**Configuração → aba Integrações → "Google — login e agenda"**, cole o **Client ID**
-e o **Client Secret** e salve. Vão para as Script Properties pelo backend
-(`admin.google.definir`); o Secret nunca volta ao navegador. A própria tela mostra
-as **Origens** e o **URI de redirecionamento** exatos para colar no Google Cloud.
-
-**Alternativa — Script Properties manualmente** (Editor do Apps Script → Project
-Settings → Script Properties):
+Tudo **gratuito** no Google Cloud (OAuth + Calendar API não exigem plano pago).
+No Editor do Apps Script → Project Settings → Script Properties, adicione:
 
 | Propriedade | Valor |
 |-------------|-------|

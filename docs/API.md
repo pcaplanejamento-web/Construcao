@@ -45,8 +45,6 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 | `auth.me` | `{}` | `{ usuario, config }` |
 | `auth.alterarSenha` | `{ senhaAtual, novaSenha }` | `{ alterada: true }` (o próprio usuário) |
 | `config.publico` | `{}` | `{ googleClientId }` (pública; o botão de login lê o Client ID daqui) |
-| `admin.google.obter` | `{}` | `{ clientId, secretConfigurado, redirectUri }` (admin) |
-| `admin.google.definir` | `{ clientId, clientSecret }` | `{ clientId, secretConfigurado }` (admin; grava nas Script Properties, Secret opcional) |
 
 ### Conexão Google (agenda — OAuth2 por usuário)
 | Action | `data` | Retorno |

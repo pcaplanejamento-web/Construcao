@@ -8,15 +8,12 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { api } from "../../core/api-client.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
 import { confirmar } from "../../components/confirmar.js";
 import { nomeTipo } from "../pagamentos/pagamento-util.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-button.js";
 import "../../components/ui-card.js";
-import "../../components/ui-input.js";
-import "../../components/ui-badge.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
 import "../despesas/category-badge.js";
@@ -37,19 +34,6 @@ class AdminView extends BaseElement {
       .pilha { display: flex; flex-direction: column; gap: var(--esp-5); }
       .badges { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
-
-      /* Integrações — Google */
-      .gcfg { display: flex; flex-direction: column; gap: var(--esp-4); max-width: 560px; }
-      .gcfg .sub { color: var(--cor-texto-suave); font-size: var(--fs-sm); line-height: 1.5; }
-      .gstatus { display: flex; align-items: center; gap: var(--esp-2); flex-wrap: wrap;
-        font-size: var(--fs-sm); }
-      .ghelp { font-size: var(--fs-sm); color: var(--cor-texto-suave); line-height: 1.6;
-        background: var(--cor-superficie-2); border: 1px solid var(--cor-borda);
-        border-radius: var(--raio-md); padding: var(--esp-3); }
-      .ghelp code { font-family: var(--fonte-mono, monospace); font-size: 12px;
-        background: var(--cor-superficie); padding: 1px 5px; border-radius: var(--raio-sm);
-        word-break: break-all; }
-      .ghelp a { color: var(--cor-primaria); font-weight: var(--peso-semi); }
     `;
   }
 
@@ -74,21 +58,6 @@ class AdminView extends BaseElement {
             </ui-card>
             <ui-card title="Tipos base (fixos)"><div id="tiposFixos"></div></ui-card>
           </div>
-          <div slot="integracoes" class="pilha">
-            <ui-card title="Google — login e agenda">
-              <div class="gcfg">
-                <p class="sub">Cole o <b>Client ID</b> e o <b>Client Secret</b> do OAuth
-                  (Google Cloud → Credenciais → Aplicativo da Web). Ficam guardados no
-                  servidor; o Secret nunca volta ao navegador. Habilita "Entrar com
-                  Google" e "Conectar Google".</p>
-                <div class="gstatus" id="gStatus"></div>
-                <ui-input id="gClientId" label="Client ID" placeholder="....apps.googleusercontent.com"></ui-input>
-                <ui-input id="gSecret" label="Client Secret" type="password" placeholder="deixe em branco para manter o atual"></ui-input>
-                <ui-button id="gSalvar">Salvar</ui-button>
-                <div class="ghelp" id="gHelp"></div>
-              </div>
-            </ui-card>
-          </div>
         </ui-tabs>
       </div>
     `;
@@ -100,72 +69,11 @@ class AdminView extends BaseElement {
       abas.abas = [
         { id: "usuarios", rotulo: "Usuários", icone: "usuario" },
         { id: "transferencias", rotulo: "Transferências", icone: "cifrao" },
-        { id: "integracoes", rotulo: "Integrações", icone: "config" },
       ];
     this.$("#novo").addEventListener("click", () => this.abrirUserForm(null));
     this.$("#novoTipo").addEventListener("click", () => this.abrirTipoForm(null));
-    this.$("#gSalvar").addEventListener("click", () => this.salvarGoogle());
     this.pintar();
-    this.carregarGoogle();
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
-  }
-
-  /** Carrega o status atual da configuração Google (Client ID + Secret?). */
-  async carregarGoogle() {
-    let cfg = { clientId: "", secretConfigurado: false, redirectUri: "" };
-    try {
-      cfg = await api.call("admin.google.obter");
-    } catch (e) {
-      /* sem permissão ou backend antigo: mantém vazio */
-    }
-    this._redirectGoogle = cfg.redirectUri || "";
-    this.pintarGoogle(cfg);
-  }
-
-  pintarGoogle(cfg) {
-    const idEl = this.$("#gClientId");
-    if (idEl) idEl.value = cfg.clientId || "";
-    const st = this.$("#gStatus");
-    if (st) {
-      const idOk = !!cfg.clientId;
-      const secOk = !!cfg.secretConfigurado;
-      const pastilha = (ok, txt) =>
-        `<ui-badge color="var(--cor-${ok ? "sucesso" : "neutro"})" text="${txt}"></ui-badge>`;
-      st.innerHTML =
-        pastilha(idOk, idOk ? "Client ID salvo" : "Client ID pendente") +
-        pastilha(secOk, secOk ? "Secret salvo" : "Secret pendente");
-    }
-    const help = this.$("#gHelp");
-    if (help) {
-      const redirect = cfg.redirectUri || "(a URL /exec do Web App)";
-      help.innerHTML =
-        `No <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud → Credenciais</a>, ` +
-        `crie um <b>ID do cliente OAuth</b> (Aplicativo da Web) e habilite a ` +
-        `<a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noopener">Calendar API</a>.<br>` +
-        `<b>Origens JavaScript:</b> <code>https://dattaobra.com.br</code> e <code>https://pcaplanejamento-web.github.io</code><br>` +
-        `<b>URI de redirecionamento:</b> <code>${redirect}</code>`;
-    }
-  }
-
-  async salvarGoogle() {
-    const clientId = this.$("#gClientId").value.trim();
-    const clientSecret = this.$("#gSecret").value.trim();
-    if (!clientId) {
-      notificarErro(new Error("Informe o Client ID."));
-      return;
-    }
-    const btn = this.$("#gSalvar");
-    btn.setAttribute("loading", "");
-    try {
-      const cfg = await api.call("admin.google.definir", { clientId, clientSecret });
-      this.$("#gSecret").value = "";
-      this.pintarGoogle({ ...cfg, redirectUri: this._redirectGoogle });
-      toastSucesso("Configuração do Google salva. O botão de login já reflete o Client ID.");
-    } catch (e) {
-      notificarErro(e);
-    } finally {
-      btn.removeAttribute("loading");
-    }
   }
 
   pintar() {
