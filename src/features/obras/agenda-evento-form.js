@@ -12,6 +12,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { api } from "../../core/api-client.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { confirmar } from "../../components/confirmar.js";
 import { CORES_EVENTO, CORES_NOMES, IDS_COR } from "./agenda-cores.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
@@ -62,6 +63,7 @@ class AgendaEventoForm extends BaseElement {
       .cor.sel { border-color: var(--cor-texto); box-shadow: 0 0 0 2px var(--cor-superficie) inset; }
       .erro { color: var(--cor-erro); font-size: var(--fs-sm); background: var(--cor-erro-suave);
         padding: var(--esp-2) var(--esp-3); border-radius: var(--raio-sm); }
+      #excluir { margin-right: auto; }
     `;
   }
 
@@ -87,6 +89,7 @@ class AgendaEventoForm extends BaseElement {
           <ui-input id="descricao" label="Descrição (opcional)" value="${esc(descSemSufixo(e.descricao))}"></ui-input>
         </div>
         <div slot="rodape">
+          ${this.ehEdicao ? `<ui-button id="excluir" variant="perigo-contorno">Excluir</ui-button>` : ""}
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
           <ui-button id="salvar">${this.ehEdicao ? "Salvar" : "Criar evento"}</ui-button>
         </div>
@@ -123,6 +126,26 @@ class AgendaEventoForm extends BaseElement {
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
+    const excluir = this.$("#excluir");
+    if (excluir) excluir.addEventListener("click", () => this.excluir());
+  }
+
+  async excluir() {
+    const ok = await confirmar({
+      titulo: "Remover evento",
+      mensagem: "Remover este evento do seu Google Agenda?",
+      perigo: true,
+      rotuloOk: "Remover",
+    });
+    if (!ok) return;
+    try {
+      await api.call("google.agenda.remover", { eventoId: this.evento.id });
+      toastSucesso("Evento removido.");
+      this.emitir("salvo");
+      this.emitir("fechar");
+    } catch (e) {
+      notificarErro(e);
+    }
   }
 
   pintarCores() {

@@ -26,7 +26,9 @@ export const CORES_NOMES = {
 /** IDs de cor selecionáveis (na ordem do Google Calendar). */
 export const IDS_COR = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
 
-/** hex de um colorId (fallback = cor padrão). */
-export function corEvento(colorId) {
-  return CORES_EVENTO[String(colorId == null ? "" : colorId)] || CORES_EVENTO[""];
+/** Cor de uma marcação/evento: aceita hex direto (#…) ou um colorId do Google. */
+export function corEvento(valor) {
+  const v = String(valor == null ? "" : valor);
+  if (v.charAt(0) === "#") return v; // já é um hex (marcações derivadas)
+  return CORES_EVENTO[v] || CORES_EVENTO[""];
 }
