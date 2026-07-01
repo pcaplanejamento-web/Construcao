@@ -41,6 +41,21 @@ function _escaparHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Rodar UMA VEZ no Editor do Apps Script (botão Executar) para conceder o escopo
+ * `script.external_request`, necessário ao UrlFetchApp (chamadas à API do Google/
+ * OAuth). Faz uma requisição HTTP inofensiva só para disparar o consentimento.
+ * Como o web app roda como USER_DEPLOYING (o dono), essa autorização vale para o
+ * "Entrar com Google" e o "Conectar Google" no app. (Espelha autorizarDrive.)
+ */
+function autorizarGoogle() {
+  const resp = UrlFetchApp.fetch(
+    "https://oauth2.googleapis.com/tokeninfo?access_token=invalido",
+    { muteHttpExceptions: true }
+  );
+  return "OK (" + resp.getResponseCode() + ") — escopo external_request autorizado.";
+}
+
 /* ------------------------------ Actions ------------------------------- */
 
 /**
