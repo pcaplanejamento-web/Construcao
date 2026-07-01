@@ -15,6 +15,9 @@ const ROTAS = {
   "auth.me": { fn: authMe },
   "auth.alterarSenha": { fn: authAlterarSenha },
 
+  // Config pública (Client ID do Google p/ o botão de login — sem token)
+  "config.publico": { fn: configPublico, publica: true },
+
   // Estado inicial completo (carregamento único + cache no cliente)
   "dados.snapshot": { fn: dadosSnapshot },
 

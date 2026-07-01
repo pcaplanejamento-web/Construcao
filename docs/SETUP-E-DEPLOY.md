@@ -147,7 +147,7 @@ configurados, o login por senha e o resto do app seguem normais):
 3. **Tela de consentimento OAuth:** publicar OU adicionar os e-mails da empresa
    como *usuários de teste* (o login já é restrito a cadastrados de qualquer forma).
 
-### 3.2 — Segredos (Script Properties do Apps Script)
+### 3.2 — Segredos (Script Properties do Apps Script) — **único lugar a configurar**
 
 | Propriedade | Valor |
 |-------------|-------|
@@ -155,14 +155,13 @@ configurados, o login por senha e o resto do app seguem normais):
 | `GOOGLE_CLIENT_SECRET` | o *client secret* (nunca vai ao front) |
 | `OAUTH_REDIRECT_URI` | (opcional) a URL `/exec`; padrão = URL do Web App |
 
-### 3.3 — Frontend
+O **front não precisa de edição**: o botão "Entrar com Google" busca o Client ID
+do backend (`config.publico`, que lê essa Script Property). Em `config.js`,
+`GOOGLE_CLIENT_ID` fica `""` (só preencha se quiser fixar um override no front).
 
-Em [`src/core/config.js`](../src/core/config.js), cole **só o Client ID** (público)
-em `GOOGLE_CLIENT_ID`. Enquanto ficar `COLE_AQUI...`, o botão "Entrar com Google"
-fica oculto (login por senha intacto).
-
-> Após configurar, **crie uma nova versão** da implantação do Web App para que o
-> callback OAuth no `doGet` e as rotas `google.*`/`auth.loginGoogle` entrem no ar.
+> Após configurar as Script Properties, **crie uma nova versão** da implantação do
+> Web App para que o callback OAuth no `doGet` e as rotas
+> `google.*`/`auth.loginGoogle`/`config.publico` entrem no ar.
 
 ---
 

@@ -6,6 +6,18 @@
  * "claro"/"escuro". O front interpreta cada chave conforme necessário.
  */
 
+/**
+ * config.publico -> { googleClientId }. Pública (sem token): o botão "Entrar com
+ * Google" no login precisa do Client ID (que é público) ANTES de autenticar. Lê
+ * das Script Properties, então o dono configura em UM lugar só (nada no front).
+ */
+function configPublico(data) {
+  return {
+    googleClientId:
+      PropertiesService.getScriptProperties().getProperty("GOOGLE_CLIENT_ID") || "",
+  };
+}
+
 /** admin.config.obter -> { config: { chave: valor } }. */
 function adminConfigObter(data, sessao) {
   exigirAdmin(sessao);

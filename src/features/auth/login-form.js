@@ -11,6 +11,7 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { auth } from "../../core/auth-store.js";
+import { api } from "../../core/api-client.js";
 import { CONFIG } from "../../core/config.js";
 import { notificarErro, toastAviso } from "../../core/event-bus.js";
 import { obrigatorio, primeiroErro } from "../../core/validators.js";
@@ -137,9 +138,10 @@ class LoginForm extends BaseElement {
    * caso contrário o login por senha segue intacto (bloco fica oculto).
    */
   async _initGoogle() {
-    const cid = CONFIG.GOOGLE_CLIENT_ID;
     const bloco = this.$("#googleBloco");
-    if (!bloco || !cid || cid.indexOf("COLE_AQUI") === 0) return;
+    if (!bloco) return;
+    const cid = await this._clientId();
+    if (!cid || !this.isConnected) return;
     const g = await this._aguardarGoogle();
     if (!g || !this.isConnected) return;
     const alvo = this.$("#googleBtn");
@@ -162,6 +164,22 @@ class LoginForm extends BaseElement {
       bloco.hidden = false;
     } catch (e) {
       bloco.hidden = true;
+    }
+  }
+
+  /**
+   * Client ID do Google: usa o de config.js se preenchido (override); senão busca
+   * do backend (config.publico → Script Properties). Assim o dono configura em um
+   * lugar só. Retorna "" se não configurado (aí o botão fica oculto).
+   */
+  async _clientId() {
+    const fixo = CONFIG.GOOGLE_CLIENT_ID;
+    if (fixo && fixo.indexOf("COLE_AQUI") !== 0) return fixo;
+    try {
+      const r = await api.call("config.publico");
+      return (r && r.googleClientId) || "";
+    } catch (e) {
+      return "";
     }
   }
 

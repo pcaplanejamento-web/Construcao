@@ -11,12 +11,13 @@ export const CONFIG = {
     "https://script.google.com/macros/s/AKfycbxDCNTuP8GLFU3grKNDtYXf_CjpHq5INgB2EJdbGyckCLec0ricpmmBWbAMh5W8X0gxFg/exec",
 
   /**
-   * Client ID público do OAuth (Google Cloud → Credenciais → "Web application").
-   * Só o ID (o secret fica nas Script Properties, nunca no front). Habilita o
-   * botão "Entrar com Google". Enquanto ficar "COLE_AQUI...", o botão fica oculto.
+   * Client ID do OAuth do Google (habilita "Entrar com Google"). NÃO precisa
+   * preencher aqui: o front busca o valor do backend (`config.publico`), que lê
+   * das Script Properties — assim o dono configura em UM lugar só (lado Google).
+   * Deixe "" para usar o backend; preencha apenas se quiser fixar no front.
    * Veja docs/SETUP-E-DEPLOY.md (origens e redirect a autorizar no GCP).
    */
-  GOOGLE_CLIENT_ID: "COLE_AQUI.apps.googleusercontent.com",
+  GOOGLE_CLIENT_ID: "",
 
   /** Chaves usadas no localStorage para persistir a sessão. */
   STORAGE: {
