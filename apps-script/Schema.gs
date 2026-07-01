@@ -396,6 +396,21 @@ const SCHEMA = {
     ],
   },
 
+  NOTAS: {
+    aba: "Notas", // anotações por obra (compartilhadas: quem tem acesso à obra vê)
+    colunas: [
+      "id",
+      "obra_id", // FK → Obras.id
+      "usuario_id", // quem criou (autor)
+      "titulo",
+      "texto",
+      "criado_em",
+      "autor_nome",
+      "atualizado_em",
+      "editor_nome",
+    ],
+  },
+
   SESSOES: {
     aba: "Sessoes",
     colunas: [

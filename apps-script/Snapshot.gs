@@ -76,6 +76,20 @@ function dadosSnapshot(data, sessao) {
     participantesPorObra[o.id] = listarParticipantesObra(o.id);
   });
 
+  // Notas por obra (compartilhadas: quem tem acesso à obra vê), mais recentes 1º.
+  const notasPorObra = {};
+  obras.forEach(function (o) {
+    notasPorObra[o.id] = [];
+  });
+  repoListar(SCHEMA.NOTAS).forEach(function (n) {
+    if (idsAcc[n.obra_id]) notasPorObra[n.obra_id].push(n);
+  });
+  Object.keys(notasPorObra).forEach(function (id) {
+    notasPorObra[id].sort(function (a, b) {
+      return String(b.atualizado_em).localeCompare(String(a.atualizado_em));
+    });
+  });
+
   // Módulo Compras: coleções globais do usuário + ofertas agrupadas por cotação.
   const cotacoes = listarCotacoesUsuario(u.id);
   const idsCot = {};
@@ -136,6 +150,7 @@ function dadosSnapshot(data, sessao) {
     resumos: resumos,
     categoriasPorObra: categoriasPorObra,
     participantesPorObra: participantesPorObra,
+    notasPorObra: notasPorObra,
     fornecedores: listarFornecedoresUsuario(u.id),
     contatos: listarContatosUsuario(u.id),
     cargos: listarCargosUsuario(u.id),

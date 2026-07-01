@@ -129,6 +129,12 @@ const ROTAS = {
   "estoque.criarMovimento": { fn: estoqueCriarMovimento },
   "estoque.remover": { fn: estoqueRemover },
 
+  // Notas da obra (anotações compartilhadas)
+  "notas.listar": { fn: notasListar },
+  "notas.criar": { fn: notasCriar },
+  "notas.atualizar": { fn: notasAtualizar },
+  "notas.remover": { fn: notasRemover },
+
   // Conexão Google (OAuth2 por usuário — agenda)
   "google.iniciarOAuth": { fn: googleIniciarOAuth },
   "google.status": { fn: googleStatus },
