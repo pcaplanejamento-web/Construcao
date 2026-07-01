@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Política de Privacidade — Dattaobra</title>
+    <meta
+      name="description"
+      content="Política de Privacidade do Dattaobra — como tratamos seus dados, incluindo os dados acessados via login e agenda do Google."
+    />
+    <link rel="icon" type="image/png" href="src/assets/dattaobra.png" />
+    <style>
+      :root {
+        --verde: #0f766e;
+        --tinta: #0f172a;
+        --suave: #475569;
+        --linha: #e2e8f0;
+        --fundo: #f8fafc;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        color: var(--tinta);
+        background: var(--fundo);
+        line-height: 1.65;
+      }
+      .topo {
+        background: linear-gradient(135deg, #0f766e, #059669);
+        color: #fff;
+        padding: 40px 24px;
+      }
+      .wrap { max-width: 760px; margin: 0 auto; }
+      .marca { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+      .marca img { width: 34px; height: 34px; border-radius: 8px; background: #fff; }
+      .marca span { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+      h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.03em; }
+      .topo p { margin: 8px 0 0; opacity: 0.92; font-size: 15px; }
+      main { max-width: 760px; margin: 0 auto; padding: 32px 24px 64px; }
+      h2 {
+        font-size: 20px; font-weight: 700; margin: 34px 0 10px;
+        color: var(--verde); letter-spacing: -0.01em;
+      }
+      p, li { color: var(--suave); font-size: 16px; }
+      ul { padding-left: 22px; }
+      li { margin: 6px 0; }
+      strong { color: var(--tinta); }
+      a { color: var(--verde); font-weight: 600; }
+      .caixa {
+        background: #fff; border: 1px solid var(--linha); border-radius: 12px;
+        padding: 16px 18px; margin: 16px 0;
+      }
+      footer {
+        border-top: 1px solid var(--linha); margin-top: 40px; padding-top: 20px;
+        font-size: 14px; color: #94a3b8;
+      }
+      code {
+        background: #eef2f7; padding: 1px 6px; border-radius: 5px; font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topo">
+      <div class="wrap">
+        <div class="marca">
+          <img src="src/assets/dattaobra.png" alt="Dattaobra" />
+          <span>Dattaobra</span>
+        </div>
+        <h1>Política de Privacidade</h1>
+        <p>Última atualização: 1 de julho de 2026</p>
+      </div>
+    </header>
+
+    <main>
+      <p>
+        O <strong>Dattaobra</strong> é um sistema de gestão de obras que ajuda
+        equipes a cadastrar obras e acompanhar despesas, transferências e prazos.
+        Esta política explica quais dados tratamos, como os usamos e quais são os
+        seus direitos — incluindo os dados acessados quando você opta por usar os
+        recursos do Google (login e agenda).
+      </p>
+
+      <h2>1. Dados que tratamos</h2>
+      <p><strong>Dados de conta (cadastro no sistema):</strong></p>
+      <ul>
+        <li>Nome e e-mail, informados pelo administrador ao criar o seu acesso;</li>
+        <li>Senha, guardada apenas como resumo criptográfico (hash), nunca em texto puro;</li>
+        <li>Dados operacionais do seu uso do app (obras, despesas, etc.).</li>
+      </ul>
+      <p><strong>Dados do Google (opcionais, só se você usar esses recursos):</strong></p>
+      <ul>
+        <li>
+          <strong>Entrar com Google:</strong> seu <strong>nome</strong> e
+          <strong>e-mail</strong> da conta Google, apenas para identificar e
+          autenticar um usuário <strong>já cadastrado</strong> no sistema.
+        </li>
+        <li>
+          <strong>Conectar Google (agenda):</strong> ao conectar sua conta, o app
+          obtém autorização para acessar seus <strong>eventos do Google
+          Agenda</strong> (escopo <code>calendar.events</code>), com o único
+          objetivo de vincular/sincronizar a sua agenda com as obras.
+        </li>
+      </ul>
+
+      <h2>2. Como usamos os dados</h2>
+      <ul>
+        <li>Autenticar seu acesso e manter sua sessão;</li>
+        <li>Fornecer os recursos do app (obras, despesas, transferências, agenda);</li>
+        <li>
+          Ler e registrar eventos no seu Google Agenda, quando você usa o recurso
+          de agenda vinculado às obras.
+        </li>
+      </ul>
+      <p>
+        <strong>Não usamos</strong> seus dados do Google para publicidade, não os
+        vendemos e não os transferimos a terceiros para fins não relacionados ao
+        funcionamento do app.
+      </p>
+
+      <h2>3. Armazenamento e segurança</h2>
+      <div class="caixa">
+        <p style="margin:0">
+          A comunicação é sempre por <strong>HTTPS</strong>. Os tokens de acesso à
+          sua conta Google ficam guardados <strong>no servidor</strong> (Google
+          Apps Script); em especial, o <em>token de atualização</em> (refresh
+          token) <strong>nunca é enviado ao navegador</strong>. Cada usuário tem os
+          próprios tokens, isolados dos demais.
+        </p>
+      </div>
+
+      <h2>4. Compartilhamento</h2>
+      <p>
+        Não compartilhamos seus dados pessoais nem os dados obtidos do Google com
+        terceiros, exceto quando estritamente necessário para operar o serviço
+        (por exemplo, a própria infraestrutura do Google que hospeda o app) ou por
+        exigência legal.
+      </p>
+
+      <h2>5. Uso Limitado — APIs do Google</h2>
+      <p>
+        O uso e a transferência, pelo Dattaobra, das informações recebidas das
+        APIs do Google aderem à
+        <a
+          href="https://developers.google.com/terms/api-services-user-data-policy"
+          target="_blank"
+          rel="noopener"
+          >Política de Dados do Usuário dos Serviços de API do Google</a
+        >, incluindo os requisitos de <strong>Uso Limitado (Limited Use)</strong>.
+      </p>
+
+      <h2>6. Como revogar o acesso e excluir dados</h2>
+      <ul>
+        <li>
+          No próprio app, em <strong>Meu perfil → Conta Google → Desconectar</strong>,
+          o acesso é revogado e o token guardado é apagado.
+        </li>
+        <li>
+          Você também pode remover o acesso a qualquer momento em
+          <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener"
+            >myaccount.google.com/permissions</a
+          >.
+        </li>
+        <li>
+          Para excluir sua conta e dados do sistema, fale com o administrador da
+          obra ou com o contato abaixo.
+        </li>
+      </ul>
+
+      <h2>7. Retenção</h2>
+      <p>
+        Mantemos seus dados enquanto sua conta estiver ativa ou enquanto forem
+        necessários para prestar o serviço. Ao desconectar o Google ou encerrar a
+        conta, os tokens e dados associados são removidos.
+      </p>
+
+      <h2>8. Contato</h2>
+      <p>
+        Dúvidas sobre esta política ou sobre seus dados:
+        <a href="mailto:dattaobra@gmail.com">dattaobra@gmail.com</a>.
+      </p>
+
+      <h2>9. Alterações</h2>
+      <p>
+        Podemos atualizar esta política periodicamente. A data de "última
+        atualização" no topo indica a versão vigente.
+      </p>
+
+      <footer>
+        © 2026 Dattaobra — Gestão de Obras. Todos os direitos reservados.
+      </footer>
+    </main>
+  </body>
+</html>

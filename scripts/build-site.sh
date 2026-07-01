@@ -14,6 +14,7 @@ cd "$(dirname "$0")/.."
 rm -rf dist
 mkdir -p dist
 cp index.html dist/
+cp privacidade.html dist/
 cp -R src dist/
 cp _headers dist/
 
