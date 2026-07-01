@@ -119,6 +119,7 @@ class ObraAgenda extends BaseElement {
         { chave: "descricao", titulo: "Descrição", formato: (v) => descLimpa(v) },
       ];
       tab.acoes = [
+        { nome: "editar", rotulo: "Editar" },
         { nome: "abrir", rotulo: "Abrir" },
         { nome: "remover", rotulo: "Remover", variant: "perigo" },
       ];
@@ -128,7 +129,9 @@ class ObraAgenda extends BaseElement {
       }));
       tab.addEventListener("acao", (e) => {
         const { acao, linha } = e.detail;
-        if (acao === "abrir") {
+        if (acao === "editar") {
+          this.abrirForm(linha);
+        } else if (acao === "abrir") {
           if (linha.link) window.open(linha.link, "_blank", "noopener");
         } else if (acao === "remover") {
           this.remover(linha.id);
@@ -137,9 +140,11 @@ class ObraAgenda extends BaseElement {
     }
   }
 
-  abrirForm() {
+  /** Abre o form. Sem argumento = novo; com `evento` = editar (ou pré-preencher). */
+  abrirForm(evento) {
     const form = document.createElement("agenda-evento-form");
     form.obra = dataStore.obra(this.obraId) || { id: this.obraId };
+    if (evento) form.evento = evento;
     form.addEventListener("fechar", () => form.remove());
     form.addEventListener("salvo", () => this.carregar());
     document.body.appendChild(form);
