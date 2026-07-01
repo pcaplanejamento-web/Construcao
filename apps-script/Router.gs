@@ -144,6 +144,8 @@ const ROTAS = {
   "admin.usuarios.atualizar": { fn: adminUsuariosAtualizar },
   "admin.config.obter": { fn: adminConfigObter },
   "admin.config.definir": { fn: adminConfigDefinir },
+  "admin.google.obter": { fn: adminGoogleObter },
+  "admin.google.definir": { fn: adminGoogleDefinir },
 };
 
 /** Resolve a action: valida token quando necessário e executa o handler. */

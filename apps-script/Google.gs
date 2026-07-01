@@ -120,6 +120,54 @@ function googleTestarConexao(data, sessao) {
   return { agenda: json.summary || "principal", eventos: (json.items || []).length };
 }
 
+/* ----------------- Configuração do app (somente admin) ---------------- */
+
+/**
+ * admin.google.obter -> { clientId, secretConfigurado, redirectUri }. O admin vê
+ * o Client ID atual (público), se o Secret já foi salvo (boolean, nunca o valor)
+ * e a URL de redirect a autorizar no Google Cloud.
+ */
+function adminGoogleObter(data, sessao) {
+  exigirAdmin(sessao);
+  const props = PropertiesService.getScriptProperties();
+  let redirect = "";
+  try {
+    redirect = _googleRedirectUri();
+  } catch (e) {
+    redirect = "";
+  }
+  return {
+    clientId: props.getProperty("GOOGLE_CLIENT_ID") || "",
+    secretConfigurado: !!props.getProperty("GOOGLE_CLIENT_SECRET"),
+    redirectUri: redirect,
+  };
+}
+
+/**
+ * admin.google.definir -> { clientId, secretConfigurado }. Salva o Client ID e
+ * (opcionalmente) o Secret nas Script Properties. O Secret em branco mantém o
+ * atual; nunca é devolvido ao cliente.
+ */
+function adminGoogleDefinir(data, sessao) {
+  exigirAdmin(sessao);
+  const clientId = String((data && data.clientId) || "").trim();
+  const clientSecret = String((data && data.clientSecret) || "").trim();
+  if (!clientId) lancar(ERRO.VALIDACAO, "Informe o Client ID.");
+  if (clientId.indexOf(".apps.googleusercontent.com") < 0) {
+    lancar(
+      ERRO.VALIDACAO,
+      "Client ID inválido (deve terminar em .apps.googleusercontent.com)."
+    );
+  }
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty("GOOGLE_CLIENT_ID", clientId);
+  if (clientSecret) props.setProperty("GOOGLE_CLIENT_SECRET", clientSecret);
+  return {
+    clientId: clientId,
+    secretConfigurado: !!props.getProperty("GOOGLE_CLIENT_SECRET"),
+  };
+}
+
 /* --------------------- Callback (chamado pelo doGet) ------------------ */
 
 /**
