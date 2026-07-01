@@ -445,6 +445,21 @@ A transferência agrupa N pagamentos (1 por despesa). Colunas relevantes ao **co
 
 > **Drive:** o web app roda como o dono (`USER_DEPLOYING`); os comprovantes ficam numa **pasta-raiz do app** (id em Script Property `DRIVE_ROOT_FOLDER_ID`) com uma **subpasta por usuário** (`Configuracoes.drive_folder_id`). Escopo `drive` (o `DriveApp.createFolder` exige o escopo amplo). Ao **excluir** a transferência (ou seu último pagamento), o arquivo vai para a **lixeira** do Drive. Ver `apps-script/Drive.gs`.
 
+## Aba `Notas` (anotações por obra — compartilhadas)
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| obra_id | UUID | FK → Obras.id |
+| usuario_id | UUID | autor (quem criou) |
+| titulo | string | título da nota |
+| texto | string | conteúdo da anotação |
+| criado_em / autor_nome | ISO / string | auditoria de criação |
+| atualizado_em / editor_nome | ISO / string | auditoria de edição |
+
+> **Compartilhadas na obra:** quem tem acesso à obra (dono ou compartilhamento) vê e edita (`_obraAcessivel`). A aba **auto-cria** no 1º acesso (`SheetRepo._abaDe`) — sem migração. No snapshot vão como `notasPorObra`. Ver `apps-script/Notas.gs`.
+
+> **Agenda (Google Calendar):** os eventos da aba Agenda **não** ficam nesta planilha — vivem no **Google Calendar de cada usuário** (escopo `calendar.events`), vinculados à obra por `extendedProperties.private.dattaobra_obra`. Ver `apps-script/Google.gs`.
+
 ## Aba `Sessoes`
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
