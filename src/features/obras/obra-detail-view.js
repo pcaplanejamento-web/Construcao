@@ -182,9 +182,7 @@ class ObraDetailView extends BaseElement {
           </ui-tabs>
         </div>
         <div slot="agenda">
-          <ui-card title="Agenda da obra (Google Calendar)">
-            <obra-agenda obra-id="${this.obraId}"></obra-agenda>
-          </ui-card>
+          <obra-agenda obra-id="${this.obraId}"></obra-agenda>
         </div>
       </ui-tabs>
     `;

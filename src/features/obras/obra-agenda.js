@@ -1,10 +1,11 @@
 /**
- * <obra-agenda obra-id="…"> — Agenda da obra (Google Calendar).
+ * <obra-agenda obra-id="…"> — Agenda da obra (Google Calendar) em formato de MESA.
  *
- * Mostra os eventos do Google Agenda do usuário vinculados a ESTA obra e permite
- * criar/remover eventos (escopo calendar.events, por usuário). Se a conta Google
- * não estiver conectada, convida a conectar no perfil. Busca ao vivo (não usa o
- * cache do data-store); espelha o padrão de <obra-participantes>.
+ * Mostra os eventos do Google Agenda do usuário vinculados a ESTA obra numa
+ * planilha (`ui-data-table` dentro de um `ui-card mesa`, igual às demais abas) e
+ * permite criar (via <agenda-evento-form>) e remover eventos (escopo
+ * calendar.events, por usuário). Se a conta Google não estiver conectada, convida
+ * a conectar no perfil. Busca ao vivo (não usa o cache do data-store).
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -12,11 +13,11 @@ import { api } from "../../core/api-client.js";
 import { irPara } from "../../core/router.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { confirmar } from "../../components/confirmar.js";
+import "../../components/ui-card.js";
 import "../../components/ui-button.js";
-import "../../components/ui-icon.js";
-import "../../components/ui-input.js";
-import "../../components/ui-modal.js";
+import "../../components/ui-data-table.js";
 import "../../components/ui-spinner.js";
+import "./agenda-evento-form.js";
 
 function esc(s) {
   return String(s == null ? "" : s)
@@ -24,6 +25,28 @@ function esc(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/** Data/hora do evento em texto pt-BR (aceita "YYYY-MM-DD" de dia inteiro). */
+function formatarQuando(inicio) {
+  if (!inicio) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(inicio)) {
+    const d = new Date(inicio + "T00:00:00");
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  }
+  const d = new Date(inicio);
+  if (isNaN(d.getTime())) return inicio;
+  return d.toLocaleString("pt-BR", {
+    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+/** Descrição sem o sufixo "Obra: … · via Dattaobra" (escapada; "—" se vazia). */
+function descLimpa(v) {
+  const s = String(v || "")
+    .replace(/\n*\s*Obra:[^\n]*· via Dattaobra\s*$/, "")
+    .trim();
+  return s ? esc(s) : "—";
 }
 
 class ObraAgenda extends BaseElement {
@@ -34,40 +57,8 @@ class ObraAgenda extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
-      .barra { display: flex; justify-content: flex-end; margin-bottom: var(--esp-4); }
-      .vazio { color: var(--cor-texto-suave); font-size: var(--fs-sm); padding: var(--esp-4) 0; }
       .conectar { display: flex; flex-direction: column; gap: var(--esp-3);
         align-items: flex-start; color: var(--cor-texto-suave); }
-      .lista { display: flex; flex-direction: column; gap: var(--esp-3); }
-      .evento { display: flex; gap: var(--esp-4); align-items: flex-start;
-        background: var(--cor-superficie); border: 1px solid var(--cor-borda);
-        border-radius: var(--raio-md); padding: var(--esp-3) var(--esp-4); }
-      .evento .quando { min-width: 132px; color: var(--cor-info); font-weight: var(--peso-semi);
-        font-size: var(--fs-sm); display: flex; gap: 6px; align-items: center; }
-      .evento .corpo { flex: 1; min-width: 0; }
-      .evento .titulo { font-weight: var(--peso-semi); }
-      .evento .desc { color: var(--cor-texto-suave); font-size: var(--fs-sm);
-        margin-top: 2px; white-space: pre-wrap; }
-      .evento .acoes { display: flex; align-items: center; gap: var(--esp-3); }
-      .evento .abrir { color: var(--cor-primaria); font-size: var(--fs-sm); font-weight: var(--peso-semi); }
-      .evento .rm { background: none; border: 0; cursor: pointer; color: var(--cor-texto-fraco);
-        font-size: 1.3rem; line-height: 1; padding: 4px 8px; border-radius: var(--raio-sm); }
-      .evento .rm:hover { color: var(--cor-erro); background: var(--cor-erro-suave); }
-      @media (max-width: 560px) {
-        .evento { flex-direction: column; gap: var(--esp-2); }
-        .evento .acoes { align-self: flex-end; }
-      }
-      /* Formulário no modal */
-      .form { display: flex; flex-direction: column; gap: var(--esp-4); }
-      .campo { display: flex; flex-direction: column; gap: 6px; }
-      .campo > span { font-size: var(--fs-sm); font-weight: var(--peso-semi); color: var(--cor-texto-suave); }
-      .campo input[type="datetime-local"] {
-        width: 100%; height: 44px; box-sizing: border-box; font-family: inherit;
-        font-size: var(--fs-md); color: var(--cor-texto); background: var(--cor-superficie);
-        border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-md);
-        padding: 0 var(--esp-3); }
-      .erro { color: var(--cor-erro); font-size: var(--fs-sm);
-        background: var(--cor-erro-suave); padding: var(--esp-2) var(--esp-3); border-radius: var(--raio-sm); }
     `;
   }
 
@@ -77,63 +68,20 @@ class ObraAgenda extends BaseElement {
     }
     if (this._estado === "desconectado") {
       return `
-        <div class="conectar">
-          <p>Conecte sua conta Google para ver e criar eventos da agenda desta obra
-             (prazos, visitas técnicas, marcos).</p>
-          <ui-button id="irPerfil">Conectar no meu perfil</ui-button>
-        </div>`;
+        <ui-card title="Agenda da obra (Google Calendar)">
+          <div class="conectar">
+            <p>Conecte sua conta Google para ver e criar eventos da agenda desta obra
+               (prazos, visitas técnicas, marcos).</p>
+            <ui-button id="irPerfil">Conectar no meu perfil</ui-button>
+          </div>
+        </ui-card>`;
     }
-    const eventos = this._eventos || [];
-    const linhas = eventos.map((ev) => this.linhaEvento(ev)).join("");
     return `
-      <div class="barra"><ui-button id="novo">+ Novo evento</ui-button></div>
-      ${
-        eventos.length
-          ? `<div class="lista">${linhas}</div>`
-          : `<p class="vazio">Nenhum evento para esta obra ainda. Crie o primeiro em "Novo evento".</p>`
-      }
-      <ui-modal id="modal" title="Novo evento na agenda">
-        <div class="form">
-          <div class="erro" id="fErro" hidden></div>
-          <ui-input id="fTitulo" label="Título" placeholder="Ex.: Visita técnica"></ui-input>
-          <label class="campo"><span>Início</span><input id="fInicio" type="datetime-local" /></label>
-          <label class="campo"><span>Fim (opcional — padrão: +1h)</span><input id="fFim" type="datetime-local" /></label>
-          <ui-input id="fDesc" label="Descrição (opcional)"></ui-input>
-        </div>
-        <div slot="rodape">
-          <ui-button id="fCancelar" variant="secundario">Cancelar</ui-button>
-          <ui-button id="fSalvar">Criar evento</ui-button>
-        </div>
-      </ui-modal>`;
-  }
-
-  linhaEvento(ev) {
-    return `
-      <div class="evento">
-        <div class="quando"><ui-icon name="relogio" size="15"></ui-icon>${esc(this.formatarQuando(ev.inicio))}</div>
-        <div class="corpo">
-          <div class="titulo">${esc(ev.titulo)}</div>
-          ${ev.descricao ? `<div class="desc">${esc(ev.descricao)}</div>` : ""}
-        </div>
-        <div class="acoes">
-          ${ev.link ? `<a class="abrir" href="${esc(ev.link)}" target="_blank" rel="noopener">Abrir</a>` : ""}
-          <button class="rm" data-id="${esc(ev.id)}" aria-label="Remover evento">&times;</button>
-        </div>
-      </div>`;
-  }
-
-  formatarQuando(inicio) {
-    if (!inicio) return "";
-    // Data só (evento de dia inteiro) vem "YYYY-MM-DD".
-    if (/^\d{4}-\d{2}-\d{2}$/.test(inicio)) {
-      const d = new Date(inicio + "T00:00:00");
-      return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-    }
-    const d = new Date(inicio);
-    if (isNaN(d.getTime())) return inicio;
-    return d.toLocaleString("pt-BR", {
-      day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-    });
+      <ui-card mesa title="Mesa com a agenda da obra">
+        <ui-button slot="acoes" id="novo">+ Novo evento</ui-button>
+        <ui-data-table id="tab" fluido
+          empty-text="Nenhum evento para esta obra ainda. Crie o primeiro em '+ Novo evento'."></ui-data-table>
+      </ui-card>`;
   }
 
   aoConectar() {
@@ -159,58 +107,42 @@ class ObraAgenda extends BaseElement {
   aposRender() {
     const perfil = this.$("#irPerfil");
     if (perfil) perfil.addEventListener("click", () => irPara("/perfil"));
+
     const novo = this.$("#novo");
     if (novo) novo.addEventListener("click", () => this.abrirForm());
-    const modal = this.$("#modal");
-    if (modal) {
-      modal.addEventListener("fechar", () => modal.removeAttribute("open"));
-      this.$("#fCancelar").addEventListener("click", () => modal.removeAttribute("open"));
-      this.$("#fSalvar").addEventListener("click", () => this.salvar());
+
+    const tab = this.$("#tab");
+    if (tab) {
+      tab.columns = [
+        { chave: "quando", titulo: "Quando", largura: "150px" },
+        { chave: "titulo", titulo: "Evento", formato: (v) => esc(v) },
+        { chave: "descricao", titulo: "Descrição", formato: (v) => descLimpa(v) },
+      ];
+      tab.acoes = [
+        { nome: "abrir", rotulo: "Abrir" },
+        { nome: "remover", rotulo: "Remover", variant: "perigo" },
+      ];
+      tab.rows = (this._eventos || []).map((ev) => ({
+        ...ev,
+        quando: formatarQuando(ev.inicio),
+      }));
+      tab.addEventListener("acao", (e) => {
+        const { acao, linha } = e.detail;
+        if (acao === "abrir") {
+          if (linha.link) window.open(linha.link, "_blank", "noopener");
+        } else if (acao === "remover") {
+          this.remover(linha.id);
+        }
+      });
     }
-    this.$$(".evento .rm").forEach((b) =>
-      b.addEventListener("click", () => this.remover(b.dataset.id))
-    );
   }
 
   abrirForm() {
-    this.$("#fErro").hidden = true;
-    this.$("#fTitulo").value = "";
-    this.$("#fInicio").value = "";
-    this.$("#fFim").value = "";
-    this.$("#fDesc").value = "";
-    this.$("#modal").setAttribute("open", "");
-  }
-
-  async salvar() {
-    const titulo = this.$("#fTitulo").value.trim();
-    const inicio = this.$("#fInicio").value;
-    const fim = this.$("#fFim").value;
-    const descricao = this.$("#fDesc").value.trim();
-    if (!titulo || !inicio) {
-      const el = this.$("#fErro");
-      el.textContent = "Informe ao menos o título e o início.";
-      el.hidden = false;
-      return;
-    }
-    const obra = dataStore.obra(this.obraId) || {};
-    const btn = this.$("#fSalvar");
-    btn.setAttribute("loading", "");
-    try {
-      await api.call("google.agenda.criar", {
-        obraId: this.obraId,
-        obraNome: obra.nome || "",
-        titulo, inicio, fim, descricao,
-      });
-      toastSucesso("Evento criado no Google Agenda.");
-      this.$("#modal").removeAttribute("open");
-      await this.carregar();
-    } catch (e) {
-      const el = this.$("#fErro");
-      el.textContent = e.message || "Não foi possível criar o evento.";
-      el.hidden = false;
-      notificarErro(e);
-      btn.removeAttribute("loading");
-    }
+    const form = document.createElement("agenda-evento-form");
+    form.obra = dataStore.obra(this.obraId) || { id: this.obraId };
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => this.carregar());
+    document.body.appendChild(form);
   }
 
   async remover(eventoId) {
