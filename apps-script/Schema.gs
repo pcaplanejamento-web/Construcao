@@ -45,6 +45,9 @@ const SCHEMA = {
       "link_token", // token do link público de visualização (vazio = desativado)
       "autor_nome", // (append) quem criou (desnormalizado)
       "editor_nome", // (append) quem editou por último
+      "prazo", // (append) data esperada de término (YYYY-MM-DD; vazio = sem prazo)
+      "finalizada", // (append) obra marcada como concluída (para a contagem regressiva)
+      "finalizada_em", // (append) quando foi finalizada (ISO)
     ],
   },
 

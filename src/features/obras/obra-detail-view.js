@@ -12,6 +12,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { statusPrazo, textoPrazo, corPrazo, iconePrazo, ehFinalizada } from "./prazo-util.js";
 import { balancos, restoDespesa } from "../despesas/despesa-split.js";
 import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
@@ -77,6 +78,11 @@ class ObraDetailView extends BaseElement {
       .topo { display: flex; align-items: center; justify-content: space-between;
         gap: var(--esp-3); flex-wrap: wrap; }
       .acoes-topo { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
+      .prazo-banner { display: inline-flex; align-items: center; gap: var(--esp-2);
+        margin-top: var(--esp-2); padding: 5px var(--esp-3); border-radius: var(--raio-completo);
+        font-size: var(--fs-sm); font-weight: var(--peso-semi); color: var(--pc);
+        background: color-mix(in srgb, var(--pc) 13%, transparent); }
+      .prazo-banner .prazo-data { color: var(--cor-texto-suave); font-weight: var(--peso-medio); }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
       /* Gráficos em grade 1 x 3, todos do MESMO tamanho (largura e altura). */
@@ -651,6 +657,18 @@ class ObraDetailView extends BaseElement {
     if (!topo || !this._obra) return;
     const o = this._obra;
     const ehDono = o.ehDono !== false;
+    const sp = statusPrazo(o);
+    const banner =
+      sp === "sem-prazo"
+        ? ""
+        : `<div class="prazo-banner" style="--pc:${corPrazo(o)}">
+             <ui-icon name="${iconePrazo(o)}" size="16"></ui-icon>
+             <span>${textoPrazo(o)}</span>${
+               o.prazo && sp !== "concluida"
+                 ? `<span class="prazo-data">· ${new Date(o.prazo + "T00:00:00").toLocaleDateString("pt-BR")}</span>`
+                 : ""
+             }
+           </div>`;
     topo.innerHTML = `
       <div>
         <h1>${o.nome || ""}</h1>
@@ -663,11 +681,13 @@ class ObraDetailView extends BaseElement {
         ? ` · <ui-icon name="usuario" size="14"></ui-icon> compartilhada por ${o.dono_email}`
         : ""
     }</div>
+        ${banner}
       </div>
       <div class="acoes-topo">
         ${
           ehDono
-            ? `<ui-button id="compartilharObra" variant="secundario">Compartilhar</ui-button>
+            ? `<ui-button id="finalizarObra" variant="${ehFinalizada(o) ? "secundario" : "tonal"}">${ehFinalizada(o) ? "Reabrir obra" : "Finalizar obra"}</ui-button>
+               <ui-button id="compartilharObra" variant="secundario">Compartilhar</ui-button>
                <ui-button id="editarObra" variant="secundario">Editar obra</ui-button>`
             : ""
         }
@@ -676,6 +696,18 @@ class ObraDetailView extends BaseElement {
     if (ehDono) {
       topo.querySelector("#editarObra").addEventListener("click", () => this.editarObra());
       topo.querySelector("#compartilharObra").addEventListener("click", () => this.compartilharObra());
+      topo.querySelector("#finalizarObra").addEventListener("click", () => this.finalizarObra());
+    }
+  }
+
+  async finalizarObra() {
+    const o = this._obra;
+    const nova = !ehFinalizada(o);
+    try {
+      await dataStore.atualizarObra(o.id, { finalizada: nova });
+      toastSucesso(nova ? "Obra finalizada." : "Obra reaberta.");
+    } catch (e) {
+      notificarErro(e);
     }
   }
 

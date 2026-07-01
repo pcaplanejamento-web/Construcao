@@ -66,6 +66,8 @@ class ObraForm extends BaseElement {
                       value="${o.orcamento || ""}" placeholder="0,00"></ui-input>
             <ui-select id="status" label="Status" value="${o.status || "ativa"}"></ui-select>
           </div>
+          <ui-input id="prazo" label="Prazo de término (opcional)" type="date"
+                    value="${o.prazo || ""}"></ui-input>
         </div>
         <div slot="rodape">
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
@@ -101,6 +103,7 @@ class ObraForm extends BaseElement {
       descricao: this.$("#descricao").value.trim(),
       orcamento: Number(this.$("#orcamento").value) || 0,
       status: this.$("#status").value || "ativa",
+      prazo: this.$("#prazo").value || "",
     };
 
     const btn = this.$("#salvar");

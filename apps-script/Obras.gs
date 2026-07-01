@@ -148,6 +148,9 @@ function obrasCriar(data, sessao) {
       atualizado_em: agora,
       autor_nome: nomeUsuario,
       editor_nome: nomeUsuario,
+      prazo: String((data && data.prazo) || "").slice(0, 10),
+      finalizada: (data && data.finalizada) === true,
+      finalizada_em: (data && data.finalizada) === true ? agora : "",
     };
     repoInserir(SCHEMA.OBRAS, obra);
     return { obra: obra };
@@ -170,6 +173,11 @@ function obrasAtualizar(data, sessao) {
   if (data.orcamento !== undefined)
     patch.orcamento = Number(data.orcamento) || 0;
   if (data.status !== undefined) patch.status = _statusValido(data.status);
+  if (data.prazo !== undefined) patch.prazo = String(data.prazo || "").slice(0, 10);
+  if (data.finalizada !== undefined) {
+    patch.finalizada = data.finalizada === true;
+    patch.finalizada_em = data.finalizada === true ? agoraIso() : "";
+  }
   patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
   return comLock(function () {

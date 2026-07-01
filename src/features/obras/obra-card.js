@@ -6,6 +6,7 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { moeda, percentual, data as fmtData } from "../../core/formatters.js";
+import { statusPrazo, textoPrazoCurto, corPrazo } from "./prazo-util.js";
 import "../../components/ui-badge.js";
 import "../../components/ui-icon.js";
 import "../../components/ui-button.js";
@@ -85,6 +86,11 @@ class ObraCard extends BaseElement {
           <div class="badges">
             ${!ehDono ? `<ui-badge color="var(--cor-roxo)" text="Compartilhada"></ui-badge>` : ""}
             <ui-badge color="${st.cor}" text="${st.rotulo}"></ui-badge>
+            ${
+              ["atrasada", "hoje", "no-prazo"].indexOf(statusPrazo(o)) >= 0
+                ? `<ui-badge color="${corPrazo(o)}" text="${textoPrazoCurto(o)}"></ui-badge>`
+                : ""
+            }
           </div>
         </div>
         ${!ehDono && o.dono_email ? `<div class="dono"><ui-icon name="usuario" size="13"></ui-icon> de ${o.dono_email}</div>` : ""}
