@@ -38,6 +38,7 @@ import "../../components/ui-select.js";
 import "./obra-form.js";
 import "./obra-share-form.js";
 import "./obra-participantes.js";
+import "./obra-agenda.js";
 import "../pagamentos/pagamento-form.js";
 import {
   abrirTransferencia,
@@ -180,6 +181,11 @@ class ObraDetailView extends BaseElement {
             </div>
           </ui-tabs>
         </div>
+        <div slot="agenda">
+          <ui-card title="Agenda da obra (Google Calendar)">
+            <obra-agenda obra-id="${this.obraId}"></obra-agenda>
+          </ui-card>
+        </div>
       </ui-tabs>
     `;
     alvo.querySelector("#abas").abas = [
@@ -192,6 +198,7 @@ class ObraDetailView extends BaseElement {
       { id: "fornecedores", rotulo: "Empresas", icone: "fornecedor" },
       { id: "pagamentos", rotulo: "Transferência", icone: "cifrao" },
       { id: "estoque", rotulo: "Estoque", icone: "tag" },
+      { id: "agenda", rotulo: "Agenda", icone: "relogio" },
     ];
     const abasPag = alvo.querySelector("#abasPag");
     if (abasPag)

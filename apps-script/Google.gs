@@ -240,3 +240,125 @@ function _refrescarAccessToken(usuarioId) {
   }
   return json.access_token;
 }
+
+/* --------------------- Agenda da obra (Calendar) ---------------------- */
+/*
+ * Eventos do Google Agenda do usuário vinculados a UMA obra, via
+ * extendedProperties.private.dattaobra_obra = <obraId>. Usa o access token do
+ * próprio usuário (escopo calendar.events). Ler = events.list filtrando por essa
+ * propriedade; criar = events.insert com a propriedade; remover = events.delete.
+ */
+
+var _CAL_BASE = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+var _CAL_TZ = "America/Sao_Paulo";
+
+function _mapearEvento(ev) {
+  return {
+    id: ev.id,
+    titulo: ev.summary || "(sem título)",
+    inicio: (ev.start && (ev.start.dateTime || ev.start.date)) || "",
+    fim: (ev.end && (ev.end.dateTime || ev.end.date)) || "",
+    descricao: ev.description || "",
+    link: ev.htmlLink || "",
+  };
+}
+
+/** "YYYY-MM-DDTHH:MM" (datetime-local) -> "YYYY-MM-DDTHH:MM:00". */
+function _normalizarDataHora(s) {
+  const t = String(s || "").trim();
+  return t.length === 16 ? t + ":00" : t;
+}
+
+/** Soma 1h a um "YYYY-MM-DDTHH:MM:SS" local, devolvendo no mesmo formato. */
+function _somarUmaHora(iso) {
+  const d = new Date(iso);
+  d.setHours(d.getHours() + 1);
+  const p = function (n) { return (n < 10 ? "0" : "") + n; };
+  return (
+    d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" +
+    p(d.getHours()) + ":" + p(d.getMinutes()) + ":00"
+  );
+}
+
+/** google.agenda.listar — { obraId } -> { eventos:[...] } desta obra. */
+function googleAgendaListar(data, sessao) {
+  const obraId = data && data.obraId;
+  if (!obraId) lancar(ERRO.VALIDACAO, "Obra não informada.");
+  const acesso = _refrescarAccessToken(sessao.usuario_id);
+  const desde = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+  const url =
+    _CAL_BASE +
+    "?singleEvents=true&orderBy=startTime&maxResults=50" +
+    "&timeMin=" + encodeURIComponent(desde) +
+    "&privateExtendedProperty=" + encodeURIComponent("dattaobra_obra=" + obraId);
+  const resp = UrlFetchApp.fetch(url, {
+    headers: { Authorization: "Bearer " + acesso },
+    muteHttpExceptions: true,
+  });
+  if (resp.getResponseCode() !== 200) {
+    lancar(ERRO.INTERNO, "Falha ao ler a agenda (" + resp.getResponseCode() + ").");
+  }
+  const json = JSON.parse(resp.getContentText() || "{}");
+  return { eventos: (json.items || []).map(_mapearEvento) };
+}
+
+/** google.agenda.criar — { obraId, obraNome, titulo, inicio, fim, descricao } -> { evento }. */
+function googleAgendaCriar(data, sessao) {
+  const obraId = data && data.obraId;
+  const titulo = String((data && data.titulo) || "").trim();
+  const inicio = String((data && data.inicio) || "").trim();
+  if (!obraId) lancar(ERRO.VALIDACAO, "Obra não informada.");
+  if (!titulo) lancar(ERRO.VALIDACAO, "Informe o título do evento.");
+  if (!inicio) lancar(ERRO.VALIDACAO, "Informe a data e hora de início.");
+
+  const inicioIso = _normalizarDataHora(inicio);
+  const fimIso = data && data.fim
+    ? _normalizarDataHora(String(data.fim))
+    : _somarUmaHora(inicioIso);
+
+  const nome = String((data && data.obraNome) || "").trim();
+  const desc = String((data && data.descricao) || "").trim();
+  const descricao =
+    (desc ? desc + "\n\n" : "") + "Obra: " + (nome || obraId) + " · via Dattaobra";
+
+  const acesso = _refrescarAccessToken(sessao.usuario_id);
+  const corpo = {
+    summary: titulo,
+    description: descricao,
+    start: { dateTime: inicioIso, timeZone: _CAL_TZ },
+    end: { dateTime: fimIso, timeZone: _CAL_TZ },
+    extendedProperties: { private: { dattaobra_obra: String(obraId) } },
+  };
+  const resp = UrlFetchApp.fetch(_CAL_BASE, {
+    method: "post",
+    contentType: "application/json",
+    headers: { Authorization: "Bearer " + acesso },
+    payload: JSON.stringify(corpo),
+    muteHttpExceptions: true,
+  });
+  if (resp.getResponseCode() >= 300) {
+    lancar(ERRO.INTERNO, "Falha ao criar o evento: " + resp.getContentText());
+  }
+  return { evento: _mapearEvento(JSON.parse(resp.getContentText() || "{}")) };
+}
+
+/** google.agenda.remover — { eventoId } -> { removido:true }. */
+function googleAgendaRemover(data, sessao) {
+  const eventoId = String((data && data.eventoId) || "").trim();
+  if (!eventoId) lancar(ERRO.VALIDACAO, "Evento não informado.");
+  const acesso = _refrescarAccessToken(sessao.usuario_id);
+  const resp = UrlFetchApp.fetch(
+    _CAL_BASE + "/" + encodeURIComponent(eventoId),
+    {
+      method: "delete",
+      headers: { Authorization: "Bearer " + acesso },
+      muteHttpExceptions: true,
+    }
+  );
+  const code = resp.getResponseCode();
+  // 410 = já removido (idempotente).
+  if (code !== 200 && code !== 204 && code !== 410) {
+    lancar(ERRO.INTERNO, "Falha ao remover o evento (" + code + ").");
+  }
+  return { removido: true };
+}

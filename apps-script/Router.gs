@@ -134,6 +134,9 @@ const ROTAS = {
   "google.status": { fn: googleStatus },
   "google.desconectar": { fn: googleDesconectar },
   "google.testarConexao": { fn: googleTestarConexao },
+  "google.agenda.listar": { fn: googleAgendaListar },
+  "google.agenda.criar": { fn: googleAgendaCriar },
+  "google.agenda.remover": { fn: googleAgendaRemover },
 
   // Usuários (autenticado)
   "usuarios.listar": { fn: usuariosListar },

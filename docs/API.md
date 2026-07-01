@@ -53,6 +53,11 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 | `google.status` | `{}` | `{ conectado, google_email }` |
 | `google.testarConexao` | `{}` | `{ agenda, eventos }` (lê 1 evento da agenda principal) |
 | `google.desconectar` | `{}` | `{ conectado: false }` (apaga o refresh token + revoga) |
+| `google.agenda.listar` | `{ obraId }` | `{ eventos:[{id,titulo,inicio,fim,descricao,link}] }` (eventos da obra) |
+| `google.agenda.criar` | `{ obraId, obraNome, titulo, inicio, fim, descricao }` | `{ evento }` (cria no Calendar, vinculado à obra) |
+| `google.agenda.remover` | `{ eventoId }` | `{ removido:true }` |
+
+> **Agenda por obra:** os eventos são marcados com `extendedProperties.private.dattaobra_obra = obraId`; `listar` filtra por essa propriedade. Datas vêm do cliente como `YYYY-MM-DDTHH:MM` (datetime-local); o backend usa fuso `America/Sao_Paulo` e assume fim = início + 1h se omitido.
 
 > O refresh token vive em `Configuracoes` (chave `google_refresh_token`) e é
 > **omitido** de `montarConfigUsuario` — nunca chega ao cliente. O access token é
