@@ -47,6 +47,11 @@ const PASTAS = [
   { id: "lixeira", rotulo: "Lixeira", icone: "excluir" },
 ];
 
+/** Normaliza um rascunho do backend no mesmo formato de thread da lista. */
+function mapRascunho(d) {
+  return { draftId: d.draftId, de: "Rascunho", assunto: d.assunto, previa: d.previa, data: d.data, lido: true, _draft: d };
+}
+
 class EmailView extends BaseElement {
   constructor() {
     super();
@@ -61,7 +66,7 @@ class EmailView extends BaseElement {
   }
 
   get ehRascunhos() { return this._caixa === "rascunhos"; }
-  get usaCache() { return !this.ehRascunhos && !this._q && this._pagina === 0; }
+  get usaCache() { return !this._q && this._pagina === 0; }
 
   estilos() {
     return `
@@ -254,20 +259,41 @@ class EmailView extends BaseElement {
     else { this._estado = "carregando"; }
     this._pintarLista();
     try {
-      let dados;
-      if (this.ehRascunhos) {
-        const r = await api.call("email.caixa.rascunhos", { pagina: this._pagina });
-        dados = { pagina: r.pagina, temMais: r.temMais, threads: (r.rascunhos || []).map((d) => ({ draftId: d.draftId, de: "Rascunho", assunto: d.assunto, previa: d.previa, data: d.data, lido: true, _draft: d })) };
-      } else {
-        dados = await api.call("email.caixa.listar", { caixa: this._caixa, q: this._q || "", pagina: this._pagina });
-        if (this.usaCache) emailCache.setLista(this._caixa, dados.threads);
-      }
+      const dados = await this._buscar(this._caixa, this._q, this._pagina);
+      if (this.usaCache) emailCache.setLista(this._caixa, dados.threads);
       this._dados = dados; this._estado = "pronto";
     } catch (e) {
-      if (cache) return; // mantém o cache silenciosamente em falha de refresh
+      if (cache) { this._prefetchOutras(); return; } // mantém o cache em falha de refresh
       this._estado = "erro"; notificarErro(e);
     }
     this._pintarLista();
+    this._prefetchOutras();
+  }
+
+  /** Busca uma pasta (trata rascunhos) e devolve {threads,pagina,temMais}. */
+  async _buscar(caixa, q, pagina) {
+    if (caixa === "rascunhos") {
+      const r = await api.call("email.caixa.rascunhos", { pagina: pagina || 0 });
+      return { pagina: r.pagina, temMais: r.temMais, threads: (r.rascunhos || []).map(mapRascunho) };
+    }
+    return api.call("email.caixa.listar", { caixa: caixa, q: q || "", pagina: pagina || 0 });
+  }
+
+  /**
+   * Prefetch em 2º plano das demais pastas ainda SEM cache — assim entrar em
+   * Enviados/Estrela/Rascunhos/Lixeira já vem carregado (sem espera). Roda uma
+   * vez por vez (não sobrepõe) e é silencioso; pastas já em cache são puladas.
+   */
+  async _prefetchOutras() {
+    if (this._prefetching) return;
+    this._prefetching = true;
+    try {
+      const alvos = PASTAS.map((p) => p.id).filter((id) => id !== this._caixa && !emailCache.getLista(id));
+      for (const id of alvos) {
+        try { emailCache.setLista(id, (await this._buscar(id, "", 0)).threads); }
+        catch (e) { /* silencioso — tenta na próxima */ }
+      }
+    } finally { this._prefetching = false; }
   }
 
   /* ------------------------------ Lista ------------------------------- */
@@ -381,6 +407,7 @@ class EmailView extends BaseElement {
       toastSucesso(msgs[acao] || "Feito.");
       this._sel.clear();
       if (this._selecionado && ids.indexOf(this._selecionado) >= 0) this._voltar();
+      ids.forEach((id) => emailCache.invalidarConversa(id));
       emailCache.invalidar(this._caixa);
       this._pintarBarra();
       this.carregar();
