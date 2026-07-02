@@ -269,6 +269,8 @@ para dono **e** colaboradores.
 | `email.caixa.ler` | `{ threadId }` | `{ threadId, assunto, mensagens:[{de,deEmail,para,cc,data,assunto,html,anexos}] }` — **admin**; marca a conversa como lida (`html` renderizado em iframe sandbox no front) |
 | `email.caixa.enviar` | `{ para, assunto, html, cc? }` | `{ ok:true }` — **admin**; `GmailApp.sendEmail` (nome "Dattaobra") |
 | `email.caixa.responder` | `{ threadId, html }` | `{ ok:true }` — **admin**; `thread.replyAll` |
+| `email.caixa.marcar` | `{ threadId, acao:"lida"\|"naoLida"\|"arquivar" }` | `{ ok:true }` — **admin** |
+| `email.caixa.anexo` | `{ threadId, msgIdx, anexoIdx }` | `{ nome, mimeType, base64 }` — **admin**; front baixa via Blob (limite 20MB) |
 
 > **Envio** (`Email.gs` → `enviarEmailResend(para, assunto, html)`): chama a API do Resend
 > via `UrlFetchApp`. A **chave nunca fica no código/frontend** — vem das **Script Properties**:

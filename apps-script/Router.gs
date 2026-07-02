@@ -31,6 +31,8 @@ const ROTAS = {
   "email.caixa.ler": { fn: emailCaixaLer },
   "email.caixa.enviar": { fn: emailCaixaEnviar },
   "email.caixa.responder": { fn: emailCaixaResponder },
+  "email.caixa.marcar": { fn: emailCaixaMarcar },
+  "email.caixa.anexo": { fn: emailCaixaAnexo },
 
   // Obras
   "obras.listar": { fn: obrasListar },

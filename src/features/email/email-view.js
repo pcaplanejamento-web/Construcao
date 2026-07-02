@@ -33,6 +33,7 @@ class EmailView extends BaseElement {
     super();
     this._caixa = "inbox";
     this._pagina = 0;
+    this._q = "";
     this._estado = "carregando";
     this._dados = null;
   }
@@ -49,6 +50,10 @@ class EmailView extends BaseElement {
       .tg { height: 36px; padding: 0 var(--esp-4); background: var(--cor-superficie);
         border: none; color: var(--cor-texto-suave); cursor: pointer; font-weight: var(--peso-semi); font-size: var(--fs-sm); }
       .tg.ativo { background: var(--cor-primaria); color: #fff; }
+      .busca { height: 36px; min-width: 200px; flex: 1; box-sizing: border-box; font-family: inherit;
+        font-size: var(--fs-sm); color: var(--cor-texto); background: var(--cor-superficie);
+        border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm); padding: 0 var(--esp-3); }
+      @media (max-width: 640px) { .busca { min-width: 0; width: 100%; flex: 1 1 100%; } }
 
       .lista { display: flex; flex-direction: column; }
       .item { display: grid; grid-template-columns: 180px 1fr auto; gap: var(--esp-3); align-items: center;
@@ -90,6 +95,7 @@ class EmailView extends BaseElement {
               <button class="tg ${this._caixa === "inbox" ? "ativo" : ""}" data-caixa="inbox" type="button">Caixa de entrada</button>
               <button class="tg ${this._caixa === "enviados" ? "ativo" : ""}" data-caixa="enviados" type="button">Enviados</button>
             </div>
+            <input id="busca" class="busca" type="search" placeholder="Buscar e-mails... (Enter)" value="${(this._q || "").replace(/"/g, "&quot;")}">
             <ui-button id="atualizar" variant="secundario" tamanho="sm">Atualizar</ui-button>
             <ui-button id="escrever" tamanho="sm">Escrever</ui-button>
           </div>
@@ -105,12 +111,21 @@ class EmailView extends BaseElement {
   aposRender() {
     this.$$(".tg").forEach((b) =>
       b.addEventListener("click", () => {
-        if (this._caixa === b.dataset.caixa) return;
+        if (this._caixa === b.dataset.caixa && !this._q) return;
         this._caixa = b.dataset.caixa;
+        this._q = "";
         this._pagina = 0;
         this.carregar();
       })
     );
+    const busca = this.$("#busca");
+    if (busca)
+      busca.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        this._q = busca.value.trim();
+        this._pagina = 0;
+        this.carregar();
+      });
     const at = this.$("#atualizar");
     if (at) at.addEventListener("click", () => this.carregar());
     const esc = this.$("#escrever");
@@ -181,6 +196,7 @@ class EmailView extends BaseElement {
     m.threadId = threadId;
     m.assunto = assunto;
     m.addEventListener("fechar", () => m.remove());
+    m.addEventListener("mudou", () => this.carregar());
     m.addEventListener("responder", (e) => {
       m.remove();
       this._responder(e.detail.threadId, e.detail.assunto);

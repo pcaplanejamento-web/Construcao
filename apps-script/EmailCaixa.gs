@@ -131,3 +131,35 @@ function emailCaixaResponder(data, sessao) {
   t.replyAll(_emailTexto(html), { htmlBody: html, name: "Dattaobra" });
   return { ok: true };
 }
+
+/** email.caixa.marcar — { threadId, acao:"lida"|"naoLida"|"arquivar" } -> { ok:true }. */
+function emailCaixaMarcar(data, sessao) {
+  exigirAdmin(sessao);
+  var id = String((data && data.threadId) || "");
+  var acao = String((data && data.acao) || "");
+  if (!id) lancar(ERRO.VALIDACAO, "Conversa não informada.");
+  var t = GmailApp.getThreadById(id);
+  if (!t) lancar(ERRO.NAO_ENCONTRADO, "Conversa não encontrada.");
+  if (acao === "lida") t.markRead();
+  else if (acao === "naoLida") t.markUnread();
+  else if (acao === "arquivar") t.moveToArchive();
+  else lancar(ERRO.VALIDACAO, "Ação inválida.");
+  return { ok: true };
+}
+
+/** email.caixa.anexo — { threadId, msgIdx, anexoIdx } -> { nome, mimeType, base64 }. */
+function emailCaixaAnexo(data, sessao) {
+  exigirAdmin(sessao);
+  var id = String((data && data.threadId) || "");
+  var mi = parseInt((data && data.msgIdx), 10);
+  var ai = parseInt((data && data.anexoIdx), 10);
+  if (!id || isNaN(mi) || isNaN(ai)) lancar(ERRO.VALIDACAO, "Anexo não informado.");
+  var t = GmailApp.getThreadById(id);
+  if (!t) lancar(ERRO.NAO_ENCONTRADO, "Conversa não encontrada.");
+  var m = t.getMessages()[mi];
+  if (!m) lancar(ERRO.NAO_ENCONTRADO, "Mensagem não encontrada.");
+  var a = m.getAttachments()[ai];
+  if (!a) lancar(ERRO.NAO_ENCONTRADO, "Anexo não encontrado.");
+  if (a.getSize() > 20 * 1024 * 1024) lancar(ERRO.VALIDACAO, "Anexo muito grande para baixar aqui — abra no Gmail.");
+  return { nome: a.getName(), mimeType: a.getContentType(), base64: Utilities.base64Encode(a.getBytes()) };
+}

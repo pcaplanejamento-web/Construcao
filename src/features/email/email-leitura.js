@@ -8,7 +8,7 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { api } from "../../core/api-client.js";
-import { notificarErro } from "../../core/event-bus.js";
+import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -44,9 +44,10 @@ class EmailLeitura extends BaseElement {
       iframe { width: 100%; height: 52vh; border: none; background: #fff; display: block; }
       .anexos { display: flex; flex-wrap: wrap; gap: var(--esp-2); padding: var(--esp-3) var(--esp-4);
         border-top: 1px solid var(--cor-divisor); }
-      .anexo { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm);
+      .anexo { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-family: inherit;
         color: var(--cor-texto-suave); background: var(--cor-superficie-2); border: 1px solid var(--cor-borda);
-        border-radius: var(--raio-completo); padding: 4px 10px; }
+        border-radius: var(--raio-completo); padding: 6px 12px; min-height: 34px; cursor: pointer; }
+      .anexo:hover { background: var(--cor-superficie); color: var(--cor-primaria); border-color: var(--cor-primaria); }
       .erro { color: var(--cor-erro); }
     `;
   }
@@ -56,6 +57,8 @@ class EmailLeitura extends BaseElement {
       <ui-modal open title="${esc(this.assunto)}" largo>
         <div id="corpo"><ui-spinner centro text="Abrindo e-mail..."></ui-spinner></div>
         <div slot="rodape">
+          <ui-button id="arquivar" variant="secundario" tamanho="sm">Arquivar</ui-button>
+          <ui-button id="naoLida" variant="secundario" tamanho="sm">Marcar não lida</ui-button>
           <ui-button id="responder" variant="secundario">Responder</ui-button>
           <ui-button id="fechar">Fechar</ui-button>
         </div>
@@ -68,6 +71,8 @@ class EmailLeitura extends BaseElement {
     this.$("#responder").addEventListener("click", () =>
       this.emitir("responder", { threadId: this.threadId, assunto: this.assunto })
     );
+    this.$("#arquivar").addEventListener("click", () => this._marcar("arquivar", true));
+    this.$("#naoLida").addEventListener("click", () => this._marcar("naoLida", true));
     this.carregar();
   }
 
@@ -77,7 +82,11 @@ class EmailLeitura extends BaseElement {
       this._assunto = r.assunto || this._assunto;
       const modal = this.$("ui-modal");
       if (modal) modal.setAttribute("title", this.assunto);
-      this.$("#corpo").innerHTML = (r.mensagens || []).map((m) => this._msg(m)).join("");
+      const corpo = this.$("#corpo");
+      corpo.innerHTML = (r.mensagens || []).map((m, i) => this._msg(m, i)).join("");
+      corpo.querySelectorAll(".anexo").forEach((b) =>
+        b.addEventListener("click", () => this._baixarAnexo(b.dataset.msg, b.dataset.anexo, b.dataset.nome))
+      );
     } catch (e) {
       notificarErro(e);
       const c = this.$("#corpo");
@@ -85,10 +94,38 @@ class EmailLeitura extends BaseElement {
     }
   }
 
-  _msg(m) {
+  async _marcar(acao, fechar) {
+    try {
+      await api.call("email.caixa.marcar", { threadId: this.threadId, acao });
+      toastSucesso(acao === "arquivar" ? "Conversa arquivada." : "Marcada como não lida.");
+      this.emitir("mudou");
+      if (fechar) this.emitir("fechar");
+    } catch (e) {
+      notificarErro(e);
+    }
+  }
+
+  async _baixarAnexo(msgIdx, anexoIdx, nome) {
+    try {
+      const r = await api.call("email.caixa.anexo", { threadId: this.threadId, msgIdx: Number(msgIdx), anexoIdx: Number(anexoIdx) });
+      const bin = atob(r.base64 || "");
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: r.mimeType || "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = r.nome || nome || "anexo";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      notificarErro(e);
+    }
+  }
+
+  _msg(m, idx) {
     const anexos = (m.anexos || []).length
       ? `<div class="anexos">${m.anexos
-          .map((a) => `<span class="anexo"><ui-icon name="recibo" size="14"></ui-icon>${esc(a.nome)}</span>`)
+          .map((a) => `<button class="anexo" type="button" data-msg="${idx}" data-anexo="${a.idx}" data-nome="${esc(a.nome)}" title="Baixar ${esc(a.nome)}"><ui-icon name="recibo" size="14"></ui-icon>${esc(a.nome)}</button>`)
           .join("")}</div>`
       : "";
     return `
