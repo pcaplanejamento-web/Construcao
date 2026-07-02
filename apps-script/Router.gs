@@ -27,12 +27,21 @@ const ROTAS = {
   "email.teste": { fn: emailTeste },
 
   // Caixa de e-mail da empresa (GmailApp; backend roda como dattaobra) — admin-only
+  "email.caixa.remetentes": { fn: emailCaixaRemetentes },
   "email.caixa.listar": { fn: emailCaixaListar },
   "email.caixa.ler": { fn: emailCaixaLer },
   "email.caixa.enviar": { fn: emailCaixaEnviar },
   "email.caixa.responder": { fn: emailCaixaResponder },
+  "email.caixa.encaminhar": { fn: emailCaixaEncaminhar },
   "email.caixa.marcar": { fn: emailCaixaMarcar },
+  "email.caixa.labels": { fn: emailCaixaLabels },
+  "email.caixa.aplicarLabel": { fn: emailCaixaAplicarLabel },
   "email.caixa.anexo": { fn: emailCaixaAnexo },
+  "email.caixa.rascunhos": { fn: emailCaixaRascunhos },
+  "email.caixa.salvarRascunho": { fn: emailCaixaSalvarRascunho },
+  "email.caixa.enviarRascunho": { fn: emailCaixaEnviarRascunho },
+  "email.caixa.excluirRascunho": { fn: emailCaixaExcluirRascunho },
+  "email.caixa.assinatura": { fn: emailCaixaAssinatura },
 
   // Obras
   "obras.listar": { fn: obrasListar },
