@@ -265,12 +265,21 @@ para dono **e** colaboradores.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `email.teste` | `{}` | `{ ok, id, para }` — envia um e-mail de teste **só para o próprio e-mail** do usuário logado |
-| `email.caixa.listar` | `{ caixa:"inbox"\|"enviados", q?, pagina? }` | `{ threads:[{threadId,de,deEmail,assunto,previa,data,lido,qtdMsgs}], pagina, temMais }` — **admin**; caixa da empresa via `GmailApp` (backend roda como dattaobra) |
-| `email.caixa.ler` | `{ threadId }` | `{ threadId, assunto, mensagens:[{de,deEmail,para,cc,data,assunto,html,anexos}] }` — **admin**; marca a conversa como lida (`html` renderizado em iframe sandbox no front) |
-| `email.caixa.enviar` | `{ para, assunto, html, cc? }` | `{ ok:true }` — **admin**; `GmailApp.sendEmail` (nome "Dattaobra") |
-| `email.caixa.responder` | `{ threadId, html }` | `{ ok:true }` — **admin**; `thread.replyAll` |
-| `email.caixa.marcar` | `{ threadId, acao:"lida"\|"naoLida"\|"arquivar" }` | `{ ok:true }` — **admin** |
+| `email.caixa.remetentes` | `{}` | `{ principal, aliases:[...], assinatura }` — **admin**; `GmailApp.getAliases()` (endereços p/ "De") |
+| `email.caixa.listar` | `{ caixa, q?, pagina? }` | `{ threads:[{threadId,de,deEmail,assunto,previa,data,lido,estrela,labels,qtdMsgs}], pagina, temMais }` — **admin**; `caixa` = inbox\|enviados\|lixeira\|estrela\|`label:NOME` (via `GmailApp.search`) |
+| `email.caixa.ler` | `{ threadId }` | `{ threadId, assunto, estrela, labels, mensagens:[{de,deEmail,para,cc,data,assunto,html,anexos}] }` — **admin**; marca lida (`html` em iframe sandbox) |
+| `email.caixa.enviar` | `{ para, cc?, bcc?, from?, assunto, html, anexos? }` | `{ ok:true }` — **admin**; `from` validado ∈ aliases; anexos base64→Blob |
+| `email.caixa.responder` | `{ threadId, html, todos?, cc?, bcc?, from?, anexos? }` | `{ ok:true }` — **admin**; `reply`/`replyAll` |
+| `email.caixa.encaminhar` | `{ threadId, msgIdx?, para, cc?, bcc?, from?, html? }` | `{ ok:true }` — **admin**; `message.forward` (inclui o original) |
+| `email.caixa.marcar` | `{ threadId, acao:"lida"\|"naoLida"\|"arquivar"\|"lixeira"\|"estrela"\|"tirarEstrela" }` | `{ ok:true }` — **admin** |
+| `email.caixa.labels` | `{}` | `{ labels:[nome,...] }` — **admin** |
+| `email.caixa.aplicarLabel` | `{ threadId, label, aplicar }` | `{ ok:true }` — **admin**; cria o marcador se preciso |
 | `email.caixa.anexo` | `{ threadId, msgIdx, anexoIdx }` | `{ nome, mimeType, base64 }` — **admin**; front baixa via Blob (limite 20MB) |
+| `email.caixa.rascunhos` | `{ pagina? }` | `{ rascunhos:[{draftId,para,cc,assunto,previa,data,html}], pagina, temMais }` — **admin** |
+| `email.caixa.salvarRascunho` | `{ draftId?, para, cc?, bcc?, from?, assunto, html, anexos? }` | `{ draftId }` — **admin** |
+| `email.caixa.enviarRascunho` | `{ draftId }` | `{ ok:true }` — **admin** |
+| `email.caixa.excluirRascunho` | `{ draftId }` | `{ ok:true }` — **admin** |
+| `email.caixa.assinatura` | `{ html }` | `{ ok:true }` — **admin**; grava `EMAIL_ASSINATURA` |
 
 > **Envio** (`Email.gs` → `enviarEmailResend(para, assunto, html)`): chama a API do Resend
 > via `UrlFetchApp`. A **chave nunca fica no código/frontend** — vem das **Script Properties**:
