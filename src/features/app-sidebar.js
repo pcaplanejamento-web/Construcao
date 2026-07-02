@@ -66,9 +66,15 @@ class AppSidebar extends BaseElement {
          (vira só o ícone no desktop recolhido). Substitui a marca antiga do header. */
       .marca { color: var(--cor-primaria); font-family: var(--fonte-titulo);
         font-weight: var(--peso-forte); font-size: var(--fs-lg); letter-spacing: -.02em;
-        margin-bottom: var(--esp-2); }
+        min-height: 44px; margin-bottom: var(--esp-2); }
       .marca:hover { background: none; }
-      .marca img { height: 28px; width: auto; flex: none; }
+      /* Slot do ícone = MESMA largura dos ícones do menu (18px) → a logo e o texto
+         "Dattaobra" alinham EXATAMENTE com os ícones e rótulos dos itens abaixo.
+         A imagem é um pouco maior que o slot, centralizada (transborda simétrico,
+         sem cortar): mantém o centro na mesma vertical dos ícones + brilho da marca. */
+      .marca-ico { width: 18px; height: 18px; flex: none; display: inline-flex;
+        align-items: center; justify-content: center; }
+      .marca-ico img { width: 22px; height: 22px; object-fit: contain; display: block; }
 
       /* DESKTOP: recolhido = régua de ícones (ícone fica no mesmo x). */
       @media (min-width: 821px) {
@@ -111,7 +117,7 @@ class AppSidebar extends BaseElement {
       <div class="backdrop" id="backdrop"></div>
       <nav>
         <a class="marca" href="/obras" title="Dattaobra">
-          <img src="src/assets/dattaobra.png" alt="" onerror="this.style.display='none'" /><span class="rotulo">Dattaobra</span>
+          <span class="marca-ico"><img src="src/assets/dattaobra.png" alt="" onerror="this.style.display='none'" /></span><span class="rotulo">Dattaobra</span>
         </a>
         ${ITENS.map(link).join("")}
         <div class="sep"></div>

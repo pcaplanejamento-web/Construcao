@@ -14,6 +14,7 @@ import "../../components/ui-button.js";
 import "../../components/ui-switch.js";
 import "./senha-form.js";
 import { sincronizarTodasObrasGoogle } from "../obras/sync-agenda.js";
+import { dockPref } from "../app-shell.js";
 
 function _liga(v) {
   return v === true || v === "TRUE" || v === "true";
@@ -32,6 +33,9 @@ class PerfilView extends BaseElement {
       .campo .rotulo { font-size: var(--fs-xs); text-transform: uppercase;
         letter-spacing: .04em; color: var(--cor-texto-fraco); font-weight: var(--peso-semi); }
       .campo .valor { font-size: var(--fs-md); margin-top: 2px; }
+
+      /* Card "Aparência" — interruptores do menu flutuante (desktop/mobile). */
+      .aparencia { display: flex; flex-direction: column; gap: var(--esp-3); max-width: 520px; }
 
       /* Card "Conta Google". */
       .google { display: flex; flex-direction: column; gap: var(--esp-4); max-width: 520px; }
@@ -67,6 +71,13 @@ class PerfilView extends BaseElement {
             <div class="campo"><div class="rotulo">Status</div><div class="valor">
               <ui-badge color="${u.ativo ? "var(--cor-sucesso)" : "var(--cor-neutro)"}" text="${u.ativo ? "Ativo" : "Inativo"}"></ui-badge>
             </div></div>
+          </div>
+        </ui-card>
+        <ui-card title="Aparência">
+          <div class="aparencia">
+            <ui-switch id="swDockDesk" label="Mostrar o menu flutuante no computador" ${dockPref.ligado("desktop") ? "checked" : ""}></ui-switch>
+            <ui-switch id="swDockMob" label="Mostrar o menu flutuante no celular" ${dockPref.ligado("mobile") ? "checked" : ""}></ui-switch>
+            <p class="g-sub">O menu flutuante é a barra escura de atalhos que aparece sobre o conteúdo. Por padrão fica <strong>ligado no celular</strong> e <strong>desligado no computador</strong>. A preferência vale para este aparelho.</p>
           </div>
         </ui-card>
         <ui-card title="Segurança">
@@ -108,6 +119,10 @@ class PerfilView extends BaseElement {
   }
 
   aposRender() {
+    const swDesk = this.$("#swDockDesk");
+    if (swDesk) swDesk.addEventListener("change", (e) => this._definirDock("desktop", e.detail.checked));
+    const swMob = this.$("#swDockMob");
+    if (swMob) swMob.addEventListener("change", (e) => this._definirDock("mobile", e.detail.checked));
     const conectar = this.$("#gConectar");
     if (conectar) conectar.addEventListener("click", () => this._conectar());
     const testar = this.$("#gTestar");
@@ -118,6 +133,13 @@ class PerfilView extends BaseElement {
     if (swA) swA.addEventListener("change", (e) => this._definirSync("sync_agenda", e.detail.checked));
     const swN = this.$("#swNotas");
     if (swN) swN.addEventListener("change", (e) => this._definirSync("sync_notas", e.detail.checked));
+  }
+
+  /** Liga/desliga o menu flutuante para o dispositivo (desktop/mobile). */
+  _definirDock(qual, on) {
+    dockPref.definir(qual, on); // grava em localStorage + emite "dock-pref" (o shell reage na hora)
+    const onde = qual === "desktop" ? "no computador" : "no celular";
+    toastSucesso(on ? `Menu flutuante ativado ${onde}.` : `Menu flutuante desativado ${onde}.`);
   }
 
   async _definirSync(chave, valor) {

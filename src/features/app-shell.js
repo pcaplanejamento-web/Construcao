@@ -24,6 +24,33 @@ const BB_ITENS = [
   { rota: "/orcamentos", rotulo: "Orçamentos", icone: "recibo" },
 ];
 
+/**
+ * Preferência (por dispositivo) de exibir o dock flutuante, SEPARADA para
+ * desktop e mobile. Guardada em localStorage — como a preferência de recolhimento
+ * da sidebar (`obras.sidebar`) — para ser local ao aparelho e instantânea.
+ * Padrão: **desktop desativado, mobile ativado**. A tela de Perfil edita via
+ * `dockPref.definir(...)`, que emite "dock-pref" para o shell reagir na hora.
+ */
+const DOCK_CHAVE = { desktop: "obras.dock.desktop", mobile: "obras.dock.mobile" };
+const DOCK_PADRAO = { desktop: false, mobile: true };
+export const dockPref = {
+  ligado(qual) {
+    try {
+      const v = localStorage.getItem(DOCK_CHAVE[qual]);
+      return v == null ? DOCK_PADRAO[qual] : v === "1";
+    } catch (e) { return DOCK_PADRAO[qual]; }
+  },
+  definir(qual, on) {
+    try { localStorage.setItem(DOCK_CHAVE[qual], on ? "1" : "0"); } catch (e) {}
+    window.dispatchEvent(new CustomEvent("dock-pref"));
+  },
+  /** Deve exibir o dock AGORA (conforme a largura atual da viewport). */
+  ativoAgora() {
+    const mobile = window.matchMedia("(max-width: 820px)").matches;
+    return this.ligado(mobile ? "mobile" : "desktop");
+  },
+};
+
 class AppShell extends BaseElement {
   estilos() {
     return `
@@ -152,6 +179,20 @@ class AppShell extends BaseElement {
       },
       { passive: true }
     );
+
+    // Reavalia o dock ao cruzar o breakpoint mobile↔desktop (a preferência muda)
+    // e quando o usuário altera a preferência no Perfil (evento "dock-pref").
+    const mq = window.matchMedia("(max-width: 820px)");
+    const onViewport = () => this._refletirDock();
+    if (mq.addEventListener) mq.addEventListener("change", onViewport);
+    else mq.addListener(onViewport);
+    this.aoLimpar(() => {
+      if (mq.removeEventListener) mq.removeEventListener("change", onViewport);
+      else mq.removeListener(onViewport);
+    });
+    const onDockPref = () => this._refletirDock();
+    window.addEventListener("dock-pref", onDockPref);
+    this.aoLimpar(() => window.removeEventListener("dock-pref", onDockPref));
   }
 
   /** Marca o item ativo da barra inferior pela rota atual. */
@@ -179,9 +220,18 @@ class AppShell extends BaseElement {
     if (!mostrarSidebar) this.$("#sb").removeAttribute("aberto");
     // Rota "cheia": E-mail ocupa toda a altura (sem rolagem do main nem dock).
     this.toggleAttribute("cheio", mostrarSidebar && path === "/email");
-    // Dock flutuante: só nas telas internas (mobile + desktop); some no login e no público.
-    this.toggleAttribute("com-barra", mostrarSidebar);
-    // Ao trocar de rota o dock reaparece (e recalibra o scroll).
+    this._mostrarSidebar = mostrarSidebar;
+    this._refletirDock();
+  }
+
+  /**
+   * Exibe o dock flutuante só nas telas internas E se a preferência do
+   * dispositivo atual (desktop/mobile) estiver ligada. Reavaliado ao trocar de
+   * rota, ao cruzar o breakpoint e ao mudar a preferência no Perfil.
+   */
+  _refletirDock() {
+    // Some no login/público; caso contrário respeita a preferência da viewport.
+    this.toggleAttribute("com-barra", !!this._mostrarSidebar && dockPref.ativoAgora());
     const bb = this.$("#bottombar");
     if (bb) bb.classList.remove("reduzido");
     this._bbLastY = (this.$("#outlet") || {}).scrollTop || 0;
