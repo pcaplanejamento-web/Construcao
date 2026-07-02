@@ -49,6 +49,14 @@ class PerfilView extends BaseElement {
       .g-sync { display: flex; flex-direction: column; gap: var(--esp-2);
         border-top: 1px solid var(--cor-divisor); padding-top: var(--esp-4); }
       .g-sync-tit { font-weight: var(--peso-semi); }
+      /* Passos p/ ativar o Google Contacts (People API + reconectar). */
+      .g-req { background: var(--cor-superficie-2); border: 1px solid var(--cor-borda);
+        border-radius: var(--raio-md); padding: var(--esp-3) var(--esp-4); display: flex;
+        flex-direction: column; gap: var(--esp-2); }
+      .g-req-tit { font-weight: var(--peso-semi); font-size: var(--fs-sm); }
+      .g-req ol { margin: 0; padding-left: var(--esp-4); color: var(--cor-texto-suave);
+        font-size: var(--fs-sm); line-height: 1.6; display: flex; flex-direction: column; gap: 2px; }
+      .g-req ui-button { align-self: flex-start; margin-top: var(--esp-1); }
     `;
   }
 
@@ -114,6 +122,14 @@ class PerfilView extends BaseElement {
           <div class="g-sync-tit">Sincronização com o Google Contacts</div>
           <ui-switch id="swContatos" label="Sincronizar contatos e empresas com o Google" ${_liga((auth.config() || {}).sync_contatos) ? "checked" : ""}></ui-switch>
           <p class="g-sub">Ao ligar, criar/editar um contato ou empresa envia-o aos seus Contatos do Google, e o Cargo vira uma classificação (grupo). Você também pode <strong>importar</strong> e <strong>vincular</strong> contatos manualmente nas telas de Contatos e Empresas.</p>
+          <div class="g-req">
+            <div class="g-req-tit">Para ativar (uma vez):</div>
+            <ol>
+              <li>Ative a <strong>People API</strong> no seu projeto do Google Cloud.</li>
+              <li><strong>Reconecte</strong> sua conta para conceder a permissão de contatos.</li>
+            </ol>
+            <ui-button id="gReconectar" variant="secundario" tamanho="sm">Reconectar (permissão de contatos)</ui-button>
+          </div>
         </div>`;
     }
     return `
@@ -140,6 +156,8 @@ class PerfilView extends BaseElement {
     if (swN) swN.addEventListener("change", (e) => this._definirSync("sync_notas", e.detail.checked));
     const swC = this.$("#swContatos");
     if (swC) swC.addEventListener("change", (e) => this._definirSyncContatos(e.detail.checked));
+    const gRe = this.$("#gReconectar");
+    if (gRe) gRe.addEventListener("click", () => this._conectar());
   }
 
   /** Liga/desliga a sincronização de contatos/empresas com o Google Contacts. */
