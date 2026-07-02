@@ -176,6 +176,7 @@ class EmailView extends BaseElement {
     conversa.addEventListener("voltar", () => this._voltar());
     conversa.addEventListener("novo", () => this._abrirCompositor({ modo: "novo" }));
     conversa.addEventListener("compor", (e) => this._abrirCompositor(e.detail));
+    conversa.addEventListener("carregado", () => { this._prefetchPausado = false; }); // retoma prefetch após abrir
     this._pintarBarra();
     this._pintarPastas();
     this._pintarLista();
@@ -297,26 +298,32 @@ class EmailView extends BaseElement {
     } finally { this._prefetching = false; }
   }
 
+  _espera(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
   /**
    * Prefetch em 2º plano dos CORPOS das mensagens da pasta atual → clicar num
-   * e-mail abre **instantâneo** (sem "Abrindo..."). Usa `marcarLida:false` para
-   * NÃO alterar o estado lido/não lido (a marcação acontece quando o usuário
-   * abre de verdade). Concorrência limitada; pula rascunhos e o que já está em
-   * cache. Uma varredura por vez (não sobrepõe).
+   * e-mail abre **instantâneo** (sem "Abrindo..."). Pontos-chave (o Apps Script
+   * SERIALIZA execuções do mesmo usuário, então não pode competir com o clique):
+   * - **1 por vez** (sequencial), começando pelos e-mails do topo (mais prováveis);
+   * - **pausa** enquanto o usuário está abrindo um e-mail (`_prefetchPausado`,
+   *   ligado no clique e desligado no evento "carregado") → a leitura vem antes;
+   * - `marcarLida:false` (não altera lido/não lido); pula rascunhos e o que já
+   *   está em cache. Uma varredura por vez (não sobrepõe).
    */
   async _prefetchCorpos() {
     if (this.ehRascunhos || this._prefetchandoCorpos) return;
     this._prefetchandoCorpos = true;
     try {
+      await this._espera(500); // deixa um clique imediato passar primeiro
       const ids = ((this._dados && this._dados.threads) || [])
-        .map((t) => t.threadId).filter((id) => id && !emailCache.getConversa(id));
-      const LOTE = 3;
-      for (let i = 0; i < ids.length; i += LOTE) {
-        await Promise.all(ids.slice(i, i + LOTE).map((id) =>
-          api.call("email.caixa.ler", { threadId: id, marcarLida: false })
-            .then((r) => { if (r && r.threadId) emailCache.setConversa(r.threadId, r); })
-            .catch(() => { /* silencioso */ })
-        ));
+        .map((t) => t.threadId).filter(Boolean);
+      for (const id of ids) {
+        while (this._prefetchPausado) await this._espera(200); // cede a vez ao clique do usuário
+        if (emailCache.getConversa(id)) continue;
+        try {
+          const r = await api.call("email.caixa.ler", { threadId: id, marcarLida: false });
+          if (r && r.threadId) emailCache.setConversa(r.threadId, r);
+        } catch (e) { /* silencioso */ }
       }
     } finally { this._prefetchandoCorpos = false; }
   }
@@ -389,9 +396,25 @@ class EmailView extends BaseElement {
   _clicar(t) {
     if (!t) return;
     if (t.draftId) { this._abrirCompositor({ draftId: t.draftId, draft: t._draft }); return; }
+    // O clique tem PRIORIDADE: se o corpo ainda não está em cache, pausa o
+    // prefetch (o Apps Script serializa execuções do mesmo usuário → não deixar
+    // a leitura na fila atrás do prefetch). Retoma no evento "carregado".
+    if (!emailCache.getConversa(t.threadId)) this._prefetchPausado = true;
     this._selecionar(t.threadId);
     const conversa = this.$("#conversa");
     conversa.assunto = t.assunto; conversa.threadId = t.threadId;
+    if (!t.lido && t.threadId) this._marcarLidaAoAbrir(t); // o prefetch NÃO marca lido
+  }
+
+  /** Marca a conversa como lida ao abrir (o prefetch usa marcarLida:false). */
+  async _marcarLidaAoAbrir(t) {
+    try {
+      await api.call("email.caixa.marcar", { threadId: t.threadId, acao: "lida" });
+      t.lido = true;
+      const conv = emailCache.getConversa(t.threadId); if (conv) conv.naoLida = false;
+      if (this.usaCache && this._dados) emailCache.setLista(this._caixa, this._dados.threads);
+      this._pintarLista();
+    } catch (e) { /* silencioso */ }
   }
 
   _selecionar(threadId) {

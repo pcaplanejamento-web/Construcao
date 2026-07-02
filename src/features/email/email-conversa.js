@@ -158,17 +158,21 @@ class EmailConversa extends BaseElement {
     const corpo = this.$("#corpo");
     if (!corpo) return;
     const alvo = this._threadId;
+    // CACHE-HIT: abre instantâneo e **não** re-busca o corpo (o prefetch já o
+    // trouxe recente; re-buscar só sobrecarregaria o backend serializado). A
+    // marcação como lida é feita pelo email-view ao clicar.
     const cache = emailCache.getConversa(alvo);
-    if (cache) this._aplicar(cache); // instantâneo (sem spinner)
+    if (cache) { this._aplicar(cache); this.emitir("carregado"); return; }
     try {
-      const r = await api.call("email.caixa.ler", { threadId: alvo });
+      const r = await api.call("email.caixa.ler", { threadId: alvo, marcarLida: false });
       if (this._threadId !== alvo) return; // trocou de e-mail durante a busca
       emailCache.setConversa(alvo, r);
       this._aplicar(r);
     } catch (e) {
-      if (cache) return; // mantém o cache silenciosamente
       notificarErro(e);
       if (this._threadId === alvo) corpo.innerHTML = `<p class="erro">Não foi possível abrir o e-mail.</p>`;
+    } finally {
+      if (this._threadId === alvo) this.emitir("carregado"); // retoma o prefetch
     }
   }
 
