@@ -26,6 +26,10 @@ const ROTAS = {
   // E-mail do app (Resend) — teste envia só para o próprio e-mail do usuário.
   "email.teste": { fn: emailTeste },
 
+  // Caixa de e-mail da empresa (GmailApp; backend roda como dattaobra) — admin-only
+  "email.caixa.listar": { fn: emailCaixaListar },
+  "email.caixa.ler": { fn: emailCaixaLer },
+
   // Obras
   "obras.listar": { fn: obrasListar },
   "obras.obter": { fn: obrasObter },
