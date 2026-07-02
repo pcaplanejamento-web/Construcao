@@ -101,6 +101,10 @@ class EmailView extends BaseElement {
       /* Lista */
       .lista-col { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--cor-divisor); }
       .lista { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+      .lista-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: var(--esp-3);
+        padding: var(--esp-2) var(--esp-3); min-height: 40px; background: var(--cor-superficie); border-bottom: 1px solid var(--cor-divisor);
+        font-size: var(--fs-sm); color: var(--cor-texto-suave); cursor: pointer; }
+      .lista-head input { width: 18px; height: 18px; cursor: pointer; }
       .item { display: grid; grid-template-columns: 26px 40px 1fr; gap: var(--esp-2); align-items: center; width: 100%; text-align: left;
         cursor: pointer; padding: var(--esp-3); border-bottom: 1px solid var(--cor-divisor); }
       .item:hover { background: var(--cor-superficie-2); }
@@ -297,7 +301,23 @@ class EmailView extends BaseElement {
     const paginacao = (this._pagina > 0 || temMais)
       ? `<div class="paginacao"><ui-button id="ant" variant="secundario" tamanho="sm" ${this._pagina > 0 ? "" : "disabled"}>‹ Anterior</ui-button><ui-button id="prox" variant="secundario" tamanho="sm" ${temMais ? "" : "disabled"}>Próxima ›</ui-button></div>`
       : "";
-    lista.innerHTML = `${linhas}${paginacao}`;
+    const idsSel = threads.filter((t) => t.threadId).map((t) => t.threadId);
+    const nSel = idsSel.filter((id) => this._sel.has(id)).length;
+    const cabecalho = this.ehRascunhos ? "" :
+      `<label class="lista-head"><input type="checkbox" id="selTodos"> <span>${nSel ? nSel + " selecionado(s)" : "Selecionar todos"}</span></label>`;
+    lista.innerHTML = `${cabecalho}${linhas}${paginacao}`;
+
+    const st = lista.querySelector("#selTodos");
+    if (st) {
+      st.checked = nSel > 0 && nSel === idsSel.length;
+      st.indeterminate = nSel > 0 && nSel < idsSel.length;
+      st.addEventListener("change", () => {
+        if (st.checked) idsSel.forEach((id) => this._sel.add(id));
+        else idsSel.forEach((id) => this._sel.delete(id));
+        this._pintarBarra();
+        this._pintarLista();
+      });
+    }
 
     lista.querySelectorAll(".item").forEach((el) =>
       el.addEventListener("click", (e) => {

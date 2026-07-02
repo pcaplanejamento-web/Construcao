@@ -16,6 +16,7 @@ import { emailCache } from "./email-cache.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-button.js";
 import "../../components/ui-icon.js";
+import "./email-campo-destinatarios.js";
 
 function esc(s) {
   return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -131,8 +132,8 @@ class EmailCompositor extends BaseElement {
         <div class="erro" id="erro" hidden></div>
         <div class="campos">
           <div class="linha"><label>De</label><select id="de" class="campo-in"><option value="">Carregando…</option></select><span></span></div>
-          ${mostrarPara ? `<div class="linha"><label>Para</label><div class="ac"><input id="para" class="campo-in" type="text" placeholder="Nome ou e-mail…" value="${esc(this._para || "")}" autocomplete="off"><div class="sug" id="sugPara" hidden></div></div><div class="toggles"><button type="button" id="tgCc">Cc</button><button type="button" id="tgCco">Cco</button></div></div>` : ""}
-          <div class="linha" id="lnCc" hidden><label>Cc</label><div class="ac"><input id="cc" class="campo-in" type="text" placeholder="Nome ou e-mail…" value="${esc(this._cc || "")}" autocomplete="off"><div class="sug" id="sugCc" hidden></div></div><span></span></div>
+          ${mostrarPara ? `<div class="linha"><label>Para</label><email-campo-destinatarios id="paraCampo"></email-campo-destinatarios><div class="toggles"><button type="button" id="tgCc">Cc</button><button type="button" id="tgCco">Cco</button></div></div>` : ""}
+          <div class="linha" id="lnCc" hidden><label>Cc</label><email-campo-destinatarios id="ccCampo"></email-campo-destinatarios><span></span></div>
           <div class="linha" id="lnCco" hidden><label>Cco</label><input id="bcc" class="campo-in" type="text" placeholder="opcional, separados por vírgula" value="${esc(this._bcc || "")}"><span></span></div>
           ${mostrarPara ? `<div class="linha"><label>Assunto</label><input id="assunto" class="campo-in" type="text" placeholder="Assunto" value="${esc(this._assunto || "")}"><span></span></div>` : ""}
         </div>
@@ -214,9 +215,9 @@ class EmailCompositor extends BaseElement {
     // Fecha popovers ao clicar fora da toolbar.
     this.$("#corpo").addEventListener("mousedown", () => this._fecharPops());
 
-    // Autocomplete de contatos (Para/Cc).
-    this._ligarAutocomplete("#para", "#sugPara");
-    this._ligarAutocomplete("#cc", "#sugCc");
+    // Campos de destinatários (chips + autocomplete + banner picker).
+    const pc = this.$("#paraCampo"); if (pc) { pc.contatos = this._contatos; if (this._para) pc.valor = this._para; }
+    const ccc = this.$("#ccCampo"); if (ccc) { ccc.contatos = this._contatos; if (this._cc) ccc.valor = this._cc; }
 
     // Anexos: clique + arraste.
     this.$("#arquivo").addEventListener("change", (e) => this._addArquivos(e.target.files));
@@ -264,41 +265,6 @@ class EmailCompositor extends BaseElement {
     return out;
   }
 
-  _ligarAutocomplete(inpSel, boxSel) {
-    const inp = this.$(inpSel), box = this.$(boxSel);
-    if (!inp || !box) return;
-    inp.addEventListener("input", () => this._sugerir(inp, box));
-    inp.addEventListener("blur", () => setTimeout(() => { box.hidden = true; }, 150));
-    inp.addEventListener("keydown", (e) => {
-      if (box.hidden) return;
-      const items = [...box.querySelectorAll("button")];
-      let idx = items.findIndex((b) => b.classList.contains("hi"));
-      if (e.key === "ArrowDown") { e.preventDefault(); idx = Math.min(items.length - 1, idx + 1); }
-      else if (e.key === "ArrowUp") { e.preventDefault(); idx = Math.max(0, idx - 1); }
-      else if (e.key === "Enter" && idx >= 0) { e.preventDefault(); items[idx].dispatchEvent(new MouseEvent("mousedown")); return; }
-      else return;
-      items.forEach((b, i) => b.classList.toggle("hi", i === idx));
-    });
-  }
-
-  _sugerir(inp, box) {
-    const parts = inp.value.split(",");
-    const token = (parts[parts.length - 1] || "").trim().toLowerCase();
-    if (token.length < 1 || !this._contatos.length) { box.hidden = true; return; }
-    const cs = this._contatos.filter((c) => (c.nome || "").toLowerCase().includes(token) || (c.email || "").toLowerCase().includes(token)).slice(0, 6);
-    if (!cs.length) { box.hidden = true; return; }
-    box.innerHTML = cs.map((c) => `<button type="button" data-email="${esc(c.email)}"><b>${esc(c.nome || c.email)}</b><small>${esc(c.email)}${c.tipo ? " · " + esc(c.tipo) : ""}</small></button>`).join("");
-    box.hidden = false;
-    box.querySelectorAll("button").forEach((b) =>
-      b.addEventListener("mousedown", (e) => {
-        e.preventDefault();
-        parts[parts.length - 1] = " " + b.dataset.email;
-        inp.value = parts.join(",").replace(/^\s*,?\s*/, "") + ", ";
-        box.hidden = true; inp.focus();
-      })
-    );
-  }
-
   async _carregarRemetentes() {
     let r = emailCache.getRemetentes();
     if (!r) {
@@ -342,7 +308,7 @@ class EmailCompositor extends BaseElement {
 
   _coleta() {
     const val = (s) => { const el = this.$(s); return el ? el.value.trim().replace(/[,;\s]+$/, "") : ""; };
-    return { from: val("#de"), para: this.$("#para") ? val("#para") : "", cc: this.$("#cc") ? val("#cc") : "", bcc: this.$("#bcc") ? val("#bcc") : "", assunto: this.$("#assunto") ? val("#assunto") : "", html: this.$("#corpo").innerHTML, anexos: this._anexos };
+    return { from: val("#de"), para: this.$("#paraCampo") ? this.$("#paraCampo").emails : "", cc: this.$("#ccCampo") ? this.$("#ccCampo").emails : "", bcc: this.$("#bcc") ? val("#bcc") : "", assunto: this.$("#assunto") ? val("#assunto") : "", html: this.$("#corpo").innerHTML, anexos: this._anexos };
   }
 
   _temConteudo() {
