@@ -160,6 +160,7 @@ class EmailCompositor extends BaseElement {
       const ops = [];
       if (r.principal) ops.push(r.principal);
       (r.aliases || []).forEach((a) => { if (ops.indexOf(a) < 0) ops.push(a); });
+      (r.enderecos || []).forEach((a) => { if (ops.indexOf(a) < 0) ops.push(a); });
       sel.innerHTML = ops.length
         ? ops.map((e) => `<option value="${esc(e)}">${esc(e)}</option>`).join("")
         : `<option value="">(conta padrão)</option>`;

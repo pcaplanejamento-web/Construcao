@@ -23,6 +23,13 @@ class EmailEnderecos extends BaseElement {
       .end { display: flex; align-items: center; gap: var(--esp-2); font-size: var(--fs-md); }
       .end .tag { font-size: var(--fs-xs); color: var(--cor-texto-fraco); background: var(--cor-superficie-2);
         border: 1px solid var(--cor-borda); border-radius: var(--raio-completo); padding: 1px 8px; }
+      .end .rem { margin-left: auto; border: none; background: none; cursor: pointer; color: var(--cor-texto-fraco); font-size: 1.1rem; line-height: 1; padding: 0 6px; }
+      .end .rem:hover { color: var(--cor-erro); }
+      .criar { display: flex; align-items: center; gap: var(--esp-2); flex-wrap: wrap; margin-bottom: var(--esp-3); }
+      .criar .local { height: 38px; box-sizing: border-box; font-family: inherit; font-size: var(--fs-md);
+        color: var(--cor-texto); background: var(--cor-superficie); border: 1px solid var(--cor-borda-forte);
+        border-radius: var(--raio-sm); padding: 0 var(--esp-3); flex: 1; min-width: 120px; }
+      .criar .dominio { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
       textarea { width: 100%; min-height: 100px; box-sizing: border-box; font-family: inherit; font-size: var(--fs-md);
         color: var(--cor-texto); background: var(--cor-superficie); border: 1px solid var(--cor-borda-forte);
         border-radius: var(--raio-md); padding: var(--esp-3); resize: vertical; line-height: 1.5; }
@@ -54,17 +61,29 @@ class EmailEnderecos extends BaseElement {
     let r;
     try { r = await api.call("email.caixa.remetentes"); }
     catch (e) { notificarErro(e); this.$("#corpo").innerHTML = `<p style="color:var(--cor-erro)">Não foi possível carregar.</p>`; return; }
-    const enderecos = [];
-    if (r.principal) enderecos.push({ e: r.principal, tag: "principal" });
-    (r.aliases || []).forEach((a) => enderecos.push({ e: a, tag: "alias" }));
+    const fixos = [];
+    if (r.principal) fixos.push({ e: r.principal, tag: "principal" });
+    (r.aliases || []).forEach((a) => fixos.push({ e: a, tag: "alias" }));
+    const criados = r.enderecos || [];
     const assinaturaTexto = String(r.assinatura || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "");
     this.$("#corpo").innerHTML = `
       <div>
-        <h4>Endereços disponíveis para envio</h4>
+        <h4>Criar endereço @dattaobra.com.br</h4>
+        <div class="criar">
+          <input id="local" class="local" type="text" placeholder="ex.: contato" autocomplete="off">
+          <span class="dominio">@dattaobra.com.br</span>
+          <ui-button id="btnCriar" tamanho="sm">Criar</ui-button>
+        </div>
+        <div class="lista" id="criados">
+          ${criados.length
+            ? criados.map((e) => `<div class="end">${esc(e)} <span class="tag">criado</span><button class="rem" data-e="${esc(e)}" title="Remover" type="button">&times;</button></div>`).join("")
+            : `<div class="end" style="color:var(--cor-texto-fraco)">(nenhum endereço criado ainda)</div>`}
+        </div>
+      </div>
+      <div>
+        <h4>Endereços da conta</h4>
         <div class="lista">
-          ${enderecos.length
-            ? enderecos.map((x) => `<div class="end">${esc(x.e)} <span class="tag">${x.tag}</span></div>`).join("")
-            : `<div class="end">(nenhum alias — só a conta principal)</div>`}
+          ${fixos.map((x) => `<div class="end">${esc(x.e)} <span class="tag">${x.tag}</span></div>`).join("")}
         </div>
       </div>
       <div>
@@ -72,13 +91,40 @@ class EmailEnderecos extends BaseElement {
         <textarea id="assinatura" placeholder="Ex.: Equipe Dattaobra — (00) 0000-0000">${esc(assinaturaTexto)}</textarea>
       </div>
       <div class="guia">
-        <b>Criar um endereço @dattaobra.com.br</b> (ex.: contato@) — em conta Gmail comum são 2 passos, feitos uma vez:
+        Para o endereço <b>enviar e receber</b> de fato, a infra do domínio precisa estar ativa (uma vez):
         <ol>
-          <li><b>Receber:</b> Cloudflare → e-mail do domínio → <i>Email Routing</i> → criar <code>contato@dattaobra.com.br</code> encaminhando para <b>dattaobra@gmail.com</b>.</li>
-          <li><b>Enviar como:</b> Gmail → Ver todas as configurações → <i>Contas e importação</i> → "Enviar e-mail como" → Adicionar <code>contato@dattaobra.com.br</code> (o código de verificação chega aqui na caixa).</li>
+          <li><b>Receber:</b> Cloudflare → <i>Email Routing</i> com <b>catch-all</b> → encaminha tudo p/ <b>dattaobra@gmail.com</b>.</li>
+          <li><b>Enviar:</b> domínio verificado no <b>Resend</b> (SPF/DKIM) + <code>RESEND_API_KEY</code> nas Script Properties.</li>
         </ol>
-        Depois o endereço aparece automaticamente na lista acima e no seletor "De" ao escrever.
       </div>`;
+    const btn = this.$("#btnCriar");
+    if (btn) btn.addEventListener("click", () => this._criar());
+    const inp = this.$("#local");
+    if (inp) inp.addEventListener("keydown", (e) => { if (e.key === "Enter") this._criar(); });
+    this.$$(".rem").forEach((b) => b.addEventListener("click", () => this._remover(b.dataset.e)));
+  }
+
+  async _criar() {
+    const inp = this.$("#local");
+    const local = (inp.value || "").trim().toLowerCase();
+    if (!local) return;
+    const btn = this.$("#btnCriar"); btn.setAttribute("loading", "");
+    try {
+      await api.call("email.caixa.criarEndereco", { local });
+      toastSucesso("Endereço criado.");
+      this.carregar();
+    } catch (e) {
+      notificarErro(e);
+      btn.removeAttribute("loading");
+    }
+  }
+
+  async _remover(endereco) {
+    try {
+      await api.call("email.caixa.removerEndereco", { endereco });
+      toastSucesso("Endereço removido.");
+      this.carregar();
+    } catch (e) { notificarErro(e); }
   }
 
   async salvar() {

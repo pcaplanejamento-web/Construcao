@@ -39,12 +39,51 @@ function _remetentes() {
   return { principal: principal, aliases: GmailApp.getAliases() || [] };
 }
 
-/** email.caixa.remetentes -> { principal, aliases, assinatura }. */
+/** Endereços @dattaobra.com.br criados no app (enviados via Resend). */
+function _enderecos() {
+  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty("EMAIL_ENDERECOS") || "[]") || []; }
+  catch (e) { return []; }
+}
+function _ehEnderecoResend(from) {
+  var f = String(from || "").trim();
+  return !!f && _enderecos().indexOf(f) >= 0;
+}
+/** [{nome,mimeType,base64}] -> formato de anexo do Resend. */
+function _anexosResend(anexos) {
+  return (anexos || []).filter(function (a) { return a && a.base64; })
+    .map(function (a) { return { filename: a.nome || "anexo", content: a.base64 }; });
+}
+
+/** email.caixa.remetentes -> { principal, aliases, enderecos, assinatura }. */
 function emailCaixaRemetentes(data, sessao) {
   exigirAdmin(sessao);
   var r = _remetentes();
+  r.enderecos = _enderecos();
   r.assinatura = PropertiesService.getScriptProperties().getProperty("EMAIL_ASSINATURA") || "";
   return r;
+}
+
+/** email.caixa.criarEndereco -> { enderecos }. Adiciona local@dattaobra.com.br à lista. */
+function emailCaixaCriarEndereco(data, sessao) {
+  exigirAdmin(sessao);
+  var local = String((data && data.local) || "").trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(local)) {
+    lancar(ERRO.VALIDACAO, "Nome inválido: use letras, números, ponto, hífen ou sublinhado.");
+  }
+  var addr = local + "@dattaobra.com.br";
+  var lista = _enderecos();
+  if (lista.indexOf(addr) < 0) lista.push(addr);
+  PropertiesService.getScriptProperties().setProperty("EMAIL_ENDERECOS", JSON.stringify(lista));
+  return { enderecos: lista };
+}
+
+/** email.caixa.removerEndereco -> { enderecos }. */
+function emailCaixaRemoverEndereco(data, sessao) {
+  exigirAdmin(sessao);
+  var addr = String((data && data.endereco) || "").trim();
+  var lista = _enderecos().filter(function (e) { return e !== addr; });
+  PropertiesService.getScriptProperties().setProperty("EMAIL_ENDERECOS", JSON.stringify(lista));
+  return { enderecos: lista };
 }
 
 /** Valida o "De": só a conta principal ou um alias (evita forjar remetente). "" = padrão. */
@@ -92,7 +131,11 @@ function emailCaixaEnviar(data, sessao) {
   var html = String((data && data.html) || "");
   if (!para) lancar(ERRO.VALIDACAO, "Informe o destinatário.");
   if (!assunto && !html) lancar(ERRO.VALIDACAO, "Escreva o assunto ou a mensagem.");
-  GmailApp.sendEmail(para, assunto, _emailTexto(html), _opcoesEnvio(data));
+  if (_ehEnderecoResend(data && data.from)) {
+    enviarEmailResend(para, assunto, html, { from: data.from, cc: data.cc, bcc: data.bcc, attachments: _anexosResend(data && data.anexos) });
+  } else {
+    GmailApp.sendEmail(para, assunto, _emailTexto(html), _opcoesEnvio(data));
+  }
   return { ok: true };
 }
 
@@ -105,9 +148,17 @@ function emailCaixaResponder(data, sessao) {
   if (!html.trim()) lancar(ERRO.VALIDACAO, "Escreva a resposta.");
   var t = GmailApp.getThreadById(id);
   if (!t) lancar(ERRO.NAO_ENCONTRADO, "Conversa não encontrada.");
-  var opts = _opcoesEnvio(data);
-  if (data && data.todos) t.replyAll(_emailTexto(html), opts);
-  else t.reply(_emailTexto(html), opts);
+  if (_ehEnderecoResend(data && data.from)) {
+    // Responder "como" um endereço @dattaobra.com.br → via Resend (para quem enviou).
+    var msgs = t.getMessages();
+    var to = _emailRemetente(msgs[msgs.length - 1].getFrom()).email;
+    var assuntoRe = "Re: " + (t.getFirstMessageSubject() || "").replace(/^Re:\s*/i, "");
+    enviarEmailResend(to, assuntoRe, html, { from: data.from, cc: data.cc, bcc: data.bcc, attachments: _anexosResend(data && data.anexos) });
+  } else {
+    var opts = _opcoesEnvio(data);
+    if (data && data.todos) t.replyAll(_emailTexto(html), opts);
+    else t.reply(_emailTexto(html), opts);
+  }
   return { ok: true };
 }
 

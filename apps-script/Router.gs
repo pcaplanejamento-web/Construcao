@@ -28,6 +28,8 @@ const ROTAS = {
 
   // Caixa de e-mail da empresa (GmailApp; backend roda como dattaobra) — admin-only
   "email.caixa.remetentes": { fn: emailCaixaRemetentes },
+  "email.caixa.criarEndereco": { fn: emailCaixaCriarEndereco },
+  "email.caixa.removerEndereco": { fn: emailCaixaRemoverEndereco },
   "email.caixa.listar": { fn: emailCaixaListar },
   "email.caixa.ler": { fn: emailCaixaLer },
   "email.caixa.enviar": { fn: emailCaixaEnviar },

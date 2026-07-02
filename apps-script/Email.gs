@@ -13,27 +13,39 @@
  *   enviarEmailResend("alguem@x.com", "Assunto", "<p>HTML…</p>");
  */
 
-/** Envia um e-mail via Resend. Retorna { id }. Lança ERRO.VALIDACAO se não configurado. */
+/** "a@x, b@y; c@z" (ou array) -> ["a@x","b@y","c@z"]. */
+function _listaEmails(v) {
+  if (Array.isArray(v)) return v.map(function (s) { return String(s).trim(); }).filter(Boolean);
+  return String(v || "").split(/[,;]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+}
+
+/**
+ * Envia um e-mail via Resend. Retorna { id }. Lança ERRO.VALIDACAO se não configurado.
+ * opts: { from, cc, bcc, reply_to, attachments:[{filename,content(base64)}] }.
+ */
 function enviarEmailResend(para, assunto, html, opts) {
+  opts = opts || {};
   const props = PropertiesService.getScriptProperties();
   const key = props.getProperty("RESEND_API_KEY");
   const remetente =
-    props.getProperty("EMAIL_REMETENTE") || "Dattaobra <notificacoes@dattaobra.com.br>";
+    opts.from || props.getProperty("EMAIL_REMETENTE") || "Dattaobra <notificacoes@dattaobra.com.br>";
   if (!key) lancar(ERRO.VALIDACAO, "RESEND_API_KEY não configurada nas Script Properties.");
-  const destino = String(para || "").trim();
-  if (!destino) lancar(ERRO.VALIDACAO, "Destinatário do e-mail vazio.");
+  const to = _listaEmails(para);
+  if (!to.length) lancar(ERRO.VALIDACAO, "Destinatário do e-mail vazio.");
 
   // Reply-To: usa o explícito; senão o padrão (EMAIL_REPLYTO) → respostas caem na caixa.
-  const replyTo = (opts && opts.reply_to) || props.getProperty("EMAIL_REPLYTO") || "";
+  const replyTo = opts.reply_to || props.getProperty("EMAIL_REPLYTO") || "";
 
   const corpo = {
     from: remetente,
-    to: [destino],
+    to: to,
     subject: String(assunto || ""),
     html: String(html || ""),
   };
   if (replyTo) corpo.reply_to = replyTo;
-  if (opts && Array.isArray(opts.cc)) corpo.cc = opts.cc;
+  const cc = _listaEmails(opts.cc); if (cc.length) corpo.cc = cc;
+  const bcc = _listaEmails(opts.bcc); if (bcc.length) corpo.bcc = bcc;
+  if (Array.isArray(opts.attachments) && opts.attachments.length) corpo.attachments = opts.attachments;
 
   const resp = UrlFetchApp.fetch("https://api.resend.com/emails", {
     method: "post",
