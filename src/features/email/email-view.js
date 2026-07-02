@@ -263,11 +263,12 @@ class EmailView extends BaseElement {
       if (this.usaCache) emailCache.setLista(this._caixa, dados.threads);
       this._dados = dados; this._estado = "pronto";
     } catch (e) {
-      if (cache) { this._prefetchOutras(); return; } // mantém o cache em falha de refresh
+      if (cache) { this._prefetchOutras(); this._prefetchCorpos(); return; } // mantém o cache em falha de refresh
       this._estado = "erro"; notificarErro(e);
     }
     this._pintarLista();
     this._prefetchOutras();
+    this._prefetchCorpos();
   }
 
   /** Busca uma pasta (trata rascunhos) e devolve {threads,pagina,temMais}. */
@@ -294,6 +295,30 @@ class EmailView extends BaseElement {
         catch (e) { /* silencioso — tenta na próxima */ }
       }
     } finally { this._prefetching = false; }
+  }
+
+  /**
+   * Prefetch em 2º plano dos CORPOS das mensagens da pasta atual → clicar num
+   * e-mail abre **instantâneo** (sem "Abrindo..."). Usa `marcarLida:false` para
+   * NÃO alterar o estado lido/não lido (a marcação acontece quando o usuário
+   * abre de verdade). Concorrência limitada; pula rascunhos e o que já está em
+   * cache. Uma varredura por vez (não sobrepõe).
+   */
+  async _prefetchCorpos() {
+    if (this.ehRascunhos || this._prefetchandoCorpos) return;
+    this._prefetchandoCorpos = true;
+    try {
+      const ids = ((this._dados && this._dados.threads) || [])
+        .map((t) => t.threadId).filter((id) => id && !emailCache.getConversa(id));
+      const LOTE = 3;
+      for (let i = 0; i < ids.length; i += LOTE) {
+        await Promise.all(ids.slice(i, i + LOTE).map((id) =>
+          api.call("email.caixa.ler", { threadId: id, marcarLida: false })
+            .then((r) => { if (r && r.threadId) emailCache.setConversa(r.threadId, r); })
+            .catch(() => { /* silencioso */ })
+        ));
+      }
+    } finally { this._prefetchandoCorpos = false; }
   }
 
   /* ------------------------------ Lista ------------------------------- */

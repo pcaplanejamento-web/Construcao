@@ -241,13 +241,18 @@ function emailCaixaListar(data, sessao) {
   return { threads: lista, pagina: pagina, temMais: threads.length === _EMAIL_PAG };
 }
 
-/** email.caixa.ler — { threadId } -> { threadId, assunto, mensagens:[...] }. Marca lida. */
+/**
+ * email.caixa.ler — { threadId, marcarLida? } -> { threadId, assunto, mensagens:[...] }.
+ * Marca a conversa como lida por padrão; o **prefetch** dos corpos (front) passa
+ * `marcarLida:false` para pré-carregar sem alterar o estado lido/não lido.
+ */
 function emailCaixaLer(data, sessao) {
   exigirAdmin(sessao);
   var id = String((data && data.threadId) || "");
   if (!id) lancar(ERRO.VALIDACAO, "Conversa não informada.");
   var t = GmailApp.getThreadById(id);
   if (!t) lancar(ERRO.NAO_ENCONTRADO, "Conversa não encontrada.");
+  var eraNaoLida = t.isUnread();
   var mensagens = t.getMessages().map(function (m) {
     var anexos = m.getAttachments().map(function (a, i) { return { nome: a.getName(), tamanho: a.getSize(), idx: i }; });
     var rem = _emailRemetente(m.getFrom());
@@ -256,11 +261,12 @@ function emailCaixaLer(data, sessao) {
       data: m.getDate().toISOString(), assunto: m.getSubject(), html: m.getBody(), anexos: anexos,
     };
   });
-  t.markRead();
+  if (!data || data.marcarLida !== false) t.markRead();
   return {
     threadId: id, assunto: t.getFirstMessageSubject() || "(sem assunto)",
     estrela: t.getMessages().some(function (m) { return m.isStarred(); }),
     labels: (t.getLabels() || []).map(function (l) { return l.getName(); }),
+    naoLida: eraNaoLida,
     mensagens: mensagens,
   };
 }
