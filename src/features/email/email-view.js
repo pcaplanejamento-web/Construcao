@@ -70,15 +70,18 @@ class EmailView extends BaseElement {
 
       .painel { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(300px, 380px) 1fr; grid-template-rows: auto 1fr;
         gap: 0; border: 1px solid var(--cor-borda); border-radius: var(--raio-lg); overflow: hidden; background: var(--cor-superficie); }
+      /* Altura CONSTANTE: nunca quebra em linha (rola na horizontal se faltar espaço),
+         então trocar busca↔seleção NÃO muda a altura do componente. */
       .barra-topo { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--esp-3);
-        padding: var(--esp-3); border-bottom: 1px solid var(--cor-divisor); flex-wrap: wrap; min-height: 44px; }
-      .barra-topo .busca { flex: 1 1 200px; height: 38px; box-sizing: border-box; font-family: inherit; font-size: var(--fs-sm);
+        padding: 0 var(--esp-3); border-bottom: 1px solid var(--cor-divisor); flex-wrap: nowrap; overflow-x: auto;
+        height: 60px; min-height: 60px; }
+      .barra-topo .busca { flex: 1 1 120px; min-width: 80px; height: 38px; box-sizing: border-box; font-family: inherit; font-size: var(--fs-sm);
         color: var(--cor-texto); background: var(--cor-superficie-2); border: 1px solid var(--cor-borda); border-radius: var(--raio-completo); padding: 0 var(--esp-4); }
       .barra-topo .acoes { display: flex; gap: var(--esp-2); flex: none; margin-left: auto; }
-      /* Barra de seleção (quando há itens marcados) */
-      .sel-info { font-weight: var(--peso-semi); font-size: var(--fs-sm); color: var(--cor-primaria-escura); }
-      .sel-bar { display: flex; align-items: center; gap: var(--esp-2); flex-wrap: wrap; width: 100%; }
-      .sel-bar .dir { display: flex; gap: var(--esp-2); flex: none; margin-left: auto; flex-wrap: wrap; }
+      /* Barra de seleção (quando há itens marcados) — mesma altura/fonte da busca. */
+      .sel-info { font-weight: var(--peso-semi); font-size: var(--fs-sm); color: var(--cor-primaria-escura); white-space: nowrap; flex: none; }
+      .sel-bar { display: flex; align-items: center; gap: var(--esp-2); flex-wrap: nowrap; width: 100%; }
+      .sel-bar .dir { display: flex; gap: var(--esp-2); flex: none; margin-left: auto; flex-wrap: nowrap; }
 
       /* Pastas */
       .pastas { display: flex; flex-direction: column; gap: 2px; padding: var(--esp-3); border-right: 1px solid var(--cor-divisor); overflow-y: auto; }
@@ -92,7 +95,7 @@ class EmailView extends BaseElement {
 
       /* Lista */
       .lista-col { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--cor-divisor); }
-      .lista { flex: 1; min-height: 0; overflow-y: auto; }
+      .lista { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
       .item { display: grid; grid-template-columns: 26px 40px 1fr; gap: var(--esp-2); align-items: center; width: 100%; text-align: left;
         cursor: pointer; padding: var(--esp-3); border-bottom: 1px solid var(--cor-divisor); }
       .item:hover { background: var(--cor-superficie-2); }
@@ -102,13 +105,13 @@ class EmailView extends BaseElement {
       .item:hover .check, .item.marcado .check { opacity: 1; }
       @media (hover: none) { .check { opacity: 1; } }
       .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: var(--peso-semi); font-size: var(--fs-sm); flex: none; }
-      .corpo-item { min-width: 0; }
-      .linha1 { display: flex; justify-content: space-between; gap: var(--esp-2); align-items: baseline; }
-      .rem { font-size: var(--fs-md); color: var(--cor-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .corpo-item { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+      .linha1 { display: flex; justify-content: space-between; gap: var(--esp-2); align-items: baseline; min-width: 0; }
+      .rem { font-size: var(--fs-md); color: var(--cor-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
       .data { font-size: var(--fs-xs); color: var(--cor-texto-fraco); white-space: nowrap; flex: none; }
-      .assunto { font-size: var(--fs-sm); color: var(--cor-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .previa { font-size: var(--fs-sm); color: var(--cor-texto-fraco); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .linha2 { display: flex; align-items: center; gap: 6px; }
+      .assunto { display: block; font-size: var(--fs-sm); color: var(--cor-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .previa { font-size: var(--fs-sm); color: var(--cor-texto-fraco); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+      .linha2 { display: flex; align-items: center; gap: 6px; min-width: 0; }
       .estrela { border: none; background: none; cursor: pointer; font-size: 1rem; line-height: 1; color: var(--cor-texto-fraco); flex: none; padding: 0; }
       .estrela.on { color: #f5b301; }
       .lbl { font-size: var(--fs-xs); background: var(--cor-primaria-suave); color: var(--cor-primaria-escura); border-radius: var(--raio-completo); padding: 0 8px; }
