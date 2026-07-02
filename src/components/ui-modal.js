@@ -1,7 +1,7 @@
 /**
  * <ui-modal> — Diálogo overlay reutilizável.
  *
- * Atributos: open (booleano), title
+ * Atributos: open (booleano), title, largo (booleano — diálogo mais largo, ex.: e-mail)
  * Slots: default (corpo) e name="rodape" (ações)
  * Eventos: "fechar" (X, backdrop ou Esc).
  *
@@ -15,7 +15,7 @@ import { BaseElement } from "./base-element.js";
 
 class UiModal extends BaseElement {
   static get observedAttributes() {
-    return ["open", "title"];
+    return ["open", "title", "largo"];
   }
   attributeChangedCallback() {
     if (this.shadowRoot.childElementCount) this.renderizar();
@@ -43,6 +43,7 @@ class UiModal extends BaseElement {
         overflow: hidden; /* nada vaza na horizontal */
         animation: surgir .14s ease;
       }
+      :host([largo]) .dialogo { max-width: 840px; }
       @keyframes surgir { from { transform: translateY(8px); opacity: 0; } }
       @media (prefers-reduced-motion: reduce) { .dialogo { animation: none; } }
       header {

@@ -117,6 +117,9 @@ class AppSidebar extends BaseElement {
         <div class="sep"></div>
         ${link(ITEM_PERFIL)}
         <role-guard role="admin">
+          <a href="/email" data-rota="/email" title="E-mail">
+            <ui-icon name="email" size="18"></ui-icon><span class="rotulo">E-mail</span>
+          </a>
           <a href="/admin" data-rota="/admin" title="Configuração">
             <ui-icon name="config" size="18"></ui-icon><span class="rotulo">Configuração</span>
           </a>
