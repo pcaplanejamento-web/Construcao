@@ -49,18 +49,27 @@ class EmailLeitura extends BaseElement {
         border-radius: var(--raio-completo); padding: 6px 12px; min-height: 34px; cursor: pointer; }
       .anexo:hover { background: var(--cor-superficie); color: var(--cor-primaria); border-color: var(--cor-primaria); }
       .erro { color: var(--cor-erro); }
+      .labels { display: flex; flex-wrap: wrap; gap: var(--esp-2); margin-bottom: var(--esp-3); }
+      .labels:empty { display: none; }
+      .label { font-size: var(--fs-xs); background: var(--cor-primaria-suave); color: var(--cor-primaria-escura);
+        border-radius: var(--raio-completo); padding: 2px 10px; font-weight: var(--peso-semi); }
+      #estrela { font-size: 1.1rem; line-height: 1; }
     `;
   }
 
   template() {
     return `
       <ui-modal open title="${esc(this.assunto)}" largo>
+        <div id="labels" class="labels"></div>
         <div id="corpo"><ui-spinner centro text="Abrindo e-mail..."></ui-spinner></div>
         <div slot="rodape">
+          <ui-button id="estrela" variant="secundario" tamanho="sm" title="Favoritar">☆</ui-button>
           <ui-button id="arquivar" variant="secundario" tamanho="sm">Arquivar</ui-button>
-          <ui-button id="naoLida" variant="secundario" tamanho="sm">Marcar não lida</ui-button>
-          <ui-button id="responder" variant="secundario">Responder</ui-button>
-          <ui-button id="fechar">Fechar</ui-button>
+          <ui-button id="lixeira" variant="perigo-contorno" tamanho="sm">Excluir</ui-button>
+          <ui-button id="encaminhar" variant="secundario" tamanho="sm">Encaminhar</ui-button>
+          <ui-button id="responder" variant="secundario" tamanho="sm">Responder</ui-button>
+          <ui-button id="respTodos" tamanho="sm">Resp. todos</ui-button>
+          <ui-button id="fechar" variant="secundario" tamanho="sm">Fechar</ui-button>
         </div>
       </ui-modal>`;
   }
@@ -68,11 +77,13 @@ class EmailLeitura extends BaseElement {
   aoConectar() {
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#fechar").addEventListener("click", () => this.emitir("fechar"));
-    this.$("#responder").addEventListener("click", () =>
-      this.emitir("responder", { threadId: this.threadId, assunto: this.assunto })
-    );
+    const compor = (modo) => this.emitir("compor", { modo, threadId: this.threadId, assunto: this.assunto });
+    this.$("#responder").addEventListener("click", () => compor("responder"));
+    this.$("#respTodos").addEventListener("click", () => compor("responderTodos"));
+    this.$("#encaminhar").addEventListener("click", () => compor("encaminhar"));
     this.$("#arquivar").addEventListener("click", () => this._marcar("arquivar", true));
-    this.$("#naoLida").addEventListener("click", () => this._marcar("naoLida", true));
+    this.$("#lixeira").addEventListener("click", () => this._marcar("lixeira", true));
+    this.$("#estrela").addEventListener("click", () => this._marcar(this._estrela ? "tirarEstrela" : "estrela", false));
     this.carregar();
   }
 
@@ -80,8 +91,12 @@ class EmailLeitura extends BaseElement {
     try {
       const r = await api.call("email.caixa.ler", { threadId: this.threadId });
       this._assunto = r.assunto || this._assunto;
+      this._estrela = !!r.estrela;
+      this._atualizarEstrela();
       const modal = this.$("ui-modal");
       if (modal) modal.setAttribute("title", this.assunto);
+      const lab = this.$("#labels");
+      if (lab) lab.innerHTML = (r.labels || []).map((n) => `<span class="label">${esc(n)}</span>`).join("");
       const corpo = this.$("#corpo");
       corpo.innerHTML = (r.mensagens || []).map((m, i) => this._msg(m, i)).join("");
       corpo.querySelectorAll(".anexo").forEach((b) =>
@@ -97,12 +112,19 @@ class EmailLeitura extends BaseElement {
   async _marcar(acao, fechar) {
     try {
       await api.call("email.caixa.marcar", { threadId: this.threadId, acao });
-      toastSucesso(acao === "arquivar" ? "Conversa arquivada." : "Marcada como não lida.");
+      const msgs = { arquivar: "Conversa arquivada.", lixeira: "Movido para a lixeira.", naoLida: "Marcada como não lida.", estrela: "Marcada com estrela.", tirarEstrela: "Estrela removida." };
+      toastSucesso(msgs[acao] || "Feito.");
+      if (acao === "estrela" || acao === "tirarEstrela") { this._estrela = acao === "estrela"; this._atualizarEstrela(); }
       this.emitir("mudou");
       if (fechar) this.emitir("fechar");
     } catch (e) {
       notificarErro(e);
     }
+  }
+
+  _atualizarEstrela() {
+    const b = this.$("#estrela");
+    if (b) b.textContent = this._estrela ? "★" : "☆";
   }
 
   async _baixarAnexo(msgIdx, anexoIdx, nome) {
