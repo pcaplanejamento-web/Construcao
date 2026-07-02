@@ -23,9 +23,17 @@ function _googleProp(nome) {
   return PropertiesService.getScriptProperties().getProperty(nome);
 }
 
-/** URL de redirect do OAuth: Script Property OAUTH_REDIRECT_URI ou a URL do Web App. */
+/**
+ * URL de redirect do OAuth. Agora aponta para uma PÁGINA DO SITE
+ * (`dattaobra.com.br/google-callback.html`), NÃO para o `/exec` do Apps Script.
+ * Motivo: quando o Google redirecionava para o `/exec` com várias contas Google
+ * logadas, a URL virava `/macros/u/1/s/.../exec` e dava "Não foi possível abrir
+ * o arquivo". A página do site lê o `code`/`state` e chama `google.concluirOAuth`
+ * por `fetch` (POST à URL canônica do `/exec`, sem `/u/N/`). Override opcional:
+ * Script Property `GOOGLE_CALLBACK_URL`.
+ */
 function _googleRedirectUri() {
-  return _googleProp("OAUTH_REDIRECT_URI") || ScriptApp.getService().getUrl();
+  return _googleProp("GOOGLE_CALLBACK_URL") || "https://dattaobra.com.br/google-callback.html";
 }
 
 /**
@@ -138,6 +146,36 @@ function googleTestarConexao(data, sessao) {
   }
   const json = JSON.parse(resp.getContentText() || "{}");
   return { agenda: json.summary || "principal", eventos: (json.items || []).length };
+}
+
+/**
+ * google.concluirOAuth — { code, state } -> { conectado:true }. PÚBLICA.
+ * A página `google-callback.html` (no site) chama esta rota com o code+state que
+ * o Google devolveu. Valida o state (nonce por usuario_id, uso único), troca o
+ * code por tokens e guarda o refresh token. Substitui o fluxo antigo via doGet
+ * (que quebrava com o `/u/N/` de múltiplas contas). Não exige sessão: o vínculo
+ * ao usuário vem do state em cache (criado por googleIniciarOAuth).
+ */
+function googleConcluirOAuth(data) {
+  const state = String((data && data.state) || "");
+  const code = String((data && data.code) || "");
+  if (!state || !code) lancar(ERRO.VALIDACAO, "Autorização incompleta.");
+  const usuarioId = cacheGet("oauth_state:" + state);
+  if (!usuarioId) {
+    lancar(ERRO.VALIDACAO, "Sessão de autorização expirada. Volte ao app e conecte novamente.");
+  }
+  cacheRemove("oauth_state:" + state); // uso único
+  const tokens = _trocarCodigoPorTokens(code);
+  if (!tokens.refresh_token) {
+    lancar(
+      ERRO.VALIDACAO,
+      "O Google não devolveu autorização permanente. Remova o app em myaccount.google.com/permissions e conecte de novo."
+    );
+  }
+  comLock(function () {
+    _definirConfig(usuarioId, "google_refresh_token", tokens.refresh_token);
+  });
+  return { conectado: true };
 }
 
 /* --------------------- Callback (chamado pelo doGet) ------------------ */

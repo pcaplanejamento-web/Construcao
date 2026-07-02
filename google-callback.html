@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dattaobra — Conectar Google</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #0f172a;
+      padding: 24px; text-align: center; }
+    .msg { font-size: 16px; font-weight: 600; }
+    .sub { font-size: 13px; color: #64748b; margin-top: 6px; }
+    .ok { color: #0f766e; }
+    .err { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <!--
+    Página de callback do OAuth do Google (redirect_uri).
+    O Google redireciona para cá com ?code=&state=. Esta página chama
+    google.concluirOAuth por fetch (POST à URL canônica do /exec, SEM /u/N/),
+    avisa a janela-mãe (postMessage, igual ao fluxo antigo) e se fecha.
+    Standalone de propósito: não depende do SPA nem do roteador.
+  -->
+  <div>
+    <p id="msg" class="msg">Concluindo a conexão com o Google…</p>
+    <p class="sub">Esta aba fecha sozinha.</p>
+  </div>
+  <script>
+    (function () {
+      var EXEC = "https://script.google.com/macros/s/AKfycbxDCNTuP8GLFU3grKNDtYXf_CjpHq5INgB2EJdbGyckCLec0ricpmmBWbAMh5W8X0gxFg/exec";
+      var p = new URLSearchParams(location.search);
+      var code = p.get("code"), state = p.get("state"), erro = p.get("error");
+      var msg = document.getElementById("msg");
+      function finalizar(tipo, texto, classe) {
+        try { if (window.opener) window.opener.postMessage({ tipo: tipo }, "*"); } catch (e) {}
+        if (msg) { msg.textContent = texto; msg.className = "msg " + (classe || ""); }
+        setTimeout(function () { try { window.close(); } catch (e) {} }, 1600);
+      }
+      if (erro || !code || !state) { finalizar("google_erro", "Autorização não concluída.", "err"); return; }
+      fetch(EXEC, {
+        method: "POST",
+        // Sem Content-Type: "simple request" (sem preflight CORS), igual ao api-client.
+        body: JSON.stringify({ action: "google.concluirOAuth", token: "", data: { code: code, state: state } }),
+        redirect: "follow",
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (j && j.ok) finalizar("google_conectado", "Conta Google conectada! Você pode fechar esta aba.", "ok");
+          else finalizar("google_erro", (j && j.error && j.error.message) || "Não foi possível conectar.", "err");
+        })
+        .catch(function () { finalizar("google_erro", "Falha de rede ao concluir a conexão.", "err"); });
+    })();
+  </script>
+</body>
+</html>

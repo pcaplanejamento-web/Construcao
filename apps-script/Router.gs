@@ -159,6 +159,7 @@ const ROTAS = {
 
   // Conexão Google (OAuth2 por usuário — agenda)
   "google.iniciarOAuth": { fn: googleIniciarOAuth },
+  "google.concluirOAuth": { fn: googleConcluirOAuth, publica: true }, // callback pelo site (sem sessão; valida o state)
   "google.status": { fn: googleStatus },
   "google.desconectar": { fn: googleDesconectar },
   "google.testarConexao": { fn: googleTestarConexao },
