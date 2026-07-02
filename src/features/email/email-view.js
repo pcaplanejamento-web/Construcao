@@ -1,19 +1,21 @@
 /**
  * <email-view> — Página /email (admin): cliente de e-mail em 3 colunas
  * (Pastas | Lista | Leitura), estilo webmail, sobre a caixa da empresa via
- * GmailApp. Reusa email-conversa (leitura inline), email-compositor e
- * email-enderecos. Responsivo: no mobile a leitura ocupa a tela (com "Voltar").
- * Dados AO VIVO (sem cache do data-store).
+ * GmailApp. Ocupa toda a altura (o app-shell coloca a rota em modo "cheio").
+ * Cache-first (email-cache): abre instantâneo e atualiza em 2º plano. Seleção
+ * múltipla p/ arquivar/excluir/marcar em lote. Reusa email-conversa (leitura
+ * inline), email-compositor e email-enderecos.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { api } from "../../core/api-client.js";
-import { notificarErro } from "../../core/event-bus.js";
+import { notificarErro, toastSucesso } from "../../core/event-bus.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-icon.js";
 import "./email-conversa.js";
 import "./email-compositor.js";
 import "./email-enderecos.js";
+import { emailCache } from "./email-cache.js";
 
 function esc(s) {
   return String(s == null ? "" : s)
@@ -29,13 +31,10 @@ function quando(iso) {
 }
 function iniciais(nome) {
   const p = String(nome || "?").trim().split(/\s+/).filter(Boolean);
-  const a = (p[0] || "?")[0] || "?";
-  const b = p.length > 1 ? (p[p.length - 1][0] || "") : "";
-  return (a + b).toUpperCase();
+  return (((p[0] || "?")[0] || "?") + (p.length > 1 ? (p[p.length - 1][0] || "") : "")).toUpperCase();
 }
 function corAvatar(s) {
-  let h = 0;
-  const str = String(s || "");
+  let h = 0; const str = String(s || "");
   for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
   return `hsl(${h}, 45%, 55%)`;
 }
@@ -58,21 +57,28 @@ class EmailView extends BaseElement {
     this._estado = "carregando";
     this._dados = null;
     this._selecionado = null;
+    this._sel = new Set();
   }
 
   get ehRascunhos() { return this._caixa === "rascunhos"; }
+  get usaCache() { return !this.ehRascunhos && !this._q && this._pagina === 0; }
 
   estilos() {
     return `
-      :host { display: block; }
-      .area { padding: var(--esp-tela); display: flex; flex-direction: column; height: calc(100dvh - 2 * var(--esp-tela)); min-height: 480px; box-sizing: border-box; }
+      :host { display: block; height: 100%; }
+      .area { padding: var(--esp-tela); display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; }
 
       .painel { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(300px, 380px) 1fr; grid-template-rows: auto 1fr;
         gap: 0; border: 1px solid var(--cor-borda); border-radius: var(--raio-lg); overflow: hidden; background: var(--cor-superficie); }
-      /* Barra do topo do componente: busca (esquerda) + ações (canto direito). */
       .barra-topo { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--esp-3);
-        padding: var(--esp-3); border-bottom: 1px solid var(--cor-divisor); flex-wrap: wrap; }
+        padding: var(--esp-3); border-bottom: 1px solid var(--cor-divisor); flex-wrap: wrap; min-height: 44px; }
+      .barra-topo .busca { flex: 1 1 200px; height: 38px; box-sizing: border-box; font-family: inherit; font-size: var(--fs-sm);
+        color: var(--cor-texto); background: var(--cor-superficie-2); border: 1px solid var(--cor-borda); border-radius: var(--raio-completo); padding: 0 var(--esp-4); }
       .barra-topo .acoes { display: flex; gap: var(--esp-2); flex: none; margin-left: auto; }
+      /* Barra de seleção (quando há itens marcados) */
+      .sel-info { font-weight: var(--peso-semi); font-size: var(--fs-sm); color: var(--cor-primaria-escura); }
+      .sel-bar { display: flex; align-items: center; gap: var(--esp-2); flex-wrap: wrap; width: 100%; }
+      .sel-bar .dir { display: flex; gap: var(--esp-2); flex: none; margin-left: auto; flex-wrap: wrap; }
 
       /* Pastas */
       .pastas { display: flex; flex-direction: column; gap: 2px; padding: var(--esp-3); border-right: 1px solid var(--cor-divisor); overflow-y: auto; }
@@ -86,16 +92,16 @@ class EmailView extends BaseElement {
 
       /* Lista */
       .lista-col { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--cor-divisor); }
-      .busca { flex: 1 1 200px; height: 38px; box-sizing: border-box; font-family: inherit; font-size: var(--fs-sm);
-        color: var(--cor-texto); background: var(--cor-superficie-2); border: 1px solid var(--cor-borda); border-radius: var(--raio-completo); padding: 0 var(--esp-4); }
       .lista { flex: 1; min-height: 0; overflow-y: auto; }
-      .item { display: grid; grid-template-columns: 40px 1fr; gap: var(--esp-3); width: 100%; text-align: left;
-        background: none; border: none; cursor: pointer; padding: var(--esp-3); border-bottom: 1px solid var(--cor-divisor); }
+      .item { display: grid; grid-template-columns: 26px 40px 1fr; gap: var(--esp-2); align-items: center; width: 100%; text-align: left;
+        cursor: pointer; padding: var(--esp-3); border-bottom: 1px solid var(--cor-divisor); }
       .item:hover { background: var(--cor-superficie-2); }
       .item.sel { background: var(--cor-primaria-suave); }
       .item.naolido .rem, .item.naolido .assunto { font-weight: var(--peso-forte); color: var(--cor-texto); }
-      .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        color: #fff; font-weight: var(--peso-semi); font-size: var(--fs-sm); flex: none; }
+      .check { width: 18px; height: 18px; margin: 0; cursor: pointer; opacity: 0; transition: opacity .12s; }
+      .item:hover .check, .item.marcado .check { opacity: 1; }
+      @media (hover: none) { .check { opacity: 1; } }
+      .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: var(--peso-semi); font-size: var(--fs-sm); flex: none; }
       .corpo-item { min-width: 0; }
       .linha1 { display: flex; justify-content: space-between; gap: var(--esp-2); align-items: baseline; }
       .rem { font-size: var(--fs-md); color: var(--cor-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -114,15 +120,9 @@ class EmailView extends BaseElement {
       .leitura-col { min-height: 0; display: flex; flex-direction: column; }
       email-conversa { flex: 1; min-height: 0; }
 
-      /* Tablet: esconde a coluna de pastas (vira barra de filtros em cima da lista) */
-      @media (max-width: 1100px) {
-        .painel { grid-template-columns: minmax(280px, 340px) 1fr; }
-        .pastas { display: none; }
-      }
-      /* Mobile: 1 coluna; ao abrir um e-mail, a leitura ocupa tudo. */
+      @media (max-width: 1100px) { .painel { grid-template-columns: minmax(280px, 340px) 1fr; } .pastas { display: none; } }
       @media (max-width: 820px) {
-        .area { height: auto; min-height: 0; }
-        .painel { grid-template-columns: 1fr; height: 70dvh; }
+        .painel { grid-template-columns: 1fr; }
         .lista-col { border-right: none; }
         .leitura-col { display: none; }
         .painel.lendo .lista-col { display: none; }
@@ -136,14 +136,7 @@ class EmailView extends BaseElement {
     return `
       <div class="area">
         <div class="painel">
-          <div class="barra-topo">
-            <input id="busca" class="busca" type="search" placeholder="Buscar por remetente ou assunto..." value="${esc(this._q)}">
-            <div class="acoes">
-              <ui-button id="escrever" tamanho="sm">Escrever</ui-button>
-              <ui-button id="configurar" variant="secundario" tamanho="sm">Configurar</ui-button>
-              <ui-button id="atualizar" variant="secundario" tamanho="sm">Atualizar</ui-button>
-            </div>
-          </div>
+          <div class="barra-topo" id="barraTopo"></div>
           <aside class="pastas" id="pastas"></aside>
           <section class="lista-col">
             <div class="lista" id="lista"></div>
@@ -161,22 +154,56 @@ class EmailView extends BaseElement {
   }
 
   aposRender() {
-    this.$("#escrever").addEventListener("click", () => this._abrirCompositor({ modo: "novo" }));
-    this.$("#configurar").addEventListener("click", () => this._abrirEnderecos());
-    this.$("#atualizar").addEventListener("click", () => this.carregar());
-    const busca = this.$("#busca");
-    busca.addEventListener("keydown", (e) => { if (e.key === "Enter") { this._q = busca.value.trim(); this._pagina = 0; this.carregar(); } });
-
     const conversa = this.$("#conversa");
-    conversa.addEventListener("mudou", () => this.carregar());
+    conversa.addEventListener("mudou", () => { emailCache.invalidar(this._caixa); this.carregar(); });
     conversa.addEventListener("voltar", () => this._voltar());
     conversa.addEventListener("novo", () => this._abrirCompositor({ modo: "novo" }));
     conversa.addEventListener("compor", (e) => this._abrirCompositor(e.detail));
-
+    this._pintarBarra();
     this._pintarPastas();
     this._pintarLista();
   }
 
+  /* --------------------------- Barra do topo --------------------------- */
+  _pintarBarra() {
+    const b = this.$("#barraTopo");
+    if (!b) return;
+    if (this._sel.size > 0) {
+      b.innerHTML = `
+        <div class="sel-bar">
+          <span class="sel-info">${this._sel.size} selecionado(s)</span>
+          <div class="dir">
+            <ui-button id="loteArquivar" variant="secundario" tamanho="sm">Arquivar</ui-button>
+            <ui-button id="loteExcluir" variant="perigo-contorno" tamanho="sm">Excluir</ui-button>
+            <ui-button id="loteLida" variant="secundario" tamanho="sm">Marcar lida</ui-button>
+            <ui-button id="loteNaoLida" variant="secundario" tamanho="sm">Não lida</ui-button>
+            <ui-button id="loteLimpar" variant="secundario" tamanho="sm">Limpar</ui-button>
+          </div>
+        </div>`;
+      this.$("#loteArquivar").addEventListener("click", () => this._acaoLote("arquivar"));
+      this.$("#loteExcluir").addEventListener("click", () => this._acaoLote("lixeira"));
+      this.$("#loteLida").addEventListener("click", () => this._acaoLote("lida"));
+      this.$("#loteNaoLida").addEventListener("click", () => this._acaoLote("naoLida"));
+      this.$("#loteLimpar").addEventListener("click", () => { this._sel.clear(); this._pintarBarra(); this._pintarLista(); });
+      return;
+    }
+    b.innerHTML = `
+      <input id="busca" class="busca" type="search" placeholder="Buscar por remetente ou assunto..." value="${esc(this._q)}">
+      <div class="acoes">
+        <ui-button id="escrever" tamanho="sm">Escrever</ui-button>
+        <ui-button id="configurar" variant="secundario" tamanho="sm">Configurar</ui-button>
+        <ui-button id="atualizar" variant="secundario" tamanho="sm">Atualizar</ui-button>
+      </div>`;
+    this.$("#escrever").addEventListener("click", () => this._abrirCompositor({ modo: "novo" }));
+    this.$("#configurar").addEventListener("click", () => this._abrirEnderecos());
+    this.$("#atualizar").addEventListener("click", () => { emailCache.invalidar(this._caixa); this.carregar(); });
+    this.$("#busca").addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      this._q = e.target.value.trim(); this._pagina = 0; this.carregar();
+    });
+  }
+
+  /* ------------------------------ Pastas ------------------------------ */
   _pintarPastas() {
     const box = this.$("#pastas");
     if (!box) return;
@@ -186,16 +213,13 @@ class EmailView extends BaseElement {
         this._labels.map((n) => `<button class="pasta ${this._caixa === "label:" + n ? "ativo" : ""}" data-caixa="label:${esc(n)}" type="button"><ui-icon name="tag" size="16"></ui-icon>${esc(n)}</button>`).join("")
       : "";
     box.innerHTML = PASTAS.map(btn).join("") + labelsHtml;
-    box.querySelectorAll(".pasta").forEach((b) => b.addEventListener("click", () => this._irPasta(b.dataset.caixa)));
+    box.querySelectorAll(".pasta").forEach((el) => el.addEventListener("click", () => this._irPasta(el.dataset.caixa)));
   }
 
   _irPasta(caixa) {
-    this._caixa = caixa;
-    this._q = "";
-    this._pagina = 0;
-    this._selecionar(null);
-    const bu = this.$("#busca"); if (bu) bu.value = "";
-    this._pintarPastas();
+    this._caixa = caixa; this._q = ""; this._pagina = 0;
+    this._sel.clear(); this._selecionar(null);
+    this._pintarBarra(); this._pintarPastas();
     this.carregar();
   }
 
@@ -204,24 +228,30 @@ class EmailView extends BaseElement {
     catch (e) { /* sem labels */ }
   }
 
+  /* ---------------------------- Carregar ------------------------------ */
   async carregar() {
-    this._estado = "carregando";
+    const cache = this.usaCache ? emailCache.getLista(this._caixa) : null;
+    if (cache) { this._dados = { threads: cache, pagina: 0, temMais: cache.length >= 25 }; this._estado = "pronto"; }
+    else { this._estado = "carregando"; }
     this._pintarLista();
     try {
+      let dados;
       if (this.ehRascunhos) {
         const r = await api.call("email.caixa.rascunhos", { pagina: this._pagina });
-        this._dados = { pagina: r.pagina, temMais: r.temMais, threads: (r.rascunhos || []).map((d) => ({ draftId: d.draftId, de: "Rascunho", assunto: d.assunto, previa: d.previa, data: d.data, lido: true, _draft: d })) };
+        dados = { pagina: r.pagina, temMais: r.temMais, threads: (r.rascunhos || []).map((d) => ({ draftId: d.draftId, de: "Rascunho", assunto: d.assunto, previa: d.previa, data: d.data, lido: true, _draft: d })) };
       } else {
-        this._dados = await api.call("email.caixa.listar", { caixa: this._caixa, q: this._q || "", pagina: this._pagina });
+        dados = await api.call("email.caixa.listar", { caixa: this._caixa, q: this._q || "", pagina: this._pagina });
+        if (this.usaCache) emailCache.setLista(this._caixa, dados.threads);
       }
-      this._estado = "pronto";
+      this._dados = dados; this._estado = "pronto";
     } catch (e) {
-      this._estado = "erro";
-      notificarErro(e);
+      if (cache) return; // mantém o cache silenciosamente em falha de refresh
+      this._estado = "erro"; notificarErro(e);
     }
     this._pintarLista();
   }
 
+  /* ------------------------------ Lista ------------------------------- */
   _pintarLista() {
     const lista = this.$("#lista");
     if (!lista) return;
@@ -232,17 +262,21 @@ class EmailView extends BaseElement {
 
     const linhas = threads.map((t, i) => {
       const nome = t.de || t.deEmail || "—";
+      const id = t.threadId || t.draftId;
+      const marcado = this._sel.has(t.threadId);
+      const check = this.ehRascunhos ? `<span></span>`
+        : `<input class="check" type="checkbox" data-i="${i}" ${marcado ? "checked" : ""} title="Selecionar">`;
       const estrela = this.ehRascunhos ? "" : `<button class="estrela ${t.estrela ? "on" : ""}" data-i="${i}" type="button" title="Favoritar">${t.estrela ? "★" : "☆"}</button>`;
-      const labels = (t.labels || []).filter((n) => ["INBOX", "SENT", "UNREAD", "IMPORTANT", "STARRED"].indexOf(n) < 0)
-        .map((n) => `<span class="lbl">${esc(n)}</span>`).join("");
-      return `<button class="item ${t.lido ? "" : "naolido"} ${this._selecionado === (t.threadId || t.draftId) ? "sel" : ""}" data-i="${i}" type="button">
+      const labels = (t.labels || []).filter((n) => ["INBOX", "SENT", "UNREAD", "IMPORTANT", "STARRED"].indexOf(n) < 0).map((n) => `<span class="lbl">${esc(n)}</span>`).join("");
+      return `<div class="item ${t.lido ? "" : "naolido"} ${marcado ? "marcado" : ""} ${this._selecionado === id ? "sel" : ""}" data-i="${i}" role="button" tabindex="0">
+        ${check}
         <span class="avatar" style="background:${corAvatar(nome)}">${esc(iniciais(nome))}</span>
         <span class="corpo-item">
           <span class="linha1"><span class="rem">${esc(nome)}</span><span class="data">${esc(quando(t.data))}</span></span>
           <span class="assunto">${labels}${esc(t.assunto)}${t.qtdMsgs > 1 ? ` (${t.qtdMsgs})` : ""}</span>
           <span class="linha2">${estrela}<span class="previa">${esc(t.previa || "")}</span></span>
         </span>
-      </button>`;
+      </div>`;
     }).join("");
     const temMais = !!(this._dados && this._dados.temMais);
     const paginacao = (this._pagina > 0 || temMais)
@@ -250,11 +284,17 @@ class EmailView extends BaseElement {
       : "";
     lista.innerHTML = `${linhas}${paginacao}`;
 
-    lista.querySelectorAll(".item").forEach((b) =>
-      b.addEventListener("click", (e) => { if (e.target.closest(".estrela")) return; this._clicar(threads[Number(b.dataset.i)]); })
+    lista.querySelectorAll(".item").forEach((el) =>
+      el.addEventListener("click", (e) => {
+        if (e.target.closest(".estrela") || e.target.closest(".check")) return;
+        this._clicar(threads[Number(el.dataset.i)]);
+      })
     );
-    lista.querySelectorAll(".estrela").forEach((b) =>
-      b.addEventListener("click", (e) => { e.stopPropagation(); this._toggleEstrela(threads[Number(b.dataset.i)]); })
+    lista.querySelectorAll(".estrela").forEach((el) =>
+      el.addEventListener("click", (e) => { e.stopPropagation(); this._toggleEstrela(threads[Number(el.dataset.i)]); })
+    );
+    lista.querySelectorAll(".check").forEach((el) =>
+      el.addEventListener("change", (e) => { e.stopPropagation(); this._toggleSel(threads[Number(el.dataset.i)]); })
     );
     const ant = lista.querySelector("#ant"); if (ant) ant.addEventListener("click", () => { if (this._pagina > 0) { this._pagina--; this.carregar(); } });
     const prox = lista.querySelector("#prox"); if (prox) prox.addEventListener("click", () => { if (temMais) { this._pagina++; this.carregar(); } });
@@ -265,19 +305,17 @@ class EmailView extends BaseElement {
     if (t.draftId) { this._abrirCompositor({ draftId: t.draftId, draft: t._draft }); return; }
     this._selecionar(t.threadId);
     const conversa = this.$("#conversa");
-    conversa.assunto = t.assunto;
-    conversa.threadId = t.threadId;
+    conversa.assunto = t.assunto; conversa.threadId = t.threadId;
   }
 
   _selecionar(threadId) {
     this._selecionado = threadId;
-    // Realce na lista (sem re-render completo).
     const lista = this.$("#lista");
     if (lista) {
       const threads = (this._dados && this._dados.threads) || [];
-      lista.querySelectorAll(".item").forEach((b) => {
-        const t = threads[Number(b.dataset.i)];
-        b.classList.toggle("sel", !!t && (t.threadId || t.draftId) === threadId);
+      lista.querySelectorAll(".item").forEach((el) => {
+        const t = threads[Number(el.dataset.i)];
+        el.classList.toggle("sel", !!t && (t.threadId || t.draftId) === threadId);
       });
     }
     const painel = this.$(".painel");
@@ -290,11 +328,36 @@ class EmailView extends BaseElement {
     if (conversa) conversa.threadId = null;
   }
 
+  /* --------------------------- Seleção lote --------------------------- */
+  _toggleSel(t) {
+    if (!t || !t.threadId) return;
+    if (this._sel.has(t.threadId)) this._sel.delete(t.threadId);
+    else this._sel.add(t.threadId);
+    this._pintarBarra();
+    this._pintarLista();
+  }
+
+  async _acaoLote(acao) {
+    const ids = [...this._sel];
+    if (!ids.length) return;
+    try {
+      await api.call("email.caixa.marcarVarios", { threadIds: ids, acao });
+      const msgs = { arquivar: "Arquivadas.", lixeira: "Movidas para a lixeira.", lida: "Marcadas como lidas.", naoLida: "Marcadas como não lidas." };
+      toastSucesso(msgs[acao] || "Feito.");
+      this._sel.clear();
+      if (this._selecionado && ids.indexOf(this._selecionado) >= 0) this._voltar();
+      emailCache.invalidar(this._caixa);
+      this._pintarBarra();
+      this.carregar();
+    } catch (e) { notificarErro(e); }
+  }
+
   async _toggleEstrela(t) {
     if (!t || !t.threadId) return;
     try {
       await api.call("email.caixa.marcar", { threadId: t.threadId, acao: t.estrela ? "tirarEstrela" : "estrela" });
       t.estrela = !t.estrela;
+      if (this.usaCache && this._dados) emailCache.setLista(this._caixa, this._dados.threads);
       this._pintarLista();
     } catch (e) { notificarErro(e); }
   }
@@ -311,7 +374,7 @@ class EmailView extends BaseElement {
       c.para = d.para || ""; c.cc = d.cc || ""; c.assunto = d.assunto || ""; c.corpoHtml = d.html || "";
     }
     c.addEventListener("fechar", () => c.remove());
-    c.addEventListener("enviado", () => this.carregar());
+    c.addEventListener("enviado", () => { emailCache.invalidar(this._caixa); this.carregar(); });
     document.body.appendChild(c);
   }
 

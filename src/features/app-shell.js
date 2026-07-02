@@ -38,6 +38,10 @@ class AppShell extends BaseElement {
         padding-bottom: env(safe-area-inset-bottom); }
       /* Quando há dock flutuante, o conteúdo ganha folga p/ não ficar atrás dele. */
       :host([com-barra]) main { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
+      /* Rota "cheia" (E-mail): o conteúdo ocupa 100% do main SEM rolagem própria (a
+         view gerencia a rolagem interna) e o dock flutuante some — cliente em tela cheia. */
+      :host([cheio]) main { overflow: hidden; padding-bottom: 0; }
+      :host([cheio]) .bottombar { display: none; }
 
       /* DOCK FLUTUANTE (estilo iOS/Instagram) — CÁPSULA ESCURA translúcida, FLUTUANDO
          centralizada acima do conteúdo, em MOBILE e DESKTOP. Só aparece autenticado
@@ -173,6 +177,8 @@ class AppShell extends BaseElement {
     this.$("#hdr").hidden = !mostrarHeader;
     this.$("#sb").hidden = !mostrarSidebar;
     if (!mostrarSidebar) this.$("#sb").removeAttribute("aberto");
+    // Rota "cheia": E-mail ocupa toda a altura (sem rolagem do main nem dock).
+    this.toggleAttribute("cheio", mostrarSidebar && path === "/email");
     // Dock flutuante: só nas telas internas (mobile + desktop); some no login e no público.
     this.toggleAttribute("com-barra", mostrarSidebar);
     // Ao trocar de rota o dock reaparece (e recalibra o scroll).
