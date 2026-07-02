@@ -464,6 +464,7 @@ A transferência agrupa N pagamentos (1 por despesa). Colunas relevantes ao **co
 | texto | string | conteúdo da anotação |
 | criado_em / autor_nome | ISO / string | auditoria de criação |
 | atualizado_em / editor_nome | ISO / string | auditoria de edição |
+| cor | string | chave da paleta pastel do card (`amarelo`/`verde`/`azul`/`roxo`/`rosa`/`laranja`/`cinza`; `""` = padrão). Allowlist em `Notas.gs`; paleta em `src/features/obras/nota-cores.js`. |
 
 > **Compartilhadas na obra:** quem tem acesso à obra (dono ou compartilhamento) vê e edita (`_obraAcessivel`). A aba **auto-cria** no 1º acesso (`SheetRepo._abaDe`) — sem migração. No snapshot vão como `notasPorObra`. Ver `apps-script/Notas.gs`.
 

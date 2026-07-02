@@ -68,8 +68,8 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `notas.listar` | `{ obra_id }` | `{ notas:[{id,obra_id,titulo,texto,autor_nome,atualizado_em,...}] }` |
-| `notas.criar` | `{ obra_id, titulo, texto }` | `{ nota }` |
-| `notas.atualizar` | `{ id, titulo, texto }` | `{ nota }` |
+| `notas.criar` | `{ obra_id, titulo, texto, cor? }` | `{ nota }` |
+| `notas.atualizar` | `{ id, titulo, texto, cor? }` | `{ nota }` (só altera `cor` se a chave vier no payload) |
 | `notas.remover` | `{ id }` | `{ id }` |
 
 > Notas são **compartilhadas na obra** (quem tem acesso à obra vê/edita — `_obraAcessivel`). Vão no snapshot como `notasPorObra` (obraId → [nota]).
