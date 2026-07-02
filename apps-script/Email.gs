@@ -5,7 +5,8 @@
  * Script Properties do projeto. Configure (Editor do Apps Script → Project
  * Settings → Script Properties), após verificar o domínio no Resend:
  *   - RESEND_API_KEY   = re_...               (a API key do Resend)
- *   - EMAIL_REMETENTE  = Dataobra <notificacoes@dattaobra.com.br>
+ *   - EMAIL_REMETENTE  = Dattaobra <notificacoes@dattaobra.com.br>
+ *   - EMAIL_REPLYTO    = contato@dattaobra.com.br  (opcional; respostas caem na caixa)
  *   - EMAIL_TESTE      = seu@email.com         (só p/ testarEmailResend no editor)
  *
  * Uso interno (alertas/relatórios/link público):
@@ -17,10 +18,13 @@ function enviarEmailResend(para, assunto, html, opts) {
   const props = PropertiesService.getScriptProperties();
   const key = props.getProperty("RESEND_API_KEY");
   const remetente =
-    props.getProperty("EMAIL_REMETENTE") || "Dataobra <notificacoes@dattaobra.com.br>";
+    props.getProperty("EMAIL_REMETENTE") || "Dattaobra <notificacoes@dattaobra.com.br>";
   if (!key) lancar(ERRO.VALIDACAO, "RESEND_API_KEY não configurada nas Script Properties.");
   const destino = String(para || "").trim();
   if (!destino) lancar(ERRO.VALIDACAO, "Destinatário do e-mail vazio.");
+
+  // Reply-To: usa o explícito; senão o padrão (EMAIL_REPLYTO) → respostas caem na caixa.
+  const replyTo = (opts && opts.reply_to) || props.getProperty("EMAIL_REPLYTO") || "";
 
   const corpo = {
     from: remetente,
@@ -28,7 +32,7 @@ function enviarEmailResend(para, assunto, html, opts) {
     subject: String(assunto || ""),
     html: String(html || ""),
   };
-  if (opts && opts.reply_to) corpo.reply_to = opts.reply_to;
+  if (replyTo) corpo.reply_to = replyTo;
   if (opts && Array.isArray(opts.cc)) corpo.cc = opts.cc;
 
   const resp = UrlFetchApp.fetch("https://api.resend.com/emails", {
@@ -54,8 +58,8 @@ function emailTeste(data, sessao) {
   if (!para) lancar(ERRO.VALIDACAO, "Seu usuário não tem e-mail cadastrado.");
   const r = enviarEmailResend(
     para,
-    "Teste — Dataobra",
-    "<p>Funcionou! Este é um teste de envio via <b>Resend</b> do Dataobra.</p>"
+    "Teste — Dattaobra",
+    "<p>Funcionou! Este é um teste de envio via <b>Resend</b> do Dattaobra.</p>"
   );
   return { ok: true, id: r.id, para: para };
 }
