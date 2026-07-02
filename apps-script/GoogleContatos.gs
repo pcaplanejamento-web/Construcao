@@ -35,7 +35,12 @@ function _peopleFetch(acesso, metodo, url, corpo) {
   var codigo = resp.getResponseCode();
   var texto = resp.getContentText() || "";
   if (codigo < 200 || codigo >= 300) {
-    lancar(ERRO.INTERNO, "Google Contacts falhou (" + codigo + "). " + texto.slice(0, 300));
+    // Extrai a mensagem do Google (ex.: "People API has not been used... Enable it
+    // by visiting https://console.../people.googleapis.com..." ou "insufficient
+    // authentication scopes") para o usuário saber EXATAMENTE o que ajustar.
+    var msg = texto;
+    try { var j = JSON.parse(texto); if (j && j.error && j.error.message) msg = j.error.message; } catch (e) {}
+    lancar(ERRO.INTERNO, "Google Contacts (" + codigo + "): " + String(msg).slice(0, 500));
   }
   return texto ? JSON.parse(texto) : {};
 }

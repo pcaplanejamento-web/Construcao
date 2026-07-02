@@ -8,7 +8,6 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
@@ -41,7 +40,11 @@ class GoogleContatoPicker extends BaseElement {
       .nome { font-size: var(--fs-md); color: var(--cor-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .mail { font-size: var(--fs-sm); color: var(--cor-texto-fraco); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .vazio { color: var(--cor-texto-fraco); padding: var(--esp-5) var(--esp-4); text-align: center; }
-      .vazio.erro { color: var(--cor-erro); }
+      .vazio.erro { color: var(--cor-erro); display: flex; flex-direction: column; gap: var(--esp-3); }
+      .vazio.erro .dica { color: var(--cor-texto-suave); font-size: var(--fs-sm); line-height: 1.5; }
+      .vazio.erro .det { display: block; color: var(--cor-texto-fraco); font-size: var(--fs-xs); line-height: 1.5;
+        background: var(--cor-superficie-2); border: 1px solid var(--cor-borda); border-radius: var(--raio-sm);
+        padding: var(--esp-2) var(--esp-3); text-align: left; word-break: break-word; }
     `;
   }
 
@@ -78,7 +81,7 @@ class GoogleContatoPicker extends BaseElement {
       this._estado = "pronto";
     } catch (e) {
       this._estado = "erro";
-      notificarErro(e);
+      this._erroMsg = (e && e.message) || "";
     }
     this._pintar();
   }
@@ -87,7 +90,15 @@ class GoogleContatoPicker extends BaseElement {
     const box = this.$("#lista");
     if (!box) return;
     if (this._estado === "carregando") { box.innerHTML = `<ui-spinner centro text="Carregando contatos do Google..."></ui-spinner>`; return; }
-    if (this._estado === "erro") { box.innerHTML = `<p class="vazio erro">Não foi possível carregar os contatos do Google. Conecte o Google (com permissão de contatos) no seu perfil e tente de novo.</p>`; return; }
+    if (this._estado === "erro") {
+      const detalhe = this._erroMsg ? `<span class="det">${esc(this._erroMsg)}</span>` : "";
+      box.innerHTML = `<div class="vazio erro">
+        <p>Não foi possível carregar os contatos do Google.</p>
+        <p class="dica">Confira, no seu <strong>Perfil</strong>: (1) a <strong>People API</strong> ativa no Google Cloud e (2) a conta <strong>reconectada</strong> (permissão de contatos).</p>
+        ${detalhe}
+      </div>`;
+      return;
+    }
     const cs = this._itens || [];
     if (!cs.length) { box.innerHTML = `<p class="vazio">Nenhum contato encontrado.</p>`; return; }
     box.innerHTML = cs.map((c, i) => `<button class="row" type="button" data-i="${i}">
