@@ -31,6 +31,12 @@ function diaLongo(dia) {
     : d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
 }
 
+// Obras cujos eventos avulsos do Google já buscamos NESTA sessão (por carga de
+// página). Enquanto a página viver, reentrar na aba Agenda usa só o cache — zero
+// rede. Uma nova sessão (login/refresh) busca de novo; o botão "Sincronizar
+// agora" e salvar um evento forçam atualização a qualquer momento.
+const _googleBuscadoNaSessao = new Set();
+
 class ObraAgenda extends BaseElement {
   constructor() {
     super();
@@ -101,8 +107,12 @@ class ObraAgenda extends BaseElement {
     this._estado = "pronto";
     this.renderizar();
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
-    // Em SEGUNDO PLANO: atualiza os eventos avulsos do Google (sem spinner).
-    if (this._google.conectado) this._atualizarGoogleEmBackground();
+    // Em SEGUNDO PLANO, e só UMA vez por sessão por obra: atualiza os eventos
+    // avulsos do Google. Reentrar na aba depois usa apenas o cache (sem rede).
+    if (this._google.conectado && !_googleBuscadoNaSessao.has(this.obraId)) {
+      _googleBuscadoNaSessao.add(this.obraId);
+      this._atualizarGoogleEmBackground();
+    }
   }
 
   /** Sincroniza (1×) e re-lista os eventos avulsos do Google, sem bloquear a UI. */
