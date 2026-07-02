@@ -65,14 +65,14 @@ class EmailView extends BaseElement {
   estilos() {
     return `
       :host { display: block; }
-      .area { padding: var(--esp-tela); display: flex; flex-direction: column; gap: var(--esp-4); height: calc(100dvh - 2 * var(--esp-tela)); min-height: 480px; box-sizing: border-box; }
-      header.topo { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--esp-3); flex-wrap: wrap; }
-      h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
-      p.sub { color: var(--cor-texto-suave); margin-top: 2px; font-size: var(--fs-sm); }
-      .topo-acoes { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
+      .area { padding: var(--esp-tela); display: flex; flex-direction: column; height: calc(100dvh - 2 * var(--esp-tela)); min-height: 480px; box-sizing: border-box; }
 
-      .painel { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(300px, 380px) 1fr;
+      .painel { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(300px, 380px) 1fr; grid-template-rows: auto 1fr;
         gap: 0; border: 1px solid var(--cor-borda); border-radius: var(--raio-lg); overflow: hidden; background: var(--cor-superficie); }
+      /* Barra do topo do componente: busca (esquerda) + ações (canto direito). */
+      .barra-topo { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--esp-3);
+        padding: var(--esp-3); border-bottom: 1px solid var(--cor-divisor); flex-wrap: wrap; }
+      .barra-topo .acoes { display: flex; gap: var(--esp-2); flex: none; margin-left: auto; }
 
       /* Pastas */
       .pastas { display: flex; flex-direction: column; gap: 2px; padding: var(--esp-3); border-right: 1px solid var(--cor-divisor); overflow-y: auto; }
@@ -86,8 +86,7 @@ class EmailView extends BaseElement {
 
       /* Lista */
       .lista-col { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--cor-divisor); }
-      .busca-wrap { padding: var(--esp-3); border-bottom: 1px solid var(--cor-divisor); }
-      .busca { width: 100%; height: 38px; box-sizing: border-box; font-family: inherit; font-size: var(--fs-sm);
+      .busca { flex: 1 1 200px; height: 38px; box-sizing: border-box; font-family: inherit; font-size: var(--fs-sm);
         color: var(--cor-texto); background: var(--cor-superficie-2); border: 1px solid var(--cor-borda); border-radius: var(--raio-completo); padding: 0 var(--esp-4); }
       .lista { flex: 1; min-height: 0; overflow-y: auto; }
       .item { display: grid; grid-template-columns: 40px 1fr; gap: var(--esp-3); width: 100%; text-align: left;
@@ -128,6 +127,7 @@ class EmailView extends BaseElement {
         .leitura-col { display: none; }
         .painel.lendo .lista-col { display: none; }
         .painel.lendo .leitura-col { display: flex; }
+        .painel.lendo .barra-topo { display: none; }
       }
     `;
   }
@@ -135,21 +135,17 @@ class EmailView extends BaseElement {
   template() {
     return `
       <div class="area">
-        <header class="topo">
-          <div>
-            <h1>E-mail</h1>
-            <p class="sub">Caixa da empresa · contato@dattaobra.com.br</p>
-          </div>
-          <div class="topo-acoes">
-            <ui-button id="escrever" tamanho="sm">Escrever</ui-button>
-            <ui-button id="configurar" variant="secundario" tamanho="sm">Configurar</ui-button>
-            <ui-button id="atualizar" variant="secundario" tamanho="sm">Atualizar</ui-button>
-          </div>
-        </header>
         <div class="painel">
+          <div class="barra-topo">
+            <input id="busca" class="busca" type="search" placeholder="Buscar por remetente ou assunto..." value="${esc(this._q)}">
+            <div class="acoes">
+              <ui-button id="escrever" tamanho="sm">Escrever</ui-button>
+              <ui-button id="configurar" variant="secundario" tamanho="sm">Configurar</ui-button>
+              <ui-button id="atualizar" variant="secundario" tamanho="sm">Atualizar</ui-button>
+            </div>
+          </div>
           <aside class="pastas" id="pastas"></aside>
           <section class="lista-col">
-            <div class="busca-wrap"><input id="busca" class="busca" type="search" placeholder="Buscar por remetente ou assunto..." value="${esc(this._q)}"></div>
             <div class="lista" id="lista"></div>
           </section>
           <section class="leitura-col">
