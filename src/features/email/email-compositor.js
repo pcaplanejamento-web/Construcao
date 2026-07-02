@@ -31,6 +31,10 @@ const PALETA = [
   "#9900ff", "#ff00ff", "#e6b8af", "#fce5cd", "#fff2cc", "#d9ead3", "#d0e0e3", "#cfe2f3",
   "#cc4125", "#e69138", "#f1c232", "#6aa84f", "#45818e", "#3d85c6", "#674ea7", "#a64d79",
 ];
+// Ícones SVG da toolbar (sem emoji).
+const SVG_AL = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4h11M2.5 8h7M2.5 12h9.5"/></svg>';
+const SVG_AC = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4h11M4.5 8h7M3.5 12h9"/></svg>';
+const SVG_AR = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4h11M6.5 8h7M4 12h9.5"/></svg>';
 
 class EmailCompositor extends BaseElement {
   constructor() {
@@ -89,7 +93,8 @@ class EmailCompositor extends BaseElement {
       .caret { font-size: 9px; color: var(--cor-texto-fraco); }
       .ab { font-weight: 800; border-bottom: 3px solid #111; line-height: .9; } .ab.hl { background: #ffff00; border-bottom: none; padding: 0 2px; }
       .dd { position: relative; display: inline-flex; }
-      .pop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 8; background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-md); box-shadow: var(--sombra-lg); padding: 6px; }
+      .pop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 8; background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio-md); box-shadow: var(--sombra-lg); padding: 6px; max-width: 92vw; }
+      .tb svg { display: block; } .tb ui-icon { display: inline-flex; }
       .pop[hidden] { display: none; }
       .pop-item { display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 6px 12px; border-radius: var(--raio-sm); color: var(--cor-texto); white-space: nowrap; font-size: var(--fs-sm); }
       .pop-item:hover { background: var(--cor-superficie-2); }
@@ -160,11 +165,11 @@ class EmailCompositor extends BaseElement {
           <button class="tb" data-cmd="insertUnorderedList" title="Lista" type="button">•</button>
           <button class="tb" data-cmd="insertOrderedList" title="Lista numerada" type="button">1.</button>
           <span class="sep"></span>
-          <button class="tb" data-cmd="justifyLeft" title="Alinhar à esquerda" type="button">⯇</button>
-          <button class="tb" data-cmd="justifyCenter" title="Centralizar" type="button">≡</button>
-          <button class="tb" data-cmd="justifyRight" title="Alinhar à direita" type="button">⯈</button>
+          <button class="tb" data-cmd="justifyLeft" title="Alinhar à esquerda" type="button">${SVG_AL}</button>
+          <button class="tb" data-cmd="justifyCenter" title="Centralizar" type="button">${SVG_AC}</button>
+          <button class="tb" data-cmd="justifyRight" title="Alinhar à direita" type="button">${SVG_AR}</button>
           <span class="sep"></span>
-          <button class="tb" data-cmd="createLink" title="Inserir link" type="button">🔗</button>
+          <button class="tb" data-cmd="createLink" title="Inserir link" type="button"><ui-icon name="link" size="15"></ui-icon></button>
         </div>
         <div class="corpo" id="corpo" contenteditable="true"></div>
         <div class="anexos" id="anexos"></div>
@@ -178,7 +183,7 @@ class EmailCompositor extends BaseElement {
   }
 
   aoConectar() {
-    this._contatos = (dataStore.contatosAtivos ? dataStore.contatosAtivos() : []).filter((c) => c && c.email);
+    this._contatos = this._montarDestinatarios();
     this.$("ui-modal").addEventListener("fechar", () => this._fechar());
     this.$("#cancelar").addEventListener("click", () => this._fechar());
     this.$("#enviar").addEventListener("click", () => this.enviar());
@@ -239,6 +244,26 @@ class EmailCompositor extends BaseElement {
   _fecharPops() { this.$$(".pop").forEach((p) => (p.hidden = true)); }
 
   /* -------------------------- Autocomplete ---------------------------- */
+  /** Destinatários sugeridos: você + usuários (compartilhados) + contatos + empresas, com e-mail. */
+  _montarDestinatarios() {
+    const seen = new Set();
+    const out = [];
+    const add = (nome, email, tipo) => {
+      email = String(email || "").trim();
+      if (!email || seen.has(email.toLowerCase())) return;
+      seen.add(email.toLowerCase());
+      out.push({ nome: nome || email, email, tipo });
+    };
+    try {
+      const u = dataStore.usuario && dataStore.usuario();
+      if (u && u.email) add((u.nome || "Você") + " (você)", u.email, "você");
+      (dataStore.usuarios ? dataStore.usuarios() : []).forEach((x) => x && add(x.nome, x.email, "usuário"));
+      (dataStore.contatosAtivos ? dataStore.contatosAtivos() : []).forEach((x) => x && add(x.nome, x.email, "contato"));
+      (dataStore.fornecedoresAtivos ? dataStore.fornecedoresAtivos() : []).forEach((x) => x && add(x.nome, x.email, "empresa"));
+    } catch (e) { /* data-store indisponível */ }
+    return out;
+  }
+
   _ligarAutocomplete(inpSel, boxSel) {
     const inp = this.$(inpSel), box = this.$(boxSel);
     if (!inp || !box) return;
@@ -262,7 +287,7 @@ class EmailCompositor extends BaseElement {
     if (token.length < 1 || !this._contatos.length) { box.hidden = true; return; }
     const cs = this._contatos.filter((c) => (c.nome || "").toLowerCase().includes(token) || (c.email || "").toLowerCase().includes(token)).slice(0, 6);
     if (!cs.length) { box.hidden = true; return; }
-    box.innerHTML = cs.map((c) => `<button type="button" data-email="${esc(c.email)}"><b>${esc(c.nome || c.email)}</b><small>${esc(c.email)}</small></button>`).join("");
+    box.innerHTML = cs.map((c) => `<button type="button" data-email="${esc(c.email)}"><b>${esc(c.nome || c.email)}</b><small>${esc(c.email)}${c.tipo ? " · " + esc(c.tipo) : ""}</small></button>`).join("");
     box.hidden = false;
     box.querySelectorAll("button").forEach((b) =>
       b.addEventListener("mousedown", (e) => {

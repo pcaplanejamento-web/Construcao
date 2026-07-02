@@ -91,7 +91,7 @@ class EmailEnderecos extends BaseElement {
           <button data-cmd="bold" title="Negrito" type="button" style="font-weight:800">B</button>
           <button data-cmd="italic" title="Itálico" type="button" style="font-style:italic">I</button>
           <button data-cmd="underline" title="Sublinhado" type="button" style="text-decoration:underline">U</button>
-          <button data-cmd="createLink" title="Link" type="button">🔗</button>
+          <button data-cmd="createLink" title="Link" type="button"><ui-icon name="link" size="15"></ui-icon></button>
         </div>
         <div class="sig" id="sig" contenteditable="true"></div>
       </div>

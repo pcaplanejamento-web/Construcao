@@ -74,7 +74,12 @@ class EmailView extends BaseElement {
          então trocar busca↔seleção NÃO muda a altura do componente. */
       .barra-topo { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--esp-3);
         padding: 0 var(--esp-3); border-bottom: 1px solid var(--cor-divisor); flex-wrap: nowrap; overflow-x: auto;
-        height: 60px; min-height: 60px; }
+        height: 60px; min-height: 60px; scrollbar-width: none; }
+      .barra-topo::-webkit-scrollbar { display: none; }
+      /* Seletor de pastas (aparece quando a coluna de pastas some — tablet/mobile). */
+      .pasta-sel { display: none; height: 34px; flex: none; box-sizing: border-box; font-family: inherit; font-size: var(--fs-sm);
+        color: var(--cor-texto); background: var(--cor-superficie-2); border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm); padding: 0 var(--esp-2); max-width: 40vw; }
+      @media (max-width: 1100px) { .pasta-sel { display: inline-block; } }
       .barra-topo .busca { flex: 1 1 120px; min-width: 80px; height: 38px; box-sizing: border-box; font-family: inherit; font-size: var(--fs-sm);
         color: var(--cor-texto); background: var(--cor-superficie-2); border: 1px solid var(--cor-borda); border-radius: var(--raio-completo); padding: 0 var(--esp-4); }
       .barra-topo .acoes { display: flex; gap: var(--esp-2); flex: none; margin-left: auto; }
@@ -190,13 +195,16 @@ class EmailView extends BaseElement {
       this.$("#loteLimpar").addEventListener("click", () => { this._sel.clear(); this._pintarBarra(); this._pintarLista(); });
       return;
     }
+    const opts = [...PASTAS.map((p) => ({ v: p.id, t: p.rotulo })), ...this._labels.map((n) => ({ v: "label:" + n, t: n }))];
     b.innerHTML = `
+      <select class="pasta-sel" id="pastaSel" title="Pasta">${opts.map((o) => `<option value="${esc(o.v)}" ${this._caixa === o.v ? "selected" : ""}>${esc(o.t)}</option>`).join("")}</select>
       <input id="busca" class="busca" type="search" placeholder="Buscar por remetente ou assunto..." value="${esc(this._q)}">
       <div class="acoes">
         <ui-button id="escrever" tamanho="sm">Escrever</ui-button>
         <ui-button id="configurar" variant="secundario" tamanho="sm">Configurar</ui-button>
         <ui-button id="atualizar" variant="secundario" tamanho="sm">Atualizar</ui-button>
       </div>`;
+    const ps = this.$("#pastaSel"); if (ps) ps.addEventListener("change", () => this._irPasta(ps.value));
     this.$("#escrever").addEventListener("click", () => this._abrirCompositor({ modo: "novo" }));
     this.$("#configurar").addEventListener("click", () => this._abrirEnderecos());
     this.$("#atualizar").addEventListener("click", () => { emailCache.invalidar(this._caixa); this.carregar(); });
@@ -227,8 +235,12 @@ class EmailView extends BaseElement {
   }
 
   async _carregarLabels() {
-    try { const r = await api.call("email.caixa.labels"); this._labels = r.labels || []; this._pintarPastas(); }
-    catch (e) { /* sem labels */ }
+    try {
+      const r = await api.call("email.caixa.labels");
+      this._labels = r.labels || [];
+      this._pintarPastas();
+      if (this._sel.size === 0) this._pintarBarra(); // atualiza o seletor de pastas (mobile) com os marcadores
+    } catch (e) { /* sem labels */ }
   }
 
   /* ---------------------------- Carregar ------------------------------ */
