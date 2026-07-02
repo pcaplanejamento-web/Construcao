@@ -36,6 +36,7 @@ const ROTAS = {
   "email.caixa.responder": { fn: emailCaixaResponder },
   "email.caixa.encaminhar": { fn: emailCaixaEncaminhar },
   "email.caixa.marcar": { fn: emailCaixaMarcar },
+  "email.caixa.marcarVarios": { fn: emailCaixaMarcarVarios },
   "email.caixa.labels": { fn: emailCaixaLabels },
   "email.caixa.aplicarLabel": { fn: emailCaixaAplicarLabel },
   "email.caixa.anexo": { fn: emailCaixaAnexo },

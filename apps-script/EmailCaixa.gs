@@ -39,14 +39,26 @@ function _remetentes() {
   return { principal: principal, aliases: GmailApp.getAliases() || [] };
 }
 
-/** Endereços @dattaobra.com.br criados no app (enviados via Resend). */
+/** Endereços @dattaobra.com.br criados no app (enviados via Resend). Cada item:
+ *  { e:"contato@dattaobra.com.br", nome:"Dattaobra" }. Aceita formato antigo (string). */
 function _enderecos() {
-  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty("EMAIL_ENDERECOS") || "[]") || []; }
-  catch (e) { return []; }
+  try {
+    var raw = JSON.parse(PropertiesService.getScriptProperties().getProperty("EMAIL_ENDERECOS") || "[]") || [];
+    return raw.map(function (x) {
+      return typeof x === "string" ? { e: x, nome: "" } : { e: (x.e || x.endereco || ""), nome: (x.nome || "") };
+    }).filter(function (x) { return x.e; });
+  } catch (e) { return []; }
+}
+function _enderecosEmails() { return _enderecos().map(function (x) { return x.e; }); }
+/** Extrai o e-mail de "Nome <e@mail>" ou "e@mail". */
+function _soEmail(v) {
+  var f = String(v || "").trim();
+  var m = f.match(/<(.+?)>/);
+  return (m ? m[1] : f).trim();
 }
 function _ehEnderecoResend(from) {
-  var f = String(from || "").trim();
-  return !!f && _enderecos().indexOf(f) >= 0;
+  var e = _soEmail(from);
+  return !!e && _enderecosEmails().indexOf(e) >= 0;
 }
 /** [{nome,mimeType,base64}] -> formato de anexo do Resend. */
 function _anexosResend(anexos) {
@@ -54,16 +66,16 @@ function _anexosResend(anexos) {
     .map(function (a) { return { filename: a.nome || "anexo", content: a.base64 }; });
 }
 
-/** email.caixa.remetentes -> { principal, aliases, enderecos, assinatura }. */
+/** email.caixa.remetentes -> { principal, aliases, enderecos:[{endereco,nome}], assinatura }. */
 function emailCaixaRemetentes(data, sessao) {
   exigirAdmin(sessao);
   var r = _remetentes();
-  r.enderecos = _enderecos();
+  r.enderecos = _enderecos().map(function (x) { return { endereco: x.e, nome: x.nome }; });
   r.assinatura = PropertiesService.getScriptProperties().getProperty("EMAIL_ASSINATURA") || "";
   return r;
 }
 
-/** email.caixa.criarEndereco -> { enderecos }. Adiciona local@dattaobra.com.br à lista. */
+/** email.caixa.criarEndereco -> { enderecos }. Adiciona local@dattaobra.com.br (+ nome opcional). */
 function emailCaixaCriarEndereco(data, sessao) {
   exigirAdmin(sessao);
   var local = String((data && data.local) || "").trim().toLowerCase();
@@ -71,19 +83,20 @@ function emailCaixaCriarEndereco(data, sessao) {
     lancar(ERRO.VALIDACAO, "Nome inválido: use letras, números, ponto, hífen ou sublinhado.");
   }
   var addr = local + "@dattaobra.com.br";
-  var lista = _enderecos();
-  if (lista.indexOf(addr) < 0) lista.push(addr);
+  var nome = String((data && data.nome) || "").trim().slice(0, 60);
+  var lista = _enderecos().filter(function (x) { return x.e !== addr; });
+  lista.push({ e: addr, nome: nome });
   PropertiesService.getScriptProperties().setProperty("EMAIL_ENDERECOS", JSON.stringify(lista));
-  return { enderecos: lista };
+  return { enderecos: lista.map(function (x) { return { endereco: x.e, nome: x.nome }; }) };
 }
 
 /** email.caixa.removerEndereco -> { enderecos }. */
 function emailCaixaRemoverEndereco(data, sessao) {
   exigirAdmin(sessao);
-  var addr = String((data && data.endereco) || "").trim();
-  var lista = _enderecos().filter(function (e) { return e !== addr; });
+  var addr = _soEmail((data && data.endereco) || "");
+  var lista = _enderecos().filter(function (x) { return x.e !== addr; });
   PropertiesService.getScriptProperties().setProperty("EMAIL_ENDERECOS", JSON.stringify(lista));
-  return { enderecos: lista };
+  return { enderecos: lista.map(function (x) { return { endereco: x.e, nome: x.nome }; }) };
 }
 
 /** Valida o "De": só a conta principal ou um alias (evita forjar remetente). "" = padrão. */
@@ -254,14 +267,8 @@ function emailCaixaLer(data, sessao) {
 
 /* ------------------------- Ações (marcar/labels) -------------------------- */
 
-/** email.caixa.marcar — { threadId, acao:"lida"|"naoLida"|"arquivar"|"lixeira"|"estrela"|"tirarEstrela" }. */
-function emailCaixaMarcar(data, sessao) {
-  exigirAdmin(sessao);
-  var id = String((data && data.threadId) || "");
-  var acao = String((data && data.acao) || "");
-  if (!id) lancar(ERRO.VALIDACAO, "Conversa não informada.");
-  var t = GmailApp.getThreadById(id);
-  if (!t) lancar(ERRO.NAO_ENCONTRADO, "Conversa não encontrada.");
+/** Aplica UMA ação a uma thread (compartilhado por marcar/marcarVarios). */
+function _aplicarMarcar(t, acao) {
   if (acao === "lida") t.markRead();
   else if (acao === "naoLida") t.markUnread();
   else if (acao === "arquivar") t.moveToArchive();
@@ -269,7 +276,30 @@ function emailCaixaMarcar(data, sessao) {
   else if (acao === "estrela") t.getMessages().forEach(function (m) { m.star(); });
   else if (acao === "tirarEstrela") t.getMessages().forEach(function (m) { m.unstar(); });
   else lancar(ERRO.VALIDACAO, "Ação inválida.");
+}
+
+/** email.caixa.marcar — { threadId, acao:"lida"|"naoLida"|"arquivar"|"lixeira"|"estrela"|"tirarEstrela" }. */
+function emailCaixaMarcar(data, sessao) {
+  exigirAdmin(sessao);
+  var id = String((data && data.threadId) || "");
+  if (!id) lancar(ERRO.VALIDACAO, "Conversa não informada.");
+  var t = GmailApp.getThreadById(id);
+  if (!t) lancar(ERRO.NAO_ENCONTRADO, "Conversa não encontrada.");
+  _aplicarMarcar(t, String((data && data.acao) || ""));
   return { ok: true };
+}
+
+/** email.caixa.marcarVarios — { threadIds:[], acao } -> { ok, total }. Ação em lote. */
+function emailCaixaMarcarVarios(data, sessao) {
+  exigirAdmin(sessao);
+  var ids = (data && data.threadIds) || [];
+  var acao = String((data && data.acao) || "");
+  var n = 0;
+  for (var i = 0; i < ids.length; i++) {
+    var t = GmailApp.getThreadById(String(ids[i]));
+    if (t) { _aplicarMarcar(t, acao); n++; }
+  }
+  return { ok: true, total: n };
 }
 
 /** email.caixa.labels -> { labels:[nome,...] } (marcadores do usuário). */
