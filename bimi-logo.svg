@@ -1,0 +1,28 @@
+<svg version="1.2" baseProfile="tiny-ps" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Dattaobra</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#63d8c8"/>
+      <stop offset="1" stop-color="#0e9c92"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g transform="translate(2 -20)">
+    <!-- Nuvem (branca) -->
+    <g fill="#ffffff">
+      <rect x="132" y="322" width="248" height="72" rx="36"/>
+      <circle cx="194" cy="324" r="48"/>
+      <circle cx="252" cy="290" r="60"/>
+      <circle cx="320" cy="322" r="54"/>
+    </g>
+    <!-- Seta de crescimento: contorno teal (grosso) + branco por cima (fino) -->
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- contorno teal -->
+      <path d="M188 356 Q 268 322 350 234" stroke="#0e9c92" stroke-width="62"/>
+      <path d="M296 228 L360 220 L354 286" stroke="#0e9c92" stroke-width="62"/>
+      <!-- branco -->
+      <path d="M188 356 Q 268 322 350 234" stroke="#ffffff" stroke-width="34"/>
+      <path d="M296 228 L360 220 L354 286" stroke="#ffffff" stroke-width="34"/>
+    </g>
+  </g>
+</svg>

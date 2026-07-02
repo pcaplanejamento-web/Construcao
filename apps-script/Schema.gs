@@ -148,6 +148,7 @@ const SCHEMA = {
       "atualizado_em",
       "autor_nome", // (append) quem criou
       "editor_nome", // (append) quem editou por último
+      "google_resource_id", // (append) vínculo ao contato do Google (People API, ex.: people/c123)
     ],
   },
 
@@ -168,6 +169,7 @@ const SCHEMA = {
       "superior_id", // (append) p/ Pedreiro: contato Mestre de Obra/Engenheiro
       "autor_nome", // (append) quem criou
       "editor_nome", // (append) quem editou por último
+      "google_resource_id", // (append) vínculo ao contato do Google (People API, ex.: people/c123)
     ],
   },
 

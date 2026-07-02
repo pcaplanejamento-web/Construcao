@@ -47,7 +47,7 @@ function adminConfigDefinir(data, sessao) {
 }
 
 /** Chaves que o PRÓPRIO usuário pode gravar via config.definir (allowlist). */
-const CONFIG_CHAVES_USUARIO = { sync_agenda: true, sync_notas: true };
+const CONFIG_CHAVES_USUARIO = { sync_agenda: true, sync_notas: true, sync_contatos: true };
 
 /**
  * config.definir -> { config }. O próprio usuário grava UMA das suas chaves

@@ -168,6 +168,14 @@ const ROTAS = {
   "google.agenda.remover": { fn: googleAgendaRemover },
   "google.agenda.sincronizarObra": { fn: googleAgendaSincronizarObra },
 
+  // Google Contacts (People API — contatos/empresas + cargo<->grupo)
+  "google.contatos.listar": { fn: googleContatosListar },
+  "google.contatos.enviar": { fn: googleContatosEnviar },
+  "google.contatos.vincular": { fn: googleContatosVincular },
+  "google.contatos.desvincular": { fn: googleContatosDesvincular },
+  "google.contatos.importar": { fn: googleContatosImportar },
+  "google.cargos.sincronizar": { fn: googleCargosSincronizar },
+
   // Usuários (autenticado)
   "usuarios.listar": { fn: usuariosListar },
 

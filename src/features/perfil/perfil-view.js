@@ -109,6 +109,11 @@ class PerfilView extends BaseElement {
           <ui-switch id="swAgenda" label="Sincronizar a agenda (despesas, transferências, prazos)" ${_liga((auth.config() || {}).sync_agenda) ? "checked" : ""}></ui-switch>
           <ui-switch id="swNotas" label="Sincronizar as notas" ${_liga((auth.config() || {}).sync_notas) ? "checked" : ""}></ui-switch>
           <p class="g-sub">Ao ligar, suas marcações são enviadas ao seu Google Calendar como eventos de dia inteiro.</p>
+        </div>
+        <div class="g-sync">
+          <div class="g-sync-tit">Sincronização com o Google Contacts</div>
+          <ui-switch id="swContatos" label="Sincronizar contatos e empresas com o Google" ${_liga((auth.config() || {}).sync_contatos) ? "checked" : ""}></ui-switch>
+          <p class="g-sub">Ao ligar, criar/editar um contato ou empresa envia-o aos seus Contatos do Google, e o Cargo vira uma classificação (grupo). Você também pode <strong>importar</strong> e <strong>vincular</strong> contatos manualmente nas telas de Contatos e Empresas.</p>
         </div>`;
     }
     return `
@@ -133,6 +138,18 @@ class PerfilView extends BaseElement {
     if (swA) swA.addEventListener("change", (e) => this._definirSync("sync_agenda", e.detail.checked));
     const swN = this.$("#swNotas");
     if (swN) swN.addEventListener("change", (e) => this._definirSync("sync_notas", e.detail.checked));
+    const swC = this.$("#swContatos");
+    if (swC) swC.addEventListener("change", (e) => this._definirSyncContatos(e.detail.checked));
+  }
+
+  /** Liga/desliga a sincronização de contatos/empresas com o Google Contacts. */
+  async _definirSyncContatos(valor) {
+    try {
+      await auth.definirConfig("sync_contatos", valor);
+      toastSucesso(valor ? "Sincronização de contatos ligada." : "Sincronização de contatos desligada.");
+    } catch (e) {
+      notificarErro(e);
+    }
   }
 
   /** Liga/desliga o menu flutuante para o dispositivo (desktop/mobile). */

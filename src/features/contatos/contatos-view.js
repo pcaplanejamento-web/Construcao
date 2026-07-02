@@ -22,6 +22,7 @@ import "../../components/ui-empty-state.js";
 import "../despesas/category-badge.js";
 import "./contato-form.js";
 import "./cargo-form.js";
+import "./google-contato-picker.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
 import "../equipes/equipe-form.js";
 
@@ -52,6 +53,7 @@ class ContatosView extends BaseElement {
         <ui-tabs id="abas">
           <div slot="contatos">
             <ui-card mesa title="Mesa com contatos">
+              ${dataStore.config().google_conectado ? `<ui-button slot="acoes" id="importarGoogle" variant="secundario">Importar do Google</ui-button>` : ""}
               <ui-button slot="acoes" id="novo">+ Novo contato</ui-button>
               <div id="lista"></div>
             </ui-card>
@@ -81,6 +83,8 @@ class ContatosView extends BaseElement {
       { id: "cargos", rotulo: "Cargos", icone: "tag" },
     ];
     this.$("#novo").addEventListener("click", () => this.abrirForm(null));
+    const imp = this.$("#importarGoogle");
+    if (imp) imp.addEventListener("click", () => this.abrirImportarGoogle());
     this.$("#novaEquipe").addEventListener("click", () => this.abrirEquipeForm(null));
     this.$("#novoCargo").addEventListener("click", () => this.abrirCargoForm(null));
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
@@ -247,6 +251,24 @@ class ContatosView extends BaseElement {
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", fechar);
     document.body.appendChild(form);
+  }
+
+  /** Importa um contato do Google como novo contato do app (vinculado). */
+  abrirImportarGoogle() {
+    const picker = document.createElement("google-contato-picker");
+    picker.titulo = "Importar contato do Google";
+    picker.addEventListener("fechar", () => picker.remove());
+    picker.addEventListener("escolher", async (e) => {
+      const c = e.detail && e.detail.contato;
+      if (!c) return;
+      try {
+        await dataStore.importarGoogle("contato", c.resourceName);
+        toastSucesso("Contato importado do Google.");
+      } catch (err) {
+        notificarErro(err);
+      }
+    });
+    document.body.appendChild(picker);
   }
 
   remover(contato) {

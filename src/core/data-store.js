@@ -12,7 +12,7 @@
 import { criarStore } from "./store.js";
 import { api } from "./api-client.js";
 import { auth } from "./auth-store.js";
-import { bus, EVENTOS } from "./event-bus.js";
+import { bus, EVENTOS, toastAviso } from "./event-bus.js";
 import { obraIdDaOferta } from "../features/shared/rastreabilidade.js";
 import {
   consolidarObra as _consolidarObraEstoque,
@@ -936,6 +936,7 @@ async function criarFornecedor(dados) {
   store.set({ fornecedores: [...s.fornecedores, r.fornecedor] });
   persistir();
   bus.emit(EVENTOS.FORNECEDORES, { tipo: "criado" });
+  _autoEnviarGoogle("fornecedor", r.fornecedor.id);
   return r.fornecedor;
 }
 
@@ -947,6 +948,7 @@ async function atualizarFornecedor(id, dados) {
   });
   persistir();
   bus.emit(EVENTOS.FORNECEDORES, { tipo: "atualizado" });
+  _autoEnviarGoogle("fornecedor", id);
   return r.fornecedor;
 }
 
@@ -966,6 +968,7 @@ async function criarContato(dados) {
   store.set({ contatos: [...s.contatos, r.contato] });
   persistir();
   bus.emit(EVENTOS.CONTATOS, { tipo: "criado" });
+  _autoEnviarGoogle("contato", r.contato.id);
   return r.contato;
 }
 
@@ -977,6 +980,7 @@ async function atualizarContato(id, dados) {
   });
   persistir();
   bus.emit(EVENTOS.CONTATOS, { tipo: "atualizado" });
+  _autoEnviarGoogle("contato", id);
   return r.contato;
 }
 
@@ -996,6 +1000,9 @@ async function criarCargo(dados) {
   store.set({ cargos: [...s.cargos, { ...r.cargo, fixo: false }] });
   persistir();
   bus.emit(EVENTOS.CONTATOS, { tipo: "cargo-criado" });
+  if (_syncContatosLigado()) {
+    sincronizarCargoGoogle(r.cargo.nome).catch(() => toastAviso("Não foi possível criar a classificação no Google."));
+  }
   return r.cargo;
 }
 
@@ -1016,6 +1023,85 @@ async function removerCargo(id) {
   store.set({ cargos: s.cargos.filter((c) => String(c.id) !== String(id)) });
   persistir();
   bus.emit(EVENTOS.CONTATOS, { tipo: "cargo-removido" });
+}
+
+/* ---------------- Google Contacts (People API) ----------------------- */
+/**
+ * Sincronização de contatos/empresas com o Google Contacts. O espelhamento
+ * automático (ao criar/editar) só roda com o interruptor `sync_contatos` ligado
+ * (Perfil) e é SEMPRE best-effort — uma falha no Google nunca desfaz a escrita
+ * do app. As ações manuais (importar/vincular) funcionam com ou sem o toggle.
+ */
+function _syncContatosLigado() {
+  // auth.config() reflete a preferência NA HORA (o config() do snapshot só
+  // atualiza no próximo refresh) — importante p/ o toggle valer imediatamente.
+  const v = (auth.config() || {}).sync_contatos;
+  return v === true || v === "TRUE" || v === "true";
+}
+
+/** Atualiza o vínculo (google_resource_id) de um registro no store local. */
+function _setResourceId(tipo, id, rn) {
+  const s = store.get();
+  if (tipo === "fornecedor") {
+    store.set({ fornecedores: s.fornecedores.map((f) => (String(f.id) === String(id) ? { ...f, google_resource_id: rn } : f)) });
+    bus.emit(EVENTOS.FORNECEDORES, { tipo: "atualizado" });
+  } else {
+    store.set({ contatos: s.contatos.map((c) => (String(c.id) === String(id) ? { ...c, google_resource_id: rn } : c)) });
+    bus.emit(EVENTOS.CONTATOS, { tipo: "atualizado" });
+  }
+  persistir();
+}
+
+/** Lista os contatos do Google (fonte do picker de importar/vincular). */
+async function listarContatosGoogle(q) {
+  const r = await api.call("google.contatos.listar", { q: q || "" });
+  return r.contatos || [];
+}
+
+/** Envia (cria/atualiza) um registro ao Google e grava o vínculo. */
+async function enviarGoogle(tipo, id) {
+  const r = await api.call("google.contatos.enviar", { tipo, id });
+  _setResourceId(tipo, id, r.google_resource_id || "");
+  return r;
+}
+
+/** Vincula um registro a um contato existente do Google (sem alterar dados). */
+async function vincularGoogle(tipo, id, resourceName) {
+  const r = await api.call("google.contatos.vincular", { tipo, id, resourceName });
+  _setResourceId(tipo, id, r.google_resource_id || "");
+  return r;
+}
+
+/** Desfaz o vínculo com o Google. */
+async function desvincularGoogle(tipo, id) {
+  await api.call("google.contatos.desvincular", { tipo, id });
+  _setResourceId(tipo, id, "");
+}
+
+/** Importa um contato do Google criando um contato/empresa no app (vinculado). */
+async function importarGoogle(tipo, resourceName, extras) {
+  const r = await api.call("google.contatos.importar", { tipo, resourceName, ...(extras || {}) });
+  const s = store.get();
+  if (tipo === "fornecedor" && r.fornecedor) {
+    store.set({ fornecedores: [...s.fornecedores, r.fornecedor] });
+    bus.emit(EVENTOS.FORNECEDORES, { tipo: "criado" });
+  } else if (r.contato) {
+    store.set({ contatos: [...s.contatos, r.contato] });
+    bus.emit(EVENTOS.CONTATOS, { tipo: "criado" });
+  }
+  persistir();
+  return r;
+}
+
+/** Garante o grupo (classificação) do cargo no Google. */
+async function sincronizarCargoGoogle(nome) {
+  return api.call("google.cargos.sincronizar", { nome });
+}
+
+/** Espelha um registro no Google, fire-and-forget, só se o toggle estiver ligado. */
+function _autoEnviarGoogle(tipo, id) {
+  if (!_syncContatosLigado()) return;
+  enviarGoogle(tipo, id).catch(() => toastAviso("Não foi possível sincronizar com o Google Contacts."));
 }
 
 /* ----------------- Mutações: tipos de transferência ------------------ */
@@ -1364,6 +1450,7 @@ export const dataStore = {
   criarFornecedor, atualizarFornecedor, removerFornecedor,
   criarContato, atualizarContato, removerContato,
   criarCargo, atualizarCargo, removerCargo,
+  listarContatosGoogle, enviarGoogle, vincularGoogle, desvincularGoogle, importarGoogle, sincronizarCargoGoogle,
   criarTipoTransferencia, atualizarTipoTransferencia, removerTipoTransferencia,
   criarItem, atualizarItem, removerItem,
   criarCotacao, atualizarCotacao, removerCotacao,

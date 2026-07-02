@@ -29,6 +29,7 @@ import "../../components/ui-empty-state.js";
 import "../despesas/category-badge.js";
 import "./fornecedor-form.js";
 import "../categorias/categoria-form.js";
+import "../contatos/google-contato-picker.js";
 
 class FornecedoresView extends BaseElement {
   estilos() {
@@ -55,6 +56,7 @@ class FornecedoresView extends BaseElement {
         <ui-tabs id="abas">
           <div slot="fornecedores">
             <ui-card mesa title="Mesa com empresas">
+              ${dataStore.config().google_conectado ? `<ui-button slot="acoes" id="importarGoogle" variant="secundario">Importar do Google</ui-button>` : ""}
               <ui-button slot="acoes" id="novo">+ Nova empresa</ui-button>
               <div id="lista"></div>
             </ui-card>
@@ -76,6 +78,8 @@ class FornecedoresView extends BaseElement {
       { id: "classificacao", rotulo: "Classificação", icone: "tag" },
     ];
     this.$("#novo").addEventListener("click", () => this.abrirForm(null));
+    const imp = this.$("#importarGoogle");
+    if (imp) imp.addEventListener("click", () => this.abrirImportarGoogle());
     this.$("#novaClass").addEventListener("click", () => this.abrirClassForm(null));
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
@@ -180,6 +184,24 @@ class FornecedoresView extends BaseElement {
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", fechar);
     document.body.appendChild(form);
+  }
+
+  /** Importa um contato do Google como nova empresa (fornecedor) do app (vinculada). */
+  abrirImportarGoogle() {
+    const picker = document.createElement("google-contato-picker");
+    picker.titulo = "Importar empresa do Google";
+    picker.addEventListener("fechar", () => picker.remove());
+    picker.addEventListener("escolher", async (e) => {
+      const c = e.detail && e.detail.contato;
+      if (!c) return;
+      try {
+        await dataStore.importarGoogle("fornecedor", c.resourceName);
+        toastSucesso("Empresa importada do Google.");
+      } catch (err) {
+        notificarErro(err);
+      }
+    });
+    document.body.appendChild(picker);
   }
 
   remover(fornecedor) {

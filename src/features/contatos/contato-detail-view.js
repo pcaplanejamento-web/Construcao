@@ -15,6 +15,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { balancos } from "../despesas/despesa-split.js";
 import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
+import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { colunasOferta } from "../orcamentos/orcamento-util.js";
 import { abrirRegistrarDespesa } from "../cotacoes/cotacao-despesa-form.js";
 import { abrirOferta } from "../cotacoes/preco-form.js";
@@ -28,6 +29,7 @@ import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
 import "../despesas/category-badge.js";
 import "./contato-form.js";
+import "./google-contato-picker.js";
 
 class ContatoDetailView extends BaseElement {
   constructor() {
@@ -244,14 +246,65 @@ class ContatoDetailView extends BaseElement {
         <div class="meta">
           ${c.cargo ? `<category-badge nome="${c.cargo}" cor="var(--cor-primaria)"></category-badge>` : ""}
           ${partes.length ? `<span>${partes.join(" · ")}</span>` : ""}
+          ${c.google_resource_id ? `<span style="font-size:var(--fs-xs);color:var(--cor-sucesso)">● Vinculado ao Google</span>` : ""}
         </div>
       </div>
       <div class="acoes-topo">
         ${whatsappBtnHtml(c.telefone, 42)}
         <ui-button id="editar" variant="secundario">Editar contato</ui-button>
+        ${this._googleAcoesHtml(c)}
       </div>
     `;
     topo.querySelector("#editar").addEventListener("click", () => this.editar());
+    this._ligarGoogleAcoes(topo, c);
+  }
+
+  /* --------------------------- Google Contacts ------------------------- */
+
+  _googleAcoesHtml(c) {
+    if (!dataStore.config().google_conectado) return "";
+    if (c.google_resource_id) {
+      return `
+        <ui-button id="gEnviar" variant="secundario" tamanho="sm">Atualizar no Google</ui-button>
+        <ui-button id="gAbrir" variant="secundario" tamanho="sm">Abrir no Google</ui-button>
+        <ui-button id="gDesvincular" variant="perigo-contorno" tamanho="sm">Desvincular</ui-button>`;
+    }
+    return `
+      <ui-button id="gVincular" variant="secundario" tamanho="sm">Vincular ao Google</ui-button>
+      <ui-button id="gEnviar" variant="secundario" tamanho="sm">Enviar ao Google</ui-button>`;
+  }
+
+  _ligarGoogleAcoes(topo, c) {
+    const enviar = topo.querySelector("#gEnviar");
+    if (enviar) enviar.addEventListener("click", async () => {
+      try { await dataStore.enviarGoogle("contato", c.id); toastSucesso("Contato enviado ao Google."); }
+      catch (e) { notificarErro(e); }
+    });
+    const vincular = topo.querySelector("#gVincular");
+    if (vincular) vincular.addEventListener("click", () => this._vincularGoogle(c));
+    const desvincular = topo.querySelector("#gDesvincular");
+    if (desvincular) desvincular.addEventListener("click", async () => {
+      try { await dataStore.desvincularGoogle("contato", c.id); toastSucesso("Vínculo com o Google removido."); }
+      catch (e) { notificarErro(e); }
+    });
+    const abrir = topo.querySelector("#gAbrir");
+    if (abrir) abrir.addEventListener("click", () => {
+      const id = String(c.google_resource_id || "").replace("people/", "");
+      if (id) window.open("https://contacts.google.com/person/" + encodeURIComponent(id), "_blank", "noopener");
+    });
+  }
+
+  _vincularGoogle(c) {
+    const picker = document.createElement("google-contato-picker");
+    picker.titulo = "Vincular a um contato do Google";
+    picker.addEventListener("fechar", () => picker.remove());
+    picker.addEventListener("escolher", async (e) => {
+      const g = e.detail && e.detail.contato;
+      if (!g) return;
+      try { await dataStore.vincularGoogle("contato", c.id, g.resourceName); toastSucesso("Contato vinculado ao Google."); }
+      catch (err) { notificarErro(err); }
+    });
+    document.body.appendChild(picker);
   }
 
   editar() {

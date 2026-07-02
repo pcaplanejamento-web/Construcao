@@ -28,9 +28,14 @@ function _googleRedirectUri() {
   return _googleProp("OAUTH_REDIRECT_URI") || ScriptApp.getService().getUrl();
 }
 
-/** Escopo do OAuth (calendar.events cobre ler/criar eventos). */
+/**
+ * Escopo do OAuth: calendar.events (agenda) + contacts (People API — sincronizar
+ * contatos/empresas e classificações). Ao adicionar o escopo de contatos, os
+ * usuários precisam RECONECTAR o Google (novo consentimento). `prompt=consent` +
+ * `include_granted_scopes=true` já garantem o incremento no fluxo existente.
+ */
 function _googleScope() {
-  return "https://www.googleapis.com/auth/calendar.events";
+  return "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/contacts";
 }
 
 function _escaparHtml(s) {

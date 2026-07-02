@@ -85,7 +85,7 @@ function buscarUsuarioPorId(id) {
  * refresh token do Google) precisam ser omitidos aqui. Leitura server-side
  * desses valores usa _lerConfig (Config.gs).
  */
-const CONFIG_CHAVES_SECRETAS = { google_refresh_token: true };
+const CONFIG_CHAVES_SECRETAS = { google_refresh_token: true, google_grupos_cargo: true };
 
 /** Monta { chave: valor } com as configurações de um usuário (sem segredos). */
 function montarConfigUsuario(usuarioId) {
