@@ -529,7 +529,7 @@ function _setNotas(obraId, lista) {
 
 async function adicionarNota(obraId, dados) {
   const r = await api.call("notas.criar", {
-    obra_id: obraId, titulo: dados.titulo, texto: dados.texto,
+    obra_id: obraId, titulo: dados.titulo, texto: dados.texto, cor: dados.cor || "",
   });
   _setNotas(obraId, [r.nota, ...notasDaObra(obraId)]);
   persistir();
@@ -539,7 +539,7 @@ async function adicionarNota(obraId, dados) {
 
 async function atualizarNota(obraId, id, dados) {
   const r = await api.call("notas.atualizar", {
-    id, titulo: dados.titulo, texto: dados.texto,
+    id, titulo: dados.titulo, texto: dados.texto, cor: dados.cor || "",
   });
   _setNotas(
     obraId,
