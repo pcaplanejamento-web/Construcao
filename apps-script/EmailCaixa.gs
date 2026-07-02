@@ -98,3 +98,36 @@ function emailCaixaLer(data, sessao) {
   t.markRead();
   return { threadId: id, assunto: t.getFirstMessageSubject() || "(sem assunto)", mensagens: mensagens };
 }
+
+/** Fallback texto puro a partir do HTML (para clientes sem HTML). */
+function _emailTexto(html) {
+  return String(html || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/[ \t]+/g, " ").trim();
+}
+
+/** email.caixa.enviar — { para, assunto, html, cc? } -> { ok:true }. Envia como dattaobra ("Dattaobra"). */
+function emailCaixaEnviar(data, sessao) {
+  exigirAdmin(sessao);
+  var para = String((data && data.para) || "").trim();
+  var assunto = String((data && data.assunto) || "").trim();
+  var html = String((data && data.html) || "");
+  if (!para) lancar(ERRO.VALIDACAO, "Informe o destinatário.");
+  if (!assunto && !html) lancar(ERRO.VALIDACAO, "Escreva o assunto ou a mensagem.");
+  var opts = { htmlBody: html, name: "Dattaobra" };
+  var cc = String((data && data.cc) || "").trim();
+  if (cc) opts.cc = cc;
+  GmailApp.sendEmail(para, assunto, _emailTexto(html), opts);
+  return { ok: true };
+}
+
+/** email.caixa.responder — { threadId, html } -> { ok:true }. Responde a todos na conversa. */
+function emailCaixaResponder(data, sessao) {
+  exigirAdmin(sessao);
+  var id = String((data && data.threadId) || "");
+  var html = String((data && data.html) || "");
+  if (!id) lancar(ERRO.VALIDACAO, "Conversa não informada.");
+  if (!html.trim()) lancar(ERRO.VALIDACAO, "Escreva a resposta.");
+  var t = GmailApp.getThreadById(id);
+  if (!t) lancar(ERRO.NAO_ENCONTRADO, "Conversa não encontrada.");
+  t.replyAll(_emailTexto(html), { htmlBody: html, name: "Dattaobra" });
+  return { ok: true };
+}

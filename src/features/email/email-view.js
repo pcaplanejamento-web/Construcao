@@ -12,6 +12,7 @@ import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-icon.js";
 import "./email-leitura.js";
+import "./email-compositor.js";
 
 function esc(s) {
   return String(s == null ? "" : s)
@@ -90,6 +91,7 @@ class EmailView extends BaseElement {
               <button class="tg ${this._caixa === "enviados" ? "ativo" : ""}" data-caixa="enviados" type="button">Enviados</button>
             </div>
             <ui-button id="atualizar" variant="secundario" tamanho="sm">Atualizar</ui-button>
+            <ui-button id="escrever" tamanho="sm">Escrever</ui-button>
           </div>
           <div id="corpo"></div>
         </ui-card>
@@ -111,6 +113,8 @@ class EmailView extends BaseElement {
     );
     const at = this.$("#atualizar");
     if (at) at.addEventListener("click", () => this.carregar());
+    const esc = this.$("#escrever");
+    if (esc) esc.addEventListener("click", () => this._compor());
     this._pintar();
   }
 
@@ -177,8 +181,29 @@ class EmailView extends BaseElement {
     m.threadId = threadId;
     m.assunto = assunto;
     m.addEventListener("fechar", () => m.remove());
-    m.addEventListener("responder", () => { /* Fase 3: abrir compositor em modo resposta */ });
+    m.addEventListener("responder", (e) => {
+      m.remove();
+      this._responder(e.detail.threadId, e.detail.assunto);
+    });
     document.body.appendChild(m);
+  }
+
+  /** Abre o compositor para escrever um e-mail novo. */
+  _compor() {
+    const c = document.createElement("email-compositor");
+    c.addEventListener("fechar", () => c.remove());
+    c.addEventListener("enviado", () => { if (this._caixa === "enviados") this.carregar(); });
+    document.body.appendChild(c);
+  }
+
+  /** Abre o compositor em modo resposta a uma conversa. */
+  _responder(threadId, assunto) {
+    const c = document.createElement("email-compositor");
+    c.threadId = threadId;
+    c.assunto = assunto;
+    c.addEventListener("fechar", () => c.remove());
+    c.addEventListener("enviado", () => this.carregar());
+    document.body.appendChild(c);
   }
 }
 
