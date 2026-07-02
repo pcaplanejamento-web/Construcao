@@ -3,33 +3,23 @@
  * marcações datadas do app (despesas, transferências/pagamentos, notas, prazo —
  * de `marcacoes.js`) e FUNCIONA SEM Google. Se a conta Google estiver conectada,
  * também mostra os eventos avulsos do Google e permite criá-los/editá-los.
- * Duas vistas: **Calendário** (grade, `agenda-calendario`) e **Histórico**
- * (linha do tempo cronológica). Reage a `dataStore.subscribe`.
+ * Duas vistas: **Calendário** (grade, `agenda-calendario`) e **Agenda**
+ * (linha do tempo cronológica, `agenda-lista`). Reage a `dataStore.subscribe`.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { api } from "../../core/api-client.js";
 import { irPara } from "../../core/router.js";
 import { toastSucesso, toastAviso, notificarErro } from "../../core/event-bus.js";
-import { avisar } from "../../components/confirmar.js";
-import { marcacoesDaObra, ROTULO_TIPO } from "./marcacoes.js";
+import { marcacoesDaObra } from "./marcacoes.js";
 import { sincronizarObraGoogle, syncAgendaLigada, googleConectado } from "./sync-agenda.js";
-import { corEvento } from "./agenda-cores.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "./agenda-evento-form.js";
 import "./agenda-calendario.js";
-
-function esc(s) {
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-function diaLongo(dia) {
-  const d = new Date(dia + "T00:00:00");
-  return isNaN(d.getTime()) ? dia
-    : d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
-}
+import "./agenda-lista.js";
+import "./marcacao-detalhe.js";
 
 // Obras cujos eventos avulsos do Google já buscamos NESTA sessão (por carga de
 // página). Enquanto a página viver, reentrar na aba Agenda usa só o cache — zero
@@ -60,20 +50,6 @@ class ObraAgenda extends BaseElement {
         border: 1px solid var(--cor-borda); border-radius: var(--raio-md); padding: var(--esp-3);
         margin-bottom: var(--esp-4); }
       .hint a { color: var(--cor-primaria); font-weight: var(--peso-semi); cursor: pointer; }
-      .historico { display: flex; flex-direction: column; gap: var(--esp-4); }
-      .historico .vazio { color: var(--cor-texto-fraco); padding: var(--esp-4) 0; }
-      .dia-cab { font-size: var(--fs-sm); font-weight: var(--peso-semi); color: var(--cor-texto-suave);
-        text-transform: capitalize; padding-bottom: var(--esp-2); border-bottom: 1px solid var(--cor-divisor);
-        margin-bottom: var(--esp-1); }
-      .item { display: flex; align-items: center; gap: var(--esp-3); width: 100%; text-align: left;
-        background: none; border: none; cursor: pointer; padding: var(--esp-2) var(--esp-2);
-        min-height: 44px; color: var(--cor-texto); font-size: var(--fs-md); border-radius: var(--raio-sm); }
-      .item:hover { background: var(--cor-superficie-2); }
-      .item .pt { width: 11px; height: 11px; border-radius: 50%; flex: none; }
-      .item .tipo { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em;
-        color: var(--cor-texto-fraco); min-width: 104px; }
-      .item .tit { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      @media (max-width: 560px) { .item { flex-wrap: wrap; } .item .tipo { min-width: 0; } }
     `;
   }
 
@@ -86,7 +62,7 @@ class ObraAgenda extends BaseElement {
         <div slot="acoes" class="agenda-acoes">
           <div class="vistas">
             <button class="vista ${this._vista === "calendario" ? "ativo" : ""}" data-vista="calendario" type="button">Calendário</button>
-            <button class="vista ${this._vista === "historico" ? "ativo" : ""}" data-vista="historico" type="button">Histórico</button>
+            <button class="vista ${this._vista === "agenda" ? "ativo" : ""}" data-vista="agenda" type="button">Agenda</button>
           </div>
           ${this.conectado && syncAgendaLigada() ? `<ui-button id="sincronizar" variant="secundario" tamanho="sm">Sincronizar agora</ui-button>` : ""}
         </div>
@@ -184,60 +160,38 @@ class ObraAgenda extends BaseElement {
       }
       cal.eventos = this._todas();
     } else {
-      corpo.replaceChildren(this._historicoEl());
+      let lista = corpo.querySelector("agenda-lista");
+      if (!lista || recriar) {
+        lista = document.createElement("agenda-lista");
+        lista.addEventListener("novo", () => this.abrirForm());
+        lista.addEventListener("evento-abrir", (e) => this._abrirMarcacao(e.detail.evento));
+        corpo.replaceChildren(lista);
+      }
+      lista.eventos = this._todas();
     }
   }
 
-  _historicoEl() {
-    const div = document.createElement("div");
-    div.className = "historico";
-    const marc = this._todas().slice().sort((a, b) => String(b.inicio).localeCompare(String(a.inicio)));
-    if (!marc.length) {
-      div.innerHTML = `<p class="vazio">Nada registrado nesta obra ainda.</p>`;
-      return div;
-    }
-    const grupos = {};
-    marc.forEach((m) => {
-      const k = String(m.inicio).slice(0, 10);
-      (grupos[k] = grupos[k] || []).push(m);
-    });
-    const dias = Object.keys(grupos).sort((a, b) => b.localeCompare(a));
-    div.innerHTML = dias
-      .map(
-        (dia) => `<div class="dia">
-          <div class="dia-cab">${esc(diaLongo(dia))}</div>
-          ${grupos[dia]
-            .map(
-              (m) => `<button class="item" data-id="${esc(m.id)}">
-                <span class="pt" style="background:${corEvento(m.cor)}"></span>
-                <span class="tipo">${esc(ROTULO_TIPO[m.tipo] || "Evento")}</span>
-                <span class="tit">${esc(m.titulo)}</span>
-              </button>`
-            )
-            .join("")}
-        </div>`
-      )
-      .join("");
-    const byId = {};
-    marc.forEach((m) => (byId[m.id] = m));
-    div.querySelectorAll(".item").forEach((b) =>
-      b.addEventListener("click", () => this._abrirMarcacao(byId[b.dataset.id]))
-    );
-    return div;
-  }
-
-  /** Google → editar; marcação derivada → info somente-leitura (gerida na aba de origem). */
+  /**
+   * Google → abre o formulário de edição. Marcação do app (despesa/transferência/
+   * nota/prazo) → abre o modal com os dados completos; "Abrir na aba de origem"
+   * troca a aba do <ui-tabs id="abas"> (mesmo shadow root desta obra).
+   */
   _abrirMarcacao(m) {
     if (!m) return;
     if (m.origem === "google") {
       this.abrirForm(m);
       return;
     }
-    const quando = new Date(String(m.inicio).slice(0, 10) + "T00:00:00").toLocaleDateString("pt-BR");
-    avisar({
-      titulo: ROTULO_TIPO[m.tipo] || "Marcação",
-      mensagem: m.titulo + "\n\n" + quando + "\n\nGerida na aba de origem desta obra.",
+    const modal = document.createElement("marcacao-detalhe");
+    modal.obraId = this.obraId;
+    modal.marcacao = m;
+    modal.addEventListener("fechar", () => modal.remove());
+    modal.addEventListener("ir-aba", (e) => {
+      modal.remove();
+      const abas = this.getRootNode() && this.getRootNode().querySelector("#abas");
+      if (abas && e.detail && e.detail.aba) abas.setAttribute("ativo", e.detail.aba);
     });
+    document.body.appendChild(modal);
   }
 
   async _sincronizarAgora() {
