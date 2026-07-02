@@ -33,6 +33,7 @@ import "../../components/ui-select.js";
 import "../despesas/category-badge.js";
 import "./fornecedor-form.js";
 import "../contatos/contato-form.js";
+import "../contatos/google-contato-picker.js";
 
 class FornecedorDetailView extends BaseElement {
   constructor() {
@@ -234,14 +235,65 @@ class FornecedorDetailView extends BaseElement {
         <div class="meta">
           ${partes.length ? `<span>${partes.join(" · ")}</span>` : ""}
           ${cat ? `<category-badge nome="${cat.nome}" cor="${cat.cor}"></category-badge>` : ""}
+          ${f.google_resource_id ? `<span style="font-size:var(--fs-xs);color:var(--cor-sucesso)">● Vinculada ao Google</span>` : ""}
         </div>
       </div>
       <div class="acoes-topo">
         ${whatsappBtnHtml(f.telefone, 42)}
         <ui-button id="editarForn" variant="secundario">Editar empresa</ui-button>
+        ${this._googleAcoesHtml(f)}
       </div>
     `;
     topo.querySelector("#editarForn").addEventListener("click", () => this.editarFornecedor());
+    this._ligarGoogleAcoes(topo, f);
+  }
+
+  /* --------------------------- Google Contacts ------------------------- */
+
+  _googleAcoesHtml(f) {
+    if (!dataStore.config().google_conectado) return "";
+    if (f.google_resource_id) {
+      return `
+        <ui-button id="gEnviar" variant="secundario" tamanho="sm">Atualizar no Google</ui-button>
+        <ui-button id="gAbrir" variant="secundario" tamanho="sm">Abrir no Google</ui-button>
+        <ui-button id="gDesvincular" variant="perigo-contorno" tamanho="sm">Desvincular</ui-button>`;
+    }
+    return `
+      <ui-button id="gVincular" variant="secundario" tamanho="sm">Vincular ao Google</ui-button>
+      <ui-button id="gEnviar" variant="secundario" tamanho="sm">Enviar ao Google</ui-button>`;
+  }
+
+  _ligarGoogleAcoes(topo, f) {
+    const enviar = topo.querySelector("#gEnviar");
+    if (enviar) enviar.addEventListener("click", async () => {
+      try { await dataStore.enviarGoogle("fornecedor", f.id); toastSucesso("Empresa enviada ao Google."); }
+      catch (e) { notificarErro(e); }
+    });
+    const vincular = topo.querySelector("#gVincular");
+    if (vincular) vincular.addEventListener("click", () => this._vincularGoogle(f));
+    const desvincular = topo.querySelector("#gDesvincular");
+    if (desvincular) desvincular.addEventListener("click", async () => {
+      try { await dataStore.desvincularGoogle("fornecedor", f.id); toastSucesso("Vínculo com o Google removido."); }
+      catch (e) { notificarErro(e); }
+    });
+    const abrir = topo.querySelector("#gAbrir");
+    if (abrir) abrir.addEventListener("click", () => {
+      const id = String(f.google_resource_id || "").replace("people/", "");
+      if (id) window.open("https://contacts.google.com/person/" + encodeURIComponent(id), "_blank", "noopener");
+    });
+  }
+
+  _vincularGoogle(f) {
+    const picker = document.createElement("google-contato-picker");
+    picker.titulo = "Vincular a um contato do Google";
+    picker.addEventListener("fechar", () => picker.remove());
+    picker.addEventListener("escolher", async (e) => {
+      const g = e.detail && e.detail.contato;
+      if (!g) return;
+      try { await dataStore.vincularGoogle("fornecedor", f.id, g.resourceName); toastSucesso("Empresa vinculada ao Google."); }
+      catch (err) { notificarErro(err); }
+    });
+    document.body.appendChild(picker);
   }
 
   /* ------------------------------ Ações -------------------------------- */

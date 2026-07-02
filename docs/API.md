@@ -45,7 +45,7 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 | `auth.me` | `{}` | `{ usuario, config }` |
 | `auth.alterarSenha` | `{ senhaAtual, novaSenha }` | `{ alterada: true }` (o próprio usuário) |
 | `config.publico` | `{}` | `{ googleClientId }` (pública; o botão de login lê o Client ID daqui) |
-| `config.definir` | `{ chave, valor }` | `{ config }` (o próprio usuário grava chaves da allowlist: `sync_agenda`, `sync_notas`) |
+| `config.definir` | `{ chave, valor }` | `{ config }` (o próprio usuário grava chaves da allowlist: `sync_agenda`, `sync_notas`, `sync_contatos`) |
 
 ### Conexão Google (agenda — OAuth2 por usuário)
 | Action | `data` | Retorno |
@@ -61,6 +61,18 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 | `google.agenda.sincronizarObra` | `{ obraId, marcacoes:[{ref:{tipo,id},titulo,inicio}] }` | `{ criados, atualizados, removidos }` |
 
 > **Sincronização (push app→Google, idempotente):** o cliente envia as marcações da obra (despesas/transferências/notas/prazo — `marcacoes.js`); o backend faz **upsert** de 1 evento de dia inteiro por item, tagueado por `extendedProperties.private = { dattaobra_obra, dattaobra_tipo, dattaobra_ref }`, e **apaga** os tagueados que sumiram da fonte (não toca nos avulsos). `_mapearEvento` marca `sincronizado` (o front não os mostra como avulsos). Ligada por usuário (`config.sync_agenda`/`sync_notas`).
+
+### Google Contacts (contatos/empresas — People API, por usuário)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `google.contatos.listar` | `{ q? }` | `{ contatos:[{resourceName,nome,email,telefone,grupos[]}] }` (busca no servidor; fonte do picker) |
+| `google.contatos.enviar` | `{ tipo:"contato"\|"fornecedor", id }` | `{ google_resource_id }` (cria/atualiza o contato no Google a partir do registro do app; contato com cargo entra no grupo do cargo e sai dos outros) |
+| `google.contatos.vincular` | `{ tipo, id, resourceName }` | `{ google_resource_id }` (só associa; não altera dados) |
+| `google.contatos.desvincular` | `{ tipo, id }` | `{ tipo, id }` (limpa o vínculo) |
+| `google.contatos.importar` | `{ tipo, resourceName, cargo? }` | `{ contato \| fornecedor }` (cria o registro no app a partir do contato do Google + vincula; p/ contato, deriva o Cargo do grupo se `cargo` não vier) |
+| `google.cargos.sincronizar` | `{ nome }` | `{ grupo, nome }` (garante o grupo/classificação do cargo) |
+
+> **Escopo/modelo:** usa o MESMO OAuth por-usuário da agenda (`_refrescarAccessToken`), agora com escopo **`https://www.googleapis.com/auth/contacts`** (usuários precisam **reconectar**; People API ativa no GCP). **Contato/Empresa → contato (person)**: `resourceName` guardado na coluna `google_resource_id` de CONTATOS/FORNECEDORES. **Cargo (por nome) → grupo (contactGroup)**: mapa por usuário em config JSON `google_grupos_cargo` (segredo, não vai ao cliente). Sentido app→Google (criar/atualizar/atribuir) e Google→app (importar define o Cargo pelo grupo). Espelhamento automático no front (`data-store`) só com `config.sync_contatos` ligado, sempre **best-effort** (falha no Google não desfaz a escrita do app).
 
 > **Agenda por obra:** eventos marcados com `extendedProperties.private.dattaobra_obra = obraId`; `listar` filtra por isso (janela −90d, `singleEvents=true`). Campos completos do Google Calendar: **dia inteiro** (`start/end.date`, fim exclusivo), **recorrência** (`recorrencia`=DAILY|WEEKLY|MONTHLY|YEARLY → RRULE), **lembrete** (`lembreteMin` → reminders popup), **convidados** (`convidados[]` de e-mails → `sendUpdates=all`, **envia convite**), **local**, **cor** (colorId 1–11). Fuso `America/Sao_Paulo`; timed → `YYYY-MM-DDTHH:MM`. Em recorrentes, editar/remover afeta a ocorrência (v1).
 
