@@ -18,7 +18,14 @@ function notasListar(data, sessao) {
   return { notas: notas };
 }
 
-/** notas.criar — { obra_id, titulo, texto } -> { nota }. */
+/** Cores permitidas para uma nota (chaves da paleta em src/features/obras/nota-cores.js). */
+var CORES_NOTA_VALIDAS = { "": true, amarelo: true, verde: true, azul: true, roxo: true, rosa: true, laranja: true, cinza: true };
+function _corNota(v) {
+  var c = String(v == null ? "" : v).trim();
+  return CORES_NOTA_VALIDAS[c] ? c : "";
+}
+
+/** notas.criar — { obra_id, titulo, texto, cor } -> { nota }. */
 function notasCriar(data, sessao) {
   const obraId = String((data && data.obra_id) || "");
   if (!obraId) lancar(ERRO.VALIDACAO, "Obra não informada.");
@@ -40,6 +47,7 @@ function notasCriar(data, sessao) {
       autor_nome: nome,
       atualizado_em: agora,
       editor_nome: "",
+      cor: _corNota(data && data.cor),
     };
     repoInserir(SCHEMA.NOTAS, nota);
     return { nota: nota };
@@ -59,14 +67,17 @@ function notasAtualizar(data, sessao) {
   const texto = String((data && data.texto) || "").trim();
   if (!titulo && !texto) lancar(ERRO.VALIDACAO, "Escreva um título ou um texto para a nota.");
 
+  const temCor = data && Object.prototype.hasOwnProperty.call(data, "cor");
   return comLock(function () {
     const nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
-    const nota = repoAtualizar(SCHEMA.NOTAS, "id", id, {
+    const patch = {
       titulo: titulo,
       texto: texto,
       atualizado_em: agoraIso(),
       editor_nome: nome,
-    });
+    };
+    if (temCor) patch.cor = _corNota(data.cor); // só mexe na cor se veio no payload
+    const nota = repoAtualizar(SCHEMA.NOTAS, "id", id, patch);
     return { nota: nota };
   });
 }

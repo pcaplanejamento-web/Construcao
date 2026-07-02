@@ -411,6 +411,7 @@ const SCHEMA = {
       "autor_nome",
       "atualizado_em",
       "editor_nome",
+      "cor", // chave da paleta (nota-cores.js) p/ o card colorido; "" = sem cor
     ],
   },
 
