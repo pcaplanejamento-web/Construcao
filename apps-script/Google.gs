@@ -33,7 +33,10 @@ function _googleProp(nome) {
  * Script Property `GOOGLE_CALLBACK_URL`.
  */
 function _googleRedirectUri() {
-  return _googleProp("GOOGLE_CALLBACK_URL") || "https://dattaobra.com.br/google-callback.html";
+  // URL "limpa" (sem .html): o Cloudflare serve google-callback.html aqui e o
+  // .html seria redirecionado (307, perdendo o ?code=&state=). Cadastre ESTA URL
+  // nos "Authorized redirect URIs" do OAuth Client no Google Cloud.
+  return _googleProp("GOOGLE_CALLBACK_URL") || "https://dattaobra.com.br/google-callback";
 }
 
 /**
