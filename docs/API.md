@@ -51,7 +51,7 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `google.iniciarOAuth` | `{}` | `{ authUrl }` (front abre em popup; consentimento) |
-| `google.status` | `{}` | `{ conectado, google_email }` |
+| `google.status` | `{}` | `{ conectado, google_email }` (diagnóstico; o front normalmente lê `config.google_conectado` do **cache**, não chama isto por tela) |
 | `google.testarConexao` | `{}` | `{ agenda, eventos }` (lê 1 evento da agenda principal) |
 | `google.desconectar` | `{}` | `{ conectado: false }` (apaga o refresh token + revoga) |
 | `google.agenda.listar` | `{ obraId }` | `{ eventos:[{id,titulo,diaInteiro,inicio,fim,local,descricao,cor,recorrencia,lembreteMin,convidados,link}] }` |

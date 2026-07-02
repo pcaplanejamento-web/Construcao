@@ -13,7 +13,7 @@ import { irPara } from "../../core/router.js";
 import { toastSucesso, toastAviso, notificarErro } from "../../core/event-bus.js";
 import { avisar } from "../../components/confirmar.js";
 import { marcacoesDaObra, ROTULO_TIPO } from "./marcacoes.js";
-import { sincronizarObraGoogle, syncAgendaLigada } from "./sync-agenda.js";
+import { sincronizarObraGoogle, syncAgendaLigada, googleConectado } from "./sync-agenda.js";
 import { corEvento } from "./agenda-cores.js";
 import "../../components/ui-card.js";
 import "../../components/ui-button.js";
@@ -94,34 +94,48 @@ class ObraAgenda extends BaseElement {
   }
 
   aoConectar() {
-    this.carregar();
-    this.aoLimpar(dataStore.subscribe(() => this.pintar()));
-  }
-
-  async carregar() {
-    try {
-      const st = await api.call("google.status");
-      this._google = { conectado: !!(st && st.conectado) };
-      if (this._google.conectado) {
-        // Sincroniza esta obra UMA vez por montagem (se ligado) — importa as
-        // marcações novas antes de listar; os sincronizados são filtrados abaixo.
-        if (!this._jaSincronizou && syncAgendaLigada()) {
-          this._jaSincronizou = true;
-          try { await sincronizarObraGoogle(this.obraId); } catch (e) { /* best-effort */ }
-        }
-        const r = await api.call("google.agenda.listar", { obraId: this.obraId });
-        this._googleEventos = (r.eventos || [])
-          .filter((ev) => !ev.sincronizado) // sincronizados já aparecem como marcação derivada
-          .map((ev) => ({ ...ev, tipo: "evento", origem: "google" }));
-      } else {
-        this._googleEventos = [];
-      }
-    } catch (e) {
-      this._google = { conectado: false };
-      this._googleEventos = [];
-    }
+    // CACHE-FIRST: estado da conexão vem do config (cache), eventos avulsos do
+    // Google vêm do localStorage — a agenda aparece na hora, sem esperar rede.
+    this._google = { conectado: googleConectado() };
+    this._googleEventos = this._google.conectado ? this._lerCacheGoogle() : [];
     this._estado = "pronto";
     this.renderizar();
+    this.aoLimpar(dataStore.subscribe(() => this.pintar()));
+    // Em SEGUNDO PLANO: atualiza os eventos avulsos do Google (sem spinner).
+    if (this._google.conectado) this._atualizarGoogleEmBackground();
+  }
+
+  /** Sincroniza (1×) e re-lista os eventos avulsos do Google, sem bloquear a UI. */
+  async _atualizarGoogleEmBackground() {
+    try {
+      if (!this._jaSincronizou && syncAgendaLigada()) {
+        this._jaSincronizou = true;
+        try { await sincronizarObraGoogle(this.obraId); } catch (e) { /* best-effort */ }
+      }
+      await this._recarregarGoogle();
+    } catch (e) {
+      /* offline / sem conexão: mantém o que está no cache */
+    }
+  }
+
+  /** Lista os eventos avulsos do Google, atualiza o cache local e repinta. */
+  async _recarregarGoogle() {
+    const r = await api.call("google.agenda.listar", { obraId: this.obraId });
+    this._googleEventos = (r.eventos || [])
+      .filter((ev) => !ev.sincronizado) // sincronizados já aparecem como marcação derivada
+      .map((ev) => ({ ...ev, tipo: "evento", origem: "google" }));
+    this._gravarCacheGoogle(this._googleEventos);
+    this.pintar();
+  }
+
+  _chaveCache() { return "dattaobra.agenda.google." + this.obraId; }
+  _lerCacheGoogle() {
+    try { return JSON.parse(localStorage.getItem(this._chaveCache()) || "[]") || []; }
+    catch (e) { return []; }
+  }
+  _gravarCacheGoogle(evs) {
+    try { localStorage.setItem(this._chaveCache(), JSON.stringify(evs || [])); }
+    catch (e) { /* storage indisponível */ }
   }
 
   /** Marcações internas (do app) + eventos avulsos do Google. */
@@ -222,9 +236,10 @@ class ObraAgenda extends BaseElement {
     try {
       const r = await sincronizarObraGoogle(this.obraId);
       toastSucesso(`Sincronizado com o Google (${r.criados} novos, ${r.atualizados} atualizados, ${r.removidos} removidos).`);
-      await this.carregar();
+      await this._recarregarGoogle();
     } catch (e) {
       notificarErro(e);
+    } finally {
       if (btn) btn.removeAttribute("loading");
     }
   }
@@ -239,7 +254,7 @@ class ObraAgenda extends BaseElement {
     form.obra = dataStore.obra(this.obraId) || { id: this.obraId };
     if (evento) form.evento = evento;
     form.addEventListener("fechar", () => form.remove());
-    form.addEventListener("salvo", () => this.carregar());
+    form.addEventListener("salvo", () => this._recarregarGoogle());
     document.body.appendChild(form);
   }
 }

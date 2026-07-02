@@ -51,6 +51,12 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > (hoje `google_refresh_token`) são **omitidas** — só o servidor as lê, via
 > `_lerConfig` (Config.gs). Ver `apps-script/Google.gs`.
 
+> **Campo derivado `google_conectado`** — não é uma linha da tabela:
+> `montarConfigUsuario` o **calcula** a partir da presença do
+> `google_refresh_token` (segredo omitido) e injeta o booleano no `config`
+> enviado ao cliente. Assim o front sabe se o Google está conectado **direto do
+> cache** (perfil, aba Agenda), sem chamar `google.status` a cada tela.
+
 ## Aba `Obras`
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|

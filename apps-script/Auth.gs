@@ -93,10 +93,18 @@ function montarConfigUsuario(usuarioId) {
     return String(c.usuario_id) === String(usuarioId);
   });
   const cfg = {};
+  var googleConectado = false;
   linhas.forEach(function (c) {
+    if (c.chave === "google_refresh_token") {
+      googleConectado = !!c.valor; // segredo: não expõe, mas deriva o estado
+      return;
+    }
     if (CONFIG_CHAVES_SECRETAS[c.chave]) return; // segredo: não expõe ao front
     cfg[c.chave] = c.valor;
   });
+  // Derivado (não é segredo): deixa o front saber que o Google está conectado
+  // a partir do config em CACHE, sem chamar google.status a cada tela.
+  cfg.google_conectado = googleConectado;
   return cfg;
 }
 

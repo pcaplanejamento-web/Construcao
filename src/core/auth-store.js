@@ -132,6 +132,17 @@ export const auth = {
     return estado.config;
   },
 
+  /**
+   * Atualiza UMA chave do config localmente (otimista, sem ida ao servidor).
+   * Usado para refletir na hora estados derivados no cache (ex.:
+   * google_conectado após conectar/desconectar) — o próximo snapshot confirma.
+   */
+  setConfigLocal(chave, valor) {
+    estado.config = Object.assign({}, estado.config || {}, { [chave]: valor });
+    persistir();
+    return estado.config;
+  },
+
   /** Encerra a sessão (server-side e local). */
   async logout() {
     try {

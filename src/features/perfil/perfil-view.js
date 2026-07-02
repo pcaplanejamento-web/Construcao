@@ -79,12 +79,11 @@ class PerfilView extends BaseElement {
     `;
   }
 
-  /** Conteúdo do card Google conforme o estado carregado (this._google). */
+  /** Conteúdo do card Google — lido do config em CACHE (sem chamar google.status). */
   _googleConteudo() {
-    const g = this._google;
-    if (!g) return `<p class="g-sub">Verificando conexão…</p>`;
-    if (g.conectado) {
-      const quem = g.google_email ? ` (${g.google_email})` : "";
+    const cfg = auth.config() || {};
+    if (_liga(cfg.google_conectado)) {
+      const quem = cfg.google_email ? ` (${cfg.google_email})` : "";
       return `
         <div class="g-status">
           <ui-badge color="var(--cor-sucesso)" text="Conectado"></ui-badge>
@@ -109,11 +108,6 @@ class PerfilView extends BaseElement {
   }
 
   aposRender() {
-    // Primeira renderização: busca o status e re-renderiza (evita laço com a guarda).
-    if (this._google === undefined) {
-      this._buscarStatus();
-      return;
-    }
     const conectar = this.$("#gConectar");
     if (conectar) conectar.addEventListener("click", () => this._conectar());
     const testar = this.$("#gTestar");
@@ -141,15 +135,6 @@ class PerfilView extends BaseElement {
     }
   }
 
-  async _buscarStatus() {
-    try {
-      this._google = await api.call("google.status");
-    } catch (e) {
-      this._google = { conectado: false, google_email: "" };
-    }
-    this.renderizar();
-  }
-
   /** Abre a janela de consentimento e ouve o retorno (postMessage do callback). */
   async _conectar() {
     const btn = this.$("#gConectar");
@@ -174,7 +159,8 @@ class PerfilView extends BaseElement {
       if (!d || (d.tipo !== "google_conectado" && d.tipo !== "google_erro")) return;
       if (d.tipo === "google_conectado") {
         toastSucesso("Conta Google conectada.");
-        this._buscarStatus();
+        auth.setConfigLocal("google_conectado", true);
+        this.renderizar();
       } else {
         toastAviso("Não foi possível conectar. Tente novamente.");
       }
@@ -202,7 +188,7 @@ class PerfilView extends BaseElement {
     try {
       await api.call("google.desconectar");
       toastSucesso("Conta Google desconectada.");
-      this._google = { conectado: false, google_email: "" };
+      auth.setConfigLocal("google_conectado", false);
       this.renderizar();
     } catch (e) {
       notificarErro(e);

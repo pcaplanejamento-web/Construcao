@@ -17,6 +17,11 @@ export function syncAgendaLigada() {
   return _liga((auth.config() || {}).sync_agenda);
 }
 
+/** A conta Google está conectada? (derivado no config — lido do CACHE, sem rede). */
+export function googleConectado() {
+  return _liga((auth.config() || {}).google_conectado);
+}
+
 /** Sincroniza as marcações de UMA obra para o Google (respeita sync_notas). */
 export async function sincronizarObraGoogle(obraId) {
   const cfg = auth.config() || {};
