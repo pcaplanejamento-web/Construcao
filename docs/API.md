@@ -265,6 +265,10 @@ para dono **e** colaboradores.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `email.teste` | `{}` | `{ ok, id, para }` — envia um e-mail de teste **só para o próprio e-mail** do usuário logado |
+| `email.caixa.listar` | `{ caixa:"inbox"\|"enviados", q?, pagina? }` | `{ threads:[{threadId,de,deEmail,assunto,previa,data,lido,qtdMsgs}], pagina, temMais }` — **admin**; caixa da empresa via `GmailApp` (backend roda como dattaobra) |
+| `email.caixa.ler` | `{ threadId }` | `{ threadId, assunto, mensagens:[{de,deEmail,para,cc,data,assunto,html,anexos}] }` — **admin**; marca a conversa como lida (`html` renderizado em iframe sandbox no front) |
+| `email.caixa.enviar` | `{ para, assunto, html, cc? }` | `{ ok:true }` — **admin**; `GmailApp.sendEmail` (nome "Dattaobra") |
+| `email.caixa.responder` | `{ threadId, html }` | `{ ok:true }` — **admin**; `thread.replyAll` |
 
 > **Envio** (`Email.gs` → `enviarEmailResend(para, assunto, html)`): chama a API do Resend
 > via `UrlFetchApp`. A **chave nunca fica no código/frontend** — vem das **Script Properties**:
