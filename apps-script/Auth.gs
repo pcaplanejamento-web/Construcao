@@ -176,6 +176,11 @@ function authLogin(data) {
     lancar(ERRO.VALIDACAO, "Informe e-mail e senha.");
   }
   const u = buscarUsuarioPorEmail(email);
+  // Usuário cadastrado pelo admin mas SEM senha definida → primeiro acesso.
+  // Código próprio para o front abrir o fluxo de definir senha já com o e-mail.
+  if (u && !u.senha_hash) {
+    lancar(ERRO.SENHA_NAO_DEFINIDA, "Você ainda não definiu sua senha. Use “Primeiro acesso” para criá-la.");
+  }
   if (!u || !verificarSenha(senha, u.senha_hash, u.salt)) {
     lancar(ERRO.CREDENCIAIS_INVALIDAS, "E-mail ou senha incorretos.");
   }
@@ -293,24 +298,6 @@ function authMe(data, sessao) {
   };
 }
 
-/** auth.alterarSenha — o próprio usuário troca a senha. */
-function authAlterarSenha(data, sessao) {
-  const senhaAtual = data && data.senhaAtual;
-  const novaSenha = String((data && data.novaSenha) || "");
-  const u = buscarUsuarioPorId(sessao.usuario_id);
-  if (!u) lancar(ERRO.NAO_AUTENTICADO, "Usuário não encontrado.");
-  if (!verificarSenha(senhaAtual, u.senha_hash, u.salt)) {
-    lancar(ERRO.CREDENCIAIS_INVALIDAS, "Senha atual incorreta.");
-  }
-  if (novaSenha.length < 6) {
-    lancar(ERRO.VALIDACAO, "A nova senha deve ter ao menos 6 caracteres.");
-  }
-  return comLock(function () {
-    const par = criarHashSenha(novaSenha);
-    repoAtualizar(SCHEMA.USUARIOS, "id", u.id, {
-      senha_hash: par.hash,
-      salt: par.salt,
-    });
-    return { alterada: true };
-  });
-}
+/* auth.alterarSenha foi REMOVIDO: a troca de senha agora passa pelo fluxo com
+ * PIN por e-mail (AuthSenha.gs → auth.solicitarPin/confirmarPin/definirSenha),
+ * o mesmo do primeiro acesso e do "esqueci a senha". */

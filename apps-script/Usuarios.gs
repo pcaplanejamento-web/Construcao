@@ -33,27 +33,24 @@ function adminUsuariosCriar(data, sessao) {
   exigirAdmin(sessao);
   const email = String((data && data.email) || "").trim().toLowerCase();
   const nome = String((data && data.nome) || "").trim();
-  const senha = String((data && data.senha) || "");
   const role = data && data.role === ROLES.ADMIN ? ROLES.ADMIN : ROLES.USUARIO;
 
-  if (!email || !nome || !senha) {
-    lancar(ERRO.VALIDACAO, "Informe nome, e-mail e senha.");
-  }
-  if (senha.length < 6) {
-    lancar(ERRO.VALIDACAO, "A senha deve ter ao menos 6 caracteres.");
+  if (!email || !nome) {
+    lancar(ERRO.VALIDACAO, "Informe nome e e-mail.");
   }
   if (buscarUsuarioPorEmail(email)) {
     lancar(ERRO.CONFLITO, "Já existe um usuário com esse e-mail.");
   }
 
+  // SEM senha: o próprio usuário a define no PRIMEIRO ACESSO (AuthSenha.gs).
+  // senha_hash vazio = "ainda não definiu" (authLogin bloqueia com SENHA_NAO_DEFINIDA).
   return comLock(function () {
-    const par = criarHashSenha(senha);
     const usuario = {
       id: novoId(),
       email: email,
       nome: nome,
-      senha_hash: par.hash,
-      salt: par.salt,
+      senha_hash: "",
+      salt: "",
       role: role,
       ativo: true,
       criado_em: agoraIso(),
@@ -81,14 +78,7 @@ function adminUsuariosAtualizar(data, sessao) {
     patch.role = data.role === ROLES.ADMIN ? ROLES.ADMIN : ROLES.USUARIO;
   }
   if (data.ativo !== undefined) patch.ativo = data.ativo === true;
-  if (data.novaSenha) {
-    if (String(data.novaSenha).length < 6) {
-      lancar(ERRO.VALIDACAO, "A nova senha deve ter ao menos 6 caracteres.");
-    }
-    const par = criarHashSenha(String(data.novaSenha));
-    patch.senha_hash = par.hash;
-    patch.salt = par.salt;
-  }
+  // Senha NÃO é definida pelo admin: só o próprio usuário, via PIN (AuthSenha.gs).
 
   return comLock(function () {
     const usuario = repoAtualizar(SCHEMA.USUARIOS, "id", id, patch);

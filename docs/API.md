@@ -22,7 +22,7 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 
 ## Autenticação
 
-- Toda action **exceto `auth.login`/`auth.loginGoogle`/`publico.obra`** exige `token`.
+- Toda action **exceto `auth.login`/`auth.loginGoogle`/`auth.solicitarPin`/`auth.confirmarPin`/`auth.definirSenha`/`config.publico`/`publico.obra`** exige `token`.
 - O token é validado em cache → aba `Sessoes` → checagem de `expira_em`.
 - Actions `admin.*` exigem `role === "admin"` (verificado no servidor).
 - O `usuario_id` vem **sempre da sessão**; valores de cliente são ignorados.
@@ -30,7 +30,9 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 ## Códigos de erro
 
 `REQUISICAO_INVALIDA`, `ACAO_DESCONHECIDA`, `NAO_AUTENTICADO`, `NAO_AUTORIZADO`,
-`CREDENCIAIS_INVALIDAS`, `NAO_ENCONTRADO`, `VALIDACAO`, `CONFLITO`, `INTERNO`.
+`CREDENCIAIS_INVALIDAS`, `SENHA_NAO_DEFINIDA`, `NAO_ENCONTRADO`, `VALIDACAO`, `CONFLITO`, `INTERNO`.
+
+`SENHA_NAO_DEFINIDA` = usuário cadastrado pelo admin mas ainda **sem senha** (primeiro acesso); o front abre o fluxo de definir senha (`redefinir-senha`) já com o e-mail.
 
 ---
 
@@ -43,7 +45,9 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 | `auth.loginGoogle` | `{ idToken }` | `{ token, usuario, config }` (pública; **só e-mails já cadastrados**) |
 | `auth.logout` | `{}` | `{ encerrada: true }` |
 | `auth.me` | `{}` | `{ usuario, config }` |
-| `auth.alterarSenha` | `{ senhaAtual, novaSenha }` | `{ alterada: true }` (o próprio usuário) |
+| `auth.solicitarPin` | `{ email }` | `{ enviado: true }` (**pública**) — envia um PIN de 6 caracteres por e-mail (Resend). Rate-limit 60s; validade 10 min. Nunca devolve o PIN. |
+| `auth.confirmarPin` | `{ email, pin }` | `{ resetToken }` (**pública**) — valida o PIN (máx. 5 tentativas) e troca por um `resetToken` de uso único (10 min). |
+| `auth.definirSenha` | `{ resetToken, novaSenha }` | `{ token, usuario, config }` (**pública**) — grava a senha e **loga automaticamente**. Serve primeiro acesso, esqueci a senha e troca no perfil. |
 | `config.publico` | `{}` | `{ googleClientId }` (pública; o botão de login lê o Client ID daqui) |
 | `config.definir` | `{ chave, valor }` | `{ config }` (o próprio usuário grava chaves da allowlist: `sync_agenda`, `sync_notas`, `sync_contatos`) |
 
@@ -316,8 +320,8 @@ para dono **e** colaboradores.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `admin.usuarios.listar` | `{}` | `{ usuarios: [...] }` (sem hash/salt) |
-| `admin.usuarios.criar` | `{ nome, email, senha, role }` | `{ usuario }` |
-| `admin.usuarios.atualizar` | `{ id, nome?, role?, ativo?, novaSenha? }` | `{ usuario }` |
+| `admin.usuarios.criar` | `{ nome, email, role }` | `{ usuario }` — **sem senha**: o usuário a define no primeiro acesso (`senha_hash` vazio). |
+| `admin.usuarios.atualizar` | `{ id, nome?, role?, ativo? }` | `{ usuario }` — senha **não** é definida pelo admin (só via PIN). |
 | `admin.config.obter` | `{ usuario_id }` | `{ config: { chave: valor } }` |
 | `admin.config.definir` | `{ usuario_id, chave, valor }` | `{ config }` |
 

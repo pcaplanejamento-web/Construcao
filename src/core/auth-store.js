@@ -83,21 +83,35 @@ export const auth = {
   ehAdmin: () => !!(estado.usuario && estado.usuario.role === "admin"),
 
   /**
-   * Autentica e popula a sessão.
-   * @param {boolean} lembrar  true (padrão) → persiste em localStorage;
-   *                           false → sessionStorage (some ao fechar a aba).
+   * Aplica uma sessão devolvida pelo backend ({token, usuario, config}).
+   * Compartilhado por login/loginGoogle e pelo fluxo de definir senha (PIN).
+   * @param {object} data     { token, usuario, config }.
+   * @param {boolean=} lembrar true → localStorage; false → sessionStorage;
+   *                           undefined → mantém o modo atual.
+   * @param {boolean} emitir   true (padrão) → dispara EVENTOS.AUTH (carrega o
+   *                           app e navega). Use false para só trocar o token
+   *                           sem re-navegar (ex.: trocar senha logado no perfil).
    */
-  async login(email, senha, lembrar = true) {
-    const data = await api.call("auth.login", { email, senha });
-    usarSessao = !lembrar;
+  aplicarSessao(data, lembrar, emitir = true) {
+    if (typeof lembrar === "boolean") usarSessao = !lembrar;
     estado = {
       token: data.token,
       usuario: data.usuario,
       config: data.config || {},
     };
     persistir();
-    bus.emit(EVENTOS.AUTH, { autenticado: true, usuario: data.usuario });
+    if (emitir) bus.emit(EVENTOS.AUTH, { autenticado: true, usuario: data.usuario });
     return data.usuario;
+  },
+
+  /**
+   * Autentica e popula a sessão.
+   * @param {boolean} lembrar  true (padrão) → persiste em localStorage;
+   *                           false → sessionStorage (some ao fechar a aba).
+   */
+  async login(email, senha, lembrar = true) {
+    const data = await api.call("auth.login", { email, senha });
+    return this.aplicarSessao(data, lembrar, true);
   },
 
   /**
@@ -108,20 +122,7 @@ export const auth = {
    */
   async loginGoogle(idToken, lembrar = true) {
     const data = await api.call("auth.loginGoogle", { idToken });
-    usarSessao = !lembrar;
-    estado = {
-      token: data.token,
-      usuario: data.usuario,
-      config: data.config || {},
-    };
-    persistir();
-    bus.emit(EVENTOS.AUTH, { autenticado: true, usuario: data.usuario });
-    return data.usuario;
-  },
-
-  /** Altera a própria senha (exige a senha atual). */
-  async alterarSenha(senhaAtual, novaSenha) {
-    return api.call("auth.alterarSenha", { senhaAtual, novaSenha });
+    return this.aplicarSessao(data, lembrar, true);
   },
 
   /** Grava uma preferência do próprio usuário (allowlist no backend) e atualiza o estado. */

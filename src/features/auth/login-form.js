@@ -13,10 +13,11 @@ import { BaseElement } from "../../components/base-element.js";
 import { auth } from "../../core/auth-store.js";
 import { api } from "../../core/api-client.js";
 import { CONFIG } from "../../core/config.js";
-import { notificarErro, toastAviso } from "../../core/event-bus.js";
+import { notificarErro } from "../../core/event-bus.js";
 import { obrigatorio, primeiroErro } from "../../core/validators.js";
 import "../../components/ui-button.js";
 import "../../components/ui-icon.js";
+import "./redefinir-senha.js";
 
 class LoginForm extends BaseElement {
   estilos() {
@@ -124,11 +125,7 @@ class LoginForm extends BaseElement {
       })
     );
     this.$("#olho").addEventListener("click", () => this.alternarSenha());
-    this.$("#esqueci").addEventListener("click", () =>
-      toastAviso(
-        "O acesso é provisionado pelo administrador da obra. Para primeiro acesso ou redefinição de senha, fale com ele."
-      )
-    );
+    this.$("#esqueci").addEventListener("click", () => this.abrirRedefinir());
     this._initGoogle();
   }
 
@@ -249,10 +246,24 @@ class LoginForm extends BaseElement {
       // Sucesso: NÃO removemos o loading — o carregamento dos dados acontece
       // nesta tela (app.js) e a view é substituída ao navegar para o sistema.
     } catch (e) {
+      btn.removeAttribute("loading");
+      // Usuário cadastrado mas sem senha → abre o fluxo de primeiro acesso.
+      if (e && e.code === "SENHA_NAO_DEFINIDA") {
+        this.mostrarErro("");
+        this.abrirRedefinir();
+        return;
+      }
       this.mostrarErro(e.message || "Não foi possível entrar.");
       notificarErro(e);
-      btn.removeAttribute("loading");
     }
+  }
+
+  /** Abre o fluxo de definir/redefinir senha (primeiro acesso ou esqueci). */
+  abrirRedefinir() {
+    const el = document.createElement("redefinir-senha");
+    el.contexto = "login";
+    el.email = (this.$("#email").value || "").trim();
+    document.body.appendChild(el);
   }
 
   mostrarErro(msg) {

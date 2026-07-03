@@ -13,7 +13,10 @@ const ROTAS = {
   "auth.loginGoogle": { fn: authLoginGoogle, publica: true },
   "auth.logout": { fn: authLogout },
   "auth.me": { fn: authMe },
-  "auth.alterarSenha": { fn: authAlterarSenha },
+  // Primeiro acesso / esqueci a senha / trocar senha — PIN por e-mail (públicas).
+  "auth.solicitarPin": { fn: authSolicitarPin, publica: true },
+  "auth.confirmarPin": { fn: authConfirmarPin, publica: true },
+  "auth.definirSenha": { fn: authDefinirSenha, publica: true },
 
   // Config pública (Client ID do Google p/ o botão de login — sem token)
   "config.publico": { fn: configPublico, publica: true },

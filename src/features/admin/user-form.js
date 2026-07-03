@@ -7,7 +7,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
-import { primeiroErro, obrigatorio, email as validarEmail, senhaMinima } from "../../core/validators.js";
+import { primeiroErro, obrigatorio, email as validarEmail } from "../../core/validators.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
@@ -26,7 +26,11 @@ class UserForm extends BaseElement {
   }
 
   estilos() {
-    return `.campos { display: flex; flex-direction: column; gap: var(--esp-4); }`;
+    return `
+      .campos { display: flex; flex-direction: column; gap: var(--esp-4); }
+      .dica { margin: 0; font-size: var(--fs-sm); color: var(--cor-texto-suave);
+        background: var(--cor-superficie-2); padding: var(--esp-2) var(--esp-3); border-radius: var(--raio-sm); }
+    `;
   }
 
   template() {
@@ -40,16 +44,13 @@ class UserForm extends BaseElement {
             /"/g,
             "&quot;"
           )}" ${ed ? "disabled" : ""}></ui-input>
-          <ui-input id="senha" label="${
-            ed ? "Nova senha (opcional)" : "Senha"
-          }" type="password" placeholder="${ed ? "Deixe em branco para manter" : "Mínimo 6 caracteres"}"></ui-input>
           <ui-select id="role" label="Papel" value="${u.role || "usuario"}"></ui-select>
           ${
             ed
               ? `<ui-select id="ativo" label="Status" value="${
                   u.ativo ? "1" : "0"
                 }"></ui-select>`
-              : ""
+              : `<p class="dica">A senha é definida pelo próprio usuário no <b>primeiro acesso</b> (ele recebe um código por e-mail).</p>`
           }
         </div>
         <div slot="rodape">
@@ -83,22 +84,14 @@ class UserForm extends BaseElement {
 
   async salvar() {
     const nome = this.$("#nome").value.trim();
-    const senha = this.$("#senha").value;
     const btn = this.$("#salvar");
 
     let erro;
     if (this.ehEdicao) {
-      erro = primeiroErro(
-        obrigatorio(nome, "O nome"),
-        senha ? senhaMinima(senha) : ""
-      );
+      erro = obrigatorio(nome, "O nome");
     } else {
       const email = this.$("#email").value.trim();
-      erro = primeiroErro(
-        obrigatorio(nome, "O nome"),
-        validarEmail(email),
-        senhaMinima(senha)
-      );
+      erro = primeiroErro(obrigatorio(nome, "O nome"), validarEmail(email));
     }
     if (erro) {
       notificarErro({ message: erro });
@@ -111,17 +104,15 @@ class UserForm extends BaseElement {
         const dados = { id: this.usuario.id, nome, role: this.$("#role").value };
         const ativo = this.$("#ativo");
         if (ativo) dados.ativo = ativo.value === "1";
-        if (senha) dados.novaSenha = senha;
         await dataStore.adminAtualizarUsuario(dados);
         toastSucesso("Usuário atualizado.");
       } else {
         await dataStore.adminCriarUsuario({
           nome,
           email: this.$("#email").value.trim(),
-          senha,
           role: this.$("#role").value,
         });
-        toastSucesso("Usuário criado.");
+        toastSucesso("Usuário criado. Ele define a senha no primeiro acesso.");
       }
       this.emitir("salvo");
       this.emitir("fechar");
