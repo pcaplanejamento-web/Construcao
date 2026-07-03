@@ -45,7 +45,7 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 | `auth.loginGoogle` | `{ idToken }` | `{ token, usuario, config }` (pública; **só e-mails já cadastrados**) |
 | `auth.logout` | `{}` | `{ encerrada: true }` |
 | `auth.me` | `{}` | `{ usuario, config }` |
-| `auth.solicitarPin` | `{ email }` | `{ enviado: true }` (**pública**) — envia um PIN de 6 caracteres por e-mail (Resend). Rate-limit 60s; validade 10 min. Nunca devolve o PIN. |
+| `auth.solicitarPin` | `{ email }` | `{ enviado: true }` (**pública**) — envia um PIN de 6 caracteres por e-mail (Resend, remetente = `EMAIL_REMETENTE`, **BCC para a caixa do sistema**). Rate-limit 60s; validade 10 min. Nunca devolve o PIN. |
 | `auth.confirmarPin` | `{ email, pin }` | `{ resetToken }` (**pública**) — valida o PIN (máx. 5 tentativas) e troca por um `resetToken` de uso único (10 min). |
 | `auth.definirSenha` | `{ resetToken, novaSenha }` | `{ token, usuario, config }` (**pública**) — grava a senha e **loga automaticamente**. Serve primeiro acesso, esqueci a senha e troca no perfil. |
 | `config.publico` | `{}` | `{ googleClientId }` (pública; o botão de login lê o Client ID daqui) |
@@ -324,6 +324,8 @@ para dono **e** colaboradores.
 | `admin.usuarios.atualizar` | `{ id, nome?, role?, ativo? }` | `{ usuario }` — senha **não** é definida pelo admin (só via PIN). |
 | `admin.config.obter` | `{ usuario_id }` | `{ config: { chave: valor } }` |
 | `admin.config.definir` | `{ usuario_id, chave, valor }` | `{ config }` |
+| `admin.email.obter` | `{}` | `{ remetente, padrao, copia }` — remetente do sistema (`EMAIL_REMETENTE`) + para onde vai a **cópia BCC** das recuperações (a caixa que roda o backend). |
+| `admin.email.definir` | `{ remetente }` | `{ remetente, padrao, copia }` — grava o remetente das notificações (recuperação de senha); vazio = padrão. |
 
 ---
 

@@ -189,6 +189,8 @@ const ROTAS = {
   "admin.usuarios.atualizar": { fn: adminUsuariosAtualizar },
   "admin.config.obter": { fn: adminConfigObter },
   "admin.config.definir": { fn: adminConfigDefinir },
+  "admin.email.obter": { fn: adminEmailObter },
+  "admin.email.definir": { fn: adminEmailDefinir },
 };
 
 /** Resolve a action: valida token quando necessário e executa o handler. */

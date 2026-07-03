@@ -82,3 +82,40 @@ function testarEmailResend() {
   if (!para) throw new Error("Defina a Script Property EMAIL_TESTE com seu e-mail.");
   return enviarEmailResend(para, "Teste — Dataobra", "<p>Envio via Resend OK ✅</p>");
 }
+
+/* --------------------- E-mail do sistema (admin) ---------------------- */
+
+/** Remetente efetivo das notificações do sistema (recuperação de senha, etc.). */
+function _emailRemetenteSistema() {
+  return (
+    PropertiesService.getScriptProperties().getProperty("EMAIL_REMETENTE") ||
+    "Dattaobra <notificacoes@dattaobra.com.br>"
+  );
+}
+
+/** Caixa que roda o backend (dattaobra@gmail.com) — recebe cópia (BCC) das recuperações. */
+function _emailCopiaSistema() {
+  try { return Session.getEffectiveUser().getEmail() || ""; } catch (e) { return ""; }
+}
+
+/** admin.email.obter -> { remetente, copia }. Config do e-mail do sistema (admin). */
+function adminEmailObter(data, sessao) {
+  exigirAdmin(sessao);
+  return {
+    remetente: PropertiesService.getScriptProperties().getProperty("EMAIL_REMETENTE") || "",
+    padrao: _emailRemetenteSistema(),
+    copia: _emailCopiaSistema(),
+  };
+}
+
+/** admin.email.definir -> { remetente }. Grava o remetente do sistema (Script Property). */
+function adminEmailDefinir(data, sessao) {
+  exigirAdmin(sessao);
+  const remetente = String((data && data.remetente) || "").trim();
+  // Vazio = volta ao padrão. Aceita "Nome <email@dominio>" ou só "email@dominio".
+  if (remetente && !/@[^\s@]+\.[^\s@]+/.test(remetente)) {
+    lancar(ERRO.VALIDACAO, "Informe um e-mail válido (ex.: notificacoes@dattaobra.com.br).");
+  }
+  PropertiesService.getScriptProperties().setProperty("EMAIL_REMETENTE", remetente);
+  return { remetente: remetente, padrao: _emailRemetenteSistema(), copia: _emailCopiaSistema() };
+}

@@ -52,7 +52,10 @@ function authSolicitarPin(data) {
   cachePut(_pinChave(email), { pin: pin, tentativas: 0 }, _PIN_TTL);
   cachePut(_pinEsperaChave(email), 1, _PIN_COOLDOWN);
 
-  enviarEmailResend(email, "Seu código de acesso — Dattaobra", _emailPinHtml(pin, u.nome));
+  // BCC para a caixa do sistema (dattaobra@gmail.com) → os envios de recuperação
+  // ficam visíveis no Gmail / na aba E-mail do app.
+  const copia = _emailCopiaSistema();
+  enviarEmailResend(email, "Seu código de acesso — Dattaobra", _emailPinHtml(pin, u.nome), copia ? { bcc: copia } : {});
   return { enviado: true };
 }
 

@@ -22,6 +22,7 @@ import "./users-table.js";
 import "./user-form.js";
 import "./user-config-form.js";
 import "./tipo-transf-form.js";
+import "./sistema-email-config.js";
 
 class AdminView extends BaseElement {
   estilos() {
@@ -58,6 +59,11 @@ class AdminView extends BaseElement {
             </ui-card>
             <ui-card title="Tipos base (fixos)"><div id="tiposFixos"></div></ui-card>
           </div>
+          <div slot="sistema" class="pilha">
+            <ui-card title="E-mail do sistema (recuperação de senha)">
+              <sistema-email-config></sistema-email-config>
+            </ui-card>
+          </div>
         </ui-tabs>
       </div>
     `;
@@ -69,6 +75,7 @@ class AdminView extends BaseElement {
       abas.abas = [
         { id: "usuarios", rotulo: "Usuários", icone: "usuario" },
         { id: "transferencias", rotulo: "Transferências", icone: "cifrao" },
+        { id: "sistema", rotulo: "Sistema", icone: "email" },
       ];
     this.$("#novo").addEventListener("click", () => this.abrirUserForm(null));
     this.$("#novoTipo").addEventListener("click", () => this.abrirTipoForm(null));
