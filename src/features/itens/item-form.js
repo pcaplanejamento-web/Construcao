@@ -11,6 +11,8 @@ import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { obrigatorio } from "../../core/validators.js";
 import { avisarDuplicado } from "../shared/duplicado.js";
+import { editarEntidade, excluirEntidade, ehPrimario } from "../shared/drop-crud.js";
+import "../categorias/categoria-form.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
@@ -62,16 +64,32 @@ class ItemForm extends BaseElement {
     sel.options = CLASSIFICACOES.map((c) => ({ value: c, label: c }));
     sel.value = i.classificacao || CLASSIFICACOES[0];
 
-    // Subclassificação (obrigatória) — pool de itens (categoria tipo "item").
+    this._preencherSubclasse();
     const selCat = this.$("#categoria");
-    selCat.options = [{ value: "", label: "Selecione a subclassificação" }].concat(
-      dataStore.categoriasItem().map((c) => ({ value: c.id, label: c.nome }))
-    );
-    selCat.value = i.categoria_id || "";
+    if (selCat && !selCat._ligado) {
+      selCat.addEventListener("editar", (e) => editarEntidade("classificacaoItem", e.detail.value, () => this._preencherSubclasse()));
+      selCat.addEventListener("excluir", (e) => excluirEntidade("classificacaoItem", e.detail.value, () => this._preencherSubclasse()));
+      selCat._ligado = true;
+    }
 
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
+  }
+
+  /** (Re)popula a Subclassificação (ícones editar/excluir; GLOBAL sem ações), preservando a seleção. */
+  _preencherSubclasse() {
+    const selCat = this.$("#categoria");
+    if (!selCat) return;
+    const ops = [{ value: "", label: "Selecione a subclassificação" }].concat(
+      dataStore.categoriasItem().map((c) => {
+        const prim = ehPrimario("classificacaoItem", c);
+        return { value: c.id, label: c.nome, editavel: !prim, removivel: !prim };
+      })
+    );
+    const atual = selCat.value || (this.item || {}).categoria_id || "";
+    selCat.options = ops;
+    selCat.value = ops.some((o) => String(o.value) === String(atual)) ? atual : "";
   }
 
   async salvar() {

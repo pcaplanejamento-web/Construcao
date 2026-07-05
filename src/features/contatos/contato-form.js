@@ -13,6 +13,7 @@ import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { obrigatorio } from "../../core/validators.js";
 import { avisarDuplicado } from "../shared/duplicado.js";
+import { editarEntidade, excluirEntidade } from "../shared/drop-crud.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
@@ -83,33 +84,45 @@ class ContatoForm extends BaseElement {
     this._preencherSelects();
 
     const selCargo = this.$("#cargo");
-    if (selCargo && !selCargo._ligado) { selCargo.addEventListener("criar", () => this.abrirNovoCargo()); selCargo._ligado = true; }
+    if (selCargo && !selCargo._ligado) {
+      selCargo.addEventListener("criar", () => this.abrirNovoCargo());
+      selCargo.addEventListener("editar", (e) => editarEntidade("cargo", e.detail.value, () => this._preencherSelects()));
+      selCargo.addEventListener("excluir", (e) => excluirEntidade("cargo", e.detail.value, () => this._preencherSelects()));
+      selCargo._ligado = true;
+    }
     const selForn = this.$("#fornecedor");
-    if (selForn && !selForn._ligado) { selForn.addEventListener("criar", () => this.abrirNovaEmpresa()); selForn._ligado = true; }
+    if (selForn && !selForn._ligado) {
+      selForn.addEventListener("criar", () => this.abrirNovaEmpresa());
+      selForn.addEventListener("editar", (e) => editarEntidade("fornecedor", e.detail.value, () => this._preencherSelects()));
+      selForn.addEventListener("excluir", (e) => excluirEntidade("fornecedor", e.detail.value, () => this._preencherSelects()));
+      selForn._ligado = true;
+    }
 
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
   }
 
-  /** (Re)popula Cargo e Empresa preservando a seleção atual (após cadastrar um novo). */
+  /** (Re)popula Cargo e Empresa (com ícones editar/excluir; primários sem ações), preservando a seleção. */
   _preencherSelects() {
     const c = this.contato || {};
     const selCargo = this.$("#cargo");
     if (selCargo) {
-      const atual = selCargo.value || c.cargo || "";
-      selCargo.options = [{ value: "", label: "— Sem cargo —" }].concat(
-        dataStore.cargos().map((x) => ({ value: x.nome, label: x.nome }))
+      const ops = [{ value: "", label: "— Sem cargo —" }].concat(
+        dataStore.cargos().map((x) => ({ value: x.nome, label: x.nome, editavel: !x.fixo, removivel: !x.fixo }))
       );
-      selCargo.value = atual;
+      const atual = selCargo.value || c.cargo || "";
+      selCargo.options = ops;
+      selCargo.value = ops.some((o) => String(o.value) === String(atual)) ? atual : "";
     }
     const selForn = this.$("#fornecedor");
     if (selForn) {
-      const atual = selForn.value || c.fornecedor_id || "";
-      selForn.options = [{ value: "", label: "— Sem empresa —" }].concat(
-        dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
+      const ops = [{ value: "", label: "— Sem empresa —" }].concat(
+        dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome, editavel: true, removivel: true }))
       );
-      selForn.value = atual;
+      const atual = selForn.value || c.fornecedor_id || "";
+      selForn.options = ops;
+      selForn.value = ops.some((o) => String(o.value) === String(atual)) ? atual : "";
     }
   }
 

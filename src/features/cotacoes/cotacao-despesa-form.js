@@ -21,6 +21,7 @@ import { toastSucesso, toastAviso, notificarErro } from "../../core/event-bus.js
 import { totalOferta, qtdOferta, unitFinalOferta } from "./cotacao-util.js";
 import { ofertanteNome, rotuloOrcamento, previaOfertaHtml } from "../orcamentos/orcamento-util.js";
 import { valorPositivo } from "../../core/validators.js";
+import { editarEntidade, excluirEntidade } from "../shared/drop-crud.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-select.js";
@@ -257,30 +258,36 @@ class CotacaoDespesaForm extends BaseElement {
    * cadastrar um item novo (para refrescar a lista).
    */
   preencherNova() {
+    const refresh = () => this.preencherNova();
     const selItem = this.$("#novoItem");
     if (selItem) {
       const itens = dataStore.itensAtivos();
       const atual = selItem.value;
       selItem.setAttribute("placeholder", itens.length ? "Buscar o item…" : "Nenhum item — cadastre um");
-      selItem.options = itens.map((i) => ({ value: i.id, label: `${i.nome} — ${i.classificacao}` }));
+      selItem.options = itens.map((i) => ({ value: i.id, label: `${i.nome} — ${i.classificacao}`, editavel: true, removivel: true }));
       selItem.value = itens.some((i) => String(i.id) === String(atual)) ? atual : "";
       if (!selItem._ligado) {
         selItem.addEventListener("change", () => { this.atualizarNovaClasse(); this.pintarResumo(); });
         selItem.addEventListener("criar", () => this.abrirNovoItem());
+        selItem.addEventListener("editar", (e) => editarEntidade("item", e.detail.value, refresh));
+        selItem.addEventListener("excluir", (e) => excluirEntidade("item", e.detail.value, refresh));
         selItem._ligado = true;
       }
     }
     const selOf = this.$("#novoOfertante");
     if (selOf) {
       const atual = selOf.value;
+      // Contatos ganham editar/excluir; equipes (grupos) não (geridas em Equipes).
       const opcoes = [{ value: "", label: "— Sem ofertante —" }];
-      dataStore.contatosAtivos().forEach((c) => opcoes.push({ value: "c:" + c.id, label: c.nome }));
+      dataStore.contatosAtivos().forEach((c) => opcoes.push({ value: "c:" + c.id, label: c.nome, editavel: true, removivel: true }));
       dataStore.equipes().forEach((e) => opcoes.push({ value: "e:" + e.id, label: `${e.nome} — grupo` }));
       selOf.options = opcoes;
       selOf.value = opcoes.some((o) => String(o.value) === String(atual)) ? atual : "";
       if (!selOf._ligado) {
         selOf.addEventListener("change", () => this.autoFornecedorNova());
         selOf.addEventListener("criar", () => this.abrirNovoContato());
+        selOf.addEventListener("editar", (e) => { const v = String(e.detail.value || ""); if (v.indexOf("c:") === 0) editarEntidade("contato", v.slice(2), refresh); });
+        selOf.addEventListener("excluir", (e) => { const v = String(e.detail.value || ""); if (v.indexOf("c:") === 0) excluirEntidade("contato", v.slice(2), refresh); });
         selOf._ligado = true;
       }
     }
@@ -288,12 +295,14 @@ class CotacaoDespesaForm extends BaseElement {
     if (selForn) {
       const atual = selForn.value;
       const opcoes = [{ value: "", label: "— Nenhuma —" }].concat(
-        dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
+        dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome, editavel: true, removivel: true }))
       );
       selForn.options = opcoes;
       selForn.value = opcoes.some((o) => String(o.value) === String(atual)) ? atual : "";
       if (!selForn._ligado) {
         selForn.addEventListener("criar", () => this.abrirNovoFornecedor());
+        selForn.addEventListener("editar", (e) => editarEntidade("fornecedor", e.detail.value, refresh));
+        selForn.addEventListener("excluir", (e) => excluirEntidade("fornecedor", e.detail.value, refresh));
         selForn._ligado = true;
       }
     }

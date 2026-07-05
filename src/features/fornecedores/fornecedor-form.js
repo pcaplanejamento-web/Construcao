@@ -10,6 +10,7 @@ import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { obrigatorio } from "../../core/validators.js";
 import { avisarDuplicado } from "../shared/duplicado.js";
+import { editarEntidade, excluirEntidade, ehPrimario } from "../shared/drop-crud.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
@@ -79,21 +80,30 @@ class FornecedorForm extends BaseElement {
   aposRender() {
     this.preencherCategorias();
     const selCat = this.$("#categoria");
-    if (selCat && !selCat._ligado) { selCat.addEventListener("criar", () => this.abrirNovaClassificacao()); selCat._ligado = true; }
+    if (selCat && !selCat._ligado) {
+      selCat.addEventListener("criar", () => this.abrirNovaClassificacao());
+      selCat.addEventListener("editar", (e) => editarEntidade("classificacaoFornecedor", e.detail.value, () => this.preencherCategorias()));
+      selCat.addEventListener("excluir", (e) => excluirEntidade("classificacaoFornecedor", e.detail.value, () => this.preencherCategorias()));
+      selCat._ligado = true;
+    }
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
   }
 
-  /** (Re)popula a Classificação preservando a seleção atual (após cadastrar uma nova). */
+  /** (Re)popula a Classificação (ícones editar/excluir; GLOBAL sem ações), preservando a seleção. */
   preencherCategorias() {
     const sel = this.$("#categoria");
     if (!sel) return;
-    const atual = sel.value || (this.fornecedor || {}).categoria_id || "";
-    sel.options = [{ value: "", label: "— Sem classificação —" }].concat(
-      dataStore.categoriasFornecedor().map((c) => ({ value: c.id, label: c.nome }))
+    const ops = [{ value: "", label: "— Sem classificação —" }].concat(
+      dataStore.categoriasFornecedor().map((c) => {
+        const prim = ehPrimario("classificacaoFornecedor", c);
+        return { value: c.id, label: c.nome, editavel: !prim, removivel: !prim };
+      })
     );
-    sel.value = atual;
+    const atual = sel.value || (this.fornecedor || {}).categoria_id || "";
+    sel.options = ops;
+    sel.value = ops.some((o) => String(o.value) === String(atual)) ? atual : "";
   }
 
   /** Abre o <categoria-form> (tipo fornecedor) e seleciona a nova classificação ao voltar. */
