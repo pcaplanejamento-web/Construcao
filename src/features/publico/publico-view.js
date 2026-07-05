@@ -117,7 +117,7 @@ class PublicoView extends BaseElement {
       <dashboard-summary id="dash"></dashboard-summary>
       <ui-tabs id="abas">
         <div slot="graficos">
-          <ui-card><category-breakdown id="break" titulo="Gastos por subclassificação"></category-breakdown></ui-card>
+          <ui-card><category-breakdown id="break" titulo="Gastos por categoria"></category-breakdown></ui-card>
         </div>
         <div slot="despesas">
           <ui-card mesa title="Mesa com itens"><ui-data-table id="tDesp" fluido empty-text="Nenhuma despesa registrada."></ui-data-table></ui-card>
@@ -169,7 +169,7 @@ class PublicoView extends BaseElement {
       },
       {
         chave: "categoria_nome",
-        titulo: "Subclassificação",
+        titulo: "Categoria",
         secundaria: true,
         formato: (nome, linha) =>
           nome

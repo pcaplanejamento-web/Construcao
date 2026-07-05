@@ -49,7 +49,7 @@ class ItemForm extends BaseElement {
             value="${(i.nome || "").replace(/"/g, "&quot;")}"
             placeholder="Ex.: Cimento CP-II"></ui-input>
           <ui-select id="classificacao" label="Classificação"></ui-select>
-          <ui-select id="categoria" label="Subclassificação"></ui-select>
+          <ui-select id="categoria" label="Categoria"></ui-select>
         </div>
         <div slot="rodape">
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
@@ -78,11 +78,11 @@ class ItemForm extends BaseElement {
     this.$("#salvar").addEventListener("click", async () => { await this.salvar(); focarPrimeiroErro(this); });
   }
 
-  /** (Re)popula a Subclassificação (ícones editar/excluir; GLOBAL sem ações), preservando a seleção. */
+  /** (Re)popula a Categoria (ícones editar/excluir; GLOBAL sem ações), preservando a seleção. */
   _preencherSubclasse() {
     const selCat = this.$("#categoria");
     if (!selCat) return;
-    const ops = [{ value: "", label: "Selecione a subclassificação" }].concat(
+    const ops = [{ value: "", label: "Selecione a categoria" }].concat(
       dataStore.categoriasItem().map((c) => {
         const prim = ehPrimario("classificacaoItem", c);
         return { value: c.id, label: c.nome, editavel: !prim, removivel: !prim };
@@ -104,7 +104,7 @@ class ItemForm extends BaseElement {
     const classificacao = this.$("#classificacao").value || CLASSIFICACOES[0];
     const categoriaId = this.$("#categoria").value;
     if (!categoriaId) {
-      this.$("#categoria").setAttribute("error", "Selecione a subclassificação.");
+      this.$("#categoria").setAttribute("error", "Selecione a categoria.");
       return;
     }
     this.$("#categoria").removeAttribute("error");

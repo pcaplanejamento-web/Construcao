@@ -1,7 +1,7 @@
 /**
  * <preco-form> — Banner ÚNICO da OFERTA (criar / editar / ver detalhes — tudo no
  * mesmo componente). A oferta é independente: nasce de um ITEM (define
- * classificação + subclassificação) e pode vincular-se a uma cotação e/ou orçamento.
+ * classificação + categoria) e pode vincular-se a uma cotação e/ou orçamento.
  *
  * Contexto (props) — define o que fica TRAVADO:
  *  - avulsa (nenhuma): escolhe item (select), ofertante, fornecedor.
@@ -153,7 +153,7 @@ class PrecoForm extends BaseElement {
     return `
       <span class="item">${item.nome}</span>
       ${item.classificacao ? `<category-badge nome="${item.classificacao}" cor="${COR_CLASSIFICACAO[item.classificacao] || "var(--cor-neutro)"}"></category-badge>` : ""}
-      ${sub ? `<small>Subclassificação: ${sub}</small>` : ""}`;
+      ${sub ? `<small>Categoria: ${sub}</small>` : ""}`;
   }
 
   /** Banner com os detalhes do ITEM (reusa ui-modal; sem componente novo). */
@@ -170,7 +170,7 @@ class PrecoForm extends BaseElement {
     modal.innerHTML = `<div style="display:flex;flex-direction:column">
       ${linha("Nome", item.nome || "—")}
       ${linha("Classificação", item.classificacao || "—")}
-      ${linha("Subclassificação", sub || "—")}
+      ${linha("Categoria", sub || "—")}
       <div style="margin-top:var(--esp-3)"><a href="/itens/${item.id}">Abrir página do item →</a></div>
     </div>`;
     modal.addEventListener("fechar", () => modal.remove());
@@ -349,7 +349,7 @@ class PrecoForm extends BaseElement {
     this.$("#salvar").addEventListener("click", async () => { await this.salvar(); focarPrimeiroErro(this); });
   }
 
-  /** Texto de classificação/subclassificação do item (só no modo select). */
+  /** Texto de classificação/categoria do item (só no modo select). */
   atualizarClasse() {
     const box = this.$("#classInfo");
     if (!box) return;
@@ -363,7 +363,7 @@ class PrecoForm extends BaseElement {
       : "";
     const exige = item.classificacao === "Material" ? "fornecedor obrigatório" : "ofertante obrigatório";
     box.innerHTML = `Classificação: <b>${item.classificacao || "—"}</b>${
-      sub ? ` · Subclassificação: <b>${sub}</b>` : ""
+      sub ? ` · Categoria: <b>${sub}</b>` : ""
     } <small>(${exige})</small>`;
   }
 

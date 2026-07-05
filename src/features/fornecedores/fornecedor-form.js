@@ -63,7 +63,7 @@ class FornecedorForm extends BaseElement {
           <div class="linha">
             <ui-input id="cnpj" label="CNPJ" formato="cnpj" value="${esc(f.cnpj)}"
               placeholder="00.000.000/0000-00"></ui-input>
-            <ui-select id="categoria" label="Classificação" criar="Cadastrar classificação"></ui-select>
+            <ui-select id="categoria" label="Categoria" criar="Cadastrar categoria"></ui-select>
           </div>
           <div>
             <label class="tx">Observação</label>
@@ -92,11 +92,11 @@ class FornecedorForm extends BaseElement {
     this.$("#salvar").addEventListener("click", async () => { await this.salvar(); focarPrimeiroErro(this); });
   }
 
-  /** (Re)popula a Classificação (ícones editar/excluir; GLOBAL sem ações), preservando a seleção. */
+  /** (Re)popula a Categoria (ícones editar/excluir; GLOBAL sem ações), preservando a seleção. */
   preencherCategorias() {
     const sel = this.$("#categoria");
     if (!sel) return;
-    const ops = [{ value: "", label: "— Sem classificação —" }].concat(
+    const ops = [{ value: "", label: "— Sem categoria —" }].concat(
       dataStore.categoriasFornecedor().map((c) => {
         const prim = ehPrimario("classificacaoFornecedor", c);
         return { value: c.id, label: c.nome, editavel: !prim, removivel: !prim };
@@ -107,7 +107,7 @@ class FornecedorForm extends BaseElement {
     sel.value = ops.some((o) => String(o.value) === String(atual)) ? atual : "";
   }
 
-  /** Abre o <categoria-form> (tipo fornecedor) e seleciona a nova classificação ao voltar. */
+  /** Abre o <categoria-form> (tipo fornecedor) e seleciona a nova categoria ao voltar. */
   abrirNovaClassificacao() {
     const antes = new Set(dataStore.categoriasFornecedor().map((c) => String(c.id)));
     const form = document.createElement("categoria-form");

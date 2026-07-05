@@ -2,7 +2,7 @@
  * <cotacao-form> — Modal para criar/editar uma cotação (necessidade a cotar).
  *
  * Modo ÚNICO: a cotação é SEMPRE por SUBCLASSIFICAÇÃO — cada oferta define o
- * próprio item dentro da subclassificação; o detalhe agrupa as ofertas por item.
+ * próprio item dentro da categoria; o detalhe agrupa as ofertas por item.
  *
  * Propriedade: .cotacao (objeto p/ edição; ausente = nova)
  * Eventos: "salvo" ({ cotacao }), "fechar". Auto-contido (chama o data-store).
@@ -42,7 +42,7 @@ class CotacaoForm extends BaseElement {
     return `
       <ui-modal open title="${this.ehEdicao ? "Editar cotação" : "Nova cotação"}">
         <div class="campos">
-          <ui-select id="categoria" label="Subclassificação"></ui-select>
+          <ui-select id="categoria" label="Categoria"></ui-select>
           <div class="linha">
             <ui-input id="quantidade" label="Quantidade" type="number" step="0.01" min="0"
               value="${esc(c.quantidade)}" placeholder="0"></ui-input>
@@ -90,7 +90,7 @@ class CotacaoForm extends BaseElement {
   async salvar() {
     const categoriaId = this.$("#categoria").value;
     if (!categoriaId) {
-      this.$("#categoria").setAttribute("error", "Selecione a subclassificação.");
+      this.$("#categoria").setAttribute("error", "Selecione a categoria.");
       return;
     }
     this.$("#categoria").removeAttribute("error");

@@ -74,7 +74,7 @@ class CotacaoDetailView extends BaseElement {
       .registrada { display: inline-flex; align-items: center; gap: 6px;
         color: var(--cor-sucesso); font-weight: var(--peso-semi); font-size: var(--fs-sm); }
       .dica { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
-      /* Ofertas AGRUPADAS por item (uma seção/mesa por item da subclassificação). */
+      /* Ofertas AGRUPADAS por item (uma seção/mesa por item da categoria). */
       .barra-ofertas { display: flex; justify-content: flex-end; margin-bottom: var(--esp-3); }
       #grupos { display: flex; flex-direction: column; gap: var(--esp-5); }
       .vazio-of { color: var(--cor-texto-fraco); padding: var(--esp-4); text-align: center; }
@@ -131,8 +131,8 @@ class CotacaoDetailView extends BaseElement {
     const t = document.createElement("ui-data-table");
     t.setAttribute("fluido", "");
     t.setAttribute("clicavel", "");
-    // Item e Subclassificação são constantes no grupo → ficam no título da seção.
-    t.columns = colunasOferta().filter((col) => col.titulo !== "Item" && col.titulo !== "Subclassificação");
+    // Item e Categoria são constantes no grupo → ficam no título da seção.
+    t.columns = colunasOferta().filter((col) => col.titulo !== "Item" && col.titulo !== "Categoria");
     t.acoes = [
       { nome: "registrar", rotulo: "Registrar" },
       { nome: "escolher", rotulo: "Escolher" },
@@ -179,14 +179,14 @@ class CotacaoDetailView extends BaseElement {
     return t;
   }
 
-  /** Renderiza as ofertas AGRUPADAS por item — uma "mesa" por item da subclassificação,
+  /** Renderiza as ofertas AGRUPADAS por item — uma "mesa" por item da categoria,
    * com nº de ofertas e melhor preço (do grupo) no título; cada grupo ordenado do menor
    * total p/ o maior (melhor preço no topo). */
   _montarGrupos(precos, c) {
     const cont = this._grupos;
     if (!cont) return;
     if (!precos.length) {
-      cont.innerHTML = `<ui-card mesa title="Mesa com ofertas"><div class="vazio-of">Nenhuma oferta ainda. Adicione ofertas de contatos (de itens desta subclassificação) para comparar.</div></ui-card>`;
+      cont.innerHTML = `<ui-card mesa title="Mesa com ofertas"><div class="vazio-of">Nenhuma oferta ainda. Adicione ofertas de contatos (de itens desta categoria) para comparar.</div></ui-card>`;
       return;
     }
     cont.replaceChildren();
@@ -219,7 +219,7 @@ class CotacaoDetailView extends BaseElement {
     dataStore.fornecedores().forEach((f) => (this._mapaForn[f.id] = f.nome));
 
     const precos = dataStore.precosDaCotacao(this.cotacaoId);
-    // Ofertas AGRUPADAS por item (a cotação é por subclassificação): cada grupo tem o
+    // Ofertas AGRUPADAS por item (a cotação é por categoria): cada grupo tem o
     // seu próprio "melhor preço" (mesmo item = comparável).
     this._montarGrupos(precos, c);
 
@@ -265,7 +265,7 @@ class CotacaoDetailView extends BaseElement {
       <div>
         <h1>${nomeSub}</h1>
         <div class="meta">
-          <span>Cotação por subclassificação</span>
+          <span>Cotação por categoria</span>
           ${qtd ? `<span>· ${qtd}</span>` : ""}
           ${obra ? `· <a href="/obras/${obra.id}"><ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</a>` : ""}
           <span>· ${c.status === "fechada" ? "Fechada" : "Aberta"}</span>

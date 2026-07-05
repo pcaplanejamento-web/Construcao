@@ -72,7 +72,7 @@ export function rastrearFornecedor(id, ctx) {
 export function rastrearItem(id, ctx) {
   const ofertas = (ctx.ofertas || []).filter((o) => eq(o.item_id, id));
   const despesas = (ctx.despesas || []).filter((d) => eq(d.item_id, id));
-  // Cotação é por subclassificação: relaciona-se ao item pelas SUAS OFERTAS
+  // Cotação é por categoria: relaciona-se ao item pelas SUAS OFERTAS
   // (offer.item_id). `c.item_id` direto cobre cotações legadas ainda não migradas.
   const idsCotItem = new Set();
   ofertas.forEach((o) => temId(o.cotacao_id) && idsCotItem.add(String(o.cotacao_id)));

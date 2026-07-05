@@ -333,7 +333,7 @@ class CotacaoDespesaForm extends BaseElement {
     this.atualizarNovaClasse();
   }
 
-  /** Texto de classificação/subclassificação do item escolhido (nova despesa). */
+  /** Texto de classificação/categoria do item escolhido (nova despesa). */
   atualizarNovaClasse() {
     const box = this.$("#novaClasse");
     if (!box) return;
@@ -343,7 +343,7 @@ class CotacaoDespesaForm extends BaseElement {
       ? (dataStore.categorias().find((c) => String(c.id) === String(it.categoria_id)) || {}).nome
       : "";
     const exige = it.classificacao === "Material" ? "fornecedor obrigatório" : "ofertante obrigatório";
-    box.innerHTML = `Classificação: <b>${it.classificacao || "—"}</b>${sub ? ` · Subclassificação <ui-ajuda termo="subclassificacao"></ui-ajuda>: <b>${sub}</b>` : ""} <small>(${exige})</small>`;
+    box.innerHTML = `Classificação: <b>${it.classificacao || "—"}</b>${sub ? ` · Categoria <ui-ajuda termo="categoria"></ui-ajuda>: <b>${sub}</b>` : ""} <small>(${exige})</small>`;
   }
 
   /** Auto-preenche a empresa pelo contato ofertante (se vinculado). */
@@ -574,7 +574,7 @@ class CotacaoDespesaForm extends BaseElement {
     btn.setAttribute("loading", "");
     try {
       // Cria a despesa E marca a oferta como registrada + fecha a cotação (servidor).
-      // A subclassificação é herdada do item; "" deixa o servidor resolvê-la.
+      // A categoria é herdada do item; "" deixa o servidor resolvê-la.
       await dataStore.registrarDespesaOferta((cotacao && cotacao.id) || "", preco.id, obraId, "", responsaveis);
       const obra = dataStore.obra(obraId) || {};
       toastSucesso(`Despesa lançada em "${obra.nome || "obra"}".`);

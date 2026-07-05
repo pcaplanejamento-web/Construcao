@@ -95,7 +95,7 @@ class ItemDetailView extends BaseElement {
       .filter((d) => String(d.item_id) === id);
   }
 
-  /** Cotações deste item. A cotação é por subclassificação → relaciona-se ao item
+  /** Cotações deste item. A cotação é por categoria → relaciona-se ao item
    * pelas SUAS OFERTAS (offer.item_id); `c.item_id` direto cobre cotações legadas. */
   _cotacoesDoItem() {
     const id = String(this.itemId);
@@ -168,7 +168,7 @@ class ItemDetailView extends BaseElement {
       { chave: "data", titulo: "Data", formato: (v) => (v ? fmtData(v) : "—") },
       {
         chave: "categoria_id",
-        titulo: "Subclassificação",
+        titulo: "Categoria",
         formato: (id) =>
           this._mapaCat[id]
             ? `<category-badge nome="${this._mapaCat[id].nome}" cor="${this._mapaCat[id].cor}"></category-badge>`
@@ -191,8 +191,8 @@ class ItemDetailView extends BaseElement {
 
     this._tabCotacoes = alvo.querySelector("#tabCotacoes");
     this._tabCotacoes.columns = [
-      // Cotação por subclassificação: o rótulo é o nome da subclasse (`descricao`).
-      { chave: "descricao", titulo: "Subclassificação", formato: (v) => v || "—" },
+      // Cotação por categoria: o rótulo é o nome da subclasse (`descricao`).
+      { chave: "descricao", titulo: "Categoria", formato: (v) => v || "—" },
       {
         chave: "obra_id",
         titulo: "Obra",

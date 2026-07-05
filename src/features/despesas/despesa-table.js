@@ -78,7 +78,7 @@ class DespesaTable extends BaseElement {
       },
       {
         chave: "categoria_id",
-        titulo: "Subclassificação",
+        titulo: "Categoria",
         secundaria: true,
         formato: (id) =>
           this.mapaCat[id]

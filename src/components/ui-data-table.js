@@ -203,6 +203,8 @@ class UiDataTable extends BaseElement {
       th, td { padding: var(--esp-3) var(--esp-3); text-align: left; white-space: nowrap; vertical-align: middle; }
       :host([fluido]) table { table-layout: auto; }
       :host([fluido]) td { white-space: normal; }
+      /* Números/moeda (.dir) NUNCA quebram — "R$ 1.234,50" fica numa linha só. */
+      :host([fluido]) td.dir { white-space: nowrap; }
       :host([clicavel]) tbody tr { cursor: pointer; }
       th { color: var(--cor-texto-fraco); font-weight: var(--peso-semi);
         font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
@@ -248,9 +250,11 @@ class UiDataTable extends BaseElement {
         background: var(--cor-mesa); }
       thead th.sel { z-index: 6; background: var(--cor-mesa); }
       input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cor-primaria); cursor: pointer; }
-      /* Alvo de toque confortável (≥34px) sem aumentar o visual do checkbox. */
+      /* Alvo de toque confortável sem aumentar o visual do checkbox. */
       .selbox { display: inline-flex; align-items: center; justify-content: center;
         min-width: 34px; min-height: 34px; margin: 0 auto; cursor: pointer; }
+      /* Em telas de TOQUE (sem mouse) sobe p/ 44px (recomendação WCAG). */
+      @media (hover: none) { .selbox { min-width: 44px; min-height: 44px; } }
       .th-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none;
         font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
         cursor: pointer; padding: 0; }
@@ -342,7 +346,7 @@ class UiDataTable extends BaseElement {
         tbody td::before { content: attr(data-label); flex: none; max-width: 42%; text-align: left;
           color: var(--cor-texto-suave); font-weight: var(--peso-semi);
           font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; }
-        td.dir { font-family: var(--fonte-titulo); }
+        td.dir { font-family: var(--fonte-titulo); white-space: nowrap; }
         /* SELEÇÃO: PRIMEIRA linha do card (rótulo "Selecionar" + checkbox), EM FLUXO,
            no topo — não sobrepõe nada (antes era absolute e cobria a 1ª célula). */
         tbody td.sel { width: auto; min-width: 0; max-width: none; padding: var(--esp-2) 0;

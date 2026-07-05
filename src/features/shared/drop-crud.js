@@ -4,7 +4,7 @@
  * edição e o fluxo de exclusão — este REUSA `abrirBannerVinculos` + `vinculosDo*`
  * (bloqueia se houver vínculos: ofertas, despesas, obras, contatos, etc.) e só
  * remove via data-store se estiver livre. Registros PRIMÁRIOS (cargo fixo,
- * classificação GLOBAL) não recebem ações (ver `ehPrimario`).
+ * categoria GLOBAL) não recebem ações (ver `ehPrimario`).
  *
  * Não importa os forms (evita ciclos): cria-os por tag (já registrados pelos
  * componentes/telas que usam este helper).
@@ -66,21 +66,21 @@ const DESCRITORES = {
     achar: (v) => dataStore.categoriasFornecedor().find((r) => String(r.id) === String(v)) || null,
     primario: (r) => String(r.usuario_id) === "GLOBAL",
     tag: "categoria-form", prop: "categoria", tipoProp: "fornecedor",
-    tituloVinc: (r) => `A classificação "${r.nome}"`,
+    tituloVinc: (r) => `A categoria "${r.nome}"`,
     vinculos: (r) => vinculosDaSubclassificacao(r.id),
     remover: (r) => dataStore.removerCategoria(r.id),
     reativar: (r) => dataStore.reativarCategoria(r.id),
-    tituloExcluir: "Excluir classificação", msgExcluir: (r) => `Excluir a classificação "${r.nome}"?`,
+    tituloExcluir: "Excluir categoria", msgExcluir: (r) => `Excluir a categoria "${r.nome}"?`,
   },
   classificacaoItem: {
     achar: (v) => dataStore.categoriasItem().find((r) => String(r.id) === String(v)) || null,
     primario: (r) => String(r.usuario_id) === "GLOBAL",
     tag: "categoria-form", prop: "categoria", tipoProp: "item",
-    tituloVinc: (r) => `A subclassificação "${r.nome}"`,
+    tituloVinc: (r) => `A categoria "${r.nome}"`,
     vinculos: (r) => vinculosDaSubclassificacao(r.id),
     remover: (r) => dataStore.removerCategoria(r.id),
     reativar: (r) => dataStore.reativarCategoria(r.id),
-    tituloExcluir: "Excluir subclassificação", msgExcluir: (r) => `Excluir a subclassificação "${r.nome}"?`,
+    tituloExcluir: "Excluir categoria", msgExcluir: (r) => `Excluir a categoria "${r.nome}"?`,
   },
 };
 

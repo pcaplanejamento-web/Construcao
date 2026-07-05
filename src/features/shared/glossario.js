@@ -53,10 +53,10 @@ export const GLOSSARIO = {
       "Pagamento é quando você quita uma despesa (paga o fornecedor/prestador). " +
       "Transferência é mover dinheiro entre participantes da obra. São coisas diferentes.",
   },
-  subclassificacao: {
-    titulo: "Subclassificação",
+  categoria: {
+    titulo: "Categoria",
     texto:
-      "É a categoria detalhada do item (ex.: Estrutura › Concreto). Ela VEM DO ITEM — " +
+      "É a subdivisão detalhada do item (ex.: Estrutura › Concreto). Ela VEM DO ITEM — " +
       "para mudar, edite o item. Aqui ela só é exibida.",
   },
 };

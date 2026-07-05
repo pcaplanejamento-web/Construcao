@@ -124,7 +124,7 @@ export function colunasOferta() {
           : _fraco("—");
       },
     },
-    { chave: "item_id", titulo: "Subclassificação", secundaria: true, formato: (id, l) => _subclasseOferta(l) || _fraco("—") },
+    { chave: "item_id", titulo: "Categoria", secundaria: true, formato: (id, l) => _subclasseOferta(l) || _fraco("—") },
     { chave: "contato_id", titulo: "Ofertante", formato: (id, l) => ofertanteNome(l.contato_id, l.equipe_id) },
     { chave: "fornecedor_id", titulo: "Empresa", formato: (id, l) => _fornecedorOferta(l) || _fraco("—") },
     {

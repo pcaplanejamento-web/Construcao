@@ -12,7 +12,7 @@
 import { criarStore } from "./store.js";
 import { api } from "./api-client.js";
 import { auth } from "./auth-store.js";
-import { bus, EVENTOS, toastAviso } from "./event-bus.js";
+import { bus, EVENTOS, toastAviso, toastInfo } from "./event-bus.js";
 import { obraIdDaOferta } from "../features/shared/rastreabilidade.js";
 import {
   consolidarObra as _consolidarObraEstoque,
@@ -163,13 +163,20 @@ async function inicializar() {
   _aplicarSnapshot(d);
 }
 
-/** Atualiza o cache silenciosamente (refresh em 2º plano). */
+/**
+ * Atualiza o cache silenciosamente (refresh em 2º plano). Se o refresh FALHA
+ * (sem rede), avisa UMA vez que os dados exibidos podem estar desatualizados; ao
+ * voltar, avisa que a conexão foi restabelecida. Só notifica nas TRANSIÇÕES
+ * (não a cada tentativa) — o app segue usável com o cache.
+ */
+let _semConexao = false;
 async function atualizarEmSegundoPlano() {
   try {
     const d = await api.call("dados.snapshot");
     _aplicarSnapshot(d);
+    if (_semConexao) { _semConexao = false; toastInfo("Conexão restabelecida."); }
   } catch (e) {
-    /* silencioso */
+    if (!_semConexao) { _semConexao = true; toastAviso("Sem conexão — mostrando os dados salvos."); }
   }
 }
 
@@ -188,7 +195,7 @@ const despesas = (obraId) => store.get().despesas[obraId] || [];
 const todasDespesas = () => obras().flatMap((o) => despesas(o.id));
 const resumo = (obraId) => store.get().resumos[obraId] || { total: 0, qtd: 0, orcamento: 0, saldo: 0, por_categoria: [] };
 const categoriasDaObra = (obraId) => store.get().categoriasPorObra[obraId] || store.get().categorias;
-/** Subclassificações de ITEM (tipo != fornecedor; inclui legado sem tipo). */
+/** Categorias de ITEM (tipo != fornecedor; inclui legado sem tipo). */
 const categoriasItem = () => store.get().categorias.filter((c) => String(c.tipo || "") !== "fornecedor");
 /** Classificações de FORNECEDOR (tipo == fornecedor). */
 const categoriasFornecedor = () => store.get().categorias.filter((c) => String(c.tipo || "") === "fornecedor");
@@ -220,7 +227,7 @@ const todasOfertas = () => store.get().ofertas;
 const precosDaCotacao = (cotacaoId) =>
   store.get().ofertas.filter((p) => String(p.cotacao_id) === String(cotacaoId));
 const historicoDaCotacao = (cotacaoId) => store.get().historicoPorCotacao[cotacaoId] || [];
-/** Itens (ativos) de uma subclassificação (categoria tipo item). */
+/** Itens (ativos) de uma categoria (categoria tipo item). */
 const itensDaSubclasse = (categoriaId) =>
   store.get().itens.filter((i) => i.ativo !== false && String(i.categoria_id) === String(categoriaId));
 /** Ofertas de uma cotação agrupadas por item: [{ itemId, ofertas:[...] }] (ordem de surgimento). */
@@ -1229,7 +1236,7 @@ async function reativarItem(id) {
 async function criarCotacao(dados) {
   const r = await api.call("cotacoes.criar", dados);
   const s = store.get();
-  // 1 cotação por subclassificação: o backend pode devolver uma JÁ existente —
+  // 1 cotação por categoria: o backend pode devolver uma JÁ existente —
   // substitui no cache (não duplica).
   const existe = s.cotacoes.some((c) => String(c.id) === String(r.cotacao.id));
   store.set({
@@ -1441,7 +1448,7 @@ async function registrarDespesaOferta(cotacaoId, precoId, obraId, categoriaId, r
 /**
  * Registra o ORÇAMENTO COMPLETO: todas as ofertas ainda não registradas viram
  * despesas na obra (reusa registrarDespesaOferta por oferta — sequencial). A
- * subclassificação vem do item (servidor) e a mesma responsabilidade é aplicada
+ * categoria vem do item (servidor) e a mesma responsabilidade é aplicada
  * a todas. Retorna { total, despesas }.
  */
 async function registrarOrcamentoCompleto(orcId, obraId, responsaveis) {

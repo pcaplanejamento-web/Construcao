@@ -113,7 +113,7 @@ class DashboardSummary extends BaseElement {
       : Array.isArray(r.por_categoria)
       ? r.por_categoria
       : [];
-    // O resumo do backend usa o campo `total` (Σ valor por classificação/subclassificação);
+    // O resumo do backend usa o campo `total` (Σ valor por classificação/categoria);
     // `valor` é fallback p/ payloads antigos. Sem isto cada linha mostrava R$ 0,00.
     const valorDe = (x) => Number(x.total != null ? x.total : x.valor) || 0;
     const linhas = (arr) =>
@@ -130,7 +130,7 @@ class DashboardSummary extends BaseElement {
         titulo: "Total gasto",
         html: `<p class="kpi-exp">Soma do <b>valor de todas as despesas registradas</b> na obra (independe de já ter sido pago).</p>
           <div class="kpi-sec"><label>Por classificação</label>${linhas(porCls)}</div>
-          ${porSub.length ? `<div class="kpi-sec"><label>Por subclassificação</label>${linhas(porSub)}</div>` : ""}
+          ${porSub.length ? `<div class="kpi-sec"><label>Por categoria</label>${linhas(porSub)}</div>` : ""}
           <div class="kpi-tot"><span>Total</span><strong>${moeda(total)}</strong></div>`,
       },
       orcamento: {

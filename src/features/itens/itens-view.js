@@ -1,7 +1,7 @@
 /**
  * <itens-view> — Catálogo de itens (rota /itens), com abas:
  *  - Itens: cada item classificado como Material ou Serviço (CRUD via item-form);
- *  - Subclassificações: lista livre (entidade categoria), TODAS editáveis
+ *  - Categorias: lista livre (entidade categoria), TODAS editáveis
  *    (as próprias e as padrão compartilhadas), reaproveitando categoria-form.
  * Lê do data-store (cache-first) e assina mudanças. Reusa ui-tabs, ui-card,
  * ui-data-table, category-badge, ui-button, ui-empty-state.
@@ -45,7 +45,7 @@ class ItensView extends BaseElement {
         <div class="cabecalho">
           <div>
             <h1>Itens</h1>
-            <p class="sub">Cadastre itens (Material ou Serviço) e suas subclassificações.</p>
+            <p class="sub">Cadastre itens (Material ou Serviço) e suas categorias.</p>
           </div>
         </div>
         <ui-tabs id="abas">
@@ -56,8 +56,8 @@ class ItensView extends BaseElement {
             </ui-card>
           </div>
           <div slot="sub">
-            <ui-card mesa title="Mesa com subclassificações">
-              <ui-button slot="acoes" id="novaSub">+ Nova subclassificação</ui-button>
+            <ui-card mesa title="Mesa com categorias">
+              <ui-button slot="acoes" id="novaSub">+ Nova categoria</ui-button>
               <div id="listaSub"></div>
             </ui-card>
           </div>
@@ -69,7 +69,7 @@ class ItensView extends BaseElement {
   aoConectar() {
     this.$("#abas").abas = [
       { id: "itens", rotulo: "Itens", icone: "recibo" },
-      { id: "sub", rotulo: "Subclassificações", icone: "tag" },
+      { id: "sub", rotulo: "Categorias", icone: "tag" },
     ];
     this.$("#novoItem").addEventListener("click", () => this.abrirItemForm(null));
     this.$("#novaSub").addEventListener("click", () => this.abrirSubForm(null));
@@ -113,7 +113,7 @@ class ItensView extends BaseElement {
       },
       {
         chave: "categoria_id",
-        titulo: "Subclassificação",
+        titulo: "Categoria",
         formato: (id) => {
           const c = id ? dataStore.categorias().find((x) => String(x.id) === String(id)) : null;
           return c
@@ -188,7 +188,7 @@ class ItensView extends BaseElement {
     });
   }
 
-  /* ------------------------ Subclassificações ------------------------- */
+  /* ------------------------ Categorias ------------------------- */
 
   pintarSub() {
     const el = this.$("#listaSub");
@@ -198,13 +198,13 @@ class ItensView extends BaseElement {
       return;
     }
 
-    // Subclassificações de ITEM (exclui as classificações de fornecedor).
+    // Categorias de ITEM (exclui as classificações de fornecedor).
     const todas = dataStore.categoriasItem();
     if (!todas.length) {
       el.innerHTML = `
-        <ui-empty-state icone="tag" titulo="Nenhuma subclassificação"
-          texto="Crie subclassificações para detalhar despesas e itens.">
-          <ui-button slot="acao" id="vaziaSub">+ Criar subclassificação</ui-button>
+        <ui-empty-state icone="tag" titulo="Nenhuma categoria"
+          texto="Crie categorias para detalhar despesas e itens.">
+          <ui-button slot="acao" id="vaziaSub">+ Criar categoria</ui-button>
         </ui-empty-state>`;
       el.querySelector("#vaziaSub").addEventListener("click", () => this.abrirSubForm(null));
       return;
@@ -214,7 +214,7 @@ class ItensView extends BaseElement {
     tabela.columns = [
       {
         chave: "nome",
-        titulo: "Subclassificação",
+        titulo: "Categoria",
         formato: (nome, linha) =>
           `<category-badge nome="${nome}" cor="${linha.cor}"></category-badge>`,
       },
@@ -243,13 +243,13 @@ class ItensView extends BaseElement {
 
   removerSub(categoria) {
     abrirBannerVinculos({
-      titulo: `A subclassificação "${categoria.nome}"`,
+      titulo: `A categoria "${categoria.nome}"`,
       grupos: vinculosDaSubclassificacao(categoria.id),
       aoExcluir: async () => {
-        if (!(await confirmar({ titulo: "Excluir subclassificação", mensagem: `Excluir a subclassificação "${categoria.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
+        if (!(await confirmar({ titulo: "Excluir categoria", mensagem: `Excluir a categoria "${categoria.nome}"?`, perigo: true, rotuloOk: "Excluir" }))) return;
         try {
           await dataStore.removerCategoria(categoria.id);
-          toastSucesso("Subclassificação removida.");
+          toastSucesso("Categoria removida.");
         } catch (e) {
           notificarErro(e);
         }

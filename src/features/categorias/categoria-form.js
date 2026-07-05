@@ -1,7 +1,7 @@
 /**
  * <categoria-form> — Modal para criar/editar uma `categoria`. A MESMA entidade
- * serve a dois pools, via `.tipo`: **"item"** (subclassificação de itens, padrão)
- * ou **"fornecedor"** (classificação de fornecedor) — rótulos se ajustam.
+ * serve a dois pools, via `.tipo`: **"item"** (categoria de itens, padrão)
+ * ou **"fornecedor"** (categoria de fornecedor) — rótulos se ajustam.
  *
  * Propriedades: .categoria (objeto p/ edição; ausente = nova), .tipo ("item"|"fornecedor")
  * Eventos: "salvo", "fechar". Auto-contido: chama categorias.criar/atualizar e
@@ -35,7 +35,7 @@ class CategoriaForm extends BaseElement {
   }
   /** Termo exibido conforme o pool. */
   get _termo() {
-    return this.tipo === "fornecedor" ? "classificação" : "subclassificação";
+    return this.tipo === "fornecedor" ? "categoria" : "categoria";
   }
 
   estilos() {

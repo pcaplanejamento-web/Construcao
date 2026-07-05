@@ -42,7 +42,7 @@ class CotacoesView extends BaseElement {
         <div class="cabecalho">
           <div>
             <h1>Cotações</h1>
-            <p class="sub">Cada cotação é por subclassificação e agrupa as ofertas por item. Orçamentos e ofertas têm abas próprias no menu.</p>
+            <p class="sub">Cada cotação é por categoria e agrupa as ofertas por item. Orçamentos e ofertas têm abas próprias no menu.</p>
           </div>
         </div>
         <ui-card mesa acao-fixa title="Mesa com cotações">
@@ -90,8 +90,8 @@ class CotacoesView extends BaseElement {
     tabela.columns = [
       {
         chave: "categoria_id",
-        titulo: "Subclassificação",
-        // A cotação É por subclassificação; `descricao` (nome da subclasse) é fallback.
+        titulo: "Categoria",
+        // A cotação É por categoria; `descricao` (nome da subclasse) é fallback.
         formato: (id, l) => {
           const c = mapaCat[id];
           return c

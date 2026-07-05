@@ -120,7 +120,7 @@ class ObraDetailView extends BaseElement {
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="graficos" class="graficos">
-          <ui-card><category-breakdown id="break" titulo="Gastos por subclassificação"></category-breakdown></ui-card>
+          <ui-card><category-breakdown id="break" titulo="Gastos por categoria"></category-breakdown></ui-card>
           <ui-card><grafico-rosca id="rosca" titulo="Distribuição por classificação"></grafico-rosca></ui-card>
           <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
         </div>
@@ -278,14 +278,14 @@ class ObraDetailView extends BaseElement {
       return;
     }
     this._obra = o;
-    // Subclassificações de ITEM (exclui classificações de fornecedor).
+    // Categorias de ITEM (exclui classificações de fornecedor).
     const categorias = dataStore.categoriasDaObra(this.obraId).filter((c) => String(c.tipo || "") !== "fornecedor");
     const resumo = dataStore.resumo(this.obraId);
     const despesas = dataStore.despesas(this.obraId);
 
     this._despesas = despesas; // todas (KPIs/gráficos usam o total; tabela é filtrada)
     this._dash.resumo = resumo;
-    // Barras = Subclassificação; Rosca = Classificação (Material/Serviço).
+    // Barras = Categoria; Rosca = Classificação (Material/Serviço).
     this._break.porCategoria = resumo.por_subclassificacao || resumo.por_categoria || [];
     this._rosca.porCategoria = resumo.por_classificacao || [];
     this._mensal.despesas = despesas;
@@ -334,7 +334,7 @@ class ObraDetailView extends BaseElement {
       const c = mapaCat[String(it.categoria_id)];
       return c
         ? `<category-badge nome="${c.nome}" cor="${c.cor || "var(--cor-neutro)"}"></category-badge>`
-        : `<span style="color:var(--cor-texto-fraco)">Sem subclassificação</span>`;
+        : `<span style="color:var(--cor-texto-fraco)">Sem categoria</span>`;
     };
     const classBadge = (it) =>
       it.classificacao
@@ -348,7 +348,7 @@ class ObraDetailView extends BaseElement {
     const colunas = (chaveQtd, tituloQtd) => [
       { chave: "_item", titulo: "Item" },
       { chave: "_class", titulo: "Classificação", formato: (v, l) => classBadge(l) },
-      { chave: "_sub", titulo: "Subclassificação", formato: (v, l) => subBadge(l) },
+      { chave: "_sub", titulo: "Categoria", formato: (v, l) => subBadge(l) },
       { chave: "unidade", titulo: "Unidade", formato: (v, l) => unidade(l) },
       { chave: chaveQtd, titulo: tituloQtd, alinhar: "dir", formato: (v) => `<strong>${nf(v)}</strong>` },
     ];

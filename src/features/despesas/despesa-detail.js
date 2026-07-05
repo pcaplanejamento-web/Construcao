@@ -6,7 +6,7 @@
  * (participante), valor e data; status A pagar / Em pagamento / Pago é derivado e o
  * "quem pagou quanto" (acerto) é **derivado das levas** (não há editor manual).
  * Equipe → cada leva desmembra entre integrantes (a distribuição vive só na leva).
- * Responsabilidade / Subclassificação / Observação seguem editáveis. Despesas legadas
+ * Responsabilidade / Categoria / Observação seguem editáveis. Despesas legadas
  * (sem `preco_id`) mantêm Item/Valor editáveis. Reusa ui-modal/ui-input/ui-select/split-editor.
  *
  * Propriedades: .despesa, .categorias = [{id,nome,cor}]
@@ -45,7 +45,7 @@ class DespesaDetail extends BaseElement {
     return this._despesa || {};
   }
   set categorias(v) {
-    // Mantido por compat (a subclassificação não é mais editada aqui — vem do item).
+    // Mantido por compat (a categoria não é mais editada aqui — vem do item).
     this._categorias = Array.isArray(v) ? v : [];
   }
   get categorias() {
@@ -486,7 +486,7 @@ class DespesaDetail extends BaseElement {
       classificacao,
       item: itemNome, // nome denormalizado p/ exibição otimista
       valor,
-      // Subclassificação NÃO é editada aqui — vem do item (só alterável no item).
+      // Categoria NÃO é editada aqui — vem do item (só alterável no item).
       data: this.$("#data").value || String(this.despesa.data || "").substring(0, 10),
       observacao: this.$("#observacao").value.trim(),
       responsaveis,
