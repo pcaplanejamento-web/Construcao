@@ -45,7 +45,7 @@ class CotacoesView extends BaseElement {
             <p class="sub">Cada cotação é por subclassificação e agrupa as ofertas por item. Orçamentos e ofertas têm abas próprias no menu.</p>
           </div>
         </div>
-        <ui-card mesa title="Mesa com cotações">
+        <ui-card mesa acao-fixa title="Mesa com cotações">
           <ui-button slot="acoes" id="nova">+ Nova cotação</ui-button>
           <div id="lista"></div>
         </ui-card>

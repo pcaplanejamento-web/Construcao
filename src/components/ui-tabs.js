@@ -53,11 +53,20 @@ class UiTabs extends BaseElement {
     return `
       :host { display: block; }
       /* Em telas estreitas as abas NÃO quebram: rolam na horizontal (sem barra
-         de rolagem visível) — o conteúdo nunca estoura a proporção da tela. */
+         de rolagem visível) — o conteúdo nunca estoura a proporção da tela.
+         Um DEGRADÊ nas bordas sinaliza que há mais abas para rolar (some quando
+         chega ao início/fim). */
+      .abas-wrap { position: relative; }
       .barra { display: flex; gap: var(--esp-1); border-bottom: 1px solid var(--cor-borda);
         margin-bottom: var(--esp-5); flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
         -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; }
       .barra::-webkit-scrollbar { display: none; }
+      .fade { position: absolute; top: 0; bottom: 0; width: 28px; pointer-events: none;
+        opacity: 0; transition: opacity .15s ease; z-index: 1; }
+      .fade-esq { left: 0; background: linear-gradient(to right, var(--cor-fundo), transparent); }
+      .fade-dir { right: 0; background: linear-gradient(to left, var(--cor-fundo), transparent); }
+      .abas-wrap.tem-esq .fade-esq, .abas-wrap.tem-dir .fade-dir { opacity: 1; }
+      @media (prefers-reduced-motion: reduce) { .fade { transition: none; } }
       button { display: inline-flex; align-items: center; gap: var(--esp-2); flex: none;
         white-space: nowrap; background: none; border: none; cursor: pointer;
         padding: var(--esp-3) var(--esp-4);
@@ -81,7 +90,11 @@ class UiTabs extends BaseElement {
       )
       .join("");
     return `
-      <div class="barra" role="tablist">${botoes}</div>
+      <div class="abas-wrap">
+        <div class="barra" role="tablist">${botoes}</div>
+        <span class="fade fade-esq"></span>
+        <span class="fade fade-dir"></span>
+      </div>
       <div class="painel"><slot name="${ativo}"></slot></div>
     `;
   }
@@ -99,6 +112,40 @@ class UiTabs extends BaseElement {
         this.emitir("mudar", { id: b.dataset.id });
       })
     );
+
+    // Indicador de rolagem: degradê nas bordas quando há abas fora de vista.
+    const barra = this.$(".barra");
+    if (barra) {
+      barra.addEventListener("scroll", () => this._atualizarFades(), { passive: true });
+      if (!this._onResize) {
+        this._onResize = () => this._atualizarFades();
+        window.addEventListener("resize", this._onResize);
+        this.aoLimpar(() => window.removeEventListener("resize", this._onResize));
+      }
+      this._centralizarAtiva();
+      this._atualizarFades();
+    }
+  }
+
+  /** Mostra/esconde o degradê conforme a posição da rolagem. */
+  _atualizarFades() {
+    const barra = this.$(".barra");
+    const wrap = this.$(".abas-wrap");
+    if (!barra || !wrap) return;
+    const max = barra.scrollWidth - barra.clientWidth;
+    wrap.classList.toggle("tem-esq", barra.scrollLeft > 1);
+    wrap.classList.toggle("tem-dir", max > 1 && barra.scrollLeft < max - 1);
+  }
+
+  /** Rola a aba ativa para dentro da vista (sem mexer na rolagem vertical da página). */
+  _centralizarAtiva() {
+    const barra = this.$(".barra");
+    const at = this.$("button.ativo");
+    if (!barra || !at) return;
+    const bRect = barra.getBoundingClientRect();
+    const aRect = at.getBoundingClientRect();
+    const delta = (aRect.left - bRect.left) - (barra.clientWidth - at.clientWidth) / 2;
+    barra.scrollLeft += delta;
   }
 }
 

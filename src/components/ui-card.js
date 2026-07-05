@@ -10,7 +10,7 @@ import { BaseElement } from "./base-element.js";
 
 class UiCard extends BaseElement {
   static get observedAttributes() {
-    return ["title", "mesa"];
+    return ["title", "mesa", "acao-fixa"];
   }
   attributeChangedCallback() {
     if (this.shadowRoot.childElementCount) this.renderizar();
@@ -49,6 +49,19 @@ class UiCard extends BaseElement {
       .rodape { padding: var(--esp-4) var(--esp-5); border-top: 1px solid var(--cor-borda); }
       ::slotted([slot="rodape"]) { display: block; }
       slot[name="rodape"]:not(:empty) { display: block; }
+
+      /* AÇÃO FIXA (opt-in): no MOBILE o cabeçalho (título + botão primário) GRUDA
+         no topo da rolagem, mantendo a ação sempre alcançável em listas longas.
+         Opt-in e NÃO-quebra: sem 'acao-fixa' nada muda; se o sticky não aplicar,
+         o cabeçalho fica onde sempre esteve. Precisa de overflow visível no card
+         (overflow:hidden viraria um "scroll container" e anularia o sticky). */
+      @media (max-width: 820px) {
+        :host([acao-fixa]) .card { overflow: visible; }
+        :host([acao-fixa]) header { position: sticky; top: 0; z-index: 5;
+          background: var(--vidro-fundo); border-top-left-radius: var(--raio-lg);
+          border-top-right-radius: var(--raio-lg); }
+        :host([acao-fixa][mesa]) header { background: var(--cor-mesa); }
+      }
     `;
   }
 

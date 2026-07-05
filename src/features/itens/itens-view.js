@@ -50,7 +50,7 @@ class ItensView extends BaseElement {
         </div>
         <ui-tabs id="abas">
           <div slot="itens">
-            <ui-card mesa title="Mesa com itens">
+            <ui-card mesa acao-fixa title="Mesa com itens">
               <ui-button slot="acoes" id="novoItem">+ Novo item</ui-button>
               <div id="listaItens"></div>
             </ui-card>

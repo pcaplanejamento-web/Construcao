@@ -52,7 +52,7 @@ class ContatosView extends BaseElement {
         </div>
         <ui-tabs id="abas">
           <div slot="contatos">
-            <ui-card mesa title="Mesa com contatos">
+            <ui-card mesa acao-fixa title="Mesa com contatos">
               ${dataStore.config().google_conectado ? `<ui-button slot="acoes" id="importarGoogle" variant="secundario">Importar do Google</ui-button>` : ""}
               <ui-button slot="acoes" id="novo">+ Novo contato</ui-button>
               <div id="lista"></div>

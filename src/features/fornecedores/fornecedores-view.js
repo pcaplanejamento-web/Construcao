@@ -55,7 +55,7 @@ class FornecedoresView extends BaseElement {
         </div>
         <ui-tabs id="abas">
           <div slot="fornecedores">
-            <ui-card mesa title="Mesa com empresas">
+            <ui-card mesa acao-fixa title="Mesa com empresas">
               ${dataStore.config().google_conectado ? `<ui-button slot="acoes" id="importarGoogle" variant="secundario">Importar do Google</ui-button>` : ""}
               <ui-button slot="acoes" id="novo">+ Nova empresa</ui-button>
               <div id="lista"></div>

@@ -92,7 +92,10 @@ class AppSidebar extends BaseElement {
         :host { position: fixed; inset: 0; z-index: calc(var(--z-nav) + 1);
           pointer-events: none; }
         :host([aberto]) { pointer-events: auto; }
-        nav { position: relative; z-index: 1; width: 195px; height: 100%;
+        /* width com teto proporcional: em telas MUITO estreitas (celular dobrável,
+           split-screen/multi-janela) a gaveta não engole a tela; nos telefones
+           comuns segue 195px (o degradê/backdrop deixam claro que é sobreposto). */
+        nav { position: relative; z-index: 1; width: min(195px, 82vw); height: 100%;
           box-shadow: var(--sombra-lg); transform: translateX(-100%);
           transition: transform .2s ease; pointer-events: auto;
           /* área segura iOS: marca abaixo do status bar; base acima do home indicator. */

@@ -125,7 +125,7 @@ class ObraDetailView extends BaseElement {
           <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
         </div>
         <div slot="despesas" class="despesas-aba">
-          <ui-card mesa title="Mesa com despesas da obra">
+          <ui-card mesa acao-fixa title="Mesa com despesas da obra">
             <ui-button slot="acoes" id="addDespesa">+ Registrar Despesa</ui-button>
             <despesa-table id="tabela"></despesa-table>
           </ui-card>
@@ -137,7 +137,7 @@ class ObraDetailView extends BaseElement {
           <obra-participantes obra-id="${this.obraId}" modo="responsaveis"></obra-participantes>
         </div>
         <div slot="orcamentos">
-          <ui-card mesa title="Mesa com orçamentos da obra">
+          <ui-card mesa acao-fixa title="Mesa com orçamentos da obra">
             <ui-button slot="acoes" id="addOrc">+ Novo orçamento</ui-button>
             <div id="gradeOrc"></div>
           </ui-card>
