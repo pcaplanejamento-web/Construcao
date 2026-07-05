@@ -31,6 +31,11 @@
     <title>Dattaobra</title>
     <link rel="icon" type="image/png" href="src/assets/dattaobra.png" />
 
+    <!-- PWA: app instalável (tela inicial do Android/iPhone, abre em tela cheia).
+         O manifest e o ícone respeitam o <base href> acima (raiz ou /Construcao/). -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="src/assets/apple-touch-icon.png" />
+
     <!-- Fontes: Space Grotesk (títulos/números) + Plus Jakarta Sans (corpo) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -90,5 +95,16 @@
 
     <!-- Ponto de entrada da aplicação. type="module" habilita ES Modules. -->
     <script type="module" src="src/app.js"></script>
+
+    <!-- PWA: registra o service worker (casco offline + instalável). Só em
+         HTTPS/localhost; falha em silêncio onde não houver suporte. O caminho
+         "sw.js" respeita o <base href> (raiz ou /Construcao/). -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("sw.js").catch(function () {});
+        });
+      }
+    </script>
   </body>
 </html>

@@ -17,3 +17,11 @@
 
 /*.css
   Cache-Control: no-cache
+
+# PWA: o service worker precisa revalidar sempre (senão um app novo demora a
+# chegar); e o manifest com Content-Type correto + sem cache agressivo.
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
+  Cache-Control: no-cache

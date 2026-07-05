@@ -194,3 +194,24 @@ do backend (`config.publico`, que lê essa Script Property). Em `config.js`,
   "Qualquer pessoa" ou a URL não é a `/exec`. Reveja a implantação.
 - **`NAO_AUTENTICADO` logo após login:** verifique o relógio/fuso e se a aba
   `Sessoes` está sendo gravada.
+
+## App instalável (PWA)
+
+O Dattaobra é um **PWA**: instala na tela inicial do celular e abre em tela
+cheia, sem virar app nativo.
+
+- **Arquivos:** `manifest.webmanifest` (nome, ícones, `display:standalone`,
+  `theme_color`), `sw.js` (service worker — casco offline, **rede primeiro** no
+  mesmo origem para nunca servir código velho; API do Apps Script e fontes do
+  Google passam direto pela rede), e no `index.html` os `<link rel="manifest">`
+  + `<link rel="apple-touch-icon">` + registro do SW. `_headers` serve o manifest
+  com `application/manifest+json` e o `sw.js`/manifest com `no-cache`.
+- **Ícones** (`src/assets/`): `icon-192.png`, `icon-512.png` (any) e
+  `icon-maskable-512.png` (maskable, logo a ~66% na zona segura), rasterizados do
+  `dattaobra.svg` (fundo branco). `apple-touch-icon.png` (180) para o iPhone.
+- **Instalar:** Android/Chrome oferece **"Instalar app"**; iPhone/Safari →
+  **Compartilhar → Adicionar à Tela de Início**.
+- **Offline:** abre e mostra o que já carregou; **dados novos precisam de rede**
+  (backend é o Apps Script). Ao cair a conexão, o app avisa e segue com o cache.
+- **Regerar ícones** (se o logo mudar): `qlmanage -t -s 512 -o /tmp src/assets/dattaobra.svg`
+  e copiar o PNG; o maskable vem de um wrapper SVG com o logo a 66% em fundo branco.
