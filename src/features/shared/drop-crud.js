@@ -11,7 +11,7 @@
  */
 import { dataStore } from "../../core/data-store.js";
 import { confirmar } from "../../components/confirmar.js";
-import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { toastSucesso, toastAcao, notificarErro } from "../../core/event-bus.js";
 import {
   abrirBannerVinculos,
   vinculosDoItem,
@@ -29,6 +29,7 @@ const DESCRITORES = {
     tituloVinc: (r) => `O item "${r.nome}"`,
     vinculos: (r) => vinculosDoItem(r.id),
     remover: (r) => dataStore.removerItem(r.id),
+    reativar: (r) => dataStore.reativarItem(r.id),
     tituloExcluir: "Excluir item", msgExcluir: (r) => `Excluir o item "${r.nome}"?`,
   },
   contato: {
@@ -38,6 +39,7 @@ const DESCRITORES = {
     tituloVinc: (r) => `O contato "${r.nome}"`,
     vinculos: (r) => vinculosDoContato(r.id),
     remover: (r) => dataStore.removerContato(r.id),
+    reativar: (r) => dataStore.reativarContato(r.id),
     tituloExcluir: "Excluir contato", msgExcluir: (r) => `Excluir o contato "${r.nome}"?`,
   },
   fornecedor: {
@@ -47,6 +49,7 @@ const DESCRITORES = {
     tituloVinc: (r) => `A empresa "${r.nome}"`,
     vinculos: (r) => vinculosDoFornecedor(r.id),
     remover: (r) => dataStore.removerFornecedor(r.id),
+    reativar: (r) => dataStore.reativarFornecedor(r.id),
     tituloExcluir: "Excluir empresa", msgExcluir: (r) => `Excluir a empresa "${r.nome}"?`,
   },
   cargo: {
@@ -66,6 +69,7 @@ const DESCRITORES = {
     tituloVinc: (r) => `A classificação "${r.nome}"`,
     vinculos: (r) => vinculosDaSubclassificacao(r.id),
     remover: (r) => dataStore.removerCategoria(r.id),
+    reativar: (r) => dataStore.reativarCategoria(r.id),
     tituloExcluir: "Excluir classificação", msgExcluir: (r) => `Excluir a classificação "${r.nome}"?`,
   },
   classificacaoItem: {
@@ -75,6 +79,7 @@ const DESCRITORES = {
     tituloVinc: (r) => `A subclassificação "${r.nome}"`,
     vinculos: (r) => vinculosDaSubclassificacao(r.id),
     remover: (r) => dataStore.removerCategoria(r.id),
+    reativar: (r) => dataStore.reativarCategoria(r.id),
     tituloExcluir: "Excluir subclassificação", msgExcluir: (r) => `Excluir a subclassificação "${r.nome}"?`,
   },
 };
@@ -118,8 +123,21 @@ export function excluirEntidade(tipo, valor, onFeito) {
       if (!(await confirmar({ titulo: d.tituloExcluir, mensagem: d.msgExcluir(rec), perigo: true, rotuloOk: "Excluir" }))) return;
       try {
         await d.remover(rec);
-        toastSucesso("Excluído.");
         if (onFeito) onFeito();
+        // Exclusões reversíveis (soft-delete) oferecem "Desfazer"; cargo é definitivo.
+        if (d.reativar) {
+          toastAcao("Excluído.", "Desfazer", async () => {
+            try {
+              await d.reativar(rec);
+              toastSucesso("Restaurado.");
+              if (onFeito) onFeito();
+            } catch (e) {
+              notificarErro(e);
+            }
+          });
+        } else {
+          toastSucesso("Excluído.");
+        }
       } catch (e) {
         notificarErro(e);
       }

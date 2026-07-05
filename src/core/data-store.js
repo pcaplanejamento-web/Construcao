@@ -928,6 +928,24 @@ async function removerCategoria(id) {
   bus.emit(EVENTOS.CATEGORIAS, { tipo: "removida" });
 }
 
+/** Desfaz a exclusão (soft-delete): reativa a classificação e a recoloca no store. */
+async function reativarCategoria(id) {
+  const r = await api.call("categorias.atualizar", { id, ativo: true });
+  const nova = r.categoria;
+  const repor = (lista) => {
+    const arr = lista || [];
+    return arr.some((c) => String(c.id) === String(id))
+      ? arr.map((c) => (String(c.id) === String(id) ? nova : c))
+      : [...arr, nova];
+  };
+  const s = store.get();
+  store.set({ categorias: repor(s.categorias) });
+  _refletirCategoriasProprias(repor);
+  persistir();
+  bus.emit(EVENTOS.CATEGORIAS, { tipo: "reativada" });
+  return nova;
+}
+
 /* -------------------- Mutações: fornecedores ------------------------- */
 
 async function criarFornecedor(dados) {
@@ -960,6 +978,21 @@ async function removerFornecedor(id) {
   bus.emit(EVENTOS.FORNECEDORES, { tipo: "removido" });
 }
 
+/** Desfaz a exclusão (soft-delete): reativa a empresa e a recoloca no store. */
+async function reativarFornecedor(id) {
+  const r = await api.call("fornecedores.atualizar", { id, ativo: true });
+  const s = store.get();
+  const tem = s.fornecedores.some((f) => String(f.id) === String(id));
+  store.set({
+    fornecedores: tem
+      ? s.fornecedores.map((f) => (String(f.id) === String(id) ? r.fornecedor : f))
+      : [...s.fornecedores, r.fornecedor],
+  });
+  persistir();
+  bus.emit(EVENTOS.FORNECEDORES, { tipo: "reativado" });
+  return r.fornecedor;
+}
+
 /* ----------------------- Mutações: contatos -------------------------- */
 
 async function criarContato(dados) {
@@ -990,6 +1023,21 @@ async function removerContato(id) {
   store.set({ contatos: s.contatos.filter((c) => String(c.id) !== String(id)) });
   persistir();
   bus.emit(EVENTOS.CONTATOS, { tipo: "removido" });
+}
+
+/** Desfaz a exclusão (soft-delete): reativa o contato e o recoloca no store. */
+async function reativarContato(id) {
+  const r = await api.call("contatos.atualizar", { id, ativo: true });
+  const s = store.get();
+  const tem = s.contatos.some((c) => String(c.id) === String(id));
+  store.set({
+    contatos: tem
+      ? s.contatos.map((c) => (String(c.id) === String(id) ? r.contato : c))
+      : [...s.contatos, r.contato],
+  });
+  persistir();
+  bus.emit(EVENTOS.CONTATOS, { tipo: "reativado" });
+  return r.contato;
 }
 
 /* ------------------------- Mutações: cargos -------------------------- */
@@ -1159,6 +1207,21 @@ async function removerItem(id) {
   store.set({ itens: s.itens.filter((i) => String(i.id) !== String(id)) });
   persistir();
   bus.emit(EVENTOS.ITENS, { tipo: "removido" });
+}
+
+/** Desfaz a exclusão (soft-delete): reativa o item e o recoloca no store. */
+async function reativarItem(id) {
+  const r = await api.call("itens.atualizar", { id, ativo: true });
+  const s = store.get();
+  const tem = s.itens.some((i) => String(i.id) === String(id));
+  store.set({
+    itens: tem
+      ? s.itens.map((i) => (String(i.id) === String(id) ? r.item : i))
+      : [...s.itens, r.item],
+  });
+  persistir();
+  bus.emit(EVENTOS.ITENS, { tipo: "reativado" });
+  return r.item;
 }
 
 /* ----------------------- Mutações: cotações -------------------------- */
@@ -1446,13 +1509,13 @@ export const dataStore = {
   lancarTransferencia, removerTransferencia, excluirTransferencia,
   anexarComprovanteTransferencia, removerComprovanteTransferencia,
   consumirEstoque, devolverEstoque, adicionarEstoqueManual, transferirEstoque, removerMovimentoEstoque,
-  criarCategoria, atualizarCategoria, removerCategoria,
-  criarFornecedor, atualizarFornecedor, removerFornecedor,
-  criarContato, atualizarContato, removerContato,
+  criarCategoria, atualizarCategoria, removerCategoria, reativarCategoria,
+  criarFornecedor, atualizarFornecedor, removerFornecedor, reativarFornecedor,
+  criarContato, atualizarContato, removerContato, reativarContato,
   criarCargo, atualizarCargo, removerCargo,
   listarContatosGoogle, enviarGoogle, vincularGoogle, desvincularGoogle, importarGoogle, sincronizarCargoGoogle,
   criarTipoTransferencia, atualizarTipoTransferencia, removerTipoTransferencia,
-  criarItem, atualizarItem, removerItem,
+  criarItem, atualizarItem, removerItem, reativarItem,
   criarCotacao, atualizarCotacao, removerCotacao,
   criarOferta, atualizarOferta, removerPreco, escolherPreco, registrarDespesaOferta,
   registrarOrcamentoCompleto,

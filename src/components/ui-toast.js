@@ -16,6 +16,15 @@ class UiToast extends BaseElement {
     return ["tipo", "message"];
   }
 
+  /** Ação opcional: { rotulo, onAcao }. Renderiza um botão (ex.: "Desfazer"). */
+  set acao(v) {
+    this._acao = v || null;
+    if (this.shadowRoot && this.shadowRoot.childElementCount) this.renderizar();
+  }
+  get acao() {
+    return this._acao || null;
+  }
+
   estilos() {
     return `
       :host { display: block; }
@@ -39,6 +48,12 @@ class UiToast extends BaseElement {
       .erro .icone { color: var(--cor-erro); }
       .aviso .icone { color: var(--cor-aviso); }
       .info .icone { color: var(--cor-info); }
+      .msg { flex: 1; min-width: 0; }
+      .acao { margin-left: var(--esp-2); flex: none; border: none; background: none; cursor: pointer;
+        color: var(--cor-primaria); font-family: inherit; font-weight: var(--peso-semi);
+        font-size: var(--fs-sm); padding: 4px 8px; border-radius: var(--raio-sm); white-space: nowrap; }
+      .acao:hover { background: var(--cor-primaria-suave); }
+      .acao:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
     `;
   }
 
@@ -46,12 +61,27 @@ class UiToast extends BaseElement {
     const tipo = this.getAttribute("tipo") || "info";
     const msg = this.getAttribute("message") || "";
     const icones = { sucesso: "sucesso", erro: "aviso", aviso: "aviso", info: "info" };
+    const rotulo = this._acao && this._acao.rotulo
+      ? String(this._acao.rotulo).replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      : "";
     return `
       <div class="toast ${tipo}" role="status">
         <span class="icone"><ui-icon name="${icones[tipo] || "info"}" size="18"></ui-icon></span>
-        <span>${msg}</span>
+        <span class="msg">${msg}</span>
+        ${rotulo ? `<button class="acao" type="button">${rotulo}</button>` : ""}
       </div>
     `;
+  }
+
+  aposRender() {
+    const b = this.$(".acao");
+    if (b) {
+      b.addEventListener("click", () => {
+        const fn = this._acao && this._acao.onAcao;
+        this.emitir("dispensar");
+        if (fn) fn();
+      });
+    }
   }
 }
 customElements.define("ui-toast", UiToast);
@@ -71,20 +101,24 @@ class ToastHost extends BaseElement {
   }
   aoConectar() {
     this.aoLimpar(
-      bus.on(EVENTOS.TOAST, ({ tipo, mensagem }) => this.mostrar(tipo, mensagem))
+      bus.on(EVENTOS.TOAST, (detalhe) => this.mostrar(detalhe || {}))
     );
   }
-  mostrar(tipo, mensagem) {
+  mostrar({ tipo, mensagem, acao, duracao }) {
     const pilha = this.$("#pilha");
     const toast = document.createElement("ui-toast");
     toast.setAttribute("tipo", tipo || "info");
     toast.setAttribute("message", mensagem || "");
+    if (acao) toast.acao = acao;
     pilha.appendChild(toast);
-    setTimeout(() => {
+    const sumir = () => {
       toast.style.transition = "opacity .2s";
       toast.style.opacity = "0";
       setTimeout(() => toast.remove(), 220);
-    }, 3800);
+    };
+    const timer = setTimeout(sumir, duracao || 3800);
+    // Clique em "Desfazer" (ou outra ação) fecha o toast na hora.
+    toast.addEventListener("dispensar", () => { clearTimeout(timer); sumir(); });
   }
 }
 customElements.define("toast-host", ToastHost);

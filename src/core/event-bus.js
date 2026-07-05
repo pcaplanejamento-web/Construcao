@@ -53,6 +53,21 @@ export const toastErro = (m) => notificar("erro", m);
 export const toastInfo = (m) => notificar("info", m);
 export const toastAviso = (m) => notificar("aviso", m);
 
+/**
+ * Toast com AÇÃO (ex.: "Excluído" + botão "Desfazer"). `onAcao` roda se o
+ * usuário clicar no botão; senão o toast some sozinho após `duracao` ms
+ * (padrão 6s, mais longo que o comum para dar tempo de desfazer).
+ */
+export function toastAcao(mensagem, rotulo, onAcao, opts) {
+  const o = opts || {};
+  bus.emit(EVENTOS.TOAST, {
+    tipo: o.tipo || "info",
+    mensagem,
+    acao: rotulo && onAcao ? { rotulo, onAcao } : null,
+    duracao: o.duracao || 6000,
+  });
+}
+
 /** Converte um erro (ApiError ou Error) em toast amigável (princípio nº 12). */
 export function notificarErro(e) {
   const msg = (e && e.message) || "Ocorreu um erro inesperado.";
