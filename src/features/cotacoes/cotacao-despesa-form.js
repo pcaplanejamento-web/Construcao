@@ -24,7 +24,6 @@ import { valorPositivo } from "../../core/validators.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-select.js";
-import "../../components/ui-search-select.js";
 import "../../components/ui-input.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
@@ -109,10 +108,10 @@ class CotacaoDespesaForm extends BaseElement {
            <ui-select id="oferta" label="Oferta"></ui-select>
          </div>
          <div id="secNova" class="secNova" hidden>
-           <ui-search-select id="novoItem" label="Item" criar="Cadastrar item"></ui-search-select>
+           <ui-select id="novoItem" label="Item" criar="Cadastrar item"></ui-select>
            <div class="info" id="novaClasse"></div>
-           <ui-search-select id="novoOfertante" label="Ofertante (contato ou grupo)" criar="Cadastrar contato"></ui-search-select>
-           <ui-search-select id="novoFornecedor" label="Empresa" criar="Cadastrar empresa"></ui-search-select>
+           <ui-select id="novoOfertante" label="Ofertante (contato ou grupo)" criar="Cadastrar contato"></ui-select>
+           <ui-select id="novoFornecedor" label="Empresa" criar="Cadastrar empresa"></ui-select>
            <div class="linha">
              <ui-input id="novaQtd" label="Quantidade" type="number" step="0.01" min="0" placeholder="Ex.: 10"></ui-input>
              <ui-input id="novoValor" label="Valor unitário (R$)" type="number" step="0.01" min="0" placeholder="0,00"></ui-input>

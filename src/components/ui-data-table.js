@@ -251,8 +251,10 @@ class UiDataTable extends BaseElement {
         font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
         cursor: pointer; padding: 0; }
       .th-btn:hover { color: var(--cor-primaria); }
-      .th-btn .seta { font-size: 10px; opacity: .6; }
+      .th-btn .seta { display: inline-flex; align-items: center; opacity: .55; color: currentColor; }
+      .th-btn .seta svg { display: block; }
       .th-btn.ativo { color: var(--cor-primaria); }
+      .th-btn.ativo .seta { opacity: 1; }
       .acoes { display: flex; gap: var(--esp-2); justify-content: flex-end; }
       .btn-acao { border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
         border-radius: var(--raio-sm); padding: 4px 10px; font-size: var(--fs-xs); color: var(--cor-texto-suave); }
@@ -393,7 +395,7 @@ class UiDataTable extends BaseElement {
       cols
         .map(
           (c, i) =>
-            `<th class="${classe(c)}"${estilo(c)}><button class="th-btn ${ativa(i) ? "ativo" : ""}" data-col="${i}">${c.titulo}${ativa(i) ? " •" : ""} <span class="seta">▾</span></button></th>`
+            `<th class="${classe(c)}"${estilo(c)}><button class="th-btn ${ativa(i) ? "ativo" : ""}" data-col="${i}">${c.titulo}${ativa(i) ? " •" : ""} <span class="seta"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button></th>`
         )
         .join("") +
       (temAcoes ? "<th></th>" : "");

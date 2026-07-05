@@ -15,7 +15,7 @@ import { obrigatorio } from "../../core/validators.js";
 import { avisarDuplicado } from "../shared/duplicado.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
-import "../../components/ui-search-select.js";
+import "../../components/ui-select.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
 import "./cargo-form.js";
@@ -64,8 +64,8 @@ class ContatoForm extends BaseElement {
             <ui-input id="email" label="E-mail" type="email" value="${esc(c.email)}"
               placeholder="joao@empresa.com"></ui-input>
           </div>
-          <ui-search-select id="cargo" label="Cargo" criar="Cadastrar cargo"></ui-search-select>
-          <ui-search-select id="fornecedor" label="Empresa" criar="Cadastrar empresa"></ui-search-select>
+          <ui-select id="cargo" label="Cargo" criar="Cadastrar cargo"></ui-select>
+          <ui-select id="fornecedor" label="Empresa" criar="Cadastrar empresa"></ui-select>
           <div>
             <label class="tx">Observação</label>
             <textarea id="observacao" placeholder="Detalhes (opcional)">${c.observacao || ""}</textarea>

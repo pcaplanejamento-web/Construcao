@@ -14,6 +14,7 @@ import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
+import "../categorias/categoria-form.js";
 
 class FornecedorForm extends BaseElement {
   set fornecedor(v) {
@@ -60,7 +61,7 @@ class FornecedorForm extends BaseElement {
           <div class="linha">
             <ui-input id="cnpj" label="CNPJ" value="${esc(f.cnpj)}"
               placeholder="00.000.000/0000-00"></ui-input>
-            <ui-select id="categoria" label="Classificação"></ui-select>
+            <ui-select id="categoria" label="Classificação" criar="Cadastrar classificação"></ui-select>
           </div>
           <div>
             <label class="tx">Observação</label>
@@ -77,18 +78,36 @@ class FornecedorForm extends BaseElement {
 
   aposRender() {
     this.preencherCategorias();
+    const selCat = this.$("#categoria");
+    if (selCat && !selCat._ligado) { selCat.addEventListener("criar", () => this.abrirNovaClassificacao()); selCat._ligado = true; }
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
   }
 
+  /** (Re)popula a Classificação preservando a seleção atual (após cadastrar uma nova). */
   preencherCategorias() {
     const sel = this.$("#categoria");
     if (!sel) return;
+    const atual = sel.value || (this.fornecedor || {}).categoria_id || "";
     sel.options = [{ value: "", label: "— Sem classificação —" }].concat(
       dataStore.categoriasFornecedor().map((c) => ({ value: c.id, label: c.nome }))
     );
-    sel.value = (this.fornecedor || {}).categoria_id || "";
+    sel.value = atual;
+  }
+
+  /** Abre o <categoria-form> (tipo fornecedor) e seleciona a nova classificação ao voltar. */
+  abrirNovaClassificacao() {
+    const antes = new Set(dataStore.categoriasFornecedor().map((c) => String(c.id)));
+    const form = document.createElement("categoria-form");
+    form.tipo = "fornecedor";
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => {
+      const nova = dataStore.categoriasFornecedor().find((c) => !antes.has(String(c.id)));
+      this.preencherCategorias();
+      if (nova && this.$("#categoria")) this.$("#categoria").value = nova.id;
+    });
+    document.body.appendChild(form);
   }
 
   async salvar() {
