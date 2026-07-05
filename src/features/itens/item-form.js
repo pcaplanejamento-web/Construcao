@@ -9,6 +9,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { focarPrimeiroErro } from "../shared/foco-erro.js";
 import { obrigatorio } from "../../core/validators.js";
 import { avisarDuplicado } from "../shared/duplicado.js";
 import { editarEntidade, excluirEntidade, ehPrimario } from "../shared/drop-crud.js";
@@ -44,7 +45,7 @@ class ItemForm extends BaseElement {
     return `
       <ui-modal open title="${this.ehEdicao ? "Editar item" : "Novo item"}">
         <div class="campos">
-          <ui-input id="nome" label="Nome do item"
+          <ui-input id="nome" label="Nome do item" required
             value="${(i.nome || "").replace(/"/g, "&quot;")}"
             placeholder="Ex.: Cimento CP-II"></ui-input>
           <ui-select id="classificacao" label="Classificação"></ui-select>
@@ -74,7 +75,7 @@ class ItemForm extends BaseElement {
 
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
-    this.$("#salvar").addEventListener("click", () => this.salvar());
+    this.$("#salvar").addEventListener("click", async () => { await this.salvar(); focarPrimeiroErro(this); });
   }
 
   /** (Re)popula a Subclassificação (ícones editar/excluir; GLOBAL sem ações), preservando a seleção. */

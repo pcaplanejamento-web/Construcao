@@ -53,7 +53,26 @@ class UiInput extends BaseElement {
   attributeChangedCallback(nome, anterior, atual) {
     if (!this.shadowRoot.childElementCount) return;
     if (nome === "value") { this._aplicarValorDisplay(atual); return; }
+    // Erro é incremental: NÃO re-renderiza (senão apaga o texto que o usuário
+    // acabou de digitar e o cursor). A borda vermelha vem do :host([error]).
+    if (nome === "error") { this._refletirErro(atual); return; }
     this.renderizar();
+  }
+
+  /** Mostra/atualiza/remove a mensagem de erro sem reconstruir o campo. */
+  _refletirErro(msg) {
+    let div = this.$(".erro");
+    if (msg) {
+      if (!div) {
+        div = document.createElement("div");
+        div.className = "erro";
+        div.setAttribute("role", "alert");
+        this.shadowRoot.appendChild(div);
+      }
+      div.textContent = msg;
+    } else if (div) {
+      div.remove();
+    }
   }
 
   _formato() { return this.getAttribute("formato") || ""; }
@@ -89,6 +108,7 @@ class UiInput extends BaseElement {
       :host { display: block; }
       label { display: block; font-size: var(--fs-sm); font-weight: var(--peso-medio);
         color: var(--cor-texto-suave); margin-bottom: var(--esp-1); }
+      .obrig { color: var(--cor-erro); margin-left: 2px; font-weight: var(--peso-semi); }
       input {
         width: 100%; height: 42px; padding: 0 var(--esp-3);
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
@@ -133,7 +153,7 @@ class UiInput extends BaseElement {
       ? `<div class="wrap">${input}<button class="olho" type="button" tabindex="-1" aria-label="Mostrar senha"><ui-icon name="olho" size="18"></ui-icon></button></div>`
       : input;
     return `
-      ${label ? `<label>${label}</label>` : ""}
+      ${label ? `<label>${label}${this.hasAttribute("required") ? `<span class="obrig" aria-hidden="true">*</span>` : ""}</label>` : ""}
       ${campo}
       ${erro ? `<div class="erro" role="alert">${erro}</div>` : ""}
     `;

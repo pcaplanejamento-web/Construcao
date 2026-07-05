@@ -8,6 +8,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { focarPrimeiroErro } from "../shared/foco-erro.js";
 import { obrigatorio } from "../../core/validators.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
@@ -47,7 +48,7 @@ class ObraForm extends BaseElement {
     return `
       <ui-modal open title="${this.ehEdicao ? "Editar obra" : "Nova obra"}">
         <div class="campos">
-          <ui-input id="nome" label="Nome da obra" value="${(o.nome || "").replace(
+          <ui-input id="nome" label="Nome da obra" required value="${(o.nome || "").replace(
             /"/g,
             "&quot;"
           )}" placeholder="Ex.: Casa Vila Mariana"></ui-input>
@@ -85,7 +86,7 @@ class ObraForm extends BaseElement {
     ];
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
-    this.$("#salvar").addEventListener("click", () => this.salvar());
+    this.$("#salvar").addEventListener("click", async () => { await this.salvar(); focarPrimeiroErro(this); });
   }
 
   async salvar() {

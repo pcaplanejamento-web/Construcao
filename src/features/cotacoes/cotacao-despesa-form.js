@@ -22,6 +22,7 @@ import { totalOferta, qtdOferta, unitFinalOferta } from "./cotacao-util.js";
 import { ofertanteNome, rotuloOrcamento, previaOfertaHtml } from "../orcamentos/orcamento-util.js";
 import { valorPositivo } from "../../core/validators.js";
 import { editarEntidade, excluirEntidade } from "../shared/drop-crud.js";
+import { focarPrimeiroErro } from "../shared/foco-erro.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-select.js";
@@ -79,6 +80,9 @@ class CotacaoDespesaForm extends BaseElement {
       .secao { border-top: 1px solid var(--cor-borda); padding-top: var(--esp-3); }
       label.tx { font-size: var(--fs-sm); font-weight: var(--peso-medio);
         color: var(--cor-texto-suave); margin-bottom: var(--esp-1); display: block; }
+      /* Título curto de cada modo (reduz a carga do form multi-modo). */
+      .secao-titulo { font-size: var(--fs-sm); font-weight: var(--peso-semi);
+        color: var(--cor-texto); margin: 0 0 var(--esp-2); }
       /* Seção "Nova despesa" (cria item + oferta inline). */
       .secNova { display: flex; flex-direction: column; gap: var(--esp-3); }
       .linha { display: flex; gap: var(--esp-3); }
@@ -106,21 +110,23 @@ class CotacaoDespesaForm extends BaseElement {
     const topo = this.modoObra
       ? `<ui-select id="modoReg" label="O que registrar?" ajuda="o-que-registrar"></ui-select>
          <div id="secOferta">
+           <div class="secao-titulo">Registrar uma oferta já cotada</div>
            <ui-tabs id="abas"></ui-tabs>
            <ui-select id="oferta" label="Oferta"></ui-select>
          </div>
          <div id="secNova" class="secNova" hidden>
-           <ui-select id="novoItem" label="Item" criar="Cadastrar item"></ui-select>
+           <div class="secao-titulo">Criar e registrar uma despesa nova</div>
+           <ui-select id="novoItem" label="Item" required criar="Cadastrar item"></ui-select>
            <div class="info" id="novaClasse"></div>
            <ui-select id="novoOfertante" label="Ofertante (contato ou grupo)" ajuda="ofertante" criar="Cadastrar contato"></ui-select>
            <ui-select id="novoFornecedor" label="Empresa" criar="Cadastrar empresa"></ui-select>
            <div class="linha">
              <ui-input id="novaQtd" label="Quantidade" type="number" step="0.01" min="0" placeholder="Ex.: 10"></ui-input>
-             <ui-input id="novoValor" label="Valor unitário (R$)" formato="moeda" placeholder="0,00"></ui-input>
+             <ui-input id="novoValor" label="Valor unitário (R$)" required formato="moeda" placeholder="0,00"></ui-input>
            </div>
            <div class="linha">
              <ui-input id="novoDesc" label="Valor unit. com desconto (R$)" formato="moeda" placeholder="opcional"></ui-input>
-             <ui-input id="novoPrazo" label="Data/prazo de entrega" placeholder="Ex.: 5 dias"></ui-input>
+             <ui-input id="novoPrazo" label="Data/prazo de entrega" required placeholder="Ex.: 5 dias"></ui-input>
            </div>
            <div>
              <label class="tx">Observação</label>
@@ -128,6 +134,7 @@ class CotacaoDespesaForm extends BaseElement {
            </div>
          </div>
          <div id="secOrcamento" hidden>
+           <div class="secao-titulo">Registrar todas as ofertas de um orçamento</div>
            <ui-select id="orcamento" label="Orçamento (registra todas as ofertas)"></ui-select>
          </div>`
       : `<ui-select id="obra" label="Obra"></ui-select>`;
@@ -181,7 +188,7 @@ class CotacaoDespesaForm extends BaseElement {
 
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
-    this.$("#confirmar").addEventListener("click", () => this.confirmar());
+    this.$("#confirmar").addEventListener("click", async () => { await this.confirmar(); focarPrimeiroErro(this); });
   }
 
   get classificacao() {
@@ -311,6 +318,18 @@ class CotacaoDespesaForm extends BaseElement {
       const el = this.$(sel);
       if (el && !el._ligado) { el.addEventListener("input", () => this.pintarResumo()); el._ligado = true; }
     });
+    // Feedback ao SAIR do campo desconto (change = blur após digitar): avisa na
+    // hora se o desconto ficou maior que o valor unitário (só quando preenchido).
+    const desc = this.$("#novoDesc");
+    if (desc && !desc._ligadoBlur) {
+      desc.addEventListener("change", () => {
+        const d = Number(desc.value) || 0;
+        const v = Number((this.$("#novoValor") || {}).value) || 0;
+        if (d > 0 && v > 0 && d > v) desc.setAttribute("error", "Não pode ser maior que o valor unitário.");
+        else desc.removeAttribute("error");
+      });
+      desc._ligadoBlur = true;
+    }
     this.atualizarNovaClasse();
   }
 

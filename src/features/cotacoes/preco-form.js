@@ -18,6 +18,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { focarPrimeiroErro } from "../shared/foco-erro.js";
 import { moeda } from "../../core/formatters.js";
 import { ofertanteNome, COR_CLASSIFICACAO } from "../orcamentos/orcamento-util.js";
 import { totalOferta, totalOfertaCheio, qtdOferta } from "./cotacao-util.js";
@@ -202,7 +203,7 @@ class PrecoForm extends BaseElement {
     const titulo = ro ? "Detalhes da oferta" : this.ehEdicao ? "Editar oferta" : "Criar oferta";
 
     const blocoItem = this.itemPrecisaSelect()
-      ? `<ui-select id="item" label="Item (define a classificação)"></ui-select>
+      ? `<ui-select id="item" label="Item (define a classificação)" required></ui-select>
          <div class="info" id="classInfo"></div>`
       : `<div><label class="tx">Item</label>
            <div class="resumo clicavel" id="itemCard" title="Ver detalhes do item"></div></div>`;
@@ -242,7 +243,7 @@ class PrecoForm extends BaseElement {
           <div class="linha">
             <ui-input id="quantidade" label="Quantidade" type="number" step="0.01" min="0"
               value="${esc(p.quantidade)}" placeholder="Ex.: 10"></ui-input>
-            <ui-input id="valor" label="Valor unitário (R$)" formato="moeda"
+            <ui-input id="valor" label="Valor unitário (R$)" formato="moeda" required
               value="${esc(p.valor_unit)}" placeholder="0,00"></ui-input>
           </div>
           <div class="linha">
@@ -334,7 +335,18 @@ class PrecoForm extends BaseElement {
     }
 
     this.atualizarClasse();
-    this.$("#salvar").addEventListener("click", () => this.salvar());
+    // Feedback ao SAIR do desconto: avisa na hora se ficou maior que o valor.
+    const desc = this.$("#desconto");
+    if (desc && !desc._ligadoBlur) {
+      desc.addEventListener("change", () => {
+        const d = Number(desc.value) || 0;
+        const v = Number((this.$("#valor") || {}).value) || 0;
+        if (d > 0 && v > 0 && d > v) desc.setAttribute("error", "Não pode ser maior que o valor unitário.");
+        else desc.removeAttribute("error");
+      });
+      desc._ligadoBlur = true;
+    }
+    this.$("#salvar").addEventListener("click", async () => { await this.salvar(); focarPrimeiroErro(this); });
   }
 
   /** Texto de classificação/subclassificação do item (só no modo select). */

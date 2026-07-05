@@ -14,6 +14,7 @@ import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { obrigatorio } from "../../core/validators.js";
 import { avisarDuplicado } from "../shared/duplicado.js";
 import { editarEntidade, excluirEntidade } from "../shared/drop-crud.js";
+import { focarPrimeiroErro } from "../shared/foco-erro.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
@@ -57,7 +58,7 @@ class ContatoForm extends BaseElement {
       <ui-modal open title="${this.ehEdicao ? "Editar contato" : "Novo contato"}">
         <div class="campos">
           <ui-alert id="erro" tipo="erro"></ui-alert>
-          <ui-input id="nome" label="Nome" value="${esc(c.nome)}"
+          <ui-input id="nome" label="Nome" required value="${esc(c.nome)}"
             placeholder="Ex.: João da Silva"></ui-input>
           <div class="linha">
             <ui-input id="telefone" label="Telefone" formato="telefone" value="${esc(c.telefone)}"
@@ -100,7 +101,7 @@ class ContatoForm extends BaseElement {
 
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
-    this.$("#salvar").addEventListener("click", () => this.salvar());
+    this.$("#salvar").addEventListener("click", async () => { await this.salvar(); focarPrimeiroErro(this); });
   }
 
   /** (Re)popula Cargo e Empresa (com ícones editar/excluir; primários sem ações), preservando a seleção. */

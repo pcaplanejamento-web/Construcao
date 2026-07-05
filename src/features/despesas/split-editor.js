@@ -59,6 +59,14 @@ class SplitEditor extends BaseElement {
       .total { font-size: var(--fs-sm); color: var(--cor-texto-suave); }
       .total.erro { color: var(--cor-erro); font-weight: var(--peso-semi); }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); margin-bottom: var(--esp-2); }
+      /* MOBILE: o participante ganha a linha inteira; valor + remover dividem a
+         próxima linha — sem apertar o select nem rolar na horizontal. */
+      @media (max-width: 480px) {
+        .linha { flex-wrap: wrap; }
+        .linha ui-select { flex: 1 1 100%; }
+        .linha ui-input { flex: 1 1 auto; }
+        .rem { height: 44px; }
+      }
     `;
   }
 
@@ -108,6 +116,8 @@ class SplitEditor extends BaseElement {
       rem.type = "button";
       rem.className = "rem";
       rem.textContent = "✕";
+      rem.title = "Remover";
+      rem.setAttribute("aria-label", "Remover participante");
       sel.addEventListener("change", (e) => {
         this._itens[i].chave = e.detail.value;
         this.emitirMudou();

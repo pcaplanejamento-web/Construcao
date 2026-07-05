@@ -10,6 +10,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
+import { focarPrimeiroErro } from "../shared/foco-erro.js";
 import { restoDespesa } from "../despesas/despesa-split.js";
 import { ofertanteNome } from "../orcamentos/orcamento-util.js";
 import { integrantesDaEquipe } from "../equipes/equipe-util.js";
@@ -176,7 +177,7 @@ class PagamentoForm extends BaseElement {
 
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
-    this.$("#salvar").addEventListener("click", () => this.salvar());
+    this.$("#salvar").addEventListener("click", async () => { await this.salvar(); focarPrimeiroErro(this); });
     this._recalcular(); // total inicial (despesas pré-marcadas)
   }
 
