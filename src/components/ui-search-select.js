@@ -52,7 +52,7 @@ class UiSearchSelect extends BaseElement {
       label { display: block; font-size: var(--fs-sm); font-weight: var(--peso-medio);
         color: var(--cor-texto-suave); margin-bottom: var(--esp-1); }
       .wrap { position: relative; }
-      .campo { width: 100%; height: 42px; padding: 0 34px 0 var(--esp-3); box-sizing: border-box;
+      .campo { width: 100%; height: 42px; padding: 0 40px 0 var(--esp-3); box-sizing: border-box;
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
         background: var(--cor-superficie); color: var(--cor-texto); font-family: inherit; font-size: var(--fs-md);
         text-overflow: ellipsis; }
@@ -60,7 +60,8 @@ class UiSearchSelect extends BaseElement {
       .campo:focus { outline: none; border-color: var(--cor-primaria); box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
       :host([error]) .campo { border-color: var(--cor-erro); }
       .chev { position: absolute; right: 10px; top: 0; height: 42px; display: flex; align-items: center;
-        color: var(--cor-texto-fraco); pointer-events: auto; cursor: pointer; }
+        color: var(--cor-texto-suave); cursor: pointer; }
+      .chev svg { display: block; }
       .painel { margin-top: var(--esp-1); border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
         background: var(--cor-superficie); box-shadow: var(--sombra-lg); overflow: hidden; }
       .lista { max-height: 240px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -84,7 +85,7 @@ class UiSearchSelect extends BaseElement {
       ${label ? `<label>${esc(label)}</label>` : ""}
       <div class="wrap">
         <input class="campo" type="text" autocomplete="off" role="combobox" aria-expanded="false">
-        <span class="chev" aria-hidden="true">▾</span>
+        <span class="chev" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </div>
       <div class="painel" hidden>
         <div class="lista" id="lista"></div>

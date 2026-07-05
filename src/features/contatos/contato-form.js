@@ -15,9 +15,11 @@ import { obrigatorio } from "../../core/validators.js";
 import { avisarDuplicado } from "../shared/duplicado.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
-import "../../components/ui-select.js";
+import "../../components/ui-search-select.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
+import "./cargo-form.js";
+import "../fornecedores/fornecedor-form.js";
 
 class ContatoForm extends BaseElement {
   set contato(v) {
@@ -62,8 +64,8 @@ class ContatoForm extends BaseElement {
             <ui-input id="email" label="E-mail" type="email" value="${esc(c.email)}"
               placeholder="joao@empresa.com"></ui-input>
           </div>
-          <ui-select id="cargo" label="Cargo"></ui-select>
-          <ui-select id="fornecedor" label="Empresa"></ui-select>
+          <ui-search-select id="cargo" label="Cargo" criar="Cadastrar cargo"></ui-search-select>
+          <ui-search-select id="fornecedor" label="Empresa" criar="Cadastrar empresa"></ui-search-select>
           <div>
             <label class="tx">Observação</label>
             <textarea id="observacao" placeholder="Detalhes (opcional)">${c.observacao || ""}</textarea>
@@ -78,23 +80,63 @@ class ContatoForm extends BaseElement {
   }
 
   aposRender() {
-    const c = this.contato || {};
+    this._preencherSelects();
 
     const selCargo = this.$("#cargo");
-    selCargo.options = [{ value: "", label: "— Sem cargo —" }].concat(
-      dataStore.cargos().map((x) => ({ value: x.nome, label: x.nome }))
-    );
-    selCargo.value = c.cargo || "";
-
+    if (selCargo && !selCargo._ligado) { selCargo.addEventListener("criar", () => this.abrirNovoCargo()); selCargo._ligado = true; }
     const selForn = this.$("#fornecedor");
-    selForn.options = [{ value: "", label: "— Sem empresa —" }].concat(
-      dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
-    );
-    selForn.value = c.fornecedor_id || "";
+    if (selForn && !selForn._ligado) { selForn.addEventListener("criar", () => this.abrirNovaEmpresa()); selForn._ligado = true; }
 
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", () => this.salvar());
+  }
+
+  /** (Re)popula Cargo e Empresa preservando a seleção atual (após cadastrar um novo). */
+  _preencherSelects() {
+    const c = this.contato || {};
+    const selCargo = this.$("#cargo");
+    if (selCargo) {
+      const atual = selCargo.value || c.cargo || "";
+      selCargo.options = [{ value: "", label: "— Sem cargo —" }].concat(
+        dataStore.cargos().map((x) => ({ value: x.nome, label: x.nome }))
+      );
+      selCargo.value = atual;
+    }
+    const selForn = this.$("#fornecedor");
+    if (selForn) {
+      const atual = selForn.value || c.fornecedor_id || "";
+      selForn.options = [{ value: "", label: "— Sem empresa —" }].concat(
+        dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
+      );
+      selForn.value = atual;
+    }
+  }
+
+  /** Abre o <cargo-form> e seleciona o novo cargo (por nome) ao voltar. */
+  abrirNovoCargo() {
+    const antes = new Set(dataStore.cargos().map((x) => String(x.nome).toLowerCase()));
+    const form = document.createElement("cargo-form");
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => {
+      const novo = dataStore.cargos().find((x) => !antes.has(String(x.nome).toLowerCase()));
+      this._preencherSelects();
+      if (novo && this.$("#cargo")) this.$("#cargo").value = novo.nome;
+    });
+    document.body.appendChild(form);
+  }
+
+  /** Abre o <fornecedor-form> e seleciona a nova empresa ao voltar. */
+  abrirNovaEmpresa() {
+    const antes = new Set(dataStore.fornecedores().map((f) => String(f.id)));
+    const form = document.createElement("fornecedor-form");
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => {
+      const novo = dataStore.fornecedores().find((f) => !antes.has(String(f.id)));
+      this._preencherSelects();
+      if (novo && this.$("#fornecedor")) this.$("#fornecedor").value = novo.id;
+    });
+    document.body.appendChild(form);
   }
 
   async salvar() {

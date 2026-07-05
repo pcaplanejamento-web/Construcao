@@ -37,17 +37,20 @@ class UiSelect extends BaseElement {
       :host { display: block; }
       label { display: block; font-size: var(--fs-sm); font-weight: var(--peso-medio);
         color: var(--cor-texto-suave); margin-bottom: var(--esp-1); }
+      .wrap { position: relative; }
       select {
-        width: 100%; height: 42px; padding: 0 var(--esp-3);
+        width: 100%; height: 42px; padding: 0 40px 0 var(--esp-3);
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
         background: var(--cor-superficie); color: var(--cor-texto);
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-        background-repeat: no-repeat; background-position: right 12px center;
+        font-family: inherit; font-size: var(--fs-md); appearance: none;
       }
       select:focus { outline: none; border-color: var(--cor-primaria);
         box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
       :host([error]) select { border-color: var(--cor-erro); }
+      /* Seta maior e com a cor do tema (currentColor) em vez de um SVG minúsculo. */
+      .chev { position: absolute; right: 10px; top: 0; height: 42px; display: flex; align-items: center;
+        pointer-events: none; color: var(--cor-texto-suave); }
+      .chev svg { display: block; }
       .erro { color: var(--cor-erro); font-size: var(--fs-xs); margin-top: var(--esp-1); }
     `;
   }
@@ -67,10 +70,13 @@ class UiSelect extends BaseElement {
       .join("");
     return `
       ${label ? `<label>${label}</label>` : ""}
-      <select>
-        ${ph ? `<option value="" ${valor ? "" : "selected"} disabled>${ph}</option>` : ""}
-        ${opcoes}
-      </select>
+      <div class="wrap">
+        <select>
+          ${ph ? `<option value="" ${valor ? "" : "selected"} disabled>${ph}</option>` : ""}
+          ${opcoes}
+        </select>
+        <span class="chev" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </div>
       ${erro ? `<div class="erro">${erro}</div>` : ""}
     `;
   }
