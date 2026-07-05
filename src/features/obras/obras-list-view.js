@@ -15,6 +15,7 @@ import "../../components/ui-empty-state.js";
 import "./obra-card.js";
 import "./obra-form.js";
 import "./obra-share-form.js";
+import "../inicio/painel-atencao.js";
 
 class ObrasListView extends BaseElement {
   estilos() {
@@ -40,6 +41,7 @@ class ObrasListView extends BaseElement {
           </div>
           <ui-button id="nova">+ Nova obra</ui-button>
         </div>
+        <painel-atencao></painel-atencao>
         <div id="conteudo"></div>
       </div>
     `;

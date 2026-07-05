@@ -75,7 +75,8 @@ sobem por `CustomEvent`**.
 ### Obras — `features/obras/`
 | Componente | Props/Eventos | Descrição |
 |------------|---------------|-----------|
-| `obras-list-view` | — | Rota `/obras`. Grid de cartões + criar/editar/excluir. |
+| `obras-list-view` | — | Rota `/obras` (tela inicial). No topo, **`<painel-atencao>`**; abaixo, grid de cartões + criar/editar/excluir. |
+| `painel-atencao` | — (auto-contido) | **"O que precisa de atenção"** no topo da tela inicial: cartões (gradiente, clicáveis via `<a href>`) para **Prazos** (obras não finalizadas atrasadas/vencendo em ≤7d → `/obras`; vermelho se há atrasada, senão laranja), **A pagar** (Σ `restoDespesa` das despesas em aberto → `/financeiro`) e **Cotações abertas** (com ofertas ainda não registradas → `/cotacoes`) + **lista das obras críticas** (nome + badge de prazo). Compõe `prazo-util` + `despesa-split`; assina o store e repinta. Some quando não há nada (mostra "Tudo em dia" se há obras). |
 | `obra-card` | `.obra`; eventos `abrir`, `editar`, `remover` | Cartão com barra de orçamento (gradiente). **Altura fixa** (só varia na horizontal): título trava em 2 linhas (line-clamp). Ações via `ui-button`: Editar (`tonal`), Compartilhar (`secundario`), Excluir (`perigo-contorno`, ícone). **Badge de prazo** ("Faltam Xd"/"Vence hoje"/"Atrasada Xd") via `prazo-util`. |
 | `obra-form` | `.obra`; eventos `salvo`, `fechar` | Modal criar/editar obra (chama a API). Inclui **Prazo de término** (`ui-input type=date`). |
 | `obra-share-form` | `.obra`; evento `fechar` | Modal (só dono): **link público** curto (gerar/copiar/abrir/desativar) + **log de acessos** + convidar usuários para colaboração. |
