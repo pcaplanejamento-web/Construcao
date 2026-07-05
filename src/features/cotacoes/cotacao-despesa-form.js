@@ -115,10 +115,10 @@ class CotacaoDespesaForm extends BaseElement {
            <ui-select id="novoFornecedor" label="Empresa" criar="Cadastrar empresa"></ui-select>
            <div class="linha">
              <ui-input id="novaQtd" label="Quantidade" type="number" step="0.01" min="0" placeholder="Ex.: 10"></ui-input>
-             <ui-input id="novoValor" label="Valor unitário (R$)" type="number" step="0.01" min="0" placeholder="0,00"></ui-input>
+             <ui-input id="novoValor" label="Valor unitário (R$)" formato="moeda" placeholder="0,00"></ui-input>
            </div>
            <div class="linha">
-             <ui-input id="novoDesc" label="Valor unit. com desconto (R$)" type="number" step="0.01" min="0" placeholder="opcional"></ui-input>
+             <ui-input id="novoDesc" label="Valor unit. com desconto (R$)" formato="moeda" placeholder="opcional"></ui-input>
              <ui-input id="novoPrazo" label="Data/prazo de entrega" placeholder="Ex.: 5 dias"></ui-input>
            </div>
            <div>

@@ -60,7 +60,7 @@ class ContatoForm extends BaseElement {
           <ui-input id="nome" label="Nome" value="${esc(c.nome)}"
             placeholder="Ex.: João da Silva"></ui-input>
           <div class="linha">
-            <ui-input id="telefone" label="Telefone" value="${esc(c.telefone)}"
+            <ui-input id="telefone" label="Telefone" formato="telefone" value="${esc(c.telefone)}"
               placeholder="(00) 00000-0000"></ui-input>
             <ui-input id="email" label="E-mail" type="email" value="${esc(c.email)}"
               placeholder="joao@empresa.com"></ui-input>

@@ -242,11 +242,11 @@ class PrecoForm extends BaseElement {
           <div class="linha">
             <ui-input id="quantidade" label="Quantidade" type="number" step="0.01" min="0"
               value="${esc(p.quantidade)}" placeholder="Ex.: 10"></ui-input>
-            <ui-input id="valor" label="Valor unitário (R$)" type="number" step="0.01" min="0"
+            <ui-input id="valor" label="Valor unitário (R$)" formato="moeda"
               value="${esc(p.valor_unit)}" placeholder="0,00"></ui-input>
           </div>
           <div class="linha">
-            <ui-input id="desconto" label="Valor unit. com desconto (R$)" type="number" step="0.01" min="0"
+            <ui-input id="desconto" label="Valor unit. com desconto (R$)" formato="moeda"
               value="${esc(p.valor_unit_desconto)}" placeholder="opcional"></ui-input>
             <ui-input id="prazo" label="Data/prazo de entrega" value="${esc(p.prazo_entrega)}"
               placeholder="Ex.: 5 dias"></ui-input>

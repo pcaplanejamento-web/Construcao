@@ -1,42 +1,87 @@
 /**
  * <ui-input> — Campo de formulário com rótulo, validação e mensagem de erro.
  *
- * Atributos: label, name, type, value, placeholder, error, required, step, min, autocomplete
- * Propriedade: .value (lê/escreve o valor atual)
- * Eventos: "input" e "change" ({ value, name }); "enter" (Enter pressionado).
- *
- * `type="password"` ganha automaticamente um botão de **olho** (revelar/ocultar).
- *
- * O evento "enter" permite que formulários submetam sem depender de <form>
- * nativo (o <input> real vive no Shadow DOM deste componente).
+ * Atributos: label, name, type, value, placeholder, error, required, step, min,
+ *   autocomplete, e o opcional **`formato`** (máscara):
+ *   - `formato="moeda"`  → teclado decimal; formata "R$ 1.234,50" enquanto digita
+ *     (acumulador de centavos); **`.value` devolve o NÚMERO** (ex.: `"1234.5"`),
+ *     então `Number(el.value)` segue funcionando. `.numero` devolve o Number.
+ *   - `formato="telefone"` → máscara `(00) 00000-0000`; `.value` = texto mascarado.
+ *   - `formato="cnpj"`     → máscara `00.000.000/0000-00`; `.value` = texto mascarado.
+ *   Sem `formato`, o comportamento é idêntico ao de antes.
+ * Propriedade: `.value` (lê/escreve). Eventos: "input"/"change" ({value,name}); "enter".
+ * `type="password"` ganha um botão de olho (revelar/ocultar).
  */
 import { BaseElement } from "./base-element.js";
+import { moeda } from "../core/formatters.js";
 import "./ui-icon.js";
+
+function soDigitos(s) { return String(s == null ? "" : s).replace(/\D/g, ""); }
+
+/** Valor (número cru ou string formatada) -> centavos inteiros, ou null se vazio. */
+function centavosDe(v) {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  if (!isNaN(n) && String(v).indexOf("R$") < 0) return Math.round(n * 100);
+  const d = soDigitos(v);
+  return d === "" ? null : Number(d);
+}
+
+function mascaraTelefone(v) {
+  const d = soDigitos(v).slice(0, 11);
+  if (!d) return "";
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+function mascaraCnpj(v) {
+  const d = soDigitos(v).slice(0, 14);
+  let s = d;
+  if (d.length > 2) s = d.slice(0, 2) + "." + d.slice(2);
+  if (d.length > 5) s = d.slice(0, 2) + "." + d.slice(2, 5) + "." + d.slice(5);
+  if (d.length > 8) s = d.slice(0, 2) + "." + d.slice(2, 5) + "." + d.slice(5, 8) + "/" + d.slice(8);
+  if (d.length > 12) s = d.slice(0, 2) + "." + d.slice(2, 5) + "." + d.slice(5, 8) + "/" + d.slice(8, 12) + "-" + d.slice(12);
+  return s;
+}
 
 class UiInput extends BaseElement {
   static get observedAttributes() {
-    return ["label", "type", "value", "placeholder", "error", "required", "step", "min"];
+    return ["label", "type", "value", "placeholder", "error", "required", "step", "min", "formato"];
   }
   attributeChangedCallback(nome, anterior, atual) {
     if (!this.shadowRoot.childElementCount) return;
-    if (nome === "value") {
-      const inp = this.$("input");
-      if (inp && inp.value !== atual) inp.value = atual || "";
-    } else if (nome === "error") {
-      this.renderizar();
-    } else {
-      this.renderizar();
-    }
+    if (nome === "value") { this._aplicarValorDisplay(atual); return; }
+    this.renderizar();
   }
 
+  _formato() { return this.getAttribute("formato") || ""; }
+
   get value() {
+    if (this._formato() === "moeda") return this._cents == null ? "" : String(this._cents / 100);
     const inp = this.$("input");
     return inp ? inp.value : this.getAttribute("value") || "";
   }
   set value(v) {
     this.setAttribute("value", v == null ? "" : v);
+    this._aplicarValorDisplay(v == null ? "" : v);
+  }
+  /** Número (só p/ formato="moeda"); senão Number(.value). */
+  get numero() {
+    if (this._formato() === "moeda") return this._cents == null ? null : this._cents / 100;
+    return Number(this.value) || 0;
+  }
+
+  /** Sincroniza o texto exibido no <input> a partir de um valor (respeitando o formato). */
+  _aplicarValorDisplay(v) {
     const inp = this.$("input");
-    if (inp) inp.value = v == null ? "" : v;
+    if (!inp) return;
+    const f = this._formato();
+    if (f === "moeda") { this._cents = centavosDe(v); inp.value = this._cents == null ? "" : moeda(this._cents / 100); }
+    else if (f === "telefone") inp.value = mascaraTelefone(v || "");
+    else if (f === "cnpj") inp.value = mascaraCnpj(v || "");
+    else if (inp.value !== (v || "")) inp.value = v || "";
   }
 
   estilos() {
@@ -50,6 +95,8 @@ class UiInput extends BaseElement {
         background: var(--cor-superficie); color: var(--cor-texto);
         transition: var(--transicao);
       }
+      input:focus-visible { outline: none; border-color: var(--cor-primaria);
+        box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
       input:focus { outline: none; border-color: var(--cor-primaria);
         box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
       :host([error]) input { border-color: var(--cor-erro); }
@@ -66,15 +113,20 @@ class UiInput extends BaseElement {
 
   template() {
     const label = this.getAttribute("label");
-    const tipo = this.getAttribute("type") || "text";
+    const formato = this._formato();
+    let tipo = this.getAttribute("type") || "text";
+    let inputmode = "";
+    if (formato === "moeda") { tipo = "text"; inputmode = "decimal"; }
+    else if (formato === "telefone" || formato === "cnpj") { tipo = "text"; inputmode = "numeric"; }
     const senha = tipo === "password";
     const valor = this.getAttribute("value") || "";
     const ph = this.getAttribute("placeholder") || "";
     const erro = this.getAttribute("error") || "";
     const extra = [];
-    if (this.hasAttribute("step")) extra.push(`step="${this.getAttribute("step")}"`);
-    if (this.hasAttribute("min")) extra.push(`min="${this.getAttribute("min")}"`);
+    if (this.hasAttribute("step") && !formato) extra.push(`step="${this.getAttribute("step")}"`);
+    if (this.hasAttribute("min") && !formato) extra.push(`min="${this.getAttribute("min")}"`);
     if (this.hasAttribute("required")) extra.push("required");
+    if (inputmode) extra.push(`inputmode="${inputmode}"`);
     const input = `<input type="${tipo}" class="${senha ? "com-olho" : ""}" value="${String(valor).replace(/"/g, "&quot;")}"
              placeholder="${ph}" ${extra.join(" ")} />`;
     const campo = senha
@@ -83,7 +135,7 @@ class UiInput extends BaseElement {
     return `
       ${label ? `<label>${label}</label>` : ""}
       ${campo}
-      ${erro ? `<div class="erro">${erro}</div>` : ""}
+      ${erro ? `<div class="erro" role="alert">${erro}</div>` : ""}
     `;
   }
 
@@ -91,14 +143,15 @@ class UiInput extends BaseElement {
     const inp = this.$("input");
     if (!inp) return;
     const nome = this.getAttribute("name") || "";
-    inp.addEventListener("input", () =>
-      this.emitir("input", { value: inp.value, name: nome })
-    );
+    // Formata o valor inicial conforme o formato.
+    if (this._formato()) this._aplicarValorDisplay(this.getAttribute("value") || "");
+
+    inp.addEventListener("input", () => this._onInput());
     inp.addEventListener("change", () =>
-      this.emitir("change", { value: inp.value, name: nome })
+      this.emitir("change", { value: this.value, name: nome })
     );
     inp.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") this.emitir("enter", { value: inp.value, name: nome });
+      if (e.key === "Enter") this.emitir("enter", { value: this.value, name: nome });
     });
     const olho = this.$(".olho");
     if (olho) {
@@ -109,6 +162,24 @@ class UiInput extends BaseElement {
         inp.focus();
       });
     }
+  }
+
+  _onInput() {
+    const inp = this.$("input");
+    if (!inp) return;
+    const f = this._formato();
+    if (f === "moeda") {
+      const d = soDigitos(inp.value);
+      this._cents = d === "" ? null : Number(d);
+      inp.value = this._cents == null ? "" : moeda(this._cents / 100);
+      const p = inp.value.length;
+      try { inp.setSelectionRange(p, p); } catch (e) { /* alguns navegadores */ }
+    } else if (f === "telefone") {
+      inp.value = mascaraTelefone(inp.value);
+    } else if (f === "cnpj") {
+      inp.value = mascaraCnpj(inp.value);
+    }
+    this.emitir("input", { value: this.value, name: this.getAttribute("name") || "" });
   }
 }
 

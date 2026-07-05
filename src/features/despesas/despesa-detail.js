@@ -136,7 +136,7 @@ class DespesaDetail extends BaseElement {
         <ui-tabs id="abas"></ui-tabs>
         <ui-select id="item" label="Item"></ui-select>
         <div class="linha">
-          <ui-input id="valor" label="Valor (R$)" type="number" step="0.01" min="0" value="${d.valor || ""}"></ui-input>
+          <ui-input id="valor" label="Valor (R$)" formato="moeda" value="${d.valor || ""}"></ui-input>
           <ui-input id="data" label="Data" type="date" value="${dataVal}"></ui-input>
         </div>`;
     }
@@ -162,7 +162,7 @@ class DespesaDetail extends BaseElement {
                 <ui-select id="pagTipo" label="Tipo"></ui-select>
               </div>
               <div class="linha">
-                <ui-input id="pagValor" label="Valor a lançar (R$)" type="number" step="0.01" min="0" placeholder="0,00"></ui-input>
+                <ui-input id="pagValor" label="Valor a lançar (R$)" formato="moeda" placeholder="0,00"></ui-input>
                 <ui-input id="pagData" label="Data" type="date" value="${hojeIso()}"></ui-input>
               </div>
               ${eqp ? `<label class="tx">Distribuir entre integrantes (R$)</label>

@@ -64,7 +64,7 @@ class RepasseForm extends BaseElement {
             <div class="lista" id="lista">${linhas}</div>
           </div>
           <div class="linha">
-            <ui-input id="valor" label="Valor repassado (R$)" type="number" step="0.01" min="0" placeholder="0,00"></ui-input>
+            <ui-input id="valor" label="Valor repassado (R$)" formato="moeda" placeholder="0,00"></ui-input>
             <ui-input id="data" label="Data" type="date"></ui-input>
           </div>
         </div>

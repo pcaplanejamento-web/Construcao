@@ -62,7 +62,7 @@ class ObraForm extends BaseElement {
             }</textarea>
           </div>
           <div class="linha">
-            <ui-input id="orcamento" label="Orçamento (R$)" type="number" step="0.01" min="0"
+            <ui-input id="orcamento" label="Orçamento (R$)" formato="moeda"
                       value="${o.orcamento || ""}" placeholder="0,00"></ui-input>
             <ui-select id="status" label="Status" value="${o.status || "ativa"}"></ui-select>
           </div>

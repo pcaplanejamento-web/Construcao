@@ -54,13 +54,13 @@ class FornecedorForm extends BaseElement {
           <ui-input id="nome" label="Nome da empresa" value="${esc(f.nome)}"
             placeholder="Ex.: Casa do Construtor"></ui-input>
           <div class="linha">
-            <ui-input id="telefone" label="Telefone" value="${esc(f.telefone)}"
+            <ui-input id="telefone" label="Telefone" formato="telefone" value="${esc(f.telefone)}"
               placeholder="(00) 00000-0000"></ui-input>
             <ui-input id="email" label="E-mail" type="email" value="${esc(f.email)}"
               placeholder="contato@empresa.com"></ui-input>
           </div>
           <div class="linha">
-            <ui-input id="cnpj" label="CNPJ" value="${esc(f.cnpj)}"
+            <ui-input id="cnpj" label="CNPJ" formato="cnpj" value="${esc(f.cnpj)}"
               placeholder="00.000.000/0000-00"></ui-input>
             <ui-select id="categoria" label="Classificação" criar="Cadastrar classificação"></ui-select>
           </div>

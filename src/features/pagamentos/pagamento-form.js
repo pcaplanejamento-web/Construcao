@@ -94,7 +94,7 @@ class PagamentoForm extends BaseElement {
           <input type="checkbox" class="chk" data-id="${d.id}" ${this._restritas ? "checked" : ""} />
           <span class="nome" title="${this._nomeDespesa(d)}">${this._nomeDespesa(d)}
             <small>· resto ${moeda(restoDespesa(d))} · recebe: ${this._recebedorDespesa(d)}</small></span>
-          <ui-input class="aloc" data-id="${d.id}" type="number" step="0.01" min="0"
+          <ui-input class="aloc" data-id="${d.id}" formato="moeda"
             value="${restoDespesa(d).toFixed(2)}" ${this._restritas ? "" : "disabled"}></ui-input>
         </label>`
           )
