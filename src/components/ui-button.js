@@ -40,6 +40,9 @@ class UiButton extends BaseElement {
         white-space: nowrap;
       }
       button:disabled { opacity: .6; cursor: not-allowed; }
+      /* Foco só por teclado (não no clique de mouse): anel claro e consistente. */
+      button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
+      .perigo:focus-visible, .perigo-contorno:focus-visible { box-shadow: 0 0 0 3px var(--cor-erro-suave); }
       /* Animação de clique (padrão p/ TODOS os botões): afunda rápido e a sombra
          "fecha" (vira um halo curto e mais escuro), dando a sensação tátil do
          pressionar. Sobrepõe o translateY/sombra do hover. */

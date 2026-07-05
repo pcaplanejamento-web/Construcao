@@ -60,17 +60,23 @@ class FinanceiroView extends BaseElement {
         <ui-tabs id="abas">
           <div slot="receber">
             <ui-card mesa title="Mesa com recebimentos por destinatário">
-              <ui-data-table id="tabReceber" fluido empty-text="Nada a receber."></ui-data-table>
+              <ui-data-table id="tabReceber" fluido empty-icone="cifrao"
+                empty-titulo="Nada a receber"
+                empty-texto="Quando houver valores a receber por integrante, eles aparecem aqui."></ui-data-table>
             </ui-card>
           </div>
           <div slot="pagar">
             <ui-card mesa title="Mesa com pagamentos por responsável">
-              <ui-data-table id="tabPagar" fluido empty-text="Nada a pagar."></ui-data-table>
+              <ui-data-table id="tabPagar" fluido empty-icone="cifrao"
+                empty-titulo="Nada a pagar"
+                empty-texto="Quando houver valores a pagar por responsável, eles aparecem aqui."></ui-data-table>
             </ui-card>
           </div>
           <div slot="aberto">
             <ui-card mesa title="Mesa com despesas em aberto">
-              <ui-data-table id="tabAberto" fluido clicavel empty-text="Nenhuma despesa em aberto."></ui-data-table>
+              <ui-data-table id="tabAberto" fluido clicavel empty-icone="recibo"
+                empty-titulo="Nenhuma despesa em aberto"
+                empty-texto="Todas as despesas estão quitadas — nada pendente de pagamento."></ui-data-table>
             </ui-card>
           </div>
         </ui-tabs>

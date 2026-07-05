@@ -25,6 +25,7 @@
 import { BaseElement } from "./base-element.js";
 import { moeda } from "../core/formatters.js";
 import "./ui-coluna-menu.js";
+import "./ui-empty-state.js";
 import { injetarBuscaNoCard } from "./ui-busca.js";
 import { confirmar } from "./confirmar.js";
 import { baixarTabela } from "../features/shared/exportar-tabela.js";
@@ -67,7 +68,7 @@ function _htmlParaTexto(v) {
 
 class UiDataTable extends BaseElement {
   static get observedAttributes() {
-    return ["empty-text", "fluido", "clicavel", "editar-massa", "excluir-massa"];
+    return ["empty-text", "empty-titulo", "empty-texto", "empty-icone", "fluido", "clicavel", "editar-massa", "excluir-massa"];
   }
 
   /** A seleção (e a barra de ações em massa) só existe em tabelas editáveis/excluíveis. */
@@ -247,6 +248,9 @@ class UiDataTable extends BaseElement {
         background: var(--cor-mesa); }
       thead th.sel { z-index: 6; background: var(--cor-mesa); }
       input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cor-primaria); cursor: pointer; }
+      /* Alvo de toque confortável (≥34px) sem aumentar o visual do checkbox. */
+      .selbox { display: inline-flex; align-items: center; justify-content: center;
+        min-width: 34px; min-height: 34px; margin: 0 auto; cursor: pointer; }
       .th-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none;
         font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
         cursor: pointer; padding: 0; }
@@ -379,6 +383,13 @@ class UiDataTable extends BaseElement {
     this.__sel = new Set([...this._sel].filter((l) => this.rows.includes(l)));
 
     if (!this.rows.length) {
+      // Estado vazio RICO (ícone + explicação) quando há empty-titulo; senão, o
+      // texto simples de sempre (retrocompatível com empty-text).
+      const et = this.getAttribute("empty-titulo");
+      if (et) {
+        const esc = (v) => String(v == null ? "" : v).replace(/"/g, "&quot;");
+        return `<div class="vazio"><ui-empty-state icone="${esc(this.getAttribute("empty-icone") || "vazio")}" titulo="${esc(et)}" texto="${esc(this.getAttribute("empty-texto") || "")}"></ui-empty-state></div>`;
+      }
       const txt = this.getAttribute("empty-text") || "Nenhum registro.";
       return `<div class="vazio">${txt}</div>`;
     }
@@ -391,7 +402,7 @@ class UiDataTable extends BaseElement {
     // Marca no host se há coluna de marcação (p/ a sombra do card começar após ela).
     this.toggleAttribute("tem-selecao", temSel);
     const cabecalho =
-      (temSel ? `<th class="sel"><input type="checkbox" id="selTodos"></th>` : "") +
+      (temSel ? `<th class="sel"><label class="selbox"><input type="checkbox" id="selTodos" aria-label="Selecionar todos"></label></th>` : "") +
       cols
         .map(
           (c, i) =>
@@ -458,7 +469,7 @@ class UiDataTable extends BaseElement {
       .map(({ linha, i }) => {
         const marcada = this._sel.has(linha);
         const sel = temSel
-          ? `<td class="sel"><input type="checkbox" class="rowsel" data-i="${i}" ${marcada ? "checked" : ""}></td>`
+          ? `<td class="sel"><label class="selbox"><input type="checkbox" class="rowsel" data-i="${i}" aria-label="Selecionar linha" ${marcada ? "checked" : ""}></label></td>`
           : "";
         const celulas = cols
           .map((c) => {

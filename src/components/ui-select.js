@@ -126,7 +126,7 @@ class UiSelect extends BaseElement {
         <input class="campo" type="text" autocomplete="off" role="combobox" aria-expanded="false">
         <span class="chev" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </div>
-      ${erro ? `<div class="erro">${esc(erro)}</div>` : ""}`;
+      ${erro ? `<div class="erro" role="alert">${esc(erro)}</div>` : ""}`;
   }
 
   aposRender() {

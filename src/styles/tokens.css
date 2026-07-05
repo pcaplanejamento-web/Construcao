@@ -50,7 +50,7 @@
   --cor-divisor: #f1f5f9; /* linhas internas (tabelas) */
   --cor-texto: #0f172a;
   --cor-texto-suave: #64748b;
-  --cor-texto-fraco: #94a3b8;
+  --cor-texto-fraco: #667085; /* AA (~4.5:1) p/ texto pequeno; era #94a3b8 (~2.6:1) */
 
   /* Overlay de modais/drawer (escurece em ambos os temas) */
   --cor-overlay: rgba(15, 23, 42, 0.45);
@@ -162,7 +162,7 @@
     --cor-divisor: #1e2c44;
     --cor-texto: #e9eef5;
     --cor-texto-suave: #aab6c8;
-    --cor-texto-fraco: #6b7a90;
+    --cor-texto-fraco: #8492a6; /* mais claro → melhor contraste no escuro (AA) */
 
     --cor-overlay: rgba(0, 0, 0, 0.6);
     --sombra-sm: 0 1px 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.45);
