@@ -75,7 +75,9 @@ class UiModal extends BaseElement {
       }
       h2 { font-size: var(--fs-lg); font-weight: var(--peso-semi); }
       .fechar { background: none; border: none; font-size: 1.4rem; line-height: 1;
-        color: var(--cor-texto-suave); padding: var(--esp-1); cursor: pointer; border-radius: var(--raio-sm); }
+        color: var(--cor-texto-suave); cursor: pointer; border-radius: var(--raio-sm);
+        width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+      @media (max-width: 600px) { .fechar { width: 44px; height: 44px; } } /* alvo de toque */
       .fechar:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--cor-primaria-suave); color: var(--cor-texto); }
       .dialogo:focus { outline: none; }
       /* Banner flutuante: rola só na VERTICAL (sem deriva horizontal). */

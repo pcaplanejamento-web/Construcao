@@ -215,3 +215,19 @@ cheia, sem virar app nativo.
   (backend é o Apps Script). Ao cair a conexão, o app avisa e segue com o cache.
 - **Regerar ícones** (se o logo mudar): `qlmanage -t -s 512 -o /tmp src/assets/dattaobra.svg`
   e copiar o PNG; o maskable vem de um wrapper SVG com o logo a 66% em fundo branco.
+
+### Adaptação à tela do aparelho (iPhone / notch / standalone)
+
+Não se detecta o "modelo" do telefone — o layout se adapta ao **formato da tela**
+de cada aparelho por CSS:
+- **Safe areas** (`env(safe-area-inset-*)` + `viewport-fit=cover`): no PWA em tela
+  cheia (standalone) o conteúdo vai de borda a borda, então header (topo/notch),
+  dock (base/indicador de home), gaveta lateral, **modais** e **toasts** respeitam
+  as insets — nada fica sob a Dynamic Island nem sob o indicador de home.
+- **`100dvh`** (viewport dinâmico) no shell → o layout não quebra quando a barra do
+  Safari iOS aparece/some.
+- **Sem zoom automático no iOS:** todos os campos (`ui-input`, `ui-select`,
+  `<textarea>`, login) usam **fonte ≥ 16px** — abaixo disso o iOS amplia a página ao
+  focar o campo.
+- **Alvos de toque ≥ 44px** em telas de toque (checkbox de tabela, "×" dos modais,
+  itens do dock, "?" de ajuda).

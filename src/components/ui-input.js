@@ -113,6 +113,9 @@ class UiInput extends BaseElement {
         width: 100%; height: 42px; padding: 0 var(--esp-3);
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
         background: var(--cor-superficie); color: var(--cor-texto);
+        /* font-family herda a fonte do app (senão vira Arial no Shadow DOM) e
+           font-size = 1rem (16px) EVITA o zoom automático do iOS ao focar o campo. */
+        font-family: inherit; font-size: var(--fs-md);
         transition: var(--transicao);
       }
       input:focus-visible { outline: none; border-color: var(--cor-primaria);

@@ -66,7 +66,7 @@ class DespesaDetail extends BaseElement {
         color: var(--cor-texto-suave); margin-bottom: var(--esp-1); display: block; }
       textarea { width: 100%; min-height: 64px; padding: var(--esp-3);
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
-        font-family: inherit; resize: vertical; background: var(--cor-superficie);
+        font-family: inherit; font-size: var(--fs-md); resize: vertical; background: var(--cor-superficie);
         color: var(--cor-texto); }
       textarea:focus { outline: none; border-color: var(--cor-primaria);
         box-shadow: 0 0 0 3px var(--cor-primaria-suave); }

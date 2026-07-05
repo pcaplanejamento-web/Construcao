@@ -37,7 +37,7 @@ class LoginForm extends BaseElement {
         pointer-events: none; }
       input { width: 100%; height: 52px; box-sizing: border-box;
         border: 1px solid #e2e8f0; border-radius: 12px; background: #fff;
-        padding: 0 14px 0 44px; font-size: 15px; color: #0f172a;
+        padding: 0 14px 0 44px; font-size: 16px; color: #0f172a; /* 16px evita zoom no iOS */
         font-family: inherit; transition: border-color .15s, box-shadow .15s; }
       input::placeholder { color: #94a3b8; }
       input:focus { outline: none; border-color: var(--cor-primaria);

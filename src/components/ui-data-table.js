@@ -253,8 +253,9 @@ class UiDataTable extends BaseElement {
       /* Alvo de toque confortável sem aumentar o visual do checkbox. */
       .selbox { display: inline-flex; align-items: center; justify-content: center;
         min-width: 34px; min-height: 34px; margin: 0 auto; cursor: pointer; }
-      /* Em telas de TOQUE (sem mouse) sobe p/ 44px (recomendação WCAG). */
-      @media (hover: none) { .selbox { min-width: 44px; min-height: 44px; } }
+      /* Em telas de TOQUE (sem mouse) OU estreitas (tablet/celular, inclui híbridos
+         toque+trackpad) sobe p/ 44px (recomendação WCAG). */
+      @media (hover: none), (max-width: 820px) { .selbox { min-width: 44px; min-height: 44px; } }
       .th-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none;
         font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
         cursor: pointer; padding: 0; }

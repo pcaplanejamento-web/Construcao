@@ -37,7 +37,7 @@ class ObraForm extends BaseElement {
         color: var(--cor-texto-suave); margin-bottom: var(--esp-1); display: block; }
       textarea { width: 100%; min-height: 70px; padding: var(--esp-3);
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
-        font-family: inherit; resize: vertical; }
+        font-family: inherit; font-size: var(--fs-md); resize: vertical; }
       textarea:focus { outline: none; border-color: var(--cor-primaria);
         box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
     `;

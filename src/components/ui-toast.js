@@ -90,7 +90,12 @@ class ToastHost extends BaseElement {
   estilos() {
     return `
       :host {
-        position: fixed; top: var(--esp-4); right: var(--esp-4);
+        position: fixed;
+        /* Respeita as safe areas (notch/Dynamic Island e cantos arredondados): no
+           PWA em tela cheia os toasts não escorregam para baixo da ilha nem para
+           fora da borda direita. */
+        top: calc(var(--esp-4) + env(safe-area-inset-top));
+        right: calc(var(--esp-4) + env(safe-area-inset-right));
         display: flex; flex-direction: column; gap: var(--esp-2);
         z-index: var(--z-toast);
       }

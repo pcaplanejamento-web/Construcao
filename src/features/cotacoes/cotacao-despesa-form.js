@@ -94,7 +94,7 @@ class CotacaoDespesaForm extends BaseElement {
       .info b { color: var(--cor-texto); }
       textarea { width: 100%; box-sizing: border-box; min-height: 56px; padding: var(--esp-3);
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
-        font-family: inherit; resize: vertical; background: var(--cor-superficie); color: var(--cor-texto); }
+        font-family: inherit; font-size: var(--fs-md); resize: vertical; background: var(--cor-superficie); color: var(--cor-texto); }
       textarea:focus { outline: none; border-color: var(--cor-primaria); box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
       @media (max-width: 560px) {
         .linha { flex-direction: column; }
