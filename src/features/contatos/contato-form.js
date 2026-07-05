@@ -12,6 +12,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { obrigatorio } from "../../core/validators.js";
+import { avisarDuplicado } from "../shared/duplicado.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
@@ -115,6 +116,10 @@ class ContatoForm extends BaseElement {
       alerta.mensagem = "Vendedor deve ser vinculado a uma empresa.";
       return;
     }
+
+    // Aviso de duplicado (só ao criar): se já existe um contato com esse nome,
+    // o usuário escolhe continuar ou não.
+    if (!this.ehEdicao && !(await avisarDuplicado("contato", nome, dataStore.contatosAtivos()))) return;
 
     const dados = {
       nome,

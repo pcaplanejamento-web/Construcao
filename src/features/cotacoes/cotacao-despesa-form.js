@@ -24,11 +24,14 @@ import { valorPositivo } from "../../core/validators.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-select.js";
+import "../../components/ui-search-select.js";
 import "../../components/ui-input.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
 import "../despesas/split-editor.js";
 import "../itens/item-form.js";
+import "../contatos/contato-form.js";
+import "../fornecedores/fornecedor-form.js";
 
 const CLASSIFICACOES = ["Material", "Serviço"];
 
@@ -106,13 +109,10 @@ class CotacaoDespesaForm extends BaseElement {
            <ui-select id="oferta" label="Oferta"></ui-select>
          </div>
          <div id="secNova" class="secNova" hidden>
-           <div class="linha-item">
-             <ui-select id="novoItem" label="Item"></ui-select>
-             <ui-button id="addItem" variant="secundario">+ Item</ui-button>
-           </div>
+           <ui-search-select id="novoItem" label="Item" criar="Cadastrar item"></ui-search-select>
            <div class="info" id="novaClasse"></div>
-           <ui-select id="novoOfertante" label="Ofertante (contato ou grupo)"></ui-select>
-           <ui-select id="novoFornecedor" label="Empresa"></ui-select>
+           <ui-search-select id="novoOfertante" label="Ofertante (contato ou grupo)" criar="Cadastrar contato"></ui-search-select>
+           <ui-search-select id="novoFornecedor" label="Empresa" criar="Cadastrar empresa"></ui-search-select>
            <div class="linha">
              <ui-input id="novaQtd" label="Quantidade" type="number" step="0.01" min="0" placeholder="Ex.: 10"></ui-input>
              <ui-input id="novoValor" label="Valor unitário (R$)" type="number" step="0.01" min="0" placeholder="0,00"></ui-input>
@@ -262,32 +262,42 @@ class CotacaoDespesaForm extends BaseElement {
     if (selItem) {
       const itens = dataStore.itensAtivos();
       const atual = selItem.value;
-      selItem.setAttribute("placeholder", itens.length ? "Selecione o item" : "Nenhum item — cadastre um");
+      selItem.setAttribute("placeholder", itens.length ? "Buscar o item…" : "Nenhum item — cadastre um");
       selItem.options = itens.map((i) => ({ value: i.id, label: `${i.nome} — ${i.classificacao}` }));
       selItem.value = itens.some((i) => String(i.id) === String(atual)) ? atual : "";
       if (!selItem._ligado) {
         selItem.addEventListener("change", () => { this.atualizarNovaClasse(); this.pintarResumo(); });
+        selItem.addEventListener("criar", () => this.abrirNovoItem());
         selItem._ligado = true;
       }
     }
     const selOf = this.$("#novoOfertante");
-    if (selOf && !selOf._ligado) {
+    if (selOf) {
+      const atual = selOf.value;
       const opcoes = [{ value: "", label: "— Sem ofertante —" }];
       dataStore.contatosAtivos().forEach((c) => opcoes.push({ value: "c:" + c.id, label: c.nome }));
       dataStore.equipes().forEach((e) => opcoes.push({ value: "e:" + e.id, label: `${e.nome} — grupo` }));
       selOf.options = opcoes;
-      selOf.addEventListener("change", () => this.autoFornecedorNova());
-      selOf._ligado = true;
+      selOf.value = opcoes.some((o) => String(o.value) === String(atual)) ? atual : "";
+      if (!selOf._ligado) {
+        selOf.addEventListener("change", () => this.autoFornecedorNova());
+        selOf.addEventListener("criar", () => this.abrirNovoContato());
+        selOf._ligado = true;
+      }
     }
     const selForn = this.$("#novoFornecedor");
-    if (selForn && !selForn._ligado) {
-      selForn.options = [{ value: "", label: "— Nenhum —" }].concat(
+    if (selForn) {
+      const atual = selForn.value;
+      const opcoes = [{ value: "", label: "— Nenhuma —" }].concat(
         dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
       );
-      selForn._ligado = true;
+      selForn.options = opcoes;
+      selForn.value = opcoes.some((o) => String(o.value) === String(atual)) ? atual : "";
+      if (!selForn._ligado) {
+        selForn.addEventListener("criar", () => this.abrirNovoFornecedor());
+        selForn._ligado = true;
+      }
     }
-    const addItem = this.$("#addItem");
-    if (addItem && !addItem._ligado) { addItem.addEventListener("click", () => this.abrirNovoItem()); addItem._ligado = true; }
     ["#novaQtd", "#novoValor", "#novoDesc"].forEach((sel) => {
       const el = this.$(sel);
       if (el && !el._ligado) { el.addEventListener("input", () => this.pintarResumo()); el._ligado = true; }
@@ -333,6 +343,38 @@ class CotacaoDespesaForm extends BaseElement {
       if (novo && this.$("#novoItem")) {
         this.$("#novoItem").value = novo.id;
         this.atualizarNovaClasse();
+        this.pintarResumo();
+      }
+    });
+    document.body.appendChild(form);
+  }
+
+  /** Abre o <contato-form> para cadastrar um contato e o define como ofertante. */
+  abrirNovoContato() {
+    const antes = new Set(dataStore.contatos().map((c) => String(c.id)));
+    const form = document.createElement("contato-form");
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => {
+      const novo = dataStore.contatos().find((c) => !antes.has(String(c.id)));
+      this.preencherNova();
+      if (novo && this.$("#novoOfertante")) {
+        this.$("#novoOfertante").value = "c:" + novo.id;
+        this.autoFornecedorNova();
+      }
+    });
+    document.body.appendChild(form);
+  }
+
+  /** Abre o <fornecedor-form> para cadastrar uma empresa e a seleciona. */
+  abrirNovoFornecedor() {
+    const antes = new Set(dataStore.fornecedores().map((f) => String(f.id)));
+    const form = document.createElement("fornecedor-form");
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => {
+      const novo = dataStore.fornecedores().find((f) => !antes.has(String(f.id)));
+      this.preencherNova();
+      if (novo && this.$("#novoFornecedor")) {
+        this.$("#novoFornecedor").value = novo.id;
         this.pintarResumo();
       }
     });

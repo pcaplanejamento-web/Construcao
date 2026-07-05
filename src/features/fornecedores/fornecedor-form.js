@@ -9,6 +9,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { obrigatorio } from "../../core/validators.js";
+import { avisarDuplicado } from "../shared/duplicado.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
@@ -98,6 +99,10 @@ class FornecedorForm extends BaseElement {
       return;
     }
     this.$("#nome").removeAttribute("error");
+
+    // Aviso de duplicado (só ao criar): o usuário decide se cadastra mesmo assim.
+    if (!this.ehEdicao && !(await avisarDuplicado("empresa", nome, dataStore.fornecedoresAtivos()))) return;
+
     const dados = {
       nome,
       telefone: this.$("#telefone").value.trim(),
