@@ -20,12 +20,15 @@ import { moeda } from "../../core/formatters.js";
 import { toastSucesso, toastAviso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta, qtdOferta, unitFinalOferta } from "./cotacao-util.js";
 import { ofertanteNome, rotuloOrcamento, previaOfertaHtml } from "../orcamentos/orcamento-util.js";
+import { valorPositivo } from "../../core/validators.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-select.js";
+import "../../components/ui-input.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
 import "../despesas/split-editor.js";
+import "../itens/item-form.js";
 
 const CLASSIFICACOES = ["Material", "Serviço"];
 
@@ -72,6 +75,24 @@ class CotacaoDespesaForm extends BaseElement {
       .secao { border-top: 1px solid var(--cor-borda); padding-top: var(--esp-3); }
       label.tx { font-size: var(--fs-sm); font-weight: var(--peso-medio);
         color: var(--cor-texto-suave); margin-bottom: var(--esp-1); display: block; }
+      /* Seção "Nova despesa" (cria item + oferta inline). */
+      .secNova { display: flex; flex-direction: column; gap: var(--esp-3); }
+      .linha { display: flex; gap: var(--esp-3); }
+      .linha > * { flex: 1; min-width: 0; }
+      .linha-item { display: flex; gap: var(--esp-2); align-items: flex-end; }
+      .linha-item ui-select { flex: 1; min-width: 0; }
+      .linha-item ui-button { flex: none; white-space: nowrap; }
+      .info { font-size: var(--fs-sm); color: var(--cor-texto-suave); }
+      .info b { color: var(--cor-texto); }
+      textarea { width: 100%; box-sizing: border-box; min-height: 56px; padding: var(--esp-3);
+        border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
+        font-family: inherit; resize: vertical; background: var(--cor-superficie); color: var(--cor-texto); }
+      textarea:focus { outline: none; border-color: var(--cor-primaria); box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
+      @media (max-width: 560px) {
+        .linha { flex-direction: column; }
+        .linha-item { flex-wrap: wrap; }
+        .linha-item ui-button { width: 100%; }
+      }
       [hidden] { display: none; }
     `;
   }
@@ -83,6 +104,27 @@ class CotacaoDespesaForm extends BaseElement {
          <div id="secOferta">
            <ui-tabs id="abas"></ui-tabs>
            <ui-select id="oferta" label="Oferta"></ui-select>
+         </div>
+         <div id="secNova" class="secNova" hidden>
+           <div class="linha-item">
+             <ui-select id="novoItem" label="Item"></ui-select>
+             <ui-button id="addItem" variant="secundario">+ Item</ui-button>
+           </div>
+           <div class="info" id="novaClasse"></div>
+           <ui-select id="novoOfertante" label="Ofertante (contato ou grupo)"></ui-select>
+           <ui-select id="novoFornecedor" label="Empresa"></ui-select>
+           <div class="linha">
+             <ui-input id="novaQtd" label="Quantidade" type="number" step="0.01" min="0" placeholder="Ex.: 10"></ui-input>
+             <ui-input id="novoValor" label="Valor unitário (R$)" type="number" step="0.01" min="0" placeholder="0,00"></ui-input>
+           </div>
+           <div class="linha">
+             <ui-input id="novoDesc" label="Valor unit. com desconto (R$)" type="number" step="0.01" min="0" placeholder="opcional"></ui-input>
+             <ui-input id="novoPrazo" label="Data/prazo de entrega" placeholder="Ex.: 5 dias"></ui-input>
+           </div>
+           <div>
+             <label class="tx">Observação</label>
+             <textarea id="novaObs" placeholder="Condições, frete, etc. (opcional)"></textarea>
+           </div>
          </div>
          <div id="secOrcamento" hidden>
            <ui-select id="orcamento" label="Orçamento (registra todas as ofertas)"></ui-select>
@@ -112,6 +154,7 @@ class CotacaoDespesaForm extends BaseElement {
       const selModo = this.$("#modoReg");
       selModo.options = [
         { value: "oferta", label: "Uma oferta" },
+        { value: "nova", label: "Uma despesa nova" },
         { value: "orcamento", label: "Orçamento completo" },
       ];
       selModo.value = "oferta";
@@ -121,6 +164,8 @@ class CotacaoDespesaForm extends BaseElement {
       this.$("#abas").addEventListener("mudar", () => this.preencherOfertas());
       this.preencherOfertas();
       this.$("#oferta").addEventListener("change", (e) => this.onOfertaSelecionada(e.detail.value));
+
+      this.preencherNova();
 
       this.preencherOrcamentos();
       this.$("#orcamento").addEventListener("change", (e) => this.onOrcamentoSelecionado(e.detail.value));
@@ -196,12 +241,102 @@ class CotacaoDespesaForm extends BaseElement {
     return (this.$("#modoReg") && this.$("#modoReg").value) || "oferta";
   }
 
-  /** Alterna entre registrar uma oferta avulsa ou o orçamento completo. */
+  /** Alterna entre registrar uma oferta existente, uma despesa nova ou o orçamento completo. */
   alternarModoReg() {
-    const ehOrc = this.modoRegistro === "orcamento";
-    if (this.$("#secOferta")) this.$("#secOferta").hidden = ehOrc;
-    if (this.$("#secOrcamento")) this.$("#secOrcamento").hidden = !ehOrc;
+    const modo = this.modoRegistro;
+    if (this.$("#secOferta")) this.$("#secOferta").hidden = modo !== "oferta";
+    if (this.$("#secNova")) this.$("#secNova").hidden = modo !== "nova";
+    if (this.$("#secOrcamento")) this.$("#secOrcamento").hidden = modo !== "orcamento";
     this.pintarResumo();
+  }
+
+  /* --------------------------- Modo "Nova despesa" --------------------------- */
+  /**
+   * Preenche os campos da oferta nova (item + ofertante + fornecedor + valores),
+   * espelhando o <preco-form>. Cria a oferta avulsa e registra a despesa em um só
+   * passo (mesma lógica de registrarDespesaOferta). Chamado no início e após
+   * cadastrar um item novo (para refrescar a lista).
+   */
+  preencherNova() {
+    const selItem = this.$("#novoItem");
+    if (selItem) {
+      const itens = dataStore.itensAtivos();
+      const atual = selItem.value;
+      selItem.setAttribute("placeholder", itens.length ? "Selecione o item" : "Nenhum item — cadastre um");
+      selItem.options = itens.map((i) => ({ value: i.id, label: `${i.nome} — ${i.classificacao}` }));
+      selItem.value = itens.some((i) => String(i.id) === String(atual)) ? atual : "";
+      if (!selItem._ligado) {
+        selItem.addEventListener("change", () => { this.atualizarNovaClasse(); this.pintarResumo(); });
+        selItem._ligado = true;
+      }
+    }
+    const selOf = this.$("#novoOfertante");
+    if (selOf && !selOf._ligado) {
+      const opcoes = [{ value: "", label: "— Sem ofertante —" }];
+      dataStore.contatosAtivos().forEach((c) => opcoes.push({ value: "c:" + c.id, label: c.nome }));
+      dataStore.equipes().forEach((e) => opcoes.push({ value: "e:" + e.id, label: `${e.nome} — grupo` }));
+      selOf.options = opcoes;
+      selOf.addEventListener("change", () => this.autoFornecedorNova());
+      selOf._ligado = true;
+    }
+    const selForn = this.$("#novoFornecedor");
+    if (selForn && !selForn._ligado) {
+      selForn.options = [{ value: "", label: "— Nenhum —" }].concat(
+        dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
+      );
+      selForn._ligado = true;
+    }
+    const addItem = this.$("#addItem");
+    if (addItem && !addItem._ligado) { addItem.addEventListener("click", () => this.abrirNovoItem()); addItem._ligado = true; }
+    ["#novaQtd", "#novoValor", "#novoDesc"].forEach((sel) => {
+      const el = this.$(sel);
+      if (el && !el._ligado) { el.addEventListener("input", () => this.pintarResumo()); el._ligado = true; }
+    });
+    this.atualizarNovaClasse();
+  }
+
+  /** Texto de classificação/subclassificação do item escolhido (nova despesa). */
+  atualizarNovaClasse() {
+    const box = this.$("#novaClasse");
+    if (!box) return;
+    const it = dataStore.item(((this.$("#novoItem") || {}).value) || "");
+    if (!it) { box.innerHTML = ""; return; }
+    const sub = it.categoria_id
+      ? (dataStore.categorias().find((c) => String(c.id) === String(it.categoria_id)) || {}).nome
+      : "";
+    const exige = it.classificacao === "Material" ? "fornecedor obrigatório" : "ofertante obrigatório";
+    box.innerHTML = `Classificação: <b>${it.classificacao || "—"}</b>${sub ? ` · Subclassificação: <b>${sub}</b>` : ""} <small>(${exige})</small>`;
+  }
+
+  /** Auto-preenche a empresa pelo contato ofertante (se vinculado). */
+  autoFornecedorNova() {
+    const selOf = this.$("#novoOfertante");
+    const selForn = this.$("#novoFornecedor");
+    if (selOf && selForn) {
+      const v = selOf.value || "";
+      if (v.indexOf("c:") === 0) {
+        const ct = dataStore.contatos().find((x) => String(x.id) === String(v.slice(2)));
+        if (ct && ct.fornecedor_id) selForn.value = String(ct.fornecedor_id);
+      }
+    }
+    this.pintarResumo();
+  }
+
+  /** Abre o <item-form> para cadastrar um item e o seleciona ao voltar. */
+  abrirNovoItem() {
+    const antes = new Set(dataStore.itens().map((i) => String(i.id)));
+    const form = document.createElement("item-form");
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => {
+      const novo = dataStore.itens().find((i) => !antes.has(String(i.id)));
+      this.preencherNova();
+      if (novo && this.$("#novoItem")) {
+        this.$("#novoItem").value = novo.id;
+        this.atualizarNovaClasse();
+        this.pintarResumo();
+      }
+    });
+    document.body.appendChild(form);
   }
 
   /** Ofertas do orçamento ainda não registradas como despesa. */
@@ -244,6 +379,23 @@ class CotacaoDespesaForm extends BaseElement {
   pintarResumo() {
     const box = this.$("#resumo");
     if (!box) return;
+
+    // Modo NOVA despesa: prévia do total a partir dos campos digitados.
+    if (this.modoObra && this.modoRegistro === "nova") {
+      const it = dataStore.item(((this.$("#novoItem") || {}).value) || "");
+      const valor = Number((this.$("#novoValor") || {}).value) || 0;
+      const desc = Number((this.$("#novoDesc") || {}).value) || 0;
+      const qtd = Number((this.$("#novaQtd") || {}).value) || 0;
+      const unit = desc > 0 ? desc : valor;
+      const q = qtd > 0 ? qtd : 1;
+      if (!it || !(unit > 0)) { box.setAttribute("hidden", ""); return; }
+      box.removeAttribute("hidden");
+      box.innerHTML = `
+        <span class="item">${it.nome}</span>
+        <small>${q}× · ${moeda(unit)}${desc > 0 ? " (c/ desconto)" : ""}</small>
+        <span class="val">${moeda(unit * q)}</span>`;
+      return;
+    }
 
     // Modo orçamento completo: lista as ofertas e o total a registrar.
     if (this.modoObra && this.modoRegistro === "orcamento") {
@@ -309,6 +461,11 @@ class CotacaoDespesaForm extends BaseElement {
       return;
     }
 
+    // --- Nova despesa: cria a oferta (avulsa) e registra em um passo. ---
+    if (this.modoObra && this.modoRegistro === "nova") {
+      return this.confirmarNova(obraId, responsaveis);
+    }
+
     const ehOrc = this.modoObra && this.modoRegistro === "orcamento";
     const btn = this.$("#confirmar");
 
@@ -354,6 +511,79 @@ class CotacaoDespesaForm extends BaseElement {
       this.emitir("registrado", { obra_id: obraId });
       this.emitir("fechar");
     } catch (e) {
+      notificarErro(e);
+      btn.removeAttribute("loading");
+    }
+  }
+
+  /**
+   * Nova despesa manual: valida os dados da oferta (mesmas regras do preco-form),
+   * cria a oferta AVULSA (`criarOferta`) e registra a despesa em seguida
+   * (`registrarDespesaOferta`) — tudo em um passo, mesma lógica existente.
+   */
+  async confirmarNova(obraId, responsaveis) {
+    const alerta = this.$("#erro");
+    if (alerta) alerta.mensagem = "";
+    ["#novoItem", "#novoOfertante", "#novoFornecedor", "#novoValor", "#novoDesc", "#novoPrazo"].forEach((s) => {
+      const el = this.$(s);
+      if (el) el.removeAttribute("error");
+    });
+    const itemId = String(((this.$("#novoItem") || {}).value) || "");
+    if (!itemId) {
+      if (this.$("#novoItem")) this.$("#novoItem").setAttribute("error", "Selecione ou cadastre um item.");
+      return;
+    }
+    const item = dataStore.item(itemId) || {};
+    const ehMaterial = String(item.classificacao) === "Material";
+
+    const vOf = ((this.$("#novoOfertante") || {}).value) || "";
+    let contatoId = "";
+    let equipeId = "";
+    if (vOf.indexOf("c:") === 0) contatoId = vOf.slice(2);
+    else if (vOf.indexOf("e:") === 0) equipeId = vOf.slice(2);
+    const fornecedorId = ((this.$("#novoFornecedor") || {}).value) || "";
+
+    if (ehMaterial && !fornecedorId) {
+      if (this.$("#novoFornecedor")) this.$("#novoFornecedor").setAttribute("error", "Material exige uma empresa.");
+      return;
+    }
+    if (!ehMaterial && !contatoId && !equipeId) {
+      if (this.$("#novoOfertante")) this.$("#novoOfertante").setAttribute("error", "Serviço exige um ofertante.");
+      return;
+    }
+
+    const valor = Number((this.$("#novoValor") || {}).value);
+    const erroValor = valorPositivo(valor);
+    if (erroValor) { this.$("#novoValor").setAttribute("error", erroValor); return; }
+    const desconto = (this.$("#novoDesc") || {}).value;
+    if (Number(desconto) > 0 && Number(desconto) > valor) {
+      this.$("#novoDesc").setAttribute("error", "Não pode ser maior que o valor unitário.");
+      return;
+    }
+    const prazo = (((this.$("#novoPrazo") || {}).value) || "").trim();
+    if (!prazo) { this.$("#novoPrazo").setAttribute("error", "Informe a data/prazo de entrega."); return; }
+
+    const btn = this.$("#confirmar");
+    btn.setAttribute("loading", "");
+    try {
+      const oferta = await dataStore.criarOferta({
+        item_id: itemId,
+        contato_id: contatoId,
+        equipe_id: equipeId,
+        fornecedor_id: fornecedorId,
+        valor_unit: valor,
+        quantidade: (this.$("#novaQtd") || {}).value,
+        valor_unit_desconto: desconto,
+        prazo_entrega: prazo,
+        observacao: (((this.$("#novaObs") || {}).value) || "").trim(),
+      });
+      await dataStore.registrarDespesaOferta(oferta.cotacao_id || "", oferta.id, obraId, "", responsaveis);
+      const obra = dataStore.obra(obraId) || {};
+      toastSucesso(`Despesa lançada em "${obra.nome || "obra"}".`);
+      this.emitir("registrado", { obra_id: obraId });
+      this.emitir("fechar");
+    } catch (e) {
+      if (alerta) alerta.mensagem = (e && e.message) || "Não foi possível registrar a despesa.";
       notificarErro(e);
       btn.removeAttribute("loading");
     }
