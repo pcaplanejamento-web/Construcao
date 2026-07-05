@@ -19,6 +19,7 @@
  * eventos `change` ({value,name}), `criar`, `editar`, `excluir`.
  */
 import { BaseElement } from "./base-element.js";
+import "./ui-ajuda.js";
 
 function esc(s) {
   return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -59,7 +60,7 @@ function garantirCssPortal() {
 }
 
 class UiSelect extends BaseElement {
-  static get observedAttributes() { return ["label", "placeholder", "criar", "value"]; }
+  static get observedAttributes() { return ["label", "placeholder", "criar", "value", "ajuda", "ajuda-titulo", "ajuda-texto"]; }
   attributeChangedCallback(nome, ant, novo) {
     if (!this.shadowRoot || !this.shadowRoot.childElementCount) return;
     if (nome === "value") { this._value = novo == null ? "" : String(novo); this._sincronizarLabel(); this._refletirCampo(); return; }
@@ -95,6 +96,7 @@ class UiSelect extends BaseElement {
       :host { display: block; }
       label { display: block; font-size: var(--fs-sm); font-weight: var(--peso-medio);
         color: var(--cor-texto-suave); margin-bottom: var(--esp-1); }
+      label ui-ajuda { margin-left: 4px; }
       .wrap { position: relative; }
       .campo { width: 100%; height: 42px; padding: 0 40px 0 var(--esp-3); box-sizing: border-box;
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
@@ -114,8 +116,12 @@ class UiSelect extends BaseElement {
   template() {
     const label = this.getAttribute("label");
     const erro = this.getAttribute("error") || "";
+    const aT = this.getAttribute("ajuda"), aTit = this.getAttribute("ajuda-titulo"), aTxt = this.getAttribute("ajuda-texto");
+    const ajuda = (aT || aTit || aTxt)
+      ? `<ui-ajuda${aT ? ` termo="${esc(aT)}"` : ""}${aTit ? ` titulo="${esc(aTit)}"` : ""}${aTxt ? ` texto="${esc(aTxt)}"` : ""}></ui-ajuda>`
+      : "";
     return `
-      ${label ? `<label>${esc(label)}</label>` : ""}
+      ${label ? `<label>${esc(label)}${ajuda}</label>` : ""}
       <div class="wrap">
         <input class="campo" type="text" autocomplete="off" role="combobox" aria-expanded="false">
         <span class="chev" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>

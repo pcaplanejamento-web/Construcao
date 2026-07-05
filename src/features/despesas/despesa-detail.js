@@ -29,6 +29,7 @@ import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
+import "../../components/ui-ajuda.js";
 import "./split-editor.js";
 import "./category-badge.js";
 
@@ -152,11 +153,11 @@ class DespesaDetail extends BaseElement {
             <textarea id="observacao" placeholder="Detalhes (opcional)">${d.observacao || ""}</textarea>
           </div>
           <div class="secao" id="secPag">
-            <label class="tx">Pagamentos</label>
+            <label class="tx">Pagamentos <ui-ajuda termo="transferencia-pagamento"></ui-ajuda></label>
             <div class="statuslinha" id="statusLinha"></div>
             <div class="pag-cards" id="listaPag"></div>
             <div class="lancar" id="lancarBox">
-              <label class="titulo-lancar">Lançar pagamento</label>
+              <label class="titulo-lancar">Registrar pagamento</label>
               <div class="linha">
                 <ui-select id="pagPagador" label="Quem pagou"></ui-select>
                 <ui-select id="pagTipo" label="Tipo"></ui-select>
@@ -167,12 +168,12 @@ class DespesaDetail extends BaseElement {
               </div>
               ${eqp ? `<label class="tx">Distribuir entre integrantes (R$)</label>
               <split-editor id="pagDist"></split-editor>` : ""}
-              <ui-button id="lancarPag" variant="secundario" tamanho="sm">＋ Lançar pagamento</ui-button>
+              <ui-button id="lancarPag" variant="secundario" tamanho="sm">＋ Registrar pagamento</ui-button>
             </div>
             <div class="pag-aviso" id="pagAviso" hidden>Despesa quitada — todo o valor já foi pago. Para alterar, exclua um pagamento.</div>
           </div>
           <div class="secao">
-            <label class="tx">Responsabilidade — % por participante (soma 100%)</label>
+            <label class="tx">Responsabilidade <ui-ajuda termo="responsabilidade"></ui-ajuda> — % por participante (soma 100%)</label>
             <split-editor id="responsaveis"></split-editor>
           </div>
           <div class="auditoria">

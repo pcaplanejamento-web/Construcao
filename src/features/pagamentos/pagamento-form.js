@@ -21,6 +21,7 @@ import "../../components/ui-select.js";
 import "../../components/ui-input.js";
 import "../../components/ui-alert.js";
 import "../../components/ui-button.js";
+import "../../components/ui-ajuda.js";
 import "../despesas/split-editor.js";
 
 class PagamentoForm extends BaseElement {
@@ -107,7 +108,7 @@ class PagamentoForm extends BaseElement {
           ${this._aviso ? `<ui-alert tipo="aviso" message="${String(this._aviso).replace(/"/g, "&quot;")}"></ui-alert>` : ""}
           <ui-alert id="erroRec" tipo="erro" hidden></ui-alert>
           <div>
-            <label class="tx">Despesas a pagar (o recebedor é o ofertante de cada uma)</label>
+            <label class="tx">Despesas a pagar <ui-ajuda termo="transferencia-pagamento"></ui-ajuda> (o recebedor é o ofertante de cada uma)</label>
             <div class="lista" id="lista">${linhasDesp}</div>
             <div class="total" id="total">Total: ${moeda(0)}</div>
           </div>

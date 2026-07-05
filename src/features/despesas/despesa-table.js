@@ -207,7 +207,7 @@ class DespesaTable extends BaseElement {
     );
     // Ações em massa nas selecionadas: lançar pagamento + definir responsabilidade.
     tabela.acoesMassa = [
-      { nome: "pagar", rotulo: "Lançar pagamento" },
+      { nome: "pagar", rotulo: "Registrar pagamento" },
       { nome: "responsavel", rotulo: "Definir responsabilidade" },
     ];
     tabela.addEventListener("acao-massa", (e) =>

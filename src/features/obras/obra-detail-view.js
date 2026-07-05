@@ -204,7 +204,7 @@ class ObraDetailView extends BaseElement {
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
       { id: "equipes", rotulo: "Equipes", icone: "usuario" },
       { id: "fornecedores", rotulo: "Empresas", icone: "fornecedor" },
-      { id: "pagamentos", rotulo: "Transferência", icone: "cifrao" },
+      { id: "pagamentos", rotulo: "Transferências e pagamentos", icone: "cifrao" },
       { id: "estoque", rotulo: "Estoque", icone: "tag" },
       { id: "agenda", rotulo: "Agenda", icone: "relogio" },
       { id: "notas", rotulo: "Notas", icone: "recibo" },

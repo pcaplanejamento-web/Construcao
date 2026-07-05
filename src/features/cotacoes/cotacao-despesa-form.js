@@ -28,6 +28,7 @@ import "../../components/ui-select.js";
 import "../../components/ui-input.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
+import "../../components/ui-ajuda.js";
 import "../despesas/split-editor.js";
 import "../itens/item-form.js";
 import "../contatos/contato-form.js";
@@ -103,7 +104,7 @@ class CotacaoDespesaForm extends BaseElement {
   template() {
     const titulo = "Registrar Despesa";
     const topo = this.modoObra
-      ? `<ui-select id="modoReg" label="O que registrar?"></ui-select>
+      ? `<ui-select id="modoReg" label="O que registrar?" ajuda="o-que-registrar"></ui-select>
          <div id="secOferta">
            <ui-tabs id="abas"></ui-tabs>
            <ui-select id="oferta" label="Oferta"></ui-select>
@@ -111,7 +112,7 @@ class CotacaoDespesaForm extends BaseElement {
          <div id="secNova" class="secNova" hidden>
            <ui-select id="novoItem" label="Item" criar="Cadastrar item"></ui-select>
            <div class="info" id="novaClasse"></div>
-           <ui-select id="novoOfertante" label="Ofertante (contato ou grupo)" criar="Cadastrar contato"></ui-select>
+           <ui-select id="novoOfertante" label="Ofertante (contato ou grupo)" ajuda="ofertante" criar="Cadastrar contato"></ui-select>
            <ui-select id="novoFornecedor" label="Empresa" criar="Cadastrar empresa"></ui-select>
            <div class="linha">
              <ui-input id="novaQtd" label="Quantidade" type="number" step="0.01" min="0" placeholder="Ex.: 10"></ui-input>
@@ -137,7 +138,7 @@ class CotacaoDespesaForm extends BaseElement {
           ${topo}
           <div class="resumo" id="resumo" hidden></div>
           <div class="secao">
-            <label class="tx">Responsabilidade — % por participante (soma 100%)</label>
+            <label class="tx">Responsabilidade <ui-ajuda termo="responsabilidade"></ui-ajuda> — % por participante (soma 100%)</label>
             <split-editor id="responsaveis"></split-editor>
           </div>
         </div>
@@ -323,7 +324,7 @@ class CotacaoDespesaForm extends BaseElement {
       ? (dataStore.categorias().find((c) => String(c.id) === String(it.categoria_id)) || {}).nome
       : "";
     const exige = it.classificacao === "Material" ? "fornecedor obrigatório" : "ofertante obrigatório";
-    box.innerHTML = `Classificação: <b>${it.classificacao || "—"}</b>${sub ? ` · Subclassificação: <b>${sub}</b>` : ""} <small>(${exige})</small>`;
+    box.innerHTML = `Classificação: <b>${it.classificacao || "—"}</b>${sub ? ` · Subclassificação <ui-ajuda termo="subclassificacao"></ui-ajuda>: <b>${sub}</b>` : ""} <small>(${exige})</small>`;
   }
 
   /** Auto-preenche a empresa pelo contato ofertante (se vinculado). */
