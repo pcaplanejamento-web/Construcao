@@ -23,7 +23,7 @@
  */
 import { BaseElement } from "./base-element.js";
 import "./ui-icon.js";
-import { vibrar, HAPTICO } from "./haptic.js";
+import { vibrar, feedbackToque, HAPTICO } from "./haptic.js";
 
 const SEGURAR_MS = 500; // long-press
 const INICIO_PX = 10; // move mínimo p/ DECIDIR a direção (horizontal × rolagem)
@@ -102,6 +102,10 @@ class UiListaGestos extends BaseElement {
       .linha.ativa .conteudo { background: var(--cor-superficie-2); }
       .linha.sel .conteudo { background: var(--cor-primaria-suave); border-color: var(--cor-primaria); }
       .corpo { flex: 1; min-width: 0; }
+      /* Botões de ação por linha (editar/excluir): "press" visual ao tocar (iOS). */
+      [data-acao-linha] { transition: transform .12s cubic-bezier(0.22, 1, 0.36, 1); }
+      [data-acao-linha]:active { transform: scale(0.86); }
+      @media (prefers-reduced-motion: reduce) { [data-acao-linha] { transition: none; } }
       /* Círculo de seleção (aparece no modo seleção). */
       .check { flex: none; width: 0; height: 24px; border-radius: 50%; overflow: hidden;
         display: inline-flex; align-items: center; justify-content: center;
@@ -160,7 +164,7 @@ class UiListaGestos extends BaseElement {
       if (!linha) return;
       e.stopPropagation();
       const item = this._itemPorId(linha.dataset.id);
-      if (item) { vibrar(HAPTICO.acao); this.emitir("acao-linha", { acao: b.dataset.acaoLinha, item }); }
+      if (item) { feedbackToque(b, HAPTICO.acao, 0.86); this.emitir("acao-linha", { acao: b.dataset.acaoLinha, item }); }
     });
     // Índice A–Z
     this.$("#indice").addEventListener("click", (e) => {
@@ -337,7 +341,9 @@ class UiListaGestos extends BaseElement {
 
   /* ------------------------------ Seleção -------------------------------- */
   _entrarSelecao(id) {
-    vibrar(HAPTICO.selecionar); // confirma "segurar → selecionou" com um toque tátil
+    // Confirma "segurar → selecionou": vibra (onde há) + pulso visual na linha (iOS).
+    const l0 = this._linhaPorId(id);
+    feedbackToque(l0 && l0.querySelector(".conteudo"), HAPTICO.selecionar, 0.98);
     if (!this._selMode) { this._selMode = true; this.setAttribute("sel-mode", ""); }
     this._sel.add(String(id));
     const l = this._linhaPorId(id); if (l) l.classList.add("sel");
@@ -346,7 +352,8 @@ class UiListaGestos extends BaseElement {
   }
 
   _alternarSel(id) {
-    vibrar(HAPTICO.toque); // clique tátil ao marcar/desmarcar
+    const l0 = this._linhaPorId(id);
+    feedbackToque(l0 && l0.querySelector(".conteudo"), HAPTICO.toque, 0.98); // clique tátil + pulso visual
     id = String(id);
     if (this._sel.has(id)) this._sel.delete(id); else this._sel.add(id);
     const l = this._linhaPorId(id); if (l) l.classList.toggle("sel", this._sel.has(id));

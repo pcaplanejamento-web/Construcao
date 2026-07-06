@@ -24,7 +24,7 @@
  */
 import { BaseElement } from "./base-element.js";
 import { moeda } from "../core/formatters.js";
-import { vibrar, HAPTICO } from "./haptic.js";
+import { vibrar, pulso, HAPTICO } from "./haptic.js";
 import "./ui-coluna-menu.js";
 import "./ui-empty-state.js";
 import { injetarBuscaNoCard } from "./ui-busca.js";
@@ -633,7 +633,7 @@ class UiDataTable extends BaseElement {
         const linha = this.rows[Number(cb.dataset.i)];
         if (cb.checked) this._sel.add(linha);
         else this._sel.delete(linha);
-        vibrar(HAPTICO.toque); // clique tátil ao (des)marcar (padrão do app)
+        vibrar(HAPTICO.toque); pulso(cb, 0.8); // clique tátil + pulso visual
         this.emitir("selecao", { linhas: [...this._sel] });
         this.renderizar();
       });

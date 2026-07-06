@@ -208,6 +208,7 @@ class FornecedoresView extends BaseElement {
         <div style="font-size:1.05rem;font-weight:var(--peso-semi);color:var(--cor-texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(f.nome)}</div>
         ${cat ? `<div style="font-size:var(--fs-sm);color:var(--cor-texto-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(cat)}</div>` : ""}
       </div>
+      ${whatsappBtnHtml(f.telefone, 40)}
     </div>`;
   }
 

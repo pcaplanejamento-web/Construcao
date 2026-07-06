@@ -22,3 +22,29 @@ export function vibrar(ms = HAPTICO.toque) {
     /* Vibration API indisponível/bloqueada — ignora. */
   }
 }
+
+/**
+ * `pulso(el)` — micro-animação de "press" (afunda e volta, estilo iOS) para dar
+ * o feedback VISUAL de toque onde a vibração não existe (ex.: iPhone, que não
+ * expõe a Vibration API à web). Usa a Web Animations API → funciona dentro de
+ * qualquer Shadow DOM sem CSS extra. Respeita `prefers-reduced-motion` e é no-op
+ * silencioso onde `element.animate` não existe.
+ */
+export function pulso(el, escala = 0.94, ms = 200) {
+  try {
+    if (!el || typeof el.animate !== "function") return;
+    if (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    el.animate(
+      [{ transform: "scale(1)" }, { transform: `scale(${escala})`, offset: 0.35 }, { transform: "scale(1)" }],
+      { duration: ms, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+    );
+  } catch (_) {
+    /* WAAPI indisponível — ignora. */
+  }
+}
+
+/** Feedback de toque PADRÃO: vibração (onde há) + pulso visual (em todo lugar). */
+export function feedbackToque(el, ms = HAPTICO.toque, escala = 0.94) {
+  vibrar(ms);
+  pulso(el, escala);
+}

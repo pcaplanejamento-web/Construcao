@@ -228,6 +228,7 @@ class ContatosView extends BaseElement {
         <div style="font-size:1.05rem;font-weight:var(--peso-semi);color:var(--cor-texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(c.nome)}</div>
         ${sub ? `<div style="font-size:var(--fs-sm);color:var(--cor-texto-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(sub)}</div>` : ""}
       </div>
+      ${whatsappBtnHtml(c.telefone, 40)}
     </div>`;
   }
 

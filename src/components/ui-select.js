@@ -20,7 +20,7 @@
  */
 import { BaseElement } from "./base-element.js";
 import "./ui-ajuda.js";
-import { vibrar, HAPTICO } from "./haptic.js";
+import { vibrar, pulso, HAPTICO } from "./haptic.js";
 
 function esc(s) {
   return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -262,7 +262,9 @@ class UiSelect extends BaseElement {
     this._value = val;
     this._sincronizarLabel();
     this._fechar();
-    vibrar(HAPTICO.selecionar); // clique tátil ao escolher uma opção (padrão do app)
+    // Clique tátil (onde há vibração) + pulso visual no controle (iOS não vibra).
+    vibrar(HAPTICO.selecionar);
+    pulso(this.$(".campo") || this.$("button") || this, 0.97);
     this.emitir("change", { value: val, name: this.getAttribute("name") || "" });
   }
 
