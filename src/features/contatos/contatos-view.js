@@ -9,13 +9,15 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { colunasLog } from "../../core/audit-columns.js";
 import { abrirBannerVinculos, vinculosDoContato, vinculosDoCargo } from "../shared/vinculos.js";
-import { avatarNomeHtml, corAvatar, whatsappBtnHtml } from "../shared/avatar.js";
+import { avatarNomeHtml, avatarHtml, corAvatar, whatsappBtnHtml } from "../shared/avatar.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
+import { editarEntidade, excluirEntidade } from "../shared/drop-crud.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
+import "../../components/ui-lista-gestos.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-empty-state.js";
@@ -25,6 +27,8 @@ import "./cargo-form.js";
 import "./google-contato-picker.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
 import "../equipes/equipe-form.js";
+
+function _esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
 class ContatosView extends BaseElement {
   estilos() {
@@ -88,6 +92,12 @@ class ContatosView extends BaseElement {
     this.$("#novaEquipe").addEventListener("click", () => this.abrirEquipeForm(null));
     this.$("#novoCargo").addEventListener("click", () => this.abrirCargoForm(null));
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
+    // Re-renderiza ao cruzar o breakpoint mobile↔desktop (tabela ↔ lista de gestos).
+    this._mq = window.matchMedia("(max-width: 820px)");
+    this._onMq = () => this.pintar();
+    if (this._mq.addEventListener) this._mq.addEventListener("change", this._onMq);
+    else this._mq.addListener(this._onMq);
+    this.aoLimpar(() => { if (this._mq.removeEventListener) this._mq.removeEventListener("change", this._onMq); else this._mq.removeListener(this._onMq); });
   }
 
   pintar() {
@@ -130,6 +140,9 @@ class ContatosView extends BaseElement {
     }
     const mapaForn = {};
     dataStore.fornecedores().forEach((f) => (mapaForn[f.id] = f.nome));
+
+    // MOBILE: lista estilo telefone (avatar + índice A–Z) com gestos.
+    if (this._mq && this._mq.matches) { el.replaceChildren(this._listaContatosMobile(contatos, mapaForn)); return; }
 
     const tabela = document.createElement("ui-data-table");
     tabela.setAttribute("fluido", "");
@@ -194,6 +207,40 @@ class ContatosView extends BaseElement {
       if (ok) toastSucesso(`${ok} contato(s) excluído(s).`);
     });
     el.replaceChildren(tabela);
+  }
+
+  /** Conteúdo de uma linha de contato (avatar + nome + subtítulo + WhatsApp). */
+  _linhaContato(c, mapaForn) {
+    const sub = [c.cargo, mapaForn[c.fornecedor_id]].filter(Boolean).join(" · ");
+    return `<div style="display:flex;align-items:center;gap:12px;width:100%;min-width:0">
+      ${avatarHtml(c.nome, 44)}
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(c.nome)}</div>
+        ${sub ? `<div style="font-size:var(--fs-sm);color:var(--cor-texto-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(sub)}</div>` : ""}
+      </div>
+      ${whatsappBtnHtml(c.telefone, 40)}
+    </div>`;
+  }
+
+  /** Lista MOBILE de contatos (estilo telefone: A–Z + gestos). */
+  _listaContatosMobile(contatos, mapaForn) {
+    const lista = document.createElement("ui-lista-gestos");
+    lista.setAttribute("indice", "");
+    lista.letraDe = (c) => (String(c.nome || "#").trim()[0] || "#").toUpperCase();
+    lista.render = (c) => this._linhaContato(c, mapaForn);
+    lista.itens = [...contatos].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt", { sensitivity: "base" }));
+    lista.addEventListener("abrir", (e) => irPara("/contatos/" + e.detail.item.id));
+    lista.addEventListener("editar", (e) => editarEntidade("contato", e.detail.item.id));
+    lista.addEventListener("excluir", (e) => excluirEntidade("contato", e.detail.item.id, null, { semConfirmacao: true }));
+    lista.addEventListener("acao-massa", async (e) => {
+      if (e.detail.acao !== "excluir") return;
+      let ok = 0;
+      for (const c of e.detail.itens || []) {
+        try { await dataStore.removerContato(c.id); ok++; } catch (err) { notificarErro(err); }
+      }
+      if (ok) toastSucesso(`${ok} contato(s) excluído(s).`);
+    });
+    return lista;
   }
 
   pintarCargos() {

@@ -110,17 +110,21 @@ export function editarEntidade(tipo, valor, onSalvo) {
 /**
  * Fluxo de exclusão: abre o banner de vínculos (bloqueia se vinculado); se livre,
  * confirma e remove via data-store (o backend também trava, autoritativo).
+ *
+ * `opts.semConfirmacao` (ex.: gesto de swipe): pula o diálogo "Excluir? Sim/Não"
+ * e exclui direto — o Desfazer (soft-delete) e a trava de vínculos CONTINUAM.
  */
-export function excluirEntidade(tipo, valor, onFeito) {
+export function excluirEntidade(tipo, valor, onFeito, opts) {
   const d = DESCRITORES[tipo];
   if (!d) return;
   const rec = d.achar(valor);
   if (!rec) return;
+  const semConfirmacao = !!(opts && opts.semConfirmacao);
   abrirBannerVinculos({
     titulo: d.tituloVinc(rec),
     grupos: d.vinculos(rec),
     aoExcluir: async () => {
-      if (!(await confirmar({ titulo: d.tituloExcluir, mensagem: d.msgExcluir(rec), perigo: true, rotuloOk: "Excluir" }))) return;
+      if (!semConfirmacao && !(await confirmar({ titulo: d.tituloExcluir, mensagem: d.msgExcluir(rec), perigo: true, rotuloOk: "Excluir" }))) return;
       try {
         await d.remover(rec);
         if (onFeito) onFeito();

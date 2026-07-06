@@ -16,13 +16,15 @@ import {
   vinculosDoFornecedor,
   vinculosDaSubclassificacao,
 } from "../shared/vinculos.js";
-import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
+import { avatarNomeHtml, avatarHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
+import { editarEntidade, excluirEntidade } from "../shared/drop-crud.js";
 import { confirmar } from "../../components/confirmar.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
+import "../../components/ui-lista-gestos.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-empty-state.js";
@@ -30,6 +32,8 @@ import "../despesas/category-badge.js";
 import "./fornecedor-form.js";
 import "../categorias/categoria-form.js";
 import "../contatos/google-contato-picker.js";
+
+function _esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
 class FornecedoresView extends BaseElement {
   estilos() {
@@ -82,6 +86,12 @@ class FornecedoresView extends BaseElement {
     if (imp) imp.addEventListener("click", () => this.abrirImportarGoogle());
     this.$("#novaClass").addEventListener("click", () => this.abrirClassForm(null));
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
+    // Re-renderiza ao cruzar o breakpoint mobile↔desktop (tabela ↔ lista de gestos).
+    this._mq = window.matchMedia("(max-width: 820px)");
+    this._onMq = () => this.pintar();
+    if (this._mq.addEventListener) this._mq.addEventListener("change", this._onMq);
+    else this._mq.addListener(this._onMq);
+    this.aoLimpar(() => { if (this._mq.removeEventListener) this._mq.removeEventListener("change", this._onMq); else this._mq.removeListener(this._onMq); });
   }
 
   pintar() {
@@ -112,6 +122,9 @@ class FornecedoresView extends BaseElement {
 
     const mapaCat = {};
     dataStore.categorias().forEach((c) => (mapaCat[c.id] = c));
+
+    // MOBILE: lista estilo telefone (avatar + índice A–Z) com gestos.
+    if (this._mq && this._mq.matches) { el.replaceChildren(this._listaFornecedoresMobile(fornecedores, mapaCat)); return; }
 
     const tabela = document.createElement("ui-data-table");
     tabela.setAttribute("fluido", "");
@@ -175,6 +188,40 @@ class FornecedoresView extends BaseElement {
       if (ok) toastSucesso(`${ok} empresa(s) excluída(s).`);
     });
     el.replaceChildren(tabela);
+  }
+
+  /** Conteúdo de uma linha de empresa (avatar + nome + categoria + WhatsApp). */
+  _linhaFornecedor(f, mapaCat) {
+    const cat = (mapaCat[f.categoria_id] || {}).nome || "";
+    return `<div style="display:flex;align-items:center;gap:12px;width:100%;min-width:0">
+      ${avatarHtml(f.nome, 44)}
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(f.nome)}</div>
+        ${cat ? `<div style="font-size:var(--fs-sm);color:var(--cor-texto-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(cat)}</div>` : ""}
+      </div>
+      ${whatsappBtnHtml(f.telefone, 40)}
+    </div>`;
+  }
+
+  /** Lista MOBILE de empresas (estilo telefone: A–Z + gestos). */
+  _listaFornecedoresMobile(fornecedores, mapaCat) {
+    const lista = document.createElement("ui-lista-gestos");
+    lista.setAttribute("indice", "");
+    lista.letraDe = (f) => (String(f.nome || "#").trim()[0] || "#").toUpperCase();
+    lista.render = (f) => this._linhaFornecedor(f, mapaCat);
+    lista.itens = [...fornecedores].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt", { sensitivity: "base" }));
+    lista.addEventListener("abrir", (e) => irPara("/fornecedores/" + e.detail.item.id));
+    lista.addEventListener("editar", (e) => editarEntidade("fornecedor", e.detail.item.id));
+    lista.addEventListener("excluir", (e) => excluirEntidade("fornecedor", e.detail.item.id, null, { semConfirmacao: true }));
+    lista.addEventListener("acao-massa", async (e) => {
+      if (e.detail.acao !== "excluir") return;
+      let ok = 0;
+      for (const f of e.detail.itens || []) {
+        try { await dataStore.removerFornecedor(f.id); ok++; } catch (err) { notificarErro(err); }
+      }
+      if (ok) toastSucesso(`${ok} empresa(s) excluída(s).`);
+    });
+    return lista;
   }
 
   abrirForm(fornecedor) {
