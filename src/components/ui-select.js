@@ -231,22 +231,22 @@ class UiSelect extends BaseElement {
     const vv = window.visualViewport;
     const vTop = vv ? vv.offsetTop : 0;
     const vH = vv ? vv.height : (window.innerHeight || document.documentElement.clientHeight);
+    const ih = window.innerHeight || document.documentElement.clientHeight;
     const gap = 4;
     const teto = 280;
     const abaixo = (vTop + vH) - r.bottom; // espaço visível abaixo do campo
     const acima = r.top - vTop;            // espaço visível acima do campo
+    // NUNCA sobre o campo: a lista é ancorada pela borda que ENCOSTA no campo —
+    // abaixo → `top` no rodapé do campo; acima → `bottom` no topo do campo. Assim
+    // ela é sempre ANTES ou DEPOIS, jamais cobrindo o campo de escrita.
     if (abaixo >= 160 || abaixo >= acima) {
-      const h = Math.max(120, Math.min(teto, abaixo - 8));
       p.style.top = Math.round(r.bottom + gap) + "px";
       p.style.bottom = "auto";
-      p.style.maxHeight = h + "px";
+      p.style.maxHeight = Math.max(96, Math.min(teto, abaixo - gap - 4)) + "px";
     } else {
-      // Abre ACIMA do campo → a lista fica acima do teclado (top calculado p/ não
-      // depender do `bottom`, que quebra com o offset do teclado no iOS).
-      const h = Math.max(120, Math.min(teto, acima - 8));
-      p.style.top = Math.round(r.top - gap - h) + "px";
-      p.style.bottom = "auto";
-      p.style.maxHeight = h + "px";
+      p.style.top = "auto";
+      p.style.bottom = Math.round(ih - r.top + gap) + "px";
+      p.style.maxHeight = Math.max(96, Math.min(teto, acima - gap - 4)) + "px";
     }
   }
 
