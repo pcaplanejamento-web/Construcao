@@ -125,6 +125,62 @@ class UiTabs extends BaseElement {
       this._centralizarAtiva();
       this._atualizarFades();
     }
+
+    this._ligarSwipeAbas();
+  }
+
+  /**
+   * Swipe horizontal no PAINEL troca de aba (anterior/próxima). Usa eventos de
+   * PONTEIRO só de TOQUE, no elemento `.painel` — assim as linhas de
+   * `ui-lista-gestos` (que dão stopPropagation no arraste horizontal) VENCEM: um
+   * swipe na linha edita/exclui e NÃO troca de aba. Também ignora quando o dedo
+   * começou sobre um conteúdo que rola na horizontal (tabela/gráfico).
+   */
+  _ligarSwipeAbas() {
+    const painel = this.$(".painel");
+    if (!painel) return;
+    let x0 = 0, y0 = 0, valido = false, scroller = false;
+    painel.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch") { valido = false; return; }
+      x0 = e.clientX; y0 = e.clientY; valido = true;
+      scroller = this._alvoRolaHorizontal(e.target);
+    });
+    const fim = (e) => {
+      if (!valido || e.pointerType !== "touch") return;
+      valido = false;
+      if (scroller) return;
+      const dx = e.clientX - x0, dy = e.clientY - y0;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 2) this._irAba(dx < 0 ? 1 : -1);
+    };
+    painel.addEventListener("pointerup", fim);
+    painel.addEventListener("pointercancel", () => { valido = false; });
+  }
+
+  /** Algum ancestral (até o painel) rola na horizontal? (não sequestrar a rolagem dele). */
+  _alvoRolaHorizontal(alvo) {
+    const painel = this.$(".painel");
+    let n = alvo;
+    while (n && n !== painel && n !== this) {
+      if (n.scrollWidth && n.clientWidth && n.scrollWidth > n.clientWidth + 4) {
+        const ovx = getComputedStyle(n).overflowX;
+        if (ovx === "auto" || ovx === "scroll") return true;
+      }
+      n = n.assignedSlot || (n.parentNode instanceof ShadowRoot ? n.parentNode.host : n.parentNode);
+    }
+    return false;
+  }
+
+  /** Vai para a aba deslocada por `delta` (sem loop nas pontas). */
+  _irAba(delta) {
+    const abas = this.abas;
+    if (abas.length < 2) return;
+    const i = abas.findIndex((a) => a.id === this.ativo);
+    const j = i + delta;
+    if (i < 0 || j < 0 || j >= abas.length) return;
+    const id = abas[j].id;
+    try { sessionStorage.setItem(this._chaveCache(), id); } catch (e) { /* indisponível */ }
+    this.setAttribute("ativo", id);
+    this.emitir("mudar", { id });
   }
 
   /** Mostra/esconde o degradê conforme a posição da rolagem. */
