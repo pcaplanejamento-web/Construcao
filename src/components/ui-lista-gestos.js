@@ -30,6 +30,8 @@ const LIMIAR_FRAC = 0.3; // fração da largura p/ disparar a ação (arraste le
 const LIMIAR_MAX = 90; // teto do limiar em px
 const FLICK_VX = 0.45; // px/ms — um flick rápido dispara mesmo com pouco arraste
 const FLICK_MIN = 32; // arraste mínimo (px) p/ contar como flick
+const ABRE_MAX = 112; // px de abertura "livre" antes da resistência (rubber-band)
+const RESIST = 0.18; // fator de resistência além de ABRE_MAX (puxa, mas segura — não sai tudo)
 
 const SVG_CHECK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
 
@@ -67,15 +69,22 @@ class UiListaGestos extends BaseElement {
 
       .linha { position: relative; overflow: hidden; border-radius: var(--raio-md);
         margin-bottom: var(--esp-2); touch-action: pan-y; -webkit-user-select: none; user-select: none; }
-      .fundo { position: absolute; inset: 0; display: flex; align-items: center; color: #fff; opacity: 0; }
-      .fundo ui-icon { padding: 0 var(--esp-5); }
+      .fundo { position: absolute; inset: 0; display: flex; align-items: center; color: #fff;
+        opacity: 0; transition: opacity .14s ease; }
+      .fundo ui-icon { padding: 0 var(--esp-5); transition: transform .18s cubic-bezier(0.34, 1.56, 0.64, 1); }
       .fundo-editar { background: var(--grad-verde); justify-content: flex-start; }
       .fundo-excluir { background: var(--grad-vermelho); justify-content: flex-end; }
       .linha.arr-dir .fundo-editar, .linha.arr-esq .fundo-excluir { opacity: 1; }
+      /* "Armado" (passou do limiar): o ícone cresce p/ sinalizar "solte agora". */
+      .linha.armado .fundo-editar ui-icon, .linha.armado .fundo-excluir ui-icon { transform: scale(1.24); }
       .conteudo { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--esp-2);
         background: var(--cor-superficie); border: 1px solid var(--cor-borda);
         padding: var(--esp-3); min-height: 60px; box-sizing: border-box; }
-      .linha:not(.arrastando) .conteudo { transition: transform .18s ease; }
+      /* Volta ao normal com mola suave (arrastando = sem transição, acompanha o dedo). */
+      .linha:not(.arrastando) .conteudo { transition: transform .34s cubic-bezier(0.22, 1, 0.36, 1); }
+      @media (prefers-reduced-motion: reduce) {
+        .conteudo, .fundo, .fundo ui-icon, .check { transition: none !important; }
+      }
       .linha.ativa .conteudo { background: var(--cor-superficie-2); }
       .linha.sel .conteudo { background: var(--cor-primaria-suave); border-color: var(--cor-primaria); }
       .corpo { flex: 1; min-width: 0; }
@@ -224,10 +233,18 @@ class UiListaGestos extends BaseElement {
     const t = e.timeStamp || 0;
     if (g.tPrev && t > g.tPrev) g.vx = (e.clientX - g.xPrev) / (t - g.tPrev);
     g.xPrev = e.clientX; g.tPrev = t;
-    g.dx = Math.max(-g.largura, Math.min(g.largura, dx));
-    g.cont.style.transform = `translateX(${g.dx}px)`;
-    g.linha.classList.toggle("arr-dir", g.dx > 0);
-    g.linha.classList.toggle("arr-esq", g.dx < 0);
+    g.dx = dx; // arraste BRUTO (decide o limiar/flick)
+    // Deslocamento VISUAL com rubber-band: acompanha o dedo até ABRE_MAX e, além
+    // disso, resiste (RESIST) — puxa um pouco mais, mas NUNCA sai tudo.
+    const ax = Math.abs(dx);
+    let off = ax <= ABRE_MAX ? ax : ABRE_MAX + (ax - ABRE_MAX) * RESIST;
+    if (dx < 0) off = -off;
+    g.off = off;
+    g.cont.style.transform = `translateX(${off}px)`;
+    g.linha.classList.toggle("arr-dir", dx > 0);
+    g.linha.classList.toggle("arr-esq", dx < 0);
+    const limiar = Math.min(LIMIAR_MAX, g.largura * LIMIAR_FRAC);
+    g.linha.classList.toggle("armado", ax >= limiar);
   }
 
   _pUp(e) {
@@ -254,18 +271,24 @@ class UiListaGestos extends BaseElement {
   }
 
   _dispararAcao(g, tipo) {
-    // Anima a linha saindo e emite o evento com o item.
+    // PUXA e VOLTA ao normal (não fica "arrancando" o card da tela): a ação abre o
+    // form / a confirmação, ou a lista se atualiza removendo o item. A mola do CSS
+    // (:not(.arrastando)) traz a linha de volta ao 0 de forma suave.
     const item = this._itemPorId(g.id);
-    g.linha.classList.remove("arrastando");
-    g.cont.style.transition = "transform .18s ease";
-    g.cont.style.transform = `translateX(${g.dx > 0 ? g.largura : -g.largura}px)`;
-    setTimeout(() => { if (item) this.emitir(tipo, { item }); }, 120);
+    const linha = g.linha, cont = g.cont;
+    linha.classList.remove("arrastando", "armado");
+    cont.style.transition = ""; // usa a transição do CSS
+    cont.style.transform = "translateX(0)";
+    setTimeout(() => { if (item) this.emitir(tipo, { item }); }, 140);
+    setTimeout(() => { if (linha && linha.isConnected) linha.classList.remove("arr-dir", "arr-esq"); }, 340);
   }
 
   _snapVolta(g) {
-    g.linha.classList.remove("arrastando");
+    const linha = g.linha;
+    linha.classList.remove("arrastando", "armado");
+    g.cont.style.transition = "";
     g.cont.style.transform = "translateX(0)";
-    g.linha.classList.remove("arr-dir", "arr-esq");
+    setTimeout(() => { if (linha && linha.isConnected) linha.classList.remove("arr-dir", "arr-esq"); }, 340);
   }
 
   _encerrar() {

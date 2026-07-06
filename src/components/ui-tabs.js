@@ -16,6 +16,8 @@
 import { BaseElement } from "./base-element.js";
 import "./ui-icon.js";
 
+const INICIO_PX = 10; // move mínimo p/ decidir a direção (horizontal × rolagem vertical)
+
 class UiTabs extends BaseElement {
   static get observedAttributes() {
     return ["ativo"];
@@ -76,6 +78,15 @@ class UiTabs extends BaseElement {
       /* Ativo: muda APENAS a cor (texto + ícone via currentColor) e a barra
          inferior. Sem alterar font-weight/size → não há reflow nem deslocamento. */
       button.ativo { color: var(--cor-primaria); border-bottom-color: var(--cor-primaria); }
+
+      /* Paginação 2D no toque: o PAINEL é a "janela"; a TRILHA desliza acompanhando
+         o dedo e a aba vizinha entra de lado. Em repouso há só uma célula (100%).
+         O clip horizontal só é ligado (via JS) durante o arraste — assim o repouso
+         não vira contêiner de rolagem (não quebra sticky/overflow do conteúdo). */
+      .painel { position: relative; touch-action: pan-y; }
+      .trilho { display: flex; }
+      .cel { flex: 0 0 auto; width: 100%; box-sizing: border-box; min-width: 0; }
+      @media (prefers-reduced-motion: reduce) { .trilho { transition: none !important; } }
     `;
   }
 
@@ -95,7 +106,7 @@ class UiTabs extends BaseElement {
         <span class="fade fade-esq"></span>
         <span class="fade fade-dir"></span>
       </div>
-      <div class="painel"><slot name="${ativo}"></slot></div>
+      <div class="painel"><div class="trilho"><div class="cel"><slot name="${ativo}"></slot></div></div></div>
     `;
   }
 
@@ -130,30 +141,134 @@ class UiTabs extends BaseElement {
   }
 
   /**
-   * Swipe horizontal no PAINEL troca de aba (anterior/próxima). Usa eventos de
-   * PONTEIRO só de TOQUE, no elemento `.painel` — assim as linhas de
-   * `ui-lista-gestos` (que dão stopPropagation no arraste horizontal) VENCEM: um
-   * swipe na linha edita/exclui e NÃO troca de aba. Também ignora quando o dedo
-   * começou sobre um conteúdo que rola na horizontal (tabela/gráfico).
+   * PAGINAÇÃO 2D no toque: arrastar o painel desliza a trilha ACOMPANHANDO O DEDO
+   * e a aba vizinha entra de lado (sem "virar página" de livro); ao soltar, cai na
+   * nova aba ou volta com uma mola suave. Só TOQUE, no `.painel` — assim as linhas
+   * de `ui-lista-gestos` (stopPropagation no arraste) VENCEM, e um conteúdo que rola
+   * na horizontal (tabela/gráfico) não é sequestrado. Em `ui-tabs` aninhado, só o
+   * mais interno pagina (trava compartilhada `UiTabs._paginando`).
    */
   _ligarSwipeAbas() {
     const painel = this.$(".painel");
     if (!painel) return;
-    let x0 = 0, y0 = 0, valido = false, scroller = false;
-    painel.addEventListener("pointerdown", (e) => {
-      if (e.pointerType !== "touch") { valido = false; return; }
-      x0 = e.clientX; y0 = e.clientY; valido = true;
-      scroller = this._alvoRolaHorizontal(e.target);
-    });
-    const fim = (e) => {
-      if (!valido || e.pointerType !== "touch") return;
-      valido = false;
-      if (scroller) return;
-      const dx = e.clientX - x0, dy = e.clientY - y0;
-      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 2) this._irAba(dx < 0 ? 1 : -1);
+    this._sw = null;
+    painel.addEventListener("pointerdown", (e) => this._swDown(e, painel));
+  }
+
+  _swDown(e, painel) {
+    if (e.pointerType !== "touch") return;
+    if (this.abas.length < 2) return;
+    if (UiTabs._paginando) return; // outra aba (aninhada) já está paginando
+    if (this._alvoRolaHorizontal(e.target)) return; // não sequestra rolagem horizontal interna
+    const i = this.abas.findIndex((a) => a.id === this.ativo);
+    if (i < 0) return;
+    const w = painel.clientWidth || painel.getBoundingClientRect().width;
+    this._sw = { painel, i, w, x0: e.clientX, y0: e.clientY, dx: 0, off: 0, base: 0,
+      vx: 0, xPrev: e.clientX, tPrev: e.timeStamp || 0, pid: e.pointerId, ativo: false };
+    this._swMove = (ev) => this._swPMove(ev);
+    this._swUp = (ev) => this._swPUp(ev);
+    window.addEventListener("pointermove", this._swMove, { passive: false });
+    window.addEventListener("pointerup", this._swUp);
+    window.addEventListener("pointercancel", this._swUp);
+  }
+
+  _swPMove(e) {
+    const s = this._sw;
+    if (!s) return;
+    const dx = e.clientX - s.x0, dy = e.clientY - s.y0;
+    if (!s.ativo) {
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+      if (adx < INICIO_PX && ady < INICIO_PX) return; // indeciso — espera a direção
+      if (adx <= ady) { this._swLimpar(); return; }   // vertical → rolagem nativa
+      if (UiTabs._paginando && UiTabs._paginando !== this) { this._swLimpar(); return; }
+      UiTabs._paginando = this; s.ativo = true;
+      this._montarPaginacao(s);
+    }
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation();
+    const t = e.timeStamp || 0;
+    if (s.tPrev && t > s.tPrev) s.vx = (e.clientX - s.xPrev) / (t - s.tPrev);
+    s.xPrev = e.clientX; s.tPrev = t;
+    s.dx = dx;
+    let off = s.base + dx;
+    // Rubber-band nas pontas (sem vizinho naquele lado): resiste em vez de abrir vazio.
+    const min = s.temNext ? s.base - s.w : s.base;
+    const max = s.temPrev ? s.base + s.w : s.base;
+    if (off < min) off = min + (off - min) * 0.22;
+    else if (off > max) off = max + (off - max) * 0.22;
+    s.off = off;
+    const trilho = this.$(".trilho");
+    if (trilho) trilho.style.transform = `translateX(${off}px)`;
+  }
+
+  _swPUp(e) {
+    const s = this._sw;
+    if (!s) return;
+    if (!s.ativo) { this._swLimpar(); return; }
+    e.stopPropagation();
+    const trilho = this.$(".trilho");
+    const limiar = Math.max(45, s.w * 0.30);
+    const flick = Math.abs(s.vx || 0) >= 0.3 && Math.abs(s.dx) >= 24;
+    let destino = 0; // -1 anterior · +1 próxima · 0 fica
+    if ((s.dx <= -limiar || (flick && s.dx < 0)) && s.temNext) destino = 1;
+    else if ((s.dx >= limiar || (flick && s.dx > 0)) && s.temPrev) destino = -1;
+    const alvo = s.base - destino * s.w;
+    const novoId = destino === 1 ? this.abas[s.i + 1].id : destino === -1 ? this.abas[s.i - 1].id : null;
+    const dur = destino === 0 ? 0.28 : 0.34;
+    if (trilho) {
+      trilho.style.transition = `transform ${dur}s cubic-bezier(0.22, 1, 0.36, 1)`;
+      void trilho.offsetWidth; // reflow → transição a partir do offset atual
+      trilho.style.transform = `translateX(${alvo}px)`;
+    }
+    const finalizar = () => {
+      if (UiTabs._paginando === this) UiTabs._paginando = null;
+      if (s.painel) s.painel.style.overflow = "";
+      if (novoId) {
+        try { sessionStorage.setItem(this._chaveCache(), novoId); } catch (err) { /* indisponível */ }
+        this.setAttribute("ativo", novoId); // re-render → volta a uma célula
+        this.emitir("mudar", { id: novoId });
+      } else {
+        this.renderizar(); // restaura a célula única
+      }
     };
-    painel.addEventListener("pointerup", fim);
-    painel.addEventListener("pointercancel", () => { valido = false; });
+    let feito = false;
+    const onEnd = () => { if (feito) return; feito = true; if (trilho) trilho.removeEventListener("transitionend", onEnd); finalizar(); };
+    if (trilho) trilho.addEventListener("transitionend", onEnd);
+    setTimeout(onEnd, Math.round(dur * 1000) + 80);
+    // solta os listeners de janela (mas deixa a transição da trilha correr)
+    if (this._swMove) { window.removeEventListener("pointermove", this._swMove, { passive: false }); this._swMove = null; }
+    if (this._swUp) { window.removeEventListener("pointerup", this._swUp); window.removeEventListener("pointercancel", this._swUp); this._swUp = null; }
+    this._sw = null;
+  }
+
+  /** Monta a trilha com a célula atual + as vizinhas existentes; posiciona a atual em 0. */
+  _montarPaginacao(s) {
+    const trilho = this.$(".trilho");
+    if (!trilho) return;
+    const abas = this.abas, i = s.i, w = s.w;
+    s.temPrev = i > 0;
+    s.temNext = i < abas.length - 1;
+    const cel = (id) => `<div class="cel" style="width:${w}px"><slot name="${id}"></slot></div>`;
+    let html = "";
+    if (s.temPrev) html += cel(abas[i - 1].id);
+    html += cel(abas[i].id);
+    if (s.temNext) html += cel(abas[i + 1].id);
+    trilho.style.transition = "none";
+    trilho.innerHTML = html;
+    s.base = s.temPrev ? -w : 0;
+    trilho.style.transform = `translateX(${s.base}px)`;
+    s.painel.style.overflow = "hidden"; // clip horizontal só durante o arraste
+    try { s.painel.setPointerCapture(s.pid); } catch (err) { /* ok */ }
+  }
+
+  /** Aborta o gesto antes de engatar (rolagem vertical) — sem tocar na trilha. */
+  _swLimpar() {
+    if (this._swMove) { window.removeEventListener("pointermove", this._swMove, { passive: false }); this._swMove = null; }
+    if (this._swUp) { window.removeEventListener("pointerup", this._swUp); window.removeEventListener("pointercancel", this._swUp); this._swUp = null; }
+    if (UiTabs._paginando === this) UiTabs._paginando = null;
+    const s = this._sw;
+    if (s && s.painel) s.painel.style.overflow = "";
+    this._sw = null;
   }
 
   /** Algum ancestral (até o painel) rola na horizontal? (não sequestrar a rolagem dele). */
@@ -203,6 +318,8 @@ class UiTabs extends BaseElement {
     const delta = (aRect.left - bRect.left) - (barra.clientWidth - at.clientWidth) / 2;
     barra.scrollLeft += delta;
   }
+
+  aoDesconectar() { this._swLimpar(); }
 }
 
 customElements.define("ui-tabs", UiTabs);
