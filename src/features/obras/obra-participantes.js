@@ -15,10 +15,15 @@ import { irPara } from "../../core/router.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { acerto, rotuloOrigem, balancos } from "../despesas/despesa-split.js";
-import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
+import { avatarNomeHtml, avatarHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-data-table.js";
+import "../../components/ui-lista-gestos.js";
+
+// Escapa texto p/ os cards mobile (nomes vêm do data-store).
+const _esc = (s) =>
+  String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 import "../../components/ui-button.js";
 import "../../components/ui-icon.js";
 import "../../components/ui-empty-state.js";
@@ -69,6 +74,11 @@ class ObraParticipantes extends BaseElement {
 
   aoConectar() {
     this.$("#acao").addEventListener("click", () => this.abrirAcao());
+    // Responsivo: desktop = tabela; mobile (≤820px) = cards estilo agenda.
+    this._mq = window.matchMedia("(max-width: 820px)");
+    this._onMq = () => this.pintar();
+    this._mq.addEventListener("change", this._onMq);
+    this.aoLimpar(() => this._mq.removeEventListener("change", this._onMq));
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
 
@@ -114,6 +124,18 @@ class ObraParticipantes extends BaseElement {
           _tel: c ? c.telefone : "",
         };
       });
+      // MOBILE (≤820px): cards estilo agenda (avatar + nome + Origem + valores
+      // compactos + botão discreto de remover). Reusa o mesmo elemento entre
+      // pinturas p/ não recriar no meio de um gesto.
+      if (this._mq && this._mq.matches) {
+        let lg = lista.querySelector("ui-lista-gestos");
+        if (!lg) { lg = this._novaListaParticipantes(); lista.replaceChildren(lg); }
+        lg.render = (p) => this._cardParticipante(p);
+        lg.itens = rows;
+        this._pintarAcertos(painel, acertos);
+        return;
+      }
+
       const tabela = document.createElement("ui-data-table");
       tabela.setAttribute("fluido", "");
       tabela.setAttribute("clicavel", "");
@@ -166,18 +188,69 @@ class ObraParticipantes extends BaseElement {
     }
 
     // Painel "quem deve a quem".
+    this._pintarAcertos(painel, acertos);
+  }
+
+  /** Painel "quem deve a quem" (comum a desktop e mobile). */
+  _pintarAcertos(painel, acertos) {
+    if (!painel) return;
     if (!acertos.length) {
       painel.innerHTML = `<div class="ok"><ui-icon name="sucesso" size="16"></ui-icon> Sem pendências — tudo acertado.</div>`;
     } else {
       painel.innerHTML = `<div class="acertos">${acertos
         .map(
           (a) =>
-            `<div class="acerto-item"><span>${a.de_nome}</span>
-               <span class="seta">→</span><span>${a.para_nome}</span>
+            `<div class="acerto-item"><span>${_esc(a.de_nome)}</span>
+               <span class="seta">→</span><span>${_esc(a.para_nome)}</span>
                <span class="valor">${moeda(a.valor)}</span></div>`
         )
         .join("")}</div>`;
     }
+  }
+
+  /** Card mobile de um participante: avatar + nome + Origem + valores compactos. */
+  _cardParticipante(p) {
+    const origem = `<category-badge nome="${rotuloOrigem(p.origem)}" cor="${COR_ORIGEM[p.origem] || "var(--cor-neutro)"}"></category-badge>`;
+    const apagar = p._saldoApagar > 0.01 ? `<strong style="color:var(--cor-erro)">${moeda(p._saldoApagar)}</strong>` : "—";
+    const areceber = p._saldoReceber > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(p._saldoReceber)}</strong>` : "—";
+    const resp = this.modo === "responsaveis";
+    const podeRemover = resp || (p.tipo === "contato" && p.id);
+    const rotuloRem = resp ? "Tirar dos responsáveis" : "Remover participante";
+    const btnRem = podeRemover
+      ? `<button type="button" data-acao-linha="remover" aria-label="${rotuloRem}" title="${rotuloRem}"
+          style="flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;
+          border:none;background:none;cursor:pointer;color:var(--cor-erro);padding:0"><ui-icon name="excluir" size="20"></ui-icon></button>`
+      : "";
+    return `<div style="display:flex;gap:14px;width:100%;min-width:0">
+      ${avatarHtml(p.nome, 46)}
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span style="font-size:1.05rem;font-weight:var(--peso-semi);color:var(--cor-texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(p.nome)}</span>
+          <span style="flex:none">${origem}</span>
+        </div>
+        <div style="font-size:var(--fs-sm);color:var(--cor-texto-suave)">Pago <strong style="color:var(--cor-texto)">${moeda(p._pago)}</strong> · Receb. <strong style="color:var(--cor-texto)">${moeda(p._recebido)}</strong></div>
+        <div style="font-size:var(--fs-sm);color:var(--cor-texto-suave)">A pagar ${apagar} · A receber ${areceber}</div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px;margin:2px -6px -4px 0">
+          ${p._tel ? whatsappBtnHtml(p._tel, 40) : ""}${btnRem}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /** Cria a lista de gestos de participantes (reusada entre pinturas). */
+  _novaListaParticipantes() {
+    const lg = document.createElement("ui-lista-gestos");
+    lg.semSwipeAcao = true; // remover é pelo botão; arraste horizontal troca de aba
+    lg.render = (p) => this._cardParticipante(p);
+    lg.addEventListener("abrir", (e) => {
+      const l = e.detail.item || {};
+      if (l._cid) irPara("/contatos/" + l._cid);
+      else if (l._eid) irPara("/equipes/" + l._eid);
+    });
+    lg.addEventListener("acao-linha", (e) => {
+      if (e.detail.acao === "remover") this.acao(this.modo === "responsaveis" ? "tirar" : "remover", e.detail.item);
+    });
+    return lg;
   }
 
   /* ------------------------------ Ações -------------------------------- */

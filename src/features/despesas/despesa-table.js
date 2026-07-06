@@ -76,28 +76,28 @@ class DespesaTable extends BaseElement {
     const st = statusPagamento(d);
     const corSt = st === "Pago" ? "var(--cor-sucesso)" : st === "Em pagamento" ? "var(--cor-aviso)" : "var(--cor-neutro)";
     const corCl = COR_CLASSIFICACAO[d.classificacao] || "var(--cor-neutro)";
-    // Botões por linha (editar/excluir) — substituem o "puxar" (arraste); são
-    // <button> (o gesto os ignora) e disparam "acao-linha" ao clicar.
+    // Botões por linha (editar/excluir) — DISCRETOS (só ícone, sem fundo), no canto
+    // inferior direito. São <button> (o gesto os ignora) e disparam "acao-linha".
     const btn = (acao, aria, cor) =>
       `<button type="button" data-acao-linha="${acao}" aria-label="${aria}" title="${aria}"
         style="flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;
-        border:none;border-radius:var(--raio-completo);cursor:pointer;color:#fff;background:${cor}">
-        <ui-icon name="${acao}" size="18"></ui-icon></button>`;
-    return `<div style="display:flex;align-items:center;gap:10px;width:100%;min-width:0">
-        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0">
-          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
-            <span style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(item)}</span>
-            <span style="font-family:var(--fonte-titulo);font-weight:700;white-space:nowrap">${moeda(Number(d.valor) || 0)}</span>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--fs-sm);color:var(--cor-texto-suave);min-width:0">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(emp) || "—"}</span>
-            <span style="display:inline-flex;gap:4px;flex:none">${d.classificacao ? `<category-badge nome="${_esc(d.classificacao)}" cor="${corCl}"></category-badge>` : ""}<category-badge nome="${st}" cor="${corSt}"></category-badge></span>
-          </div>
-          <small style="color:var(--cor-texto-fraco)">${fmtData(d.data)}</small>
+        border:none;background:none;cursor:pointer;color:${cor};padding:0">
+        <ui-icon name="${acao}" size="20"></ui-icon></button>`;
+    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%;min-width:0">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+          <span style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(item)}</span>
+          <span style="font-family:var(--fonte-titulo);font-weight:700;white-space:nowrap">${moeda(Number(d.valor) || 0)}</span>
         </div>
-        <div style="display:flex;gap:6px;flex:none">
-          ${btn("editar", "Editar despesa", "var(--grad-verde)")}
-          ${btn("excluir", "Excluir despesa", "var(--grad-vermelho)")}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--fs-sm);color:var(--cor-texto-suave);min-width:0">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(emp) || "—"}</span>
+          <span style="display:inline-flex;gap:4px;flex:none">${d.classificacao ? `<category-badge nome="${_esc(d.classificacao)}" cor="${corCl}"></category-badge>` : ""}<category-badge nome="${st}" cor="${corSt}"></category-badge></span>
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px">
+          <small style="color:var(--cor-texto-fraco)">${fmtData(d.data)}</small>
+          <div style="display:flex;gap:2px;flex:none;margin:-4px -6px -6px 0">
+            ${btn("editar", "Editar despesa", "var(--cor-texto-suave)")}
+            ${btn("excluir", "Excluir despesa", "var(--cor-erro)")}
+          </div>
         </div>
       </div>`;
   }
