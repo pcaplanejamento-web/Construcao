@@ -12,6 +12,11 @@
 html,
 body {
   height: 100%;
+  /* Trava o "voltar/avançar" nativo por gesto horizontal do navegador (edge-swipe /
+     overscroll de histórico): os gestos do app (paginar abas, arrastar despesa)
+     nunca disparam a navegação do navegador por engano. Só o eixo X — a rolagem
+     vertical (e o pull-to-refresh) seguem normais. */
+  overscroll-behavior-x: none;
 }
 
 /* Cor de fundo explícita no ROOT: o Safari iOS 26 amostra a cor do `html` para

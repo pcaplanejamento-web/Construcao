@@ -62,6 +62,9 @@ class AppShell extends BaseElement {
       app-header { flex: none; }
       .corpo { flex: 1; display: flex; align-items: stretch; min-height: 0; overflow: hidden; }
       main { flex: 1; min-width: 0; min-height: 0; overflow: auto;
+        /* Trava a navegação nativa (voltar/avançar) por gesto horizontal DENTRO do
+           scroller — reforça o overscroll-behavior-x do documento (reset.css). */
+        overscroll-behavior-x: none;
         padding-bottom: env(safe-area-inset-bottom); }
       /* Quando há dock flutuante, o conteúdo ganha folga p/ não ficar atrás dele. */
       :host([com-barra]) main { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }

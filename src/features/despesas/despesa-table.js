@@ -227,25 +227,34 @@ class DespesaTable extends BaseElement {
       { nome: "editar", rotulo: "Editar" },
       { nome: "remover", rotulo: "Excluir", variant: "perigo" },
     ];
-    tabela.addEventListener("acao", (e) =>
-      this.emitir(e.detail.acao, { despesa: e.detail.linha })
-    );
-    tabela.addEventListener("linha", (e) =>
-      this.emitir("abrir", { despesa: e.detail.linha })
-    );
+    // OBS.: os eventos internos (ui-data-table / ui-lista-gestos) são `composed`,
+    // então sem `stopPropagation` eles atravessariam o shadow e chegariam ao
+    // ouvinte da obra-detail JUNTO com o evento re-emitido aqui — abrindo DOIS
+    // banners quando o nome coincide (ex.: `editar`→`editar`). Consumимos o evento
+    // interno e repassamos só o traduzido.
+    tabela.addEventListener("acao", (e) => {
+      e.stopPropagation();
+      this.emitir(e.detail.acao, { despesa: e.detail.linha });
+    });
+    tabela.addEventListener("linha", (e) => {
+      e.stopPropagation();
+      this.emitir("abrir", { despesa: e.detail.linha });
+    });
     // Exclusão em massa: a tabela confirma e emite as linhas; repassa à obra-detail.
     tabela.setAttribute("excluir-massa", "");
-    tabela.addEventListener("excluir-massa", (e) =>
-      this.emitir("excluir-massa", { despesas: e.detail.linhas })
-    );
+    tabela.addEventListener("excluir-massa", (e) => {
+      e.stopPropagation();
+      this.emitir("excluir-massa", { despesas: e.detail.linhas });
+    });
     // Ações em massa nas selecionadas: lançar pagamento + definir responsabilidade.
     tabela.acoesMassa = [
       { nome: "pagar", rotulo: "Registrar pagamento" },
       { nome: "responsavel", rotulo: "Definir responsabilidade" },
     ];
-    tabela.addEventListener("acao-massa", (e) =>
-      this.emitir("acao-massa", { acao: e.detail.acao, despesas: e.detail.linhas })
-    );
+    tabela.addEventListener("acao-massa", (e) => {
+      e.stopPropagation();
+      this.emitir("acao-massa", { acao: e.detail.acao, despesas: e.detail.linhas });
+    });
     // Busca no cabeçalho do card (a tabela interna não alcança o card por estar no shadow).
     injetarBuscaNoCard(this, tabela);
 
@@ -256,10 +265,11 @@ class DespesaTable extends BaseElement {
       { nome: "pagar", rotulo: "Registrar pagamento" },
       { nome: "responsavel", rotulo: "Definir responsabilidade" },
     ];
-    lista.addEventListener("abrir", (e) => this.emitir("abrir", { despesa: e.detail.item }));
-    lista.addEventListener("editar", (e) => this.emitir("editar", { despesa: e.detail.item }));
-    lista.addEventListener("excluir", (e) => this.emitir("remover", { despesa: e.detail.item }));
+    lista.addEventListener("abrir", (e) => { e.stopPropagation(); this.emitir("abrir", { despesa: e.detail.item }); });
+    lista.addEventListener("editar", (e) => { e.stopPropagation(); this.emitir("editar", { despesa: e.detail.item }); });
+    lista.addEventListener("excluir", (e) => { e.stopPropagation(); this.emitir("remover", { despesa: e.detail.item }); });
     lista.addEventListener("acao-massa", (e) => {
+      e.stopPropagation();
       if (e.detail.acao === "excluir") this.emitir("excluir-massa", { despesas: e.detail.itens });
       else this.emitir("acao-massa", { acao: e.detail.acao, despesas: e.detail.itens });
     });

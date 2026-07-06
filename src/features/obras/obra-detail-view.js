@@ -773,6 +773,8 @@ class ObraDetailView extends BaseElement {
 
   /** Abre o banner com a despesa (ver/editar/excluir). O banner é autossuficiente. */
   abrirBanner(despesa) {
+    // Nunca empilha dois banners (defensivo: qualquer disparo dobrado é absorvido).
+    document.querySelectorAll("despesa-detail").forEach((b) => b.remove());
     const banner = document.createElement("despesa-detail");
     banner.despesa = despesa;
     banner.categorias = dataStore.categoriasDaObra(this.obraId).filter((c) => String(c.tipo || "") !== "fornecedor");
