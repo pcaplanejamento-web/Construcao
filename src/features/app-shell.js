@@ -56,9 +56,14 @@ class AppShell extends BaseElement {
     return `
       /* Altura de viewport fixa: o conteúdo (main) rola internamente, então a
          sidebar tem altura CONSTANTE em todas as telas (não estica por página). */
-      /* 100dvh (dynamic viewport): acompanha a barra transparente do Safari iOS que
-         aparece/some — o header fica SEMPRE fixo no topo e o conteúdo rola no <main>. */
-      :host { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+      /* Altura da tela cheia no iPhone, à prova de "corte" na parte inferior: a
+         cascata cai no melhor suportado — 100vh (fallback), -webkit-fill-available
+         (iOS antigo, evita o bug do 100vh que estoura abaixo da dobra) e 100dvh
+         (dynamic viewport moderno, acompanha a barra do Safari). O conteúdo rola
+         no <main>; o header fica fixo no topo. */
+      :host { display: flex; flex-direction: column;
+        height: 100vh; height: -webkit-fill-available; height: 100dvh;
+        overflow: hidden; }
       app-header { flex: none; }
       .corpo { flex: 1; display: flex; align-items: stretch; min-height: 0; overflow: hidden; }
       main { flex: 1; min-width: 0; min-height: 0; overflow: auto;
