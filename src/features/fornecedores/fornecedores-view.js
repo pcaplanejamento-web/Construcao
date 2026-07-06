@@ -124,7 +124,15 @@ class FornecedoresView extends BaseElement {
     dataStore.categorias().forEach((c) => (mapaCat[c.id] = c));
 
     // MOBILE: lista estilo telefone (avatar + índice A–Z) com gestos.
-    if (this._mq && this._mq.matches) { el.replaceChildren(this._listaFornecedoresMobile(fornecedores, mapaCat)); return; }
+    // Reusa o MESMO elemento entre repinturas (refresh em 2º plano não recria o
+    // componente nem interrompe um gesto em andamento).
+    if (this._mq && this._mq.matches) {
+      let lista = el.querySelector("ui-lista-gestos");
+      if (!lista) { lista = this._novaListaFornecedores(); el.replaceChildren(lista); }
+      lista.render = (f) => this._linhaFornecedor(f, mapaCat);
+      lista.itens = [...fornecedores].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt", { sensitivity: "base" }));
+      return;
+    }
 
     const tabela = document.createElement("ui-data-table");
     tabela.setAttribute("fluido", "");
@@ -203,13 +211,11 @@ class FornecedoresView extends BaseElement {
     </div>`;
   }
 
-  /** Lista MOBILE de empresas (estilo telefone: A–Z + gestos). */
-  _listaFornecedoresMobile(fornecedores, mapaCat) {
+  /** Cria a lista de gestos de empresas (uma vez; render/itens são setados a cada pintura). */
+  _novaListaFornecedores() {
     const lista = document.createElement("ui-lista-gestos");
     lista.setAttribute("indice", "");
     lista.letraDe = (f) => (String(f.nome || "#").trim()[0] || "#").toUpperCase();
-    lista.render = (f) => this._linhaFornecedor(f, mapaCat);
-    lista.itens = [...fornecedores].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt", { sensitivity: "base" }));
     lista.addEventListener("abrir", (e) => irPara("/fornecedores/" + e.detail.item.id));
     lista.addEventListener("editar", (e) => editarEntidade("fornecedor", e.detail.item.id));
     lista.addEventListener("excluir", (e) => excluirEntidade("fornecedor", e.detail.item.id, null, { semConfirmacao: true }));

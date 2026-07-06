@@ -142,7 +142,15 @@ class ContatosView extends BaseElement {
     dataStore.fornecedores().forEach((f) => (mapaForn[f.id] = f.nome));
 
     // MOBILE: lista estilo telefone (avatar + índice A–Z) com gestos.
-    if (this._mq && this._mq.matches) { el.replaceChildren(this._listaContatosMobile(contatos, mapaForn)); return; }
+    // Reusa o MESMO elemento entre repinturas (refresh em 2º plano não recria o
+    // componente nem interrompe um gesto em andamento).
+    if (this._mq && this._mq.matches) {
+      let lista = el.querySelector("ui-lista-gestos");
+      if (!lista) { lista = this._novaListaContatos(); el.replaceChildren(lista); }
+      lista.render = (c) => this._linhaContato(c, mapaForn);
+      lista.itens = [...contatos].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt", { sensitivity: "base" }));
+      return;
+    }
 
     const tabela = document.createElement("ui-data-table");
     tabela.setAttribute("fluido", "");
@@ -222,13 +230,11 @@ class ContatosView extends BaseElement {
     </div>`;
   }
 
-  /** Lista MOBILE de contatos (estilo telefone: A–Z + gestos). */
-  _listaContatosMobile(contatos, mapaForn) {
+  /** Cria a lista de gestos de contatos (uma vez; render/itens são setados a cada pintura). */
+  _novaListaContatos() {
     const lista = document.createElement("ui-lista-gestos");
     lista.setAttribute("indice", "");
     lista.letraDe = (c) => (String(c.nome || "#").trim()[0] || "#").toUpperCase();
-    lista.render = (c) => this._linhaContato(c, mapaForn);
-    lista.itens = [...contatos].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt", { sensitivity: "base" }));
     lista.addEventListener("abrir", (e) => irPara("/contatos/" + e.detail.item.id));
     lista.addEventListener("editar", (e) => editarEntidade("contato", e.detail.item.id));
     lista.addEventListener("excluir", (e) => excluirEntidade("contato", e.detail.item.id, null, { semConfirmacao: true }));

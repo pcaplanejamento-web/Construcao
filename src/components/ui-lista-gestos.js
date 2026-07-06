@@ -24,10 +24,12 @@
 import { BaseElement } from "./base-element.js";
 import "./ui-icon.js";
 
-const SEGURAR_MS = 450; // long-press
-const INICIO_PX = 8; // move mínimo p/ distinguir de toque
-const LIMIAR_FRAC = 0.4; // fração da largura p/ disparar a ação
-const LIMIAR_MAX = 120; // teto do limiar em px
+const SEGURAR_MS = 500; // long-press
+const INICIO_PX = 10; // move mínimo p/ DECIDIR a direção (horizontal × rolagem)
+const LIMIAR_FRAC = 0.3; // fração da largura p/ disparar a ação (arraste lento)
+const LIMIAR_MAX = 90; // teto do limiar em px
+const FLICK_VX = 0.45; // px/ms — um flick rápido dispara mesmo com pouco arraste
+const FLICK_MIN = 32; // arraste mínimo (px) p/ contar como flick
 
 const SVG_CHECK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
 
@@ -139,6 +141,9 @@ class UiListaGestos extends BaseElement {
   _pintar() {
     const raiz = this.$("#raiz");
     if (!raiz || !this._render) return;
+    // Não reconstrói NO MEIO de um arraste (ex.: refresh em 2º plano) — senão o
+    // gesto "some". Adia p/ quando o gesto terminar (ver _encerrar).
+    if (this._g && this._g.arrastando) { this._pintarPendente = true; return; }
     const itens = this.itens;
     if (!itens.length) { raiz.innerHTML = `<div class="vazio">Nada por aqui.</div>`; this._pintarIndice([]); return; }
     const usaIndice = this.hasAttribute("indice") && typeof this._letraDe === "function";
@@ -175,6 +180,7 @@ class UiListaGestos extends BaseElement {
   /* ------------------------------- Gestos -------------------------------- */
   _pDown(e) {
     if (e.button != null && e.button !== 0) return; // só botão principal / toque
+    this._encerrar(); // robustez: limpa qualquer gesto anterior preso (toque real é ruidoso)
     const linha = e.target.closest(".linha");
     if (!linha) return;
     // Ignora toque em links/botões internos (ex.: WhatsApp) — deixa o clique nativo.
@@ -183,7 +189,7 @@ class UiListaGestos extends BaseElement {
     // <ui-tabs> (que só troca de aba se registrar o início do gesto no painel).
     e.stopPropagation();
     const cont = linha.querySelector(".conteudo");
-    this._g = { linha, cont, id: linha.dataset.id, x0: e.clientX, y0: e.clientY, dx: 0, arrastando: false, consumido: false, largura: linha.getBoundingClientRect().width };
+    this._g = { linha, cont, id: linha.dataset.id, x0: e.clientX, y0: e.clientY, dx: 0, arrastando: false, consumido: false, largura: linha.getBoundingClientRect().width, vx: 0, xPrev: e.clientX, tPrev: e.timeStamp || 0 };
     // segurar → seleção
     this._g.timer = setTimeout(() => {
       if (!this._g || this._g.arrastando) return;
@@ -203,16 +209,21 @@ class UiListaGestos extends BaseElement {
     const dx = e.clientX - g.x0;
     const dy = e.clientY - g.y0;
     if (!g.arrastando) {
-      if (Math.abs(dy) > INICIO_PX && Math.abs(dy) >= Math.abs(dx)) { this._encerrar(); return; } // rolagem vertical
-      if (Math.abs(dx) > INICIO_PX && Math.abs(dx) > Math.abs(dy)) {
-        g.arrastando = true; clearTimeout(g.timer);
-        g.linha.classList.add("arrastando");
-        try { g.linha.setPointerCapture(e.pointerId); } catch (_) {}
-      } else return;
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+      if (adx < INICIO_PX && ady < INICIO_PX) return; // ainda indeciso — espera o dedo definir a direção
+      if (adx <= ady) { this._encerrar(); return; }   // vertical (ou diagonal) domina → deixa ROLAR
+      // horizontal domina → engaja o arraste da LINHA (não aborta mais por tremida vertical depois)
+      g.arrastando = true; clearTimeout(g.timer);
+      g.linha.classList.add("arrastando");
+      try { g.linha.setPointerCapture(e.pointerId); } catch (_) {}
     }
     // Arraste horizontal engajado → a linha "vence" o swipe de aba.
     e.stopPropagation();
     if (e.cancelable) e.preventDefault();
+    // Velocidade instantânea (p/ detectar flick rápido no soltar).
+    const t = e.timeStamp || 0;
+    if (g.tPrev && t > g.tPrev) g.vx = (e.clientX - g.xPrev) / (t - g.tPrev);
+    g.xPrev = e.clientX; g.tPrev = t;
     g.dx = Math.max(-g.largura, Math.min(g.largura, dx));
     g.cont.style.transform = `translateX(${g.dx}px)`;
     g.linha.classList.toggle("arr-dir", g.dx > 0);
@@ -225,7 +236,9 @@ class UiListaGestos extends BaseElement {
     if (g.arrastando) {
       e.stopPropagation();
       const limiar = Math.min(LIMIAR_MAX, g.largura * LIMIAR_FRAC);
-      if (Math.abs(g.dx) >= limiar) {
+      // Dispara por DISTÂNCIA (arraste lento além do limiar) OU por FLICK (deslize rápido, mesmo curto).
+      const flick = Math.abs(g.vx || 0) >= FLICK_VX && Math.abs(g.dx) >= FLICK_MIN;
+      if (Math.abs(g.dx) >= limiar || flick) {
         const tipo = g.dx > 0 ? "editar" : "excluir";
         this._dispararAcao(g, tipo);
         this._encerrar();
@@ -261,6 +274,7 @@ class UiListaGestos extends BaseElement {
     if (this._onMove) { window.removeEventListener("pointermove", this._onMove, { passive: false }); this._onMove = null; }
     if (this._onUp) { window.removeEventListener("pointerup", this._onUp); window.removeEventListener("pointercancel", this._onUp); this._onUp = null; }
     this._g = null;
+    if (this._pintarPendente) { this._pintarPendente = false; this._pintar(); } // aplica o refresh adiado
   }
 
   /* ------------------------------ Seleção -------------------------------- */
