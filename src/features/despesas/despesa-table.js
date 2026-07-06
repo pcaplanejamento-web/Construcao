@@ -76,16 +76,29 @@ class DespesaTable extends BaseElement {
     const st = statusPagamento(d);
     const corSt = st === "Pago" ? "var(--cor-sucesso)" : st === "Em pagamento" ? "var(--cor-aviso)" : "var(--cor-neutro)";
     const corCl = COR_CLASSIFICACAO[d.classificacao] || "var(--cor-neutro)";
-    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%;min-width:0">
-        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
-          <span style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(item)}</span>
-          <span style="font-family:var(--fonte-titulo);font-weight:700;white-space:nowrap">${moeda(Number(d.valor) || 0)}</span>
+    // Botões por linha (editar/excluir) — substituem o "puxar" (arraste); são
+    // <button> (o gesto os ignora) e disparam "acao-linha" ao clicar.
+    const btn = (acao, aria, cor) =>
+      `<button type="button" data-acao-linha="${acao}" aria-label="${aria}" title="${aria}"
+        style="flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;
+        border:none;border-radius:var(--raio-completo);cursor:pointer;color:#fff;background:${cor}">
+        <ui-icon name="${acao}" size="18"></ui-icon></button>`;
+    return `<div style="display:flex;align-items:center;gap:10px;width:100%;min-width:0">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+            <span style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(item)}</span>
+            <span style="font-family:var(--fonte-titulo);font-weight:700;white-space:nowrap">${moeda(Number(d.valor) || 0)}</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--fs-sm);color:var(--cor-texto-suave);min-width:0">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(emp) || "—"}</span>
+            <span style="display:inline-flex;gap:4px;flex:none">${d.classificacao ? `<category-badge nome="${_esc(d.classificacao)}" cor="${corCl}"></category-badge>` : ""}<category-badge nome="${st}" cor="${corSt}"></category-badge></span>
+          </div>
+          <small style="color:var(--cor-texto-fraco)">${fmtData(d.data)}</small>
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--fs-sm);color:var(--cor-texto-suave);min-width:0">
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(emp) || "—"}</span>
-          <span style="display:inline-flex;gap:4px;flex:none">${d.classificacao ? `<category-badge nome="${_esc(d.classificacao)}" cor="${corCl}"></category-badge>` : ""}<category-badge nome="${st}" cor="${corSt}"></category-badge></span>
+        <div style="display:flex;gap:6px;flex:none">
+          ${btn("editar", "Editar despesa", "var(--grad-verde)")}
+          ${btn("excluir", "Excluir despesa", "var(--grad-vermelho)")}
         </div>
-        <small style="color:var(--cor-texto-fraco)">${fmtData(d.data)}</small>
       </div>`;
   }
 
@@ -261,11 +274,21 @@ class DespesaTable extends BaseElement {
     // ----- Versão MOBILE: lista de gestos (emite os MESMOS eventos → obra-detail intacto) -----
     const lista = this.$("#lista");
     lista.render = (d) => this._cardDespesa(d);
+    // Despesa NÃO usa "puxar" p/ editar/excluir — usa os BOTÕES por linha (acao-linha).
+    // Assim o arraste horizontal fica livre p/ o swipe de troca de aba.
+    lista.semSwipeAcao = true;
     lista.acoesMassa = [
       { nome: "pagar", rotulo: "Registrar pagamento" },
       { nome: "responsavel", rotulo: "Definir responsabilidade" },
     ];
     lista.addEventListener("abrir", (e) => { e.stopPropagation(); this.emitir("abrir", { despesa: e.detail.item }); });
+    // Botões editar/excluir por linha.
+    lista.addEventListener("acao-linha", (e) => {
+      e.stopPropagation();
+      if (e.detail.acao === "editar") this.emitir("editar", { despesa: e.detail.item });
+      else if (e.detail.acao === "excluir") this.emitir("remover", { despesa: e.detail.item });
+    });
+    // (compat) arraste — inativo com semSwipeAcao, mantido inofensivo.
     lista.addEventListener("editar", (e) => { e.stopPropagation(); this.emitir("editar", { despesa: e.detail.item }); });
     lista.addEventListener("excluir", (e) => { e.stopPropagation(); this.emitir("remover", { despesa: e.detail.item }); });
     lista.addEventListener("acao-massa", (e) => {

@@ -46,6 +46,11 @@ class UiListaGestos extends BaseElement {
   set acoesMassa(v) { this._acoesMassa = Array.isArray(v) ? v : []; if (this._selMode) this._pintarBarra(); }
   get acoesMassa() { return this._acoesMassa || []; }
   set letraDe(fn) { this._letraDe = typeof fn === "function" ? fn : null; if (this.shadowRoot.childElementCount) this._pintar(); }
+  // Quando `true`, o ARRASTE horizontal NÃO edita/exclui (o consumidor usa botões
+  // por linha via `data-acao-linha`) — e a linha deixa o swipe de aba passar.
+  // Tocar (abrir) e segurar (selecionar) continuam funcionando.
+  set semSwipeAcao(v) { this._semSwipeAcao = !!v; }
+  get semSwipeAcao() { return !!this._semSwipeAcao; }
 
   _idDe(item) { return String(item && item.id != null ? item.id : ""); }
 
@@ -86,6 +91,14 @@ class UiListaGestos extends BaseElement {
       @media (prefers-reduced-motion: reduce) {
         .conteudo, .fundo, .fundo ui-icon, .check { transition: none !important; }
       }
+
+      /* Variante ESTILO="lista" (agenda do telefone): linhas contínuas, coladas,
+         com fio de separação — em vez de cartões soltos. Mais simples/intuitivo. */
+      :host([estilo="lista"]) .linha { border-radius: 0; margin-bottom: 0; }
+      :host([estilo="lista"]) .conteudo { border: none; border-bottom: 1px solid var(--cor-borda);
+        background: transparent; min-height: 68px; }
+      :host([estilo="lista"]) .linha.ativa .conteudo,
+      :host([estilo="lista"]) .linha.sel .conteudo { background: var(--cor-superficie-2); }
       .linha.ativa .conteudo { background: var(--cor-superficie-2); }
       .linha.sel .conteudo { background: var(--cor-primaria-suave); border-color: var(--cor-primaria); }
       .corpo { flex: 1; min-width: 0; }
@@ -138,6 +151,17 @@ class UiListaGestos extends BaseElement {
     const raiz = this.$("#raiz");
     this._onDown = (e) => this._pDown(e);
     raiz.addEventListener("pointerdown", this._onDown);
+    // Botões de ação POR LINHA (ex.: editar/excluir na despesa): `data-acao-linha`.
+    // Clique nativo (o gesto ignora <button>) → emite "acao-linha" {acao,item}.
+    raiz.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-acao-linha]");
+      if (!b) return;
+      const linha = b.closest(".linha");
+      if (!linha) return;
+      e.stopPropagation();
+      const item = this._itemPorId(linha.dataset.id);
+      if (item) { vibrar(HAPTICO.acao); this.emitir("acao-linha", { acao: b.dataset.acaoLinha, item }); }
+    });
     // Índice A–Z
     this.$("#indice").addEventListener("click", (e) => {
       const b = e.target.closest("button[data-letra]");
@@ -197,7 +221,9 @@ class UiListaGestos extends BaseElement {
     if (e.target.closest("a, button, .no-gesto")) { this._g = null; return; }
     // A LINHA vence o swipe de troca de aba: barra o pointerdown ANTES de chegar ao
     // <ui-tabs> (que só troca de aba se registrar o início do gesto no painel).
-    e.stopPropagation();
+    // EXCEÇÃO: quando `semSwipeAcao` (a despesa usa botões por linha), NÃO barra →
+    // o arraste horizontal no card TROCA DE ABA (mais imersão); tocar/segurar seguem.
+    if (!this._semSwipeAcao) e.stopPropagation();
     const cont = linha.querySelector(".conteudo");
     this._g = { linha, cont, id: linha.dataset.id, x0: e.clientX, y0: e.clientY, dx: 0, arrastando: false, consumido: false, largura: linha.getBoundingClientRect().width, vx: 0, xPrev: e.clientX, tPrev: e.timeStamp || 0 };
     // segurar → seleção
@@ -222,6 +248,9 @@ class UiListaGestos extends BaseElement {
       const adx = Math.abs(dx), ady = Math.abs(dy);
       if (adx < INICIO_PX && ady < INICIO_PX) return; // ainda indeciso — espera o dedo definir a direção
       if (adx <= ady) { this._encerrar(); return; }   // vertical (ou diagonal) domina → deixa ROLAR
+      // horizontal: se esta lista não usa swipe p/ ação (despesa), ABORTA aqui e
+      // deixa o swipe de aba assumir — a ação é pelos botões da linha.
+      if (this._semSwipeAcao) { this._encerrar(); return; }
       // horizontal domina → engaja o arraste da LINHA (não aborta mais por tremida vertical depois)
       g.arrastando = true; clearTimeout(g.timer);
       g.linha.classList.add("arrastando");
@@ -317,6 +346,7 @@ class UiListaGestos extends BaseElement {
   }
 
   _alternarSel(id) {
+    vibrar(HAPTICO.toque); // clique tátil ao marcar/desmarcar
     id = String(id);
     if (this._sel.has(id)) this._sel.delete(id); else this._sel.add(id);
     const l = this._linhaPorId(id); if (l) l.classList.toggle("sel", this._sel.has(id));

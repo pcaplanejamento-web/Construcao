@@ -219,14 +219,15 @@ class ContatosView extends BaseElement {
 
   /** Conteúdo de uma linha de contato (avatar + nome + subtítulo + WhatsApp). */
   _linhaContato(c, mapaForn) {
+    // Estilo agenda do telefone: avatar + nome em destaque + subtítulo discreto.
+    // Simples e intuitivo — tocar a linha abre o contato (WhatsApp fica no detalhe).
     const sub = [c.cargo, mapaForn[c.fornecedor_id]].filter(Boolean).join(" · ");
-    return `<div style="display:flex;align-items:center;gap:12px;width:100%;min-width:0">
-      ${avatarHtml(c.nome, 44)}
+    return `<div style="display:flex;align-items:center;gap:14px;width:100%;min-width:0">
+      ${avatarHtml(c.nome, 46)}
       <div style="flex:1;min-width:0">
-        <div style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(c.nome)}</div>
+        <div style="font-size:1.05rem;font-weight:var(--peso-semi);color:var(--cor-texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(c.nome)}</div>
         ${sub ? `<div style="font-size:var(--fs-sm);color:var(--cor-texto-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(sub)}</div>` : ""}
       </div>
-      ${whatsappBtnHtml(c.telefone, 40)}
     </div>`;
   }
 
@@ -234,6 +235,7 @@ class ContatosView extends BaseElement {
   _novaListaContatos() {
     const lista = document.createElement("ui-lista-gestos");
     lista.setAttribute("indice", "");
+    lista.setAttribute("estilo", "lista"); // agenda do telefone (linhas contínuas + fio)
     lista.letraDe = (c) => (String(c.nome || "#").trim()[0] || "#").toUpperCase();
     lista.addEventListener("abrir", (e) => irPara("/contatos/" + e.detail.item.id));
     lista.addEventListener("editar", (e) => editarEntidade("contato", e.detail.item.id));

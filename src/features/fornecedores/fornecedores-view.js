@@ -200,14 +200,14 @@ class FornecedoresView extends BaseElement {
 
   /** Conteúdo de uma linha de empresa (avatar + nome + categoria + WhatsApp). */
   _linhaFornecedor(f, mapaCat) {
+    // Mesmo estilo agenda do telefone dos contatos: avatar + nome + subtítulo discreto.
     const cat = (mapaCat[f.categoria_id] || {}).nome || "";
-    return `<div style="display:flex;align-items:center;gap:12px;width:100%;min-width:0">
-      ${avatarHtml(f.nome, 44)}
+    return `<div style="display:flex;align-items:center;gap:14px;width:100%;min-width:0">
+      ${avatarHtml(f.nome, 46)}
       <div style="flex:1;min-width:0">
-        <div style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(f.nome)}</div>
+        <div style="font-size:1.05rem;font-weight:var(--peso-semi);color:var(--cor-texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(f.nome)}</div>
         ${cat ? `<div style="font-size:var(--fs-sm);color:var(--cor-texto-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(cat)}</div>` : ""}
       </div>
-      ${whatsappBtnHtml(f.telefone, 40)}
     </div>`;
   }
 
@@ -215,6 +215,7 @@ class FornecedoresView extends BaseElement {
   _novaListaFornecedores() {
     const lista = document.createElement("ui-lista-gestos");
     lista.setAttribute("indice", "");
+    lista.setAttribute("estilo", "lista"); // agenda do telefone (linhas contínuas + fio)
     lista.letraDe = (f) => (String(f.nome || "#").trim()[0] || "#").toUpperCase();
     lista.addEventListener("abrir", (e) => irPara("/fornecedores/" + e.detail.item.id));
     lista.addEventListener("editar", (e) => editarEntidade("fornecedor", e.detail.item.id));
