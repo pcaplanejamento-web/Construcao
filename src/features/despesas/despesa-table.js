@@ -11,6 +11,7 @@ import { moeda, data as fmtData } from "../../core/formatters.js";
 import { totalPago, distribuicao, parseLista, statusPagamento } from "./despesa-split.js";
 import { ofertanteNome } from "../orcamentos/orcamento-util.js";
 import "../../components/ui-data-table.js";
+import "../../components/ui-lista-gestos.js";
 import { injetarBuscaNoCard } from "../../components/ui-busca.js";
 import "./category-badge.js";
 
@@ -19,6 +20,8 @@ function _empresaNome(id) {
   if (!id) return "";
   return (dataStore.fornecedores().find((f) => String(f.id) === String(id)) || {}).nome || "";
 }
+
+function _esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
 const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
@@ -49,11 +52,41 @@ class DespesaTable extends BaseElement {
   }
 
   estilos() {
-    return `:host { display: block; }`;
+    return `
+      :host { display: block; }
+      #lista { display: none; }
+      /* Mobile: some a tabela e mostra a lista de gestos (mesmo dado, mesmos eventos). */
+      @media (max-width: 820px) {
+        #tabela { display: none; }
+        #lista { display: block; }
+      }
+    `;
   }
   template() {
     return `<ui-data-table id="tabela" fluido clicavel
-      empty-text="Nenhuma despesa registrada nesta obra."></ui-data-table>`;
+        empty-text="Nenhuma despesa registrada nesta obra."></ui-data-table>
+      <ui-lista-gestos id="lista"></ui-lista-gestos>`;
+  }
+
+  /** Card compacto da despesa no mobile (sem legendas/checkbox/botões). */
+  _cardDespesa(d) {
+    const item = (d.item_id && (dataStore.item(d.item_id) || {}).nome) || d.item || "—";
+    const emp = _empresaNome(d.fornecedor_id) ||
+      ((d.ofertante_contato_id || d.ofertante_equipe_id) ? ofertanteNome(d.ofertante_contato_id, d.ofertante_equipe_id) : "");
+    const st = statusPagamento(d);
+    const corSt = st === "Pago" ? "var(--cor-sucesso)" : st === "Em pagamento" ? "var(--cor-aviso)" : "var(--cor-neutro)";
+    const corCl = COR_CLASSIFICACAO[d.classificacao] || "var(--cor-neutro)";
+    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%;min-width:0">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+          <span style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(item)}</span>
+          <span style="font-family:var(--fonte-titulo);font-weight:700;white-space:nowrap">${moeda(Number(d.valor) || 0)}</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--fs-sm);color:var(--cor-texto-suave);min-width:0">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(emp) || "—"}</span>
+          <span style="display:inline-flex;gap:4px;flex:none">${d.classificacao ? `<category-badge nome="${_esc(d.classificacao)}" cor="${corCl}"></category-badge>` : ""}<category-badge nome="${st}" cor="${corSt}"></category-badge></span>
+        </div>
+        <small style="color:var(--cor-texto-fraco)">${fmtData(d.data)}</small>
+      </div>`;
   }
 
   aposRender() {
@@ -215,12 +248,30 @@ class DespesaTable extends BaseElement {
     );
     // Busca no cabeçalho do card (a tabela interna não alcança o card por estar no shadow).
     injetarBuscaNoCard(this, tabela);
+
+    // ----- Versão MOBILE: lista de gestos (emite os MESMOS eventos → obra-detail intacto) -----
+    const lista = this.$("#lista");
+    lista.render = (d) => this._cardDespesa(d);
+    lista.acoesMassa = [
+      { nome: "pagar", rotulo: "Registrar pagamento" },
+      { nome: "responsavel", rotulo: "Definir responsabilidade" },
+    ];
+    lista.addEventListener("abrir", (e) => this.emitir("abrir", { despesa: e.detail.item }));
+    lista.addEventListener("editar", (e) => this.emitir("editar", { despesa: e.detail.item }));
+    lista.addEventListener("excluir", (e) => this.emitir("remover", { despesa: e.detail.item }));
+    lista.addEventListener("acao-massa", (e) => {
+      if (e.detail.acao === "excluir") this.emitir("excluir-massa", { despesas: e.detail.itens });
+      else this.emitir("acao-massa", { acao: e.detail.acao, despesas: e.detail.itens });
+    });
+
     this.atualizarTabela();
   }
 
   atualizarTabela() {
     const tabela = this.$ ? this.$("#tabela") : null;
     if (tabela) tabela.rows = this.despesas;
+    const lista = this.$ ? this.$("#lista") : null;
+    if (lista) lista.itens = this.despesas;
   }
 }
 
