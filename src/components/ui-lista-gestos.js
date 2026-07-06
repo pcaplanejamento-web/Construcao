@@ -23,6 +23,7 @@
  */
 import { BaseElement } from "./base-element.js";
 import "./ui-icon.js";
+import { vibrar, HAPTICO } from "./haptic.js";
 
 const SEGURAR_MS = 500; // long-press
 const INICIO_PX = 10; // move mínimo p/ DECIDIR a direção (horizontal × rolagem)
@@ -244,7 +245,11 @@ class UiListaGestos extends BaseElement {
     g.linha.classList.toggle("arr-dir", dx > 0);
     g.linha.classList.toggle("arr-esq", dx < 0);
     const limiar = Math.min(LIMIAR_MAX, g.largura * LIMIAR_FRAC);
-    g.linha.classList.toggle("armado", ax >= limiar);
+    const armado = ax >= limiar;
+    // Tique tátil ao CRUZAR o limiar (sensação de que soltar agora vai editar/excluir).
+    if (armado && !g.armadoPrev) vibrar(HAPTICO.toque);
+    g.armadoPrev = armado;
+    g.linha.classList.toggle("armado", armado);
   }
 
   _pUp(e) {
@@ -274,6 +279,7 @@ class UiListaGestos extends BaseElement {
     // PUXA e VOLTA ao normal (não fica "arrancando" o card da tela): a ação abre o
     // form / a confirmação, ou a lista se atualiza removendo o item. A mola do CSS
     // (:not(.arrastando)) traz a linha de volta ao 0 de forma suave.
+    vibrar(HAPTICO.acao); // confirma o gesto (editar/excluir) com um toque tátil
     const item = this._itemPorId(g.id);
     const linha = g.linha, cont = g.cont;
     linha.classList.remove("arrastando", "armado");
@@ -302,6 +308,7 @@ class UiListaGestos extends BaseElement {
 
   /* ------------------------------ Seleção -------------------------------- */
   _entrarSelecao(id) {
+    vibrar(HAPTICO.selecionar); // confirma "segurar → selecionou" com um toque tátil
     if (!this._selMode) { this._selMode = true; this.setAttribute("sel-mode", ""); }
     this._sel.add(String(id));
     const l = this._linhaPorId(id); if (l) l.classList.add("sel");

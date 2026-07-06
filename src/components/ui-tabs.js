@@ -15,8 +15,10 @@
  */
 import { BaseElement } from "./base-element.js";
 import "./ui-icon.js";
+import { vibrar, HAPTICO } from "./haptic.js";
 
 const INICIO_PX = 10; // move mínimo p/ decidir a direção (horizontal × rolagem vertical)
+const GUTTER = 16; // vão CONSTANTE entre a aba que sai e a que entra (mesma distância sempre)
 
 class UiTabs extends BaseElement {
   static get observedAttributes() {
@@ -84,7 +86,7 @@ class UiTabs extends BaseElement {
          O clip horizontal só é ligado (via JS) durante o arraste — assim o repouso
          não vira contêiner de rolagem (não quebra sticky/overflow do conteúdo). */
       .painel { position: relative; touch-action: pan-y; }
-      .trilho { display: flex; }
+      .trilho { display: flex; will-change: transform; }
       .cel { flex: 0 0 auto; width: 100%; box-sizing: border-box; min-width: 0; }
       @media (prefers-reduced-motion: reduce) { .trilho { transition: none !important; } }
     `;
@@ -192,8 +194,8 @@ class UiTabs extends BaseElement {
     s.dx = dx;
     let off = s.base + dx;
     // Rubber-band nas pontas (sem vizinho naquele lado): resiste em vez de abrir vazio.
-    const min = s.temNext ? s.base - s.w : s.base;
-    const max = s.temPrev ? s.base + s.w : s.base;
+    const min = s.temNext ? s.base - s.pitch : s.base;
+    const max = s.temPrev ? s.base + s.pitch : s.base;
     if (off < min) off = min + (off - min) * 0.22;
     else if (off > max) off = max + (off - max) * 0.22;
     s.off = off;
@@ -212,14 +214,19 @@ class UiTabs extends BaseElement {
     let destino = 0; // -1 anterior · +1 próxima · 0 fica
     if ((s.dx <= -limiar || (flick && s.dx < 0)) && s.temNext) destino = 1;
     else if ((s.dx >= limiar || (flick && s.dx > 0)) && s.temPrev) destino = -1;
-    const alvo = s.base - destino * s.w;
+    const alvo = s.base - destino * s.pitch;
     const novoId = destino === 1 ? this.abas[s.i + 1].id : destino === -1 ? this.abas[s.i - 1].id : null;
-    const dur = destino === 0 ? 0.28 : 0.34;
+    // Duração ADAPTATIVA: proporcional à distância que falta percorrer → velocidade
+    // percebida constante (fluido: um arraste quase completo "assenta" rápido).
+    const atual = typeof s.off === "number" ? s.off : s.base;
+    const restante = Math.abs(alvo - atual);
+    const dur = Math.max(0.2, Math.min(0.42, 0.12 + (restante / s.pitch) * 0.4));
     if (trilho) {
       trilho.style.transition = `transform ${dur}s cubic-bezier(0.22, 1, 0.36, 1)`;
       void trilho.offsetWidth; // reflow → transição a partir do offset atual
       trilho.style.transform = `translateX(${alvo}px)`;
     }
+    if (novoId) vibrar(HAPTICO.aba); // toque tátil ao trocar de aba (sensação de navegar)
     const finalizar = () => {
       if (UiTabs._paginando === this) UiTabs._paginando = null;
       if (s.painel) s.painel.style.overflow = "";
@@ -248,14 +255,18 @@ class UiTabs extends BaseElement {
     const abas = this.abas, i = s.i, w = s.w;
     s.temPrev = i > 0;
     s.temNext = i < abas.length - 1;
+    // "Passo" de página = largura + vão CONSTANTE → a aba que sai e a que entra
+    // mantêm sempre a mesma distância entre si (movem-se travadas em lockstep).
+    s.pitch = w + GUTTER;
     const cel = (id) => `<div class="cel" style="width:${w}px"><slot name="${id}"></slot></div>`;
     let html = "";
     if (s.temPrev) html += cel(abas[i - 1].id);
     html += cel(abas[i].id);
     if (s.temNext) html += cel(abas[i + 1].id);
     trilho.style.transition = "none";
+    trilho.style.gap = GUTTER + "px";
     trilho.innerHTML = html;
-    s.base = s.temPrev ? -w : 0;
+    s.base = s.temPrev ? -s.pitch : 0;
     trilho.style.transform = `translateX(${s.base}px)`;
     s.painel.style.overflow = "hidden"; // clip horizontal só durante o arraste
     try { s.painel.setPointerCapture(s.pid); } catch (err) { /* ok */ }
