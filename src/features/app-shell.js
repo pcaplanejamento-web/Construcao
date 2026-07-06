@@ -61,7 +61,7 @@ class AppShell extends BaseElement {
          (iOS antigo, evita o bug do 100vh que estoura abaixo da dobra) e 100dvh
          (dynamic viewport moderno, acompanha a barra do Safari). O conteúdo rola
          no <main>; o header fica fixo no topo. */
-      :host { display: flex; flex-direction: column;
+      :host { display: flex; flex-direction: column; position: relative;
         height: 100vh; height: -webkit-fill-available; height: 100dvh;
         overflow: hidden; }
       app-header { flex: none; }
@@ -85,7 +85,11 @@ class AppShell extends BaseElement {
       .bottombar { display: none; }
       :host([com-barra]) .bottombar {
         display: flex; align-items: center; gap: var(--esp-1);
-        position: fixed; left: 50%; transform: translateX(-50%);
+        /* ANCORADO ao casco (100dvh), não ao viewport: position:fixed no iOS
+           gruda no viewport de layout (bugado com a barra do Safari/safe-area) e
+           o dock "flutua" alto, sobrando espaço embaixo. position:absolute no
+           :host (que é 100dvh) faz ele colar na base REAL visível. */
+        position: absolute; left: 50%; transform: translateX(-50%);
         bottom: calc(var(--esp-4) + env(safe-area-inset-bottom));
         z-index: var(--z-nav); max-width: calc(100vw - var(--esp-5));
         padding: var(--esp-2);

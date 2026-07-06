@@ -195,6 +195,15 @@ class UiSelect extends BaseElement {
     this._onScroll = () => this._posicionar();
     window.addEventListener("scroll", this._onScroll, true);
     window.addEventListener("resize", this._onScroll);
+    // Teclado do celular: a `visualViewport` encolhe (o `innerHeight` não) — ao
+    // abrir/fechar o teclado, reposiciona a lista ACIMA dele e mantém o CAMPO
+    // visível (rola até ele se ficar atrás do teclado).
+    this._onVV = () => { this._posicionar(); this._garantirCampoVisivel(); };
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", this._onVV);
+      window.visualViewport.addEventListener("scroll", this._onVV);
+    }
+    this._garantirCampoVisivel();
   }
 
   _fechar() {
@@ -203,6 +212,8 @@ class UiSelect extends BaseElement {
     if (inp) inp.setAttribute("aria-expanded", "false");
     if (this._onDoc) { document.removeEventListener("mousedown", this._onDoc, true); this._onDoc = null; }
     if (this._onScroll) { window.removeEventListener("scroll", this._onScroll, true); window.removeEventListener("resize", this._onScroll); this._onScroll = null; }
+    if (this._onVV && window.visualViewport) { window.visualViewport.removeEventListener("resize", this._onVV); window.visualViewport.removeEventListener("scroll", this._onVV); }
+    this._onVV = null;
     if (this._portal) { this._portal.remove(); this._portal = null; }
     if (!this._aberto) { this._refletirCampo(); return; }
     this._aberto = false;
@@ -215,18 +226,38 @@ class UiSelect extends BaseElement {
     const r = this.getBoundingClientRect();
     p.style.left = Math.round(r.left) + "px";
     p.style.width = Math.round(r.width) + "px";
-    const vh = window.innerHeight || document.documentElement.clientHeight;
-    const abaixo = vh - r.bottom;
-    const acima = r.top;
+    // Usa a `visualViewport` (área REAL acima do teclado) — o `innerHeight` não
+    // encolhe quando o teclado abre no celular, então a lista abriria escondida.
+    const vv = window.visualViewport;
+    const vTop = vv ? vv.offsetTop : 0;
+    const vH = vv ? vv.height : (window.innerHeight || document.documentElement.clientHeight);
+    const gap = 4;
     const teto = 280;
-    if (abaixo >= 200 || abaixo >= acima) {
-      p.style.top = Math.round(r.bottom + 4) + "px";
+    const abaixo = (vTop + vH) - r.bottom; // espaço visível abaixo do campo
+    const acima = r.top - vTop;            // espaço visível acima do campo
+    if (abaixo >= 160 || abaixo >= acima) {
+      const h = Math.max(120, Math.min(teto, abaixo - 8));
+      p.style.top = Math.round(r.bottom + gap) + "px";
       p.style.bottom = "auto";
-      p.style.maxHeight = Math.max(140, Math.min(teto, abaixo - 8)) + "px";
+      p.style.maxHeight = h + "px";
     } else {
-      p.style.top = "auto";
-      p.style.bottom = Math.round(vh - r.top + 4) + "px";
-      p.style.maxHeight = Math.max(140, Math.min(teto, acima - 8)) + "px";
+      // Abre ACIMA do campo → a lista fica acima do teclado (top calculado p/ não
+      // depender do `bottom`, que quebra com o offset do teclado no iOS).
+      const h = Math.max(120, Math.min(teto, acima - 8));
+      p.style.top = Math.round(r.top - gap - h) + "px";
+      p.style.bottom = "auto";
+      p.style.maxHeight = h + "px";
+    }
+  }
+
+  /** Mantém o CAMPO visível acima do teclado (rola até ele se estiver coberto). */
+  _garantirCampoVisivel() {
+    const vv = window.visualViewport;
+    if (!vv || typeof this.scrollIntoView !== "function") return;
+    const r = this.getBoundingClientRect();
+    const margem = 12;
+    if (r.bottom > vv.offsetTop + vv.height - margem || r.top < vv.offsetTop + margem) {
+      this.scrollIntoView({ block: "center", behavior: "smooth" });
     }
   }
 
