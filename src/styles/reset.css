@@ -26,6 +26,17 @@ html {
   background-color: var(--cor-fundo);
 }
 
+/* iOS (Safari/PWA instalado): preencher a ALTURA REAL da tela. No app instalado
+   (standalone), `100%`/`100vh` pode deixar uma FAIXA VAZIA embaixo (o casco não
+   estica até a base). `-webkit-fill-available` estica até a área realmente
+   disponível. `@supports (-webkit-touch-callout)` é só-iOS → desktop intacto. */
+@supports (-webkit-touch-callout: none) {
+  html,
+  body {
+    min-height: -webkit-fill-available;
+  }
+}
+
 body {
   font-family: var(--fonte-base);
   font-size: var(--fs-md);
