@@ -102,7 +102,28 @@
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
-          navigator.serviceWorker.register("sw.js").catch(function () {});
+          // Se JÁ havia um SW no controle, uma troca de controlador = versão nova
+          // assumiu → recarrega UMA vez p/ pegar o código atual (nunca na 1ª
+          // instalação, quando controller é null → sem reload/loop).
+          if (navigator.serviceWorker.controller) {
+            var recarregando = false;
+            navigator.serviceWorker.addEventListener("controllerchange", function () {
+              if (recarregando) return;
+              recarregando = true;
+              window.location.reload();
+            });
+          }
+          navigator.serviceWorker
+            .register("sw.js")
+            .then(function (reg) {
+              // Procura versão nova ao abrir e sempre que o app volta ao foco
+              // (ex.: reabrir o PWA instalado) → atualização chega sem passo manual.
+              reg.update();
+              document.addEventListener("visibilitychange", function () {
+                if (document.visibilityState === "visible") reg.update();
+              });
+            })
+            .catch(function () {});
         });
       }
     </script>

@@ -7,7 +7,12 @@
  * carregou). A API do Apps Script e as fontes do Google (outro origem) passam
  * DIRETO pela rede — nunca são cacheadas (dados sempre atuais).
  */
-const CACHE = "dattaobra-shell-v1";
+// Versão do casco: SUBIR este número a cada deploy que precise "empurrar" o app
+// novo. Bytes diferentes no sw.js → o navegador instala o SW novo, que assume na
+// hora (skipWaiting + clients.claim) e limpa o cache antigo no activate. O
+// clients.claim dispara `controllerchange` nas abas abertas → a página recarrega
+// sozinha (ver o registro em index.html) e pega o código novo. Sem passo manual.
+const CACHE = "dattaobra-shell-v2";
 const ESSENCIAIS = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {
