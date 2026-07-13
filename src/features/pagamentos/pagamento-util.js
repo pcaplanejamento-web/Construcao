@@ -40,8 +40,10 @@ export function nomeChavePart(chave) {
   if (s.indexOf("c:") === 0) return nomeContato(s.slice(2));
   if (s.indexOf("e:") === 0) return nomeEquipe(s.slice(2));
   if (s.indexOf("u:") === 0) {
+    const uid = s.slice(2);
     const u = dataStore.usuario();
-    return u && String(u.id) === s.slice(2) ? u.nome : "Usuário";
+    if (u && String(u.id) === uid) return u.nome; // eu
+    return dataStore.usuarioNome(uid) || "Usuário"; // dono/qualquer participante
   }
   return s || "—";
 }
@@ -53,6 +55,29 @@ export function nomeRecebedor(p) {
 function nomeDespesa(d) {
   if (!d) return "Despesa";
   return (d.item_id && (dataStore.item(d.item_id) || {}).nome) || d.item || "Despesa";
+}
+
+/**
+ * Seção "Repasses" (o recebedor de um pagamento repassa parte a outros contatos):
+ * cada linha "quem recebeu → repassados · obs" com o valor. Retorna "" se vazio.
+ * `secClass` = a classe do bloco-seção do banner (pg-sec | tf-sec); as linhas usam
+ * `.rp-row` (definida no <style> de cada banner).
+ */
+function repassesSecaoHtml(reps, secClass) {
+  const lista = (reps || []).filter(Boolean);
+  if (!lista.length) return "";
+  const linhas = lista
+    .map((r) => {
+      const de = nomeContato(r.recebedor_contato_id);
+      const para = (Array.isArray(r.contatos_repassados) ? r.contatos_repassados : [])
+        .map((cid) => nomeContato(cid))
+        .filter((n) => n && n !== "—");
+      const alvo = para.length ? para.join(", ") : "—";
+      const obs = r.observacao ? ` · ${r.observacao}` : "";
+      return `<div class="rp-row"><span>${de} → ${alvo}${obs}</span><strong>${moeda(Number(r.valor) || 0)}</strong></div>`;
+    })
+    .join("");
+  return `<div class="${secClass}"><label>Repasses (${lista.length})</label>${linhas}</div>`;
 }
 
 /** Lê um arquivo → { base64, nome, mime } (sem o prefixo data:). */
@@ -160,6 +185,7 @@ export function abrirPagamento(pagamento) {
   const empresa = nomeFornecedor(p.fornecedor_id);
   const obra = dataStore.obra(p.obra_id);
   const transf = dataStore.transferenciaDoPagamento(p.id);
+  const reps = dataStore.repassesDoPagamento(p.id);
 
   const modal = document.createElement("ui-modal");
   modal.setAttribute("open", "");
@@ -180,6 +206,8 @@ export function abrirPagamento(pagamento) {
       .pg-meta { display:flex; flex-direction:column; gap:2px; color: var(--cor-texto-suave); font-size: var(--fs-sm); }
       .pg-sec label { font-size: var(--fs-sm); font-weight: var(--peso-medio); color: var(--cor-texto-suave); display:block; margin-bottom: var(--esp-2); }
       .pg-row { display:flex; justify-content:space-between; padding: var(--esp-2) 0; border-bottom: 1px solid var(--cor-divisor); }
+      .rp-row { display:flex; justify-content:space-between; gap: var(--esp-3); padding: var(--esp-2) 0; border-bottom: 1px solid var(--cor-divisor); }
+      .rp-row span { min-width:0; }
       .pg-card { position: relative; background: var(--cor-sucesso-suave, rgba(22,163,74,.10)); border: 1px solid var(--cor-sucesso);
         border-radius: var(--raio-sm); padding: var(--esp-3); display:flex; flex-direction:column; gap:2px; margin-bottom: var(--esp-2); }
       .pg-card .item { font-weight: var(--peso-semi); }
@@ -234,6 +262,7 @@ export function abrirPagamento(pagamento) {
       </div>`
           : ""
       }
+      ${repassesSecaoHtml(reps, "pg-sec")}
     </div>`;
   modal.appendChild(corpo);
 
@@ -265,6 +294,9 @@ export function abrirTransferencia(transferencia) {
   const empresa = nomeFornecedor(t.fornecedor_id);
   const obra = dataStore.obra(t.obra_id);
   const pagamentos = dataStore.pagamentosDaTransferencia(t.id);
+  // Repasses agregados de TODOS os pagamentos desta transferência.
+  const reps = [];
+  pagamentos.forEach((p) => reps.push(...dataStore.repassesDoPagamento(p.id)));
 
   const modal = document.createElement("ui-modal");
   modal.setAttribute("open", "");
@@ -282,6 +314,8 @@ export function abrirTransferencia(transferencia) {
       .tf-pag .top { display:flex; justify-content:space-between; }
       .tf-pag .item { font-weight: var(--peso-semi); }
       .tf-pag small { color: var(--cor-texto-suave); }
+      .rp-row { display:flex; justify-content:space-between; gap: var(--esp-3); padding: var(--esp-2) 0; border-bottom: 1px solid var(--cor-divisor); }
+      .rp-row span { min-width:0; }
       /* Comprovante */
       .tf-cmp { display:flex; flex-direction:column; gap: var(--esp-2); }
       .tf-cmp-acoes { display:flex; align-items:center; gap: var(--esp-2); flex-wrap: wrap; }
@@ -318,6 +352,7 @@ export function abrirTransferencia(transferencia) {
         <label>Pagamentos desta transferência (${pagamentos.length})</label>
         <div id="tfPags"></div>
       </div>
+      ${repassesSecaoHtml(reps, "tf-sec")}
     </div>`;
   modal.appendChild(corpo);
 

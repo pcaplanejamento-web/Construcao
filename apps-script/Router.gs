@@ -95,6 +95,7 @@ const ROTAS = {
   "categorias.criar": { fn: categoriasCriar },
   "categorias.atualizar": { fn: categoriasAtualizar },
   "categorias.remover": { fn: categoriasRemover },
+  "categorias.incorporar": { fn: categoriasIncorporar },
 
   // Compras — Fornecedores
   "fornecedores.listar": { fn: fornecedoresListar },
@@ -115,6 +116,7 @@ const ROTAS = {
   "cargos.criar": { fn: cargosCriar },
   "cargos.atualizar": { fn: cargosAtualizar },
   "cargos.remover": { fn: cargosRemover },
+  "cargos.incorporar": { fn: cargosIncorporar },
 
   // Tipos de transferência (configuráveis)
   "tiposTransferencia.listar": { fn: tiposTransferenciaListar },
@@ -153,6 +155,7 @@ const ROTAS = {
   "equipes.criar": { fn: equipesCriar },
   "equipes.atualizar": { fn: equipesAtualizar },
   "equipes.remover": { fn: equipesRemover },
+  "equipes.incorporar": { fn: equipesIncorporar },
 
   // Estoque (livro-razão de movimentos por obra)
   "estoque.listar": { fn: estoqueListar },

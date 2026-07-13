@@ -18,7 +18,9 @@ import "../../components/ui-data-table.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-empty-state.js";
+import "../../components/ui-tabs.js";
 import "../despesas/category-badge.js";
+import "../shared/compartilhados-obra.js";
 import "./cotacao-form.js";
 
 class CotacoesView extends BaseElement {
@@ -45,21 +47,41 @@ class CotacoesView extends BaseElement {
             <p class="sub">Cada cotação é por categoria e agrupa as ofertas por item. Orçamentos e ofertas têm abas próprias no menu.</p>
           </div>
         </div>
-        <ui-card mesa acao-fixa title="Mesa com cotações">
-          <ui-button slot="acoes" id="nova">+ Nova cotação</ui-button>
-          <div id="lista"></div>
-        </ui-card>
+        <ui-tabs id="abas">
+          <div slot="cotacoes">
+            <ui-card mesa acao-fixa title="Mesa com cotações">
+              <ui-button slot="acoes" id="nova">+ Nova cotação</ui-button>
+              <div id="lista"></div>
+            </ui-card>
+          </div>
+          <div slot="compartilhados">
+            <ui-card mesa title="Cotações de obras compartilhadas">
+              <compartilhados-obra tipos="cotacao"></compartilhados-obra>
+            </ui-card>
+          </div>
+        </ui-tabs>
       </div>
     `;
   }
 
   aoConectar() {
+    this.$("#abas").abas = [{ id: "cotacoes", rotulo: "Cotações", icone: "cotacao" }];
     this.$("#nova").addEventListener("click", () => this.abrirForm(null));
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
 
   pintar() {
     this.pintarCotacoes();
+    this.pintarCompartilhados();
+  }
+
+  /** Aba "Compartilhados" (por obra) — o `<compartilhados-obra>` cuida do conteúdo. */
+  pintarCompartilhados() {
+    const abas = this.$("#abas");
+    if (!abas || !dataStore.carregado()) return;
+    if (dataStore.obrasCompartilhadas().length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
+      abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Compartilhados", icone: "cotacao" }];
+    }
   }
 
   pintarCotacoes() {

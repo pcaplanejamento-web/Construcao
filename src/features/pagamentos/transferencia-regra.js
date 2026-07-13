@@ -23,3 +23,22 @@ export function recebedorUniforme(despesas) {
 export function totalAlocacoes(alocacoes) {
   return (alocacoes || []).reduce((s, a) => s + (Number(a && a.valor) || 0), 0);
 }
+
+/**
+ * Pagamentos que ainda NÃO têm transferência REAL (precisam de uma sintética) —
+ * evita duplicar. Um pagamento está coberto quando aponta uma transferência real
+ * (`p.transferencia_id ∈ ids reais`) OU quando alguma transferência real o lista
+ * no reverso (`t.pagamento_ids` contém `p.id`). Sem o reverso, um pagamento com
+ * `transferencia_id` vazio/dessincronizado geraria uma transferência sintética
+ * DUPLICANDO a real (bug "transferência replicada com o pagamento").
+ */
+export function pagamentosSemTransferencia(reais, pagamentos) {
+  const idsReais = new Set((reais || []).map((t) => String(t.id)));
+  const cobertos = new Set();
+  (reais || []).forEach((t) => (t.pagamento_ids || []).forEach((pid) => cobertos.add(String(pid))));
+  return (pagamentos || []).filter((p) => {
+    const tid = String(p.transferencia_id || "");
+    if (tid && idsReais.has(tid)) return false;
+    return !cobertos.has(String(p.id));
+  });
+}

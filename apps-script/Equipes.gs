@@ -99,6 +99,90 @@ function equipesCriar(data, sessao) {
   });
 }
 
+/**
+ * Find-or-create de uma cópia PESSOAL de um contato (usado na incorporação de
+ * equipe): se já for do usuário, devolve o próprio id; se já houver uma cópia
+ * pessoal ATIVA com mesmo nome+telefone, reusa (dedupe); senão cria uma nova (FKs
+ * do dono limpas). SEM lock próprio — roda dentro do comLock de equipesIncorporar.
+ * Empilha as linhas NOVAS em `criadosOut` (para o front mesclar nos contatos).
+ */
+function _copiaPessoalContato(origemId, usuarioId, nomeUsuario, agora, criadosOut) {
+  const origem = repoEncontrar(SCHEMA.CONTATOS, function (x) { return String(x.id) === String(origemId); });
+  if (!origem) return "";
+  if (String(origem.usuario_id) === String(usuarioId)) return String(origem.id);
+  const nomeKey = String(origem.nome || "").trim().toLowerCase();
+  const telKey = String(origem.telefone || "").trim();
+  const existente = repoEncontrar(SCHEMA.CONTATOS, function (c) {
+    return (
+      String(c.usuario_id) === String(usuarioId) &&
+      String(c.nome || "").trim().toLowerCase() === nomeKey &&
+      String(c.telefone || "").trim() === telKey &&
+      (c.ativo === true || c.ativo === "TRUE" || c.ativo === "true")
+    );
+  });
+  if (existente) return String(existente.id);
+  const novo = {
+    id: novoId(),
+    usuario_id: usuarioId,
+    nome: origem.nome,
+    telefone: origem.telefone || "",
+    email: origem.email || "",
+    cargo: origem.cargo || "",
+    fornecedor_id: "", // vínculo do dono não vale p/ mim
+    observacao: origem.observacao || "",
+    ativo: true,
+    criado_em: agora,
+    atualizado_em: agora,
+    superior_id: "",
+    autor_nome: nomeUsuario,
+    editor_nome: nomeUsuario,
+  };
+  repoInserir(SCHEMA.CONTATOS, novo);
+  if (criadosOut) criadosOut.push(novo);
+  return String(novo.id);
+}
+
+/**
+ * equipes.incorporar -> { equipe, contatos } — COPIA PROFUNDA de uma equipe de
+ * obra compartilhada para o acervo PESSOAL: cria/reusa cópias pessoais do líder e
+ * dos membros (dedupe nome+telefone) e remapeia; a equipe nova é do usuário e não
+ * pertence a nenhuma obra (obras:"[]"). Devolve também os contatos novos para o
+ * front mesclar (senão os nomes de líder/membros ficariam "—" até recarregar).
+ */
+function equipesIncorporar(data, sessao) {
+  const id = String((data && data.id) || "");
+  const origem = repoEncontrar(SCHEMA.EQUIPES, function (x) { return String(x.id) === id; });
+  if (!origem) lancar(ERRO.NAO_ENCONTRADO, "Equipe não encontrada.");
+  if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Esta equipe já é sua.");
+  if (!_idReferenciadoEmObraAcessivel(id, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Equipe não disponível para incorporar.");
+  return comLock(function () {
+    const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+    const criados = [];
+    const liderNovo = _copiaPessoalContato(origem.lider_id, sessao.usuario_id, nomeUsuario, agora, criados);
+    const membrosNovos = [];
+    _parseJsonLista(origem.membros).forEach(function (m) {
+      const nid = _copiaPessoalContato(m, sessao.usuario_id, nomeUsuario, agora, criados);
+      if (nid && membrosNovos.indexOf(nid) < 0) membrosNovos.push(nid);
+    });
+    const equipe = {
+      id: novoId(),
+      usuario_id: sessao.usuario_id,
+      nome: origem.nome,
+      lider_id: liderNovo,
+      membros: JSON.stringify(membrosNovos),
+      obras: "[]",
+      ativo: true,
+      criado_em: agora,
+      atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
+    };
+    repoInserir(SCHEMA.EQUIPES, equipe);
+    return { equipe: _lerEquipe(equipe), contatos: criados };
+  });
+}
+
 /** equipes.atualizar -> { equipe }. */
 function equipesAtualizar(data, sessao) {
   const id = data && data.id;

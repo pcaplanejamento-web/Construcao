@@ -18,6 +18,7 @@ function listarCargosUsuario(usuarioId) {
     .map(function (c) {
       return {
         id: c.id,
+        usuario_id: c.usuario_id, // preserva o dono → o front distingue cargo COMPARTILHADO
         nome: c.nome,
         fixo: false,
         criado_em: c.criado_em,
@@ -80,6 +81,46 @@ function cargosCriar(data, sessao) {
     };
     repoInserir(SCHEMA.CARGOS, cargo);
     return { cargo: cargo };
+  });
+}
+
+/**
+ * cargos.incorporar -> { cargo } — cria um cargo EXTRA no acervo do usuário a
+ * partir de um cargo referenciado por obra compartilhada. O identificador é o
+ * NOME (o contato guarda o cargo por nome). Guard: o nome precisa estar
+ * referenciado por um contato de obra acessível. Idempotente: se o usuário já
+ * tem esse nome, devolve o existente.
+ */
+function cargosIncorporar(data, sessao) {
+  const nome = String((data && data.id) || (data && data.nome) || "").trim();
+  if (!nome) lancar(ERRO.VALIDACAO, "Informe o cargo.");
+  if (!_cargoNomeReferenciadoEmObraAcessivel(nome, sessao.usuario_id)) {
+    lancar(ERRO.NAO_AUTORIZADO, "Cargo não disponível para incorporar.");
+  }
+  const n = nome.toLowerCase();
+  // Já é fixo (obrigatório) → nada a incorporar; devolve o built-in.
+  if (CARGOS_OBRIGATORIOS.some(function (o) { return o.toLowerCase() === n; })) {
+    return { cargo: { id: "builtin:" + nome, nome: nome, fixo: true } };
+  }
+  // Já existe como extra do usuário → idempotente.
+  const meu = repoEncontrar(SCHEMA.CARGOS, function (c) {
+    return String(c.usuario_id) === String(sessao.usuario_id) && String(c.nome).trim().toLowerCase() === n;
+  });
+  if (meu) return { cargo: { id: meu.id, usuario_id: meu.usuario_id, nome: meu.nome, fixo: false, criado_em: meu.criado_em, atualizado_em: meu.atualizado_em } };
+  return comLock(function () {
+    const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+    const cargo = {
+      id: novoId(),
+      usuario_id: sessao.usuario_id,
+      nome: nome,
+      criado_em: agora,
+      atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
+    };
+    repoInserir(SCHEMA.CARGOS, cargo);
+    return { cargo: { id: cargo.id, usuario_id: cargo.usuario_id, nome: cargo.nome, fixo: false, criado_em: agora, atualizado_em: agora } };
   });
 }
 

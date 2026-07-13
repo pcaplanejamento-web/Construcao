@@ -65,7 +65,7 @@ class ItensView extends BaseElement {
           </div>
           <div slot="compartilhados">
             <ui-card mesa title="Itens de obras compartilhadas">
-              <compartilhados-obra tipo="item"></compartilhados-obra>
+              <compartilhados-obra tipos="item,categoria-item"></compartilhados-obra>
             </ui-card>
           </div>
         </ui-tabs>

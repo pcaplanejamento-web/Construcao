@@ -10,6 +10,8 @@
  * Construído sobre criarStore() (store.js) + api-client + event-bus.
  */
 import { criarStore } from "./store.js";
+import { fecharCompartilhado } from "../features/shared/compartilhamento-closure.js";
+import { pagamentosSemTransferencia } from "../features/pagamentos/transferencia-regra.js";
 import { api } from "./api-client.js";
 import { auth } from "./auth-store.js";
 import { bus, EVENTOS, toastAviso, toastInfo } from "./event-bus.js";
@@ -200,6 +202,20 @@ const categoriasItem = () => store.get().categorias.filter((c) => String(c.tipo 
 /** Classificações de FORNECEDOR (tipo == fornecedor). */
 const categoriasFornecedor = () => store.get().categorias.filter((c) => String(c.tipo || "") === "fornecedor");
 const participantesDaObra = (obraId) => store.get().participantesPorObra[obraId] || [];
+/** Nome de um usuário por id — via participantes das obras (nome desnormalizado)
+ *  ou `usuarios()` (admin). Resolve o pagador/dono `"u:<id>"` de QUALQUER usuário
+ *  (antes só o logado), inclusive p/ o convidado ver o nome do dono. */
+const usuarioNome = (id) => {
+  const sid = String(id || "");
+  if (!sid) return "";
+  const pp = store.get().participantesPorObra || {};
+  for (const k of Object.keys(pp)) {
+    const p = (pp[k] || []).find((x) => String(x.chave || "") === "u:" + sid);
+    if (p && p.nome) return p.nome;
+  }
+  const u = (store.get().usuarios || []).find((x) => String(x.id) === sid);
+  return (u && u.nome) || "";
+};
 /** Notas (anotações compartilhadas) da obra, mais recentes primeiro. */
 const notasDaObra = (obraId) =>
   [...((store.get().notas || {})[obraId] || [])].sort((a, b) =>
@@ -287,46 +303,93 @@ const obrasCompartilhadas = () => obras().filter((o) => o.ehDono === false);
  */
 const compartilhadoDaObra = (obraId) => {
   const meu = _meuId();
-  const share = (x) => !!(x && x.usuario_id && String(x.usuario_id) !== meu);
+  const share = (x) => !!(x && x.usuario_id && String(x.usuario_id) !== meu && String(x.usuario_id) !== "GLOBAL");
+  const oid = String(obraId);
   const desp = despesas(obraId);
   const parts = participantesDaObra(obraId);
-  const oid = String(obraId);
   const transf = transferencias().filter((t) => String(t.obra_id) === oid);
   const pags = pagamentos().filter((p) => String(p.obra_id) === oid);
-  const precoIds = new Set(desp.map((d) => String(d.preco_id || "")).filter(Boolean));
-  const ofertasObra = todasOfertas().filter((p) => String(p.obra_id) === oid || precoIds.has(String(p.id)));
   const orcs = orcamentos().filter((o) => String(o.obra_id) === oid);
-  const cIds = new Set(), fIds = new Set(), iIds = new Set();
-  const addCh = (ch) => { const s = String(ch || ""); if (s.indexOf("c:") === 0) cIds.add(s.slice(2)); };
+  const orcIds = new Set(orcs.map((o) => String(o.id)));
+  const precoIds = new Set(desp.map((d) => String(d.preco_id || "")).filter(Boolean));
+  const ofertasObra = todasOfertas().filter(
+    (p) => String(p.obra_id) === oid || precoIds.has(String(p.id)) || orcIds.has(String(p.orcamento_id || ""))
+  );
+  const cotIds = new Set(ofertasObra.map((p) => String(p.cotacao_id || "")).filter(Boolean));
+  const cots = cotacoes().filter((c) => String(c.obra_id) === oid || cotIds.has(String(c.id)));
+
+  // SEMENTES (refs diretas, incluindo os campos antes ignorados: equipe/categoria).
+  const cSeed = new Set(), fSeed = new Set(), iSeed = new Set(), eSeed = new Set(), catSeed = new Set();
+  const addCh = (ch) => {
+    const s = String(ch || "");
+    if (s.indexOf("c:") === 0) cSeed.add(s.slice(2));
+    else if (s.indexOf("e:") === 0) eSeed.add(s.slice(2));
+  };
   parts.forEach((p) => addCh(p.chave));
   desp.forEach((d) => {
-    if (d.item_id) iIds.add(String(d.item_id));
-    if (d.fornecedor_id) fIds.add(String(d.fornecedor_id));
-    if (d.ofertante_contato_id) cIds.add(String(d.ofertante_contato_id));
+    if (d.item_id) iSeed.add(String(d.item_id));
+    if (d.fornecedor_id) fSeed.add(String(d.fornecedor_id));
+    if (d.ofertante_contato_id) cSeed.add(String(d.ofertante_contato_id));
+    if (d.ofertante_equipe_id) eSeed.add(String(d.ofertante_equipe_id));
+    if (d.categoria_id) catSeed.add(String(d.categoria_id));
     (d.responsaveis || []).forEach((r) => addCh(r.chave));
+    (d.pagamentos || []).forEach((p) => addCh(p.chave));
     (d.pagamentos_realizados || []).forEach((lv) => {
-      if (lv.contato_id) cIds.add(String(lv.contato_id));
-      if (lv.fornecedor_id) fIds.add(String(lv.fornecedor_id));
+      if (lv.contato_id) cSeed.add(String(lv.contato_id));
+      if (lv.fornecedor_id) fSeed.add(String(lv.fornecedor_id));
       addCh(lv.pagador);
       (lv.distribuicao || []).forEach((x) => addCh(x.chave));
     });
   });
   transf.concat(pags).forEach((t) => {
-    if (t.fornecedor_id) fIds.add(String(t.fornecedor_id));
-    if (t.recebedor_contato_id) cIds.add(String(t.recebedor_contato_id));
+    if (t.fornecedor_id) fSeed.add(String(t.fornecedor_id));
+    if (t.recebedor_contato_id) cSeed.add(String(t.recebedor_contato_id));
+    if (t.recebedor_equipe_id) eSeed.add(String(t.recebedor_equipe_id));
     addCh(t.pagador_chave);
   });
-  ofertasObra.forEach((p) => {
-    if (p.item_id) iIds.add(String(p.item_id));
-    if (p.fornecedor_id) fIds.add(String(p.fornecedor_id));
-    if (p.contato_id) cIds.add(String(p.contato_id));
+  repasses().filter((r) => String(r.obra_id) === oid).forEach((r) => {
+    if (r.recebedor_contato_id) cSeed.add(String(r.recebedor_contato_id));
+    (r.contatos_repassados || []).forEach((cid) => cSeed.add(String(cid)));
   });
+  ofertasObra.forEach((p) => {
+    if (p.item_id) iSeed.add(String(p.item_id));
+    if (p.fornecedor_id) fSeed.add(String(p.fornecedor_id));
+    if (p.contato_id) cSeed.add(String(p.contato_id));
+    if (p.equipe_id) eSeed.add(String(p.equipe_id));
+  });
+  orcs.forEach((o) => {
+    if (o.fornecedor_id) fSeed.add(String(o.fornecedor_id));
+    if (o.contato_id) cSeed.add(String(o.contato_id));
+    if (o.equipe_id) eSeed.add(String(o.equipe_id));
+  });
+  cots.forEach((c) => {
+    if (c.item_id) iSeed.add(String(c.item_id));
+    if (c.categoria_id) catSeed.add(String(c.categoria_id));
+  });
+
+  // FECHAMENTO TRANSITIVO (mapas p/ lookup O(1)).
+  const mapC = new Map(contatos().map((x) => [String(x.id), x]));
+  const mapF = new Map(fornecedores().map((x) => [String(x.id), x]));
+  const mapI = new Map(itens().map((x) => [String(x.id), x]));
+  const mapE = new Map(equipes().map((x) => [String(x.id), x]));
+  const fechado = fecharCompartilhado(
+    { c: cSeed, f: fSeed, i: iSeed, e: eSeed, cat: catSeed },
+    { contato: (id) => mapC.get(String(id)) || null, fornecedor: (id) => mapF.get(String(id)) || null,
+      item: (id) => mapI.get(String(id)) || null, equipe: (id) => mapE.get(String(id)) || null }
+  );
+
+  const cats = categorias().filter((c) => fechado.categorias.has(String(c.id)) && share(c));
   return {
-    contatos: contatos().filter((c) => cIds.has(String(c.id)) && share(c)),
-    fornecedores: fornecedores().filter((f) => fIds.has(String(f.id)) && share(f)),
-    itens: itens().filter((i) => iIds.has(String(i.id)) && share(i)),
+    contatos: contatos().filter((c) => fechado.contatos.has(String(c.id)) && share(c)),
+    fornecedores: fornecedores().filter((f) => fechado.fornecedores.has(String(f.id)) && share(f)),
+    itens: itens().filter((i) => fechado.itens.has(String(i.id)) && share(i)),
+    equipes: equipes().filter((e) => fechado.equipes.has(String(e.id)) && share(e)),
+    cargos: cargos().filter((cg) => cg && cg.nome && fechado.cargos.has(String(cg.nome).trim().toLowerCase()) && share(cg)),
+    categoriasItem: cats.filter((c) => String(c.tipo || "") !== "fornecedor"),
+    categoriasFornecedor: cats.filter((c) => String(c.tipo || "") === "fornecedor"),
     ofertas: ofertasObra.filter(share),
     orcamentos: orcs.filter(share),
+    cotacoes: cots.filter(share),
   };
 };
 
@@ -418,13 +481,10 @@ function _transferenciaDePagamento(p) {
 }
 const transferencias = () => {
   const reais = store.get().transferencias || [];
-  const idsReais = new Set(reais.map((t) => String(t.id)));
-  const sint = [];
-  pagamentos().forEach((p) => {
-    const tid = String(p.transferencia_id || "");
-    if (tid && idsReais.has(tid)) return; // coberto por transferência real
-    sint.push(_transferenciaDePagamento(p));
-  });
+  // Só sintetiza transferência p/ pagamento SEM transferência real (dedup nos dois
+  // sentidos: p.transferencia_id E o reverso t.pagamento_ids) — senão a transferência
+  // ficava "replicada com o pagamento" (bug). `pagamentosSemTransferencia` é pura/testada.
+  const sint = pagamentosSemTransferencia(reais, pagamentos()).map(_transferenciaDePagamento);
   return reais.concat(sint);
 };
 /* -------------------------- Estoque (getters) ------------------------- */
@@ -1265,6 +1325,10 @@ async function incorporar(tipo, id) {
     item: { acao: "itens.incorporar", chave: "itens", resp: "item", ev: EVENTOS.ITENS },
     oferta: { acao: "ofertas.incorporar", chave: "ofertas", resp: "oferta", ev: EVENTOS.COTACOES },
     orcamento: { acao: "orcamentos.incorporar", chave: "orcamentos", resp: "orcamento", ev: EVENTOS.ORCAMENTOS },
+    equipe: { acao: "equipes.incorporar", chave: "equipes", resp: "equipe", ev: EVENTOS.EQUIPES },
+    cargo: { acao: "cargos.incorporar", chave: "cargos", resp: "cargo", ev: EVENTOS.CONTATOS },
+    "categoria-item": { acao: "categorias.incorporar", chave: "categorias", resp: "categoria", ev: EVENTOS.CATEGORIAS },
+    "categoria-fornecedor": { acao: "categorias.incorporar", chave: "categorias", resp: "categoria", ev: EVENTOS.CATEGORIAS },
   }[tipo];
   if (!cfg) throw new Error("Tipo inválido para incorporar: " + tipo);
   const r = await api.call(cfg.acao, { id });
@@ -1272,6 +1336,17 @@ async function incorporar(tipo, id) {
   if (ent) {
     const s = store.get();
     store.set({ [cfg.chave]: [...s[cfg.chave], ent] });
+    // Incorporar equipe também cria cópias pessoais de líder/membros (contatos):
+    // mescla-os no store para os nomes resolverem sem esperar novo snapshot.
+    if (Array.isArray(r.contatos) && r.contatos.length) {
+      const cur = store.get().contatos || [];
+      const vistos = new Set(cur.map((c) => String(c.id)));
+      const novos = r.contatos.filter((c) => c && !vistos.has(String(c.id)));
+      if (novos.length) {
+        store.set({ contatos: [...cur, ...novos] });
+        bus.emit(EVENTOS.CONTATOS, { tipo: "incorporado" });
+      }
+    }
     persistir();
     bus.emit(cfg.ev, { tipo: "incorporado" });
   }
@@ -1584,7 +1659,7 @@ export const dataStore = {
   atualizarEmSegundoPlano,
   limparCache,
   // getters
-  usuario, config, categorias, categoriasItem, categoriasFornecedor, usuarios, obras, obra, despesas, todasDespesas, resumo, categoriasDaObra,
+  usuario, config, categorias, categoriasItem, categoriasFornecedor, usuarios, usuarioNome, obras, obra, despesas, todasDespesas, resumo, categoriasDaObra,
   participantesDaObra,
   notasDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, tiposTransferencia, itens, itensAtivos, item,

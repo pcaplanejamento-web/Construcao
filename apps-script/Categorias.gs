@@ -68,6 +68,40 @@ function categoriasCriar(data, sessao) {
 }
 
 /**
+ * categorias.incorporar -> { categoria } — COPIA uma categoria (classificação/
+ * subclassificação) de obra compartilhada para o acervo PESSOAL. Copia nome+cor+
+ * tipo; vira do usuário (sobrevive ao descompartilhamento). Guard: a categoria
+ * precisa estar referenciada por alguma obra acessível.
+ */
+function categoriasIncorporar(data, sessao) {
+  const id = String((data && data.id) || "");
+  const origem = repoEncontrar(SCHEMA.CATEGORIAS, function (x) { return String(x.id) === id; });
+  if (!origem) lancar(ERRO.NAO_ENCONTRADO, "Categoria não encontrada.");
+  if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Esta categoria já é sua.");
+  if (String(origem.usuario_id) === CATEGORIA_GLOBAL) lancar(ERRO.VALIDACAO, "Categoria padrão já está disponível.");
+  if (!_categoriaReferenciadaEmObraAcessivel(id, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Categoria não disponível para incorporar.");
+  return comLock(function () {
+    const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+    const categoria = {
+      id: novoId(),
+      usuario_id: sessao.usuario_id,
+      nome: origem.nome,
+      cor: origem.cor || "#64748b",
+      ativo: true,
+      criado_em: agora,
+      atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
+      tipo: String(origem.tipo || "") === "fornecedor" ? "fornecedor" : "item",
+    };
+    repoInserir(SCHEMA.CATEGORIAS, categoria);
+    cacheRemove(chaveCategorias(sessao.usuario_id));
+    return { categoria: categoria };
+  });
+}
+
+/**
  * Garante que a subclassificação é editável pelo usuário: ou é dele, ou é uma
  * padrão GLOBAL (compartilhada e editável por qualquer usuário). Retorna a linha.
  */

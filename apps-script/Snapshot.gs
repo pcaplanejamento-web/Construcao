@@ -23,6 +23,67 @@ function _resumoEmMemoria(obra, despesas, catMap) {
   };
 }
 
+/**
+ * Fecha TRANSITIVAMENTE as referências de uma obra compartilhada: a partir das
+ * sementes (refC/refF/refI/refE já coletadas das despesas/financeiro/compras),
+ * anda pelas arestas do grafo raso até estabilizar — o convidado precisa não só
+ * do dado direto, mas de tudo que o NORTEIA:
+ *   contato    → sua empresa (fornecedor_id → refF), seu superior (superior_id →
+ *                refC) e seu cargo (nome → refCargoNome)
+ *   equipe     → seu líder (lider_id) + membros[] (→ refC)
+ *   fornecedor → sua classificação (categoria_id → refCat)
+ *   item       → sua subclassificação (categoria_id → refCat)
+ * Termina sempre: cada id é processado 1× (guardas procX) sobre conjuntos finitos;
+ * só re-itera quando um id NOVO é adicionado. Muta os objetos-set em `refs`.
+ * Espelha o `fecharCompartilhado` do frontend (compartilhamento-closure.js).
+ * `mapas` = { contato, fornecedor, item, equipe } (id → linha crua).
+ */
+function _fecharRefsCompartilhadas(refs, mapas) {
+  var refC = refs.refC, refF = refs.refF, refI = refs.refI, refE = refs.refE,
+    refCat = refs.refCat, refCargoNome = refs.refCargoNome;
+  var procC = {}, procE = {}, procF = {}, procI = {};
+  var seguir = true, voltas = 0;
+  while (seguir && voltas < 50) { // trava dura de segurança (nunca deve ser atingida)
+    seguir = false;
+    voltas++;
+    Object.keys(refC).forEach(function (id) {
+      if (procC[id]) return;
+      procC[id] = true;
+      var x = mapas.contato[id];
+      if (!x) return;
+      var forn = String(x.fornecedor_id || "");
+      if (forn && !refF[forn]) { refF[forn] = true; seguir = true; }
+      var sup = String(x.superior_id || "");
+      if (sup && !refC[sup]) { refC[sup] = true; seguir = true; }
+      if (x.cargo) refCargoNome[String(x.cargo).trim().toLowerCase()] = true;
+    });
+    Object.keys(refE).forEach(function (id) {
+      if (procE[id]) return;
+      procE[id] = true;
+      var x = mapas.equipe[id];
+      if (!x) return;
+      var lider = String(x.lider_id || "");
+      if (lider && !refC[lider]) { refC[lider] = true; seguir = true; }
+      _parseJsonLista(x.membros).forEach(function (m) {
+        var v = String(m || "");
+        if (v && !refC[v]) { refC[v] = true; seguir = true; }
+      });
+    });
+    Object.keys(refF).forEach(function (id) {
+      if (procF[id]) return;
+      procF[id] = true;
+      var x = mapas.fornecedor[id];
+      if (x && x.categoria_id) refCat[String(x.categoria_id)] = true;
+    });
+    Object.keys(refI).forEach(function (id) {
+      if (procI[id]) return;
+      procI[id] = true;
+      var x = mapas.item[id];
+      if (x && x.categoria_id) refCat[String(x.categoria_id)] = true;
+    });
+  }
+}
+
 /** dados.snapshot -> estado inicial completo do usuário. */
 function dadosSnapshot(data, sessao) {
   const u = buscarUsuarioPorId(sessao.usuario_id);
@@ -101,13 +162,9 @@ function dadosSnapshot(data, sessao) {
   // o front distingue "compartilhado" (usuario_id !== eu).
   // ===================================================================
 
-  const temCompart = obras.some(function (o) {
-    return String(o.usuario_id) !== String(u.id);
-  });
-
   // 1) REFERÊNCIAS de todas as obras acessíveis (own + compartilhadas) — resolve
   //    tanto o que o DONO referencia quanto o que o CONVIDADO criou (simétrico).
-  const refF = {}, refC = {}, refE = {}, refI = {}, refPreco = {}, refCat = {};
+  const refF = {}, refC = {}, refE = {}, refI = {}, refPreco = {}, refCat = {}, refCargoNome = {};
   function _addChaveRef(ch) {
     const s = String(ch || "");
     if (s.indexOf("c:") === 0) refC[s.slice(2)] = true;
@@ -150,13 +207,25 @@ function dadosSnapshot(data, sessao) {
     if (t.recebedor_equipe_id) refE[String(t.recebedor_equipe_id)] = true;
     _addChaveRef(t.pagador_chave);
   });
+  // Repasses: o recebedor e os contatos repassados também norteiam a obra (senão
+  // os nomes ficam "—" no banner da transferência/pagamento).
+  repasses.forEach(function (r) {
+    if (r.recebedor_contato_id) refC[String(r.recebedor_contato_id)] = true;
+    (r.contatos_repassados || []).forEach(function (cid) { refC[String(cid)] = true; });
+  });
 
   // 3) ORÇAMENTOS: próprios (inclui gerais sem obra) + os de obra acessível.
   const orcamentosUsuario = repoFiltrar(SCHEMA.ORCAMENTOS, function (o) {
     return _orcamentoAtivo(o) && (String(o.usuario_id) === String(u.id) || (o.obra_id && idsAcc[o.obra_id]));
   }).sort(function (a, b) { return String(b.criado_em).localeCompare(String(a.criado_em)); });
   const idsOrc = {};
-  orcamentosUsuario.forEach(function (o) { idsOrc[o.id] = true; });
+  orcamentosUsuario.forEach(function (o) {
+    idsOrc[o.id] = true;
+    // O orçamento (container) já aponta o ofertante/empresa — semeia as refs.
+    if (o.fornecedor_id) refF[String(o.fornecedor_id)] = true;
+    if (o.contato_id) refC[String(o.contato_id)] = true;
+    if (o.equipe_id) refE[String(o.equipe_id)] = true;
+  });
 
   // 4) COTAÇÕES (base): próprias + as de obra acessível (obra_id é opcional).
   const cotacoesBase = repoFiltrar(SCHEMA.COTACOES, function (c) {
@@ -189,7 +258,12 @@ function dadosSnapshot(data, sessao) {
   const cotacoes = cotacoesBase
     .concat(repoFiltrar(SCHEMA.COTACOES, function (c) { return cotIdsExtra[String(c.id)]; }))
     .sort(function (a, b) { return String(b.criado_em).localeCompare(String(a.criado_em)); });
-  cotacoes.forEach(function (c) { idsCot[c.id] = true; });
+  cotacoes.forEach(function (c) {
+    idsCot[c.id] = true;
+    // A cotação aponta o item e a subclassificação — semeia as refs.
+    if (c.item_id) refI[String(c.item_id)] = true;
+    if (c.categoria_id) refCat[String(c.categoria_id)] = true;
+  });
 
   // precosPorCotacao / historicoPorCotacao a partir do conjunto FINAL de cotações.
   const precosPorCotacao = {};
@@ -211,31 +285,67 @@ function dadosSnapshot(data, sessao) {
 
   // 6) CATÁLOGO: próprios (ativos) + os REFERENCIADOS pelas obras (qualquer dono,
   //    qualquer estado — resolve nomes mesmo de referências antigas). 1 leitura/aba.
-  const fornecedores = repoListar(SCHEMA.FORNECEDORES).filter(function (f) {
+  //    Lê as abas UMA vez (arrays crus) e monta mapas id→linha p/ o FECHAMENTO
+  //    TRANSITIVO (o convidado leva tudo que norteia o dado: contato→empresa/
+  //    cargo/superior, equipe→membros, empresa/item→categoria).
+  const _fornAll = repoListar(SCHEMA.FORNECEDORES);
+  const _contAll = repoListar(SCHEMA.CONTATOS);
+  const _itemAll = repoListar(SCHEMA.ITENS);
+  const _equipeAll = repoListar(SCHEMA.EQUIPES);
+  const mapaC = {}, mapaF = {}, mapaI = {}, mapaE = {};
+  _contAll.forEach(function (c) { mapaC[String(c.id)] = c; });
+  _fornAll.forEach(function (f) { mapaF[String(f.id)] = f; });
+  _itemAll.forEach(function (i) { mapaI[String(i.id)] = i; });
+  _equipeAll.forEach(function (e) { mapaE[String(e.id)] = e; });
+  // Equipe por N:N obras: se a equipe pertence a uma obra acessível, é semente.
+  _equipeAll.forEach(function (e) {
+    _parseJsonLista(e.obras).forEach(function (oid) {
+      if (idsAcc[oid]) refE[String(e.id)] = true;
+    });
+  });
+  _fecharRefsCompartilhadas(
+    { refC: refC, refF: refF, refI: refI, refE: refE, refCat: refCat, refCargoNome: refCargoNome },
+    { contato: mapaC, fornecedor: mapaF, item: mapaI, equipe: mapaE }
+  );
+
+  const fornecedores = _fornAll.filter(function (f) {
     return (_fornecedorAtivo(f) && String(f.usuario_id) === String(u.id)) || refF[String(f.id)];
   }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); });
-  const contatos = repoListar(SCHEMA.CONTATOS).filter(function (c) {
+  const contatos = _contAll.filter(function (c) {
     return (_contatoAtivo(c) && String(c.usuario_id) === String(u.id)) || refC[String(c.id)];
   }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); });
-  const itens = repoListar(SCHEMA.ITENS).filter(function (i) {
+  const itens = _itemAll.filter(function (i) {
     return (_itemAtivo(i) && String(i.usuario_id) === String(u.id)) || refI[String(i.id)];
   }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); });
-  const equipes = repoListar(SCHEMA.EQUIPES).filter(function (e) {
+  const equipes = _equipeAll.filter(function (e) {
     return (_equipeAtiva(e) && String(e.usuario_id) === String(u.id)) || refE[String(e.id)];
   }).sort(function (a, b) { return String(b.criado_em).localeCompare(String(a.criado_em)); }).map(_lerEquipe);
 
-  // Categorias (subclassificação): próprias/GLOBAL + as referenciadas por
-  // itens/empresas/despesas compartilhados (senão o badge fica "sem categoria").
+  // Categorias (subclassificação): próprias/GLOBAL + as referenciadas (item+empresa,
+  // via closure) — SEMPRE (não gate por temCompart): a badge precisa do nome/cor.
   const categorias = listarCategoriasUsuario(u.id);
-  if (temCompart) {
-    const jaCat = {};
-    categorias.forEach(function (c) { jaCat[String(c.id)] = true; });
-    itens.forEach(function (i) { if (i.categoria_id) refCat[String(i.categoria_id)] = true; });
-    fornecedores.forEach(function (f) { if (f.categoria_id) refCat[String(f.categoria_id)] = true; });
-    repoListar(SCHEMA.CATEGORIAS).forEach(function (c) {
-      if (refCat[String(c.id)] && !jaCat[String(c.id)]) categorias.push(c);
-    });
-  }
+  const jaCat = {};
+  categorias.forEach(function (c) { jaCat[String(c.id)] = true; });
+  repoListar(SCHEMA.CATEGORIAS).forEach(function (c) {
+    if (refCat[String(c.id)] && !jaCat[String(c.id)]) { categorias.push(c); jaCat[String(c.id)] = true; }
+  });
+
+  // Cargos: os fixos + os extras do usuário; MAIS os cargos EXTRAS do DONO cujo
+  // NOME é referenciado por um contato compartilhado (senão o cargo custom não
+  // viaja e a aba "Compartilhados > Cargos" fica vazia). `usuario_id` distingue.
+  const cargos = listarCargosUsuario(u.id);
+  const jaCargoNome = {};
+  cargos.forEach(function (cg) { jaCargoNome[String(cg.nome).trim().toLowerCase()] = true; });
+  repoListar(SCHEMA.CARGOS).forEach(function (cg) {
+    var n = String(cg.nome || "").trim().toLowerCase();
+    if (n && refCargoNome[n] && !jaCargoNome[n] && String(cg.usuario_id) !== String(u.id)) {
+      cargos.push({
+        id: cg.id, usuario_id: cg.usuario_id, nome: cg.nome, fixo: false,
+        criado_em: cg.criado_em, atualizado_em: cg.atualizado_em,
+      });
+      jaCargoNome[n] = true;
+    }
+  });
 
   const snapshot = {
     usuario: usuarioPublico(u),
@@ -249,7 +359,7 @@ function dadosSnapshot(data, sessao) {
     notasPorObra: notasPorObra,
     fornecedores: fornecedores,
     contatos: contatos,
-    cargos: listarCargosUsuario(u.id),
+    cargos: cargos,
     tiposTransferencia: listarTiposTransferenciaUsuario(u.id),
     itens: itens,
     cotacoes: cotacoes,

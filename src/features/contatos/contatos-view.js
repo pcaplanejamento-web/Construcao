@@ -78,7 +78,7 @@ class ContatosView extends BaseElement {
           </div>
           <div slot="compartilhados">
             <ui-card mesa title="Contatos de obras compartilhadas">
-              <compartilhados-obra tipo="contato"></compartilhados-obra>
+              <compartilhados-obra tipos="contato,equipe,cargo"></compartilhados-obra>
             </ui-card>
           </div>
         </ui-tabs>

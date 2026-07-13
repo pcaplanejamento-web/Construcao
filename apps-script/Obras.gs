@@ -113,49 +113,122 @@ function obrasListar(data, sessao) {
 }
 
 /**
+ * Reúne o conjunto FECHADO (transitivo) de referências das obras ACESSÍVEIS ao
+ * usuário (próprias + compartilhadas) — mesma fronteira de privacidade do
+ * snapshot. Coleta as sementes diretas (despesas/compras/financeiro/repasses/
+ * orçamentos/cotações/participantes) e roda `_fecharRefsCompartilhadas` (contato→
+ * empresa/cargo/superior, equipe→membros, empresa/item→categoria). Base dos guards
+ * de "incorporar"; assim um membro de equipe referenciado SÓ transitivamente
+ * também pode ser incorporado. Roda raro (clique em "Incorporar").
+ */
+function _refsAcessiveis(usuarioId) {
+  const refF = {}, refC = {}, refE = {}, refI = {}, refCat = {}, refCargoNome = {};
+  const idsAcc = {};
+  obrasListar({}, { usuario_id: usuarioId }).obras.forEach(function (o) { idsAcc[o.id] = true; });
+  function _addChaveRef(ch) {
+    const s = String(ch || "");
+    if (s.indexOf("c:") === 0) refC[s.slice(2)] = true;
+    else if (s.indexOf("e:") === 0) refE[s.slice(2)] = true;
+  }
+  repoListar(SCHEMA.DESPESAS).forEach(function (row) {
+    if (!idsAcc[row.obra_id]) return;
+    const d = _lerDespesa(row);
+    if (d.item_id) refI[String(d.item_id)] = true;
+    if (d.fornecedor_id) refF[String(d.fornecedor_id)] = true;
+    if (d.ofertante_contato_id) refC[String(d.ofertante_contato_id)] = true;
+    if (d.ofertante_equipe_id) refE[String(d.ofertante_equipe_id)] = true;
+    if (d.categoria_id) refCat[String(d.categoria_id)] = true;
+    (d.responsaveis || []).forEach(function (r) { _addChaveRef(r.chave); });
+    (d.pagamentos || []).forEach(function (p) { _addChaveRef(p.chave); });
+    (d.pagamentos_realizados || []).forEach(function (lv) {
+      if (lv.contato_id) refC[String(lv.contato_id)] = true;
+      if (lv.fornecedor_id) refF[String(lv.fornecedor_id)] = true;
+      _addChaveRef(lv.pagador);
+      (lv.distribuicao || []).forEach(function (x) { _addChaveRef(x.chave); });
+    });
+  });
+  repoListar(SCHEMA.COTACAO_PRECOS).forEach(function (p) {
+    if (!idsAcc[p.obra_id]) return;
+    if (p.item_id) refI[String(p.item_id)] = true;
+    if (p.fornecedor_id) refF[String(p.fornecedor_id)] = true;
+    if (p.contato_id) refC[String(p.contato_id)] = true;
+    if (p.equipe_id) refE[String(p.equipe_id)] = true;
+  });
+  repoListar(SCHEMA.TRANSFERENCIAS).forEach(function (t) {
+    if (!idsAcc[t.obra_id]) return;
+    if (t.fornecedor_id) refF[String(t.fornecedor_id)] = true;
+    if (t.recebedor_contato_id) refC[String(t.recebedor_contato_id)] = true;
+    if (t.recebedor_equipe_id) refE[String(t.recebedor_equipe_id)] = true;
+    _addChaveRef(t.pagador_chave);
+  });
+  repoListar(SCHEMA.PAGAMENTOS).forEach(function (p) {
+    if (!idsAcc[p.obra_id]) return;
+    if (p.fornecedor_id) refF[String(p.fornecedor_id)] = true;
+    if (p.recebedor_contato_id) refC[String(p.recebedor_contato_id)] = true;
+    if (p.recebedor_equipe_id) refE[String(p.recebedor_equipe_id)] = true;
+    _addChaveRef(p.pagador_chave);
+  });
+  repoListar(SCHEMA.REPASSES).forEach(function (row) {
+    if (!idsAcc[row.obra_id]) return;
+    const r = _lerRepasse(row);
+    if (r.recebedor_contato_id) refC[String(r.recebedor_contato_id)] = true;
+    (r.contatos_repassados || []).forEach(function (cid) { refC[String(cid)] = true; });
+  });
+  repoListar(SCHEMA.ORCAMENTOS).forEach(function (o) {
+    if (!(o.obra_id && idsAcc[o.obra_id])) return;
+    if (o.fornecedor_id) refF[String(o.fornecedor_id)] = true;
+    if (o.contato_id) refC[String(o.contato_id)] = true;
+    if (o.equipe_id) refE[String(o.equipe_id)] = true;
+  });
+  repoListar(SCHEMA.COTACOES).forEach(function (c) {
+    if (!(c.obra_id && idsAcc[c.obra_id])) return;
+    if (c.item_id) refI[String(c.item_id)] = true;
+    if (c.categoria_id) refCat[String(c.categoria_id)] = true;
+  });
+  repoListar(SCHEMA.OBRA_PARTICIPANTES).forEach(function (pt) {
+    if (!idsAcc[pt.obra_id]) return;
+    if (String(pt.tipo) === "contato") refC[String(pt.ref_id)] = true;
+    else if (String(pt.tipo) === "equipe") refE[String(pt.ref_id)] = true;
+  });
+  // Mapas do catálogo (1 leitura/aba) + equipe por N:N obras → fechamento.
+  const mapaC = {}, mapaF = {}, mapaI = {}, mapaE = {};
+  repoListar(SCHEMA.CONTATOS).forEach(function (c) { mapaC[String(c.id)] = c; });
+  repoListar(SCHEMA.FORNECEDORES).forEach(function (f) { mapaF[String(f.id)] = f; });
+  repoListar(SCHEMA.ITENS).forEach(function (i) { mapaI[String(i.id)] = i; });
+  repoListar(SCHEMA.EQUIPES).forEach(function (e) {
+    mapaE[String(e.id)] = e;
+    _parseJsonLista(e.obras).forEach(function (oid) { if (idsAcc[oid]) refE[String(e.id)] = true; });
+  });
+  _fecharRefsCompartilhadas(
+    { refC: refC, refF: refF, refI: refI, refE: refE, refCat: refCat, refCargoNome: refCargoNome },
+    { contato: mapaC, fornecedor: mapaF, item: mapaI, equipe: mapaE }
+  );
+  return { refC: refC, refF: refF, refI: refI, refE: refE, refCat: refCat, refCargoNome: refCargoNome };
+}
+
+/**
  * Guard do "incorporar": um id (contato/empresa/item/equipe) só pode ser
- * incorporado se for REFERENCIADO por alguma obra ACESSÍVEL ao usuário (própria
- * ou compartilhada) — mesma fronteira de privacidade do snapshot. Roda raro.
+ * incorporado se estiver no conjunto FECHADO de referências das obras acessíveis.
  */
 function _idReferenciadoEmObraAcessivel(alvoId, usuarioId) {
   const sid = String(alvoId || "");
   if (!sid) return false;
-  const idsAcc = {};
-  obrasListar({}, { usuario_id: usuarioId }).obras.forEach(function (o) { idsAcc[o.id] = true; });
-  let achou = false;
-  function _hit(v) { if (String(v || "") === sid) achou = true; }
-  function _hitChave(ch) {
-    const s = String(ch || "");
-    if ((s.indexOf("c:") === 0 || s.indexOf("e:") === 0) && s.slice(2) === sid) achou = true;
-  }
-  repoListar(SCHEMA.DESPESAS).forEach(function (row) {
-    if (achou || !idsAcc[row.obra_id]) return;
-    const d = _lerDespesa(row);
-    _hit(d.item_id); _hit(d.fornecedor_id); _hit(d.ofertante_contato_id); _hit(d.ofertante_equipe_id);
-    (d.responsaveis || []).forEach(function (r) { _hitChave(r.chave); });
-    (d.pagamentos || []).forEach(function (p) { _hitChave(p.chave); });
-    (d.pagamentos_realizados || []).forEach(function (lv) {
-      _hit(lv.contato_id); _hit(lv.fornecedor_id); _hitChave(lv.pagador);
-      (lv.distribuicao || []).forEach(function (x) { _hitChave(x.chave); });
-    });
-  });
-  if (!achou) repoListar(SCHEMA.COTACAO_PRECOS).forEach(function (p) {
-    if (achou || !idsAcc[p.obra_id]) return;
-    _hit(p.item_id); _hit(p.fornecedor_id); _hit(p.contato_id); _hit(p.equipe_id);
-  });
-  if (!achou) repoListar(SCHEMA.TRANSFERENCIAS).forEach(function (t) {
-    if (achou || !idsAcc[t.obra_id]) return;
-    _hit(t.fornecedor_id); _hit(t.recebedor_contato_id); _hit(t.recebedor_equipe_id); _hitChave(t.pagador_chave);
-  });
-  if (!achou) repoListar(SCHEMA.PAGAMENTOS).forEach(function (p) {
-    if (achou || !idsAcc[p.obra_id]) return;
-    _hit(p.fornecedor_id); _hit(p.recebedor_contato_id); _hit(p.recebedor_equipe_id); _hitChave(p.pagador_chave);
-  });
-  if (!achou) repoListar(SCHEMA.OBRA_PARTICIPANTES).forEach(function (pt) {
-    if (achou || !idsAcc[pt.obra_id]) return;
-    if (String(pt.tipo) === "contato") _hit(pt.ref_id);
-  });
-  return achou;
+  const refs = _refsAcessiveis(usuarioId);
+  return !!(refs.refC[sid] || refs.refF[sid] || refs.refI[sid] || refs.refE[sid]);
+}
+
+/** Guard do "incorporar" para CATEGORIAS (id ∈ classificações referenciadas). */
+function _categoriaReferenciadaEmObraAcessivel(catId, usuarioId) {
+  const sid = String(catId || "");
+  if (!sid) return false;
+  return !!_refsAcessiveis(usuarioId).refCat[sid];
+}
+
+/** Guard do "incorporar" para CARGOS (nome ∈ cargos referenciados por contatos). */
+function _cargoNomeReferenciadoEmObraAcessivel(nome, usuarioId) {
+  const n = String(nome || "").trim().toLowerCase();
+  if (!n) return false;
+  return !!_refsAcessiveis(usuarioId).refCargoNome[n];
 }
 
 /** obras.obter -> { obra, categorias, compartilhamentos }. */

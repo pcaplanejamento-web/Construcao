@@ -74,7 +74,7 @@ class FornecedoresView extends BaseElement {
           </div>
           <div slot="compartilhados">
             <ui-card mesa title="Empresas de obras compartilhadas">
-              <compartilhados-obra tipo="fornecedor"></compartilhados-obra>
+              <compartilhados-obra tipos="fornecedor,categoria-fornecedor"></compartilhados-obra>
             </ui-card>
           </div>
         </ui-tabs>

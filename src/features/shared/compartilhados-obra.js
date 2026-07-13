@@ -1,12 +1,17 @@
 /**
- * <compartilhados-obra tipo="contato|fornecedor|item|oferta|orcamento">
+ * <compartilhados-obra tipos="contato,equipe,cargo" [tipo="contato"]>
  *
  * Aba "Compartilhados" organizada POR OBRA (mesmo padrão da tela Transferências):
- * chips com as obras COMPARTILHADAS comigo; ao escolher uma, lista os dados
- * daquele tipo que a obra referencia (só os que NÃO são meus), cada um com
- * **Incorporar** (copia para o meu acervo pessoal via `dataStore.incorporar`).
- * Assim o usuário analisa cada compartilhamento e escolhe o que trazer.
- * Reutilizado por contatos/empresas/itens/ofertas/orçamentos-view.
+ * chips com as obras COMPARTILHADAS comigo; ao escolher uma, ESPELHA as sub-abas
+ * daquela tela — uma SEÇÃO por sub-tipo (Contatos → Contatos + Equipes + Cargos;
+ * Itens → Itens + Categorias; Empresas → Empresas + Classificação; etc.) — listando
+ * os dados que a obra referencia TRANSITIVAMENTE (só os que NÃO são meus), cada um
+ * com **Incorporar** (copia para o meu acervo pessoal via `dataStore.incorporar`).
+ * Assim o convidado recebe todo o grafo que norteia cada dado e escolhe o que trazer.
+ *
+ * `tipos` (lista separada por vírgula) é o novo modo multi-seção; `tipo` (singular)
+ * continua aceito como fallback. Reutilizado por contatos/empresas/itens/ofertas/
+ * orçamentos/cotações-view.
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
@@ -19,11 +24,29 @@ import "../despesas/category-badge.js";
 import "../../components/ui-empty-state.js";
 
 const _esc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const PLURAL = { contato: "contatos", fornecedor: "fornecedores", item: "itens", oferta: "ofertas", orcamento: "orcamentos" };
+
+// tipo → { chave (no retorno de compartilhadoDaObra), titulo (cabeçalho da seção),
+//          incorporavel (mostra botão), idDe (identificador enviado ao incorporar) }.
+const TIPOS = {
+  contato: { chave: "contatos", titulo: "Contatos" },
+  equipe: { chave: "equipes", titulo: "Equipes" },
+  cargo: { chave: "cargos", titulo: "Cargos", idDe: (x) => x.nome },
+  item: { chave: "itens", titulo: "Itens" },
+  "categoria-item": { chave: "categoriasItem", titulo: "Categorias" },
+  fornecedor: { chave: "fornecedores", titulo: "Empresas" },
+  "categoria-fornecedor": { chave: "categoriasFornecedor", titulo: "Classificação" },
+  oferta: { chave: "ofertas", titulo: "Ofertas" },
+  orcamento: { chave: "orcamentos", titulo: "Orçamentos" },
+  cotacao: { chave: "cotacoes", titulo: "Cotações", incorporavel: false },
+};
 
 class CompartilhadosObra extends BaseElement {
-  get tipo() {
-    return this.getAttribute("tipo") || "contato";
+  get tiposList() {
+    const attr = (this.getAttribute("tipos") || this.getAttribute("tipo") || "contato").trim();
+    return attr
+      .split(",")
+      .map((s) => s.trim())
+      .filter((t) => TIPOS[t]);
   }
 
   estilos() {
@@ -36,6 +59,9 @@ class CompartilhadosObra extends BaseElement {
         cursor: pointer; border-radius: var(--raio-completo); font: inherit; font-size: var(--fs-sm);
         font-weight: var(--peso-medio); min-height: 40px; padding: 0 var(--esp-4); white-space: nowrap; }
       .chip.ativo { background: var(--cor-primaria); color: #fff; border-color: var(--cor-primaria); }
+      .secao + .secao { margin-top: var(--esp-4); }
+      .secao-titulo { font-size: var(--fs-sm); font-weight: var(--peso-semi); color: var(--cor-texto-suave);
+        text-transform: uppercase; letter-spacing: .04em; margin: 0 0 var(--esp-1); }
       .comp-lista { display: flex; flex-direction: column; }
       .comp-row { display: flex; align-items: center; gap: var(--esp-3); padding: var(--esp-2) 0;
         border-bottom: 1px solid var(--cor-borda); min-height: 60px; }
@@ -47,6 +73,8 @@ class CompartilhadosObra extends BaseElement {
       .comp-inc:hover { background: var(--cor-primaria); color: #fff; }
       .comp-inc[disabled] { opacity: .5; cursor: default; }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); padding: var(--esp-3) 0; }
+      .badge { display: inline-block; padding: 2px 10px; border-radius: var(--raio-completo);
+        font-size: var(--fs-sm); font-weight: var(--peso-semi); }
     `;
   }
 
@@ -82,24 +110,41 @@ class CompartilhadosObra extends BaseElement {
       })
     );
 
-    const lista = (dataStore.compartilhadoDaObra(this._obraSel) || {})[PLURAL[this.tipo]] || [];
-    if (!lista.length) {
-      listaEl.innerHTML = `<p class="vazio">Nada deste tipo compartilhado nesta obra.</p>`;
+    const dados = dataStore.compartilhadoDaObra(this._obraSel) || {};
+    const tipos = this.tiposList;
+    const mostrarTitulo = tipos.length > 1;
+    const secoes = tipos
+      .map((tipo) => {
+        const cfg = TIPOS[tipo];
+        const lista = dados[cfg.chave] || [];
+        if (!lista.length) return "";
+        const incorporavel = cfg.incorporavel !== false;
+        const linhas = lista
+          .map((x) => {
+            const idd = _esc(String((cfg.idDe ? cfg.idDe(x) : x.id) || ""));
+            return `<div class="comp-row">
+              <div class="comp-conteudo">${this._linha(tipo, x)}</div>
+              ${incorporavel ? `<button type="button" class="comp-inc" data-tipo="${tipo}" data-id="${idd}">Incorporar</button>` : ""}
+            </div>`;
+          })
+          .join("");
+        return `<div class="secao">
+          ${mostrarTitulo ? `<p class="secao-titulo">${_esc(cfg.titulo)}</p>` : ""}
+          <div class="comp-lista">${linhas}</div>
+        </div>`;
+      })
+      .filter(Boolean);
+
+    if (!secoes.length) {
+      listaEl.innerHTML = `<p class="vazio">Nada compartilhado nesta obra.</p>`;
       return;
     }
-    listaEl.innerHTML = `<div class="comp-lista">${lista
-      .map(
-        (x) => `<div class="comp-row">
-          <div class="comp-conteudo">${this._linha(x)}</div>
-          <button type="button" class="comp-inc" data-id="${x.id}">Incorporar</button>
-        </div>`
-      )
-      .join("")}</div>`;
+    listaEl.innerHTML = secoes.join("");
     listaEl.querySelectorAll(".comp-inc").forEach((b) =>
       b.addEventListener("click", async () => {
         b.disabled = true;
         try {
-          await dataStore.incorporar(this.tipo, b.dataset.id);
+          await dataStore.incorporar(b.dataset.tipo, b.dataset.id);
           toastSucesso("Incorporado ao seu acervo.");
         } catch (e) {
           notificarErro(e);
@@ -109,12 +154,14 @@ class CompartilhadosObra extends BaseElement {
     );
   }
 
-  _linha(x) {
+  _linha(tipo, x) {
     const pessoa = (nome, sub) =>
       `<div style="display:flex;align-items:center;gap:12px;min-width:0">${avatarHtml(nome, 42)}
         <div style="min-width:0"><div style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(nome)}</div>
         ${sub ? `<div style="font-size:.85rem;color:var(--cor-texto-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(sub)}</div>` : ""}</div></div>`;
-    switch (this.tipo) {
+    const badge = (nome, cor) =>
+      `<span class="badge" style="background:${cor || "var(--cor-neutro)"};color:#fff">${_esc(nome || "—")}</span>`;
+    switch (tipo) {
       case "contato": {
         const emp = x.fornecedor_id ? (dataStore.fornecedores().find((f) => String(f.id) === String(x.fornecedor_id)) || {}).nome : "";
         return pessoa(x.nome, [x.cargo, emp].filter(Boolean).join(" · "));
@@ -123,6 +170,15 @@ class CompartilhadosObra extends BaseElement {
         const cat = (dataStore.categorias().find((c) => String(c.id) === String(x.categoria_id)) || {}).nome || "";
         return pessoa(x.nome, cat);
       }
+      case "equipe": {
+        const n = (x.membros || []).length;
+        return pessoa(x.nome, `${n} ${n === 1 ? "integrante" : "integrantes"}`);
+      }
+      case "cargo":
+        return badge(x.nome, "var(--cor-neutro)");
+      case "categoria-item":
+      case "categoria-fornecedor":
+        return badge(x.nome, x.cor);
       case "item":
         return `<div style="display:flex;align-items:center;gap:10px;min-width:0">
           <span style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(x.nome)}</span>
@@ -138,6 +194,12 @@ class CompartilhadosObra extends BaseElement {
       case "orcamento":
         return `<div style="min-width:0"><div style="font-weight:var(--peso-semi)">${_esc(rotuloOrcamento(x))}</div>
           ${x.tipo ? `<div style="font-size:.85rem;color:var(--cor-texto-suave)">${_esc(x.tipo)}</div>` : ""}</div>`;
+      case "cotacao": {
+        const rot = x.descricao || x.nome || "Cotação";
+        const sub = [x.quantidade && x.unidade ? `${x.quantidade} ${x.unidade}` : "", x.classificacao].filter(Boolean).join(" · ");
+        return `<div style="min-width:0"><div style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(rot)}</div>
+          ${sub ? `<div style="font-size:.85rem;color:var(--cor-texto-suave)">${_esc(sub)}</div>` : ""}</div>`;
+      }
       default:
         return _esc(x.nome || x.id || "");
     }
