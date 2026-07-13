@@ -413,6 +413,40 @@ const dadosDaObra = (obraId) => {
 const temDadosDeObraDeTipo = (chave) =>
   obras().some((o) => ((dadosDaObra(o.id) || {})[chave] || []).length > 0);
 
+/**
+ * O usuário JÁ tem uma cópia PESSOAL equivalente deste item de CATÁLOGO
+ * compartilhado? (usado para desativar o botão "Incorporar" → "Incorporado", para
+ * não incorporar 2×). Casa por NOME (case-insensitive) + discriminador do tipo
+ * (telefone/classificação/tipo). Espelha o dedupe do backend.
+ */
+const jaIncorporado = (tipo, x) => {
+  if (!x) return false;
+  const meu = _meuId();
+  const nrm = (s) => String(s == null ? "" : s).trim().toLowerCase();
+  const nomeIgual = (a, b) => nrm(a) !== "" && nrm(a) === nrm(b);
+  const meus = (arr) => arr.filter((y) => y && String(y.usuario_id || "") === meu);
+  const minhasCats = () =>
+    categorias().filter((c) => String(c.usuario_id || "") === meu || String(c.usuario_id || "") === "GLOBAL");
+  switch (tipo) {
+    case "contato":
+      return meus(contatosAtivos()).some((c) => nomeIgual(c.nome, x.nome) && nrm(c.telefone) === nrm(x.telefone));
+    case "fornecedor":
+      return meus(fornecedoresAtivos()).some((f) => nomeIgual(f.nome, x.nome));
+    case "item":
+      return meus(itensAtivos()).some((i) => nomeIgual(i.nome, x.nome) && nrm(i.classificacao) === nrm(x.classificacao));
+    case "equipe":
+      return meus(equipes()).some((e) => nomeIgual(e.nome, x.nome));
+    case "cargo":
+      return cargos().filter((cg) => cg.fixo || String(cg.usuario_id || "") === meu).some((cg) => nomeIgual(cg.nome, x.nome));
+    case "categoria-item":
+      return minhasCats().some((c) => nomeIgual(c.nome, x.nome) && nrm(c.tipo) !== "fornecedor");
+    case "categoria-fornecedor":
+      return minhasCats().some((c) => nomeIgual(c.nome, x.nome) && nrm(c.tipo) === "fornecedor");
+    default:
+      return false; // oferta/cotação/orçamento (escopo=obra) não bloqueiam (dedupe no backend)
+  }
+};
+
 /* Rastreabilidade (derivada) — atalhos p/ as direções reversas mais usadas. */
 const ofertasDoContato = (id) => store.get().ofertas.filter((o) => String(o.contato_id) === String(id));
 const ofertasDoFornecedor = (id) => store.get().ofertas.filter((o) => String(o.fornecedor_id) === String(id));
@@ -1695,7 +1729,7 @@ export const dataStore = {
   notasDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, tiposTransferencia, itens, itensAtivos, item,
   meusContatosAtivos, contatosCompartilhados, meusFornecedoresAtivos, fornecedoresCompartilhados, meusItensAtivos, itensCompartilhados,
-  obrasCompartilhadas, compartilhadoDaObra, dadosDaObra, temDadosDeObraDeTipo,
+  obrasCompartilhadas, compartilhadoDaObra, dadosDaObra, temDadosDeObraDeTipo, jaIncorporado,
   cotacoes, cotacao, precosDaCotacao, todasOfertas,
   historicoDaCotacao, itensDaSubclasse, precosDaCotacaoPorItem,
   orcamentos, orcamento, ofertasDoOrcamento,

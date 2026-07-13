@@ -141,9 +141,17 @@ class CompartilhadosObra extends BaseElement {
         const linhas = lista
           .map((x) => {
             const idd = _esc(String((cfg.idDe ? cfg.idDe(x) : x.id) || ""));
+            // Catálogo: se já tenho uma cópia pessoal equivalente, o botão fica
+            // inativo com "Incorporado" (não incorporar 2×).
+            const jaTem = !ehObra && dataStore.jaIncorporado(tipo, x);
+            const botao = !incorporavel
+              ? ""
+              : jaTem
+                ? `<button type="button" class="comp-inc" disabled>Incorporado</button>`
+                : `<button type="button" class="comp-inc" data-tipo="${tipo}" data-id="${idd}">${rotuloBtn}</button>`;
             return `<div class="comp-row">
               <div class="comp-conteudo">${this._linha(tipo, x)}</div>
-              ${incorporavel ? `<button type="button" class="comp-inc" data-tipo="${tipo}" data-id="${idd}">${rotuloBtn}</button>` : ""}
+              ${botao}
             </div>`;
           })
           .join("");
@@ -159,7 +167,7 @@ class CompartilhadosObra extends BaseElement {
       return;
     }
     listaEl.innerHTML = secoes.join("");
-    listaEl.querySelectorAll(".comp-inc").forEach((b) =>
+    listaEl.querySelectorAll(".comp-inc:not([disabled])").forEach((b) =>
       b.addEventListener("click", async () => {
         b.disabled = true;
         try {

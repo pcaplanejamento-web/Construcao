@@ -81,6 +81,18 @@ function categoriasIncorporar(data, sessao) {
   if (String(origem.usuario_id) === CATEGORIA_GLOBAL) lancar(ERRO.VALIDACAO, "Categoria padrão já está disponível.");
   if (!_categoriaReferenciadaEmObraAcessivel(id, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Categoria não disponível para incorporar.");
   return comLock(function () {
+    // Dedupe: se já tenho (própria ou GLOBAL) categoria com esse nome+tipo, devolve-a.
+    const nk = String(origem.nome || "").trim().toLowerCase();
+    const tk = String(origem.tipo || "") === "fornecedor" ? "fornecedor" : "item";
+    const jaTenho = repoEncontrar(SCHEMA.CATEGORIAS, function (c) {
+      return (
+        _categoriaAtiva(c) &&
+        (String(c.usuario_id) === String(sessao.usuario_id) || String(c.usuario_id) === CATEGORIA_GLOBAL) &&
+        String(c.nome || "").trim().toLowerCase() === nk &&
+        (String(c.tipo || "") === "fornecedor" ? "fornecedor" : "item") === tk
+      );
+    });
+    if (jaTenho) return { categoria: jaTenho };
     const agora = agoraIso();
     const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const categoria = {

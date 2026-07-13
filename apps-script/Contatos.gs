@@ -69,6 +69,18 @@ function contatosIncorporar(data, sessao) {
   if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Este contato já é seu.");
   if (!_idReferenciadoEmObraAcessivel(id, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Contato não disponível para incorporar.");
   return comLock(function () {
+    // Dedupe: se já tenho uma cópia pessoal (nome+telefone), devolve-a (não 2×).
+    const nk = String(origem.nome || "").trim().toLowerCase();
+    const tk = String(origem.telefone || "").trim();
+    const jaMeu = repoEncontrar(SCHEMA.CONTATOS, function (c) {
+      return (
+        String(c.usuario_id) === String(sessao.usuario_id) &&
+        _contatoAtivo(c) &&
+        String(c.nome || "").trim().toLowerCase() === nk &&
+        String(c.telefone || "").trim() === tk
+      );
+    });
+    if (jaMeu) return { contato: jaMeu };
     const agora = agoraIso();
     const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const contato = {

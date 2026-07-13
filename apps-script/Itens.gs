@@ -83,6 +83,18 @@ function itensIncorporar(data, sessao) {
   if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Este item já é seu.");
   if (!_idReferenciadoEmObraAcessivel(id, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Item não disponível para incorporar.");
   return comLock(function () {
+    // Dedupe: se já tenho um item pessoal (nome+classificação), devolve-o (não 2×).
+    const nk = String(origem.nome || "").trim().toLowerCase();
+    const ck = String(_classificacaoValida(origem.classificacao) || "").trim().toLowerCase();
+    const jaMeu = repoEncontrar(SCHEMA.ITENS, function (i) {
+      return (
+        String(i.usuario_id) === String(sessao.usuario_id) &&
+        _itemAtivo(i) &&
+        String(i.nome || "").trim().toLowerCase() === nk &&
+        String(i.classificacao || "").trim().toLowerCase() === ck
+      );
+    });
+    if (jaMeu) return { item: jaMeu };
     const agora = agoraIso();
     const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const item = {

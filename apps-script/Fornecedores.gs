@@ -69,6 +69,16 @@ function fornecedoresIncorporar(data, sessao) {
   if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Esta empresa já é sua.");
   if (!_idReferenciadoEmObraAcessivel(id, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Empresa não disponível para incorporar.");
   return comLock(function () {
+    // Dedupe: se já tenho uma empresa pessoal com esse nome, devolve-a (não 2×).
+    const nk = String(origem.nome || "").trim().toLowerCase();
+    const jaMinha = repoEncontrar(SCHEMA.FORNECEDORES, function (f) {
+      return (
+        String(f.usuario_id) === String(sessao.usuario_id) &&
+        _fornecedorAtivo(f) &&
+        String(f.nome || "").trim().toLowerCase() === nk
+      );
+    });
+    if (jaMinha) return { fornecedor: jaMinha };
     const agora = agoraIso();
     const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const fornecedor = {
