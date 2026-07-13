@@ -11,6 +11,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { obrigatorio } from "../../core/validators.js";
+import { avisarDuplicado } from "../shared/duplicado.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-button.js";
@@ -84,6 +85,13 @@ class CategoriaForm extends BaseElement {
     }
     this.$("#nome").removeAttribute("error");
     const cor = this.$("#cor").value || "#2563eb";
+
+    // Aviso de duplicado (só ao criar): compara DENTRO do mesmo pool (item ×
+    // fornecedor são categorias distintas). O usuário decide se cria mesmo assim.
+    if (!this.ehEdicao) {
+      const pool = this.tipo === "fornecedor" ? dataStore.categoriasFornecedor() : dataStore.categoriasItem();
+      if (!(await avisarDuplicado("categoria", nome, pool))) return;
+    }
 
     const btn = this.$("#salvar");
     btn.setAttribute("loading", "");

@@ -10,15 +10,16 @@ function esc(s) {
 }
 
 const TEXTO = {
-  contato: { artigo: "um contato", titulo: "Esse contato já existe" },
-  empresa: { artigo: "uma empresa", titulo: "Essa empresa já existe" },
-  item: { artigo: "um item", titulo: "Esse item já existe" },
+  contato: { artigo: "um contato", part: "chamado", titulo: "Esse contato já existe" },
+  empresa: { artigo: "uma empresa", part: "chamada", titulo: "Essa empresa já existe" },
+  item: { artigo: "um item", part: "chamado", titulo: "Esse item já existe" },
+  categoria: { artigo: "uma categoria", part: "chamada", titulo: "Essa categoria já existe" },
 };
 
 /**
  * Se `existentes` já contém um registro com o mesmo `nome` (case-insensitive),
  * mostra o aviso e devolve a escolha do usuário; sem duplicado → true direto.
- * @param {"contato"|"empresa"|"item"} tipo  para a mensagem.
+ * @param {"contato"|"empresa"|"item"|"categoria"} tipo  para a mensagem.
  * @param {string} nome  nome digitado.
  * @param {Array<{nome:string}>} existentes  registros ativos a comparar.
  * @returns {Promise<boolean>} true = prosseguir com o cadastro.
@@ -31,7 +32,7 @@ export async function avisarDuplicado(tipo, nome, existentes) {
   const t = TEXTO[tipo] || TEXTO.contato;
   return confirmar({
     titulo: t.titulo,
-    mensagem: `Já existe ${t.artigo} chamado <strong>${esc(nome)}</strong>. Deseja cadastrar assim mesmo?`,
+    mensagem: `Já existe ${t.artigo} ${t.part} <strong>${esc(nome)}</strong>. Deseja cadastrar assim mesmo?`,
     rotuloOk: "Cadastrar assim mesmo",
     rotuloCancelar: "Cancelar",
   });
