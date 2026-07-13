@@ -12,6 +12,7 @@
 import { criarStore } from "./store.js";
 import { fecharCompartilhado } from "../features/shared/compartilhamento-closure.js";
 import { pagamentosSemTransferencia } from "../features/pagamentos/transferencia-regra.js";
+import { jaIncorporado as _jaIncorporadoPuro, filtrarDadosDaObra } from "../features/shared/incorporacao.js";
 import { api } from "./api-client.js";
 import { auth } from "./auth-store.js";
 import { bus, EVENTOS, toastAviso, toastInfo } from "./event-bus.js";
@@ -399,15 +400,13 @@ const compartilhadoDaObra = (obraId) => {
  * à obra, não ao usuário — usados na aba "Das obras" com "Salvar nos meus dados".
  * Diferente de `compartilhadoDaObra` (que filtra por `usuario_id !== me`).
  */
-const dadosDaObra = (obraId) => {
-  const oid = String(obraId);
-  const desp = despesas(obraId);
-  const precoIds = new Set(desp.map((d) => String(d.preco_id || "")).filter(Boolean));
-  const ofertas = todasOfertas().filter((o) => String(o.obra_id || "") === oid || precoIds.has(String(o.id)));
-  const cots = cotacoes().filter((c) => String(c.obra_id || "") === oid);
-  const orcs = orcamentos().filter((o) => String(o.obra_id || "") === oid);
-  return { ofertas, cotacoes: cots, orcamentos: orcs };
-};
+const dadosDaObra = (obraId) =>
+  filtrarDadosDaObra(obraId, {
+    ofertas: todasOfertas(),
+    cotacoes: cotacoes(),
+    orcamentos: orcamentos(),
+    despesasDaObra: despesas(obraId),
+  });
 
 /** Há ≥1 item de `chave` ("ofertas"|"cotacoes"|"orcamentos") em alguma obra acessível? */
 const temDadosDeObraDeTipo = (chave) =>
@@ -419,33 +418,16 @@ const temDadosDeObraDeTipo = (chave) =>
  * não incorporar 2×). Casa por NOME (case-insensitive) + discriminador do tipo
  * (telefone/classificação/tipo). Espelha o dedupe do backend.
  */
-const jaIncorporado = (tipo, x) => {
-  if (!x) return false;
-  const meu = _meuId();
-  const nrm = (s) => String(s == null ? "" : s).trim().toLowerCase();
-  const nomeIgual = (a, b) => nrm(a) !== "" && nrm(a) === nrm(b);
-  const meus = (arr) => arr.filter((y) => y && String(y.usuario_id || "") === meu);
-  const minhasCats = () =>
-    categorias().filter((c) => String(c.usuario_id || "") === meu || String(c.usuario_id || "") === "GLOBAL");
-  switch (tipo) {
-    case "contato":
-      return meus(contatosAtivos()).some((c) => nomeIgual(c.nome, x.nome) && nrm(c.telefone) === nrm(x.telefone));
-    case "fornecedor":
-      return meus(fornecedoresAtivos()).some((f) => nomeIgual(f.nome, x.nome));
-    case "item":
-      return meus(itensAtivos()).some((i) => nomeIgual(i.nome, x.nome) && nrm(i.classificacao) === nrm(x.classificacao));
-    case "equipe":
-      return meus(equipes()).some((e) => nomeIgual(e.nome, x.nome));
-    case "cargo":
-      return cargos().filter((cg) => cg.fixo || String(cg.usuario_id || "") === meu).some((cg) => nomeIgual(cg.nome, x.nome));
-    case "categoria-item":
-      return minhasCats().some((c) => nomeIgual(c.nome, x.nome) && nrm(c.tipo) !== "fornecedor");
-    case "categoria-fornecedor":
-      return minhasCats().some((c) => nomeIgual(c.nome, x.nome) && nrm(c.tipo) === "fornecedor");
-    default:
-      return false; // oferta/cotação/orçamento (escopo=obra) não bloqueiam (dedupe no backend)
-  }
-};
+const jaIncorporado = (tipo, x) =>
+  _jaIncorporadoPuro(tipo, x, {
+    meuId: _meuId(),
+    contatos: contatosAtivos(),
+    fornecedores: fornecedoresAtivos(),
+    itens: itensAtivos(),
+    equipes: equipes(),
+    cargos: cargos(),
+    categorias: categorias(),
+  });
 
 /* Rastreabilidade (derivada) — atalhos p/ as direções reversas mais usadas. */
 const ofertasDoContato = (id) => store.get().ofertas.filter((o) => String(o.contato_id) === String(id));
