@@ -115,7 +115,7 @@ function despesasResumo(data, sessao) {
  * ter validado o acesso à obra). Reutilizado por despesas.criar e pelo
  * "registrar cotação como despesa" (Cotacoes.gs).
  */
-function _novaDespesa(obraId, usuarioId, dados) {
+function _novaDespesa(obraId, usuarioId, dados, refI) {
   const nome = (buscarUsuarioPorId(usuarioId) || {}).nome || "";
   const agora = agoraIso();
 
@@ -125,10 +125,10 @@ function _novaDespesa(obraId, usuarioId, dados) {
   let classificacao = String((dados && dados.classificacao) || "");
   const itemId = String((dados && dados.item_id) || "");
   if (itemId) {
-    // Colaborador de obra compartilhada usa o item do DONO (catálogo da obra) —
-    // aceita item próprio OU do dono da obra (leitura; não altera o item).
-    const obraRow = repoEncontrar(SCHEMA.OBRAS, function (o) { return String(o.id) === String(obraId); });
-    const it = _itemParaObra(itemId, obraRow && obraRow.usuario_id, usuarioId);
+    // Colaborador usa item PRÓPRIO ou REFERENCIADO por obra acessível (leitura;
+    // não altera o item; nunca um id arbitrário do catálogo do dono). `refI`
+    // reaproveitado do chamador quando já calculado (evita 2× o fechamento).
+    const it = _itemParaObra(itemId, usuarioId, refI || _refsAcessiveis(usuarioId).refI);
     itemNome = it.nome;
     classificacao = it.classificacao;
   }
@@ -215,9 +215,8 @@ function despesasAtualizar(data, sessao) {
   const patch = {};
   // Item: se vier item_id, re-deriva nome+classificacao do catálogo (fonte de verdade).
   if (data.item_id !== undefined && String(data.item_id || "")) {
-    // Aceita item próprio OU do dono da obra (catálogo compartilhado).
-    const obraRow = repoEncontrar(SCHEMA.OBRAS, function (o) { return String(o.id) === String(atual.obra_id); });
-    const it = _itemParaObra(String(data.item_id), obraRow && obraRow.usuario_id, sessao.usuario_id);
+    // Aceita item próprio OU REFERENCIADO por obra acessível (não id arbitrário do dono).
+    const it = _itemParaObra(String(data.item_id), sessao.usuario_id, _refsAcessiveis(sessao.usuario_id).refI);
     patch.item_id = String(data.item_id);
     patch.item = it.nome;
     patch.classificacao = it.classificacao;

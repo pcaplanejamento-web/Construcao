@@ -44,18 +44,15 @@ function _equipeDoUsuario(id, usuarioId) {
 
 /**
  * Equipe para uso (LEITURA) numa oferta/despesa de OBRA ACESSÍVEL: aceita a
- * equipe do PRÓPRIO usuário OU do DONO da obra (catálogo compartilhado).
- * `donoObraId` = obra.usuario_id (ou o próprio usuário quando não há obra).
+ * equipe do PRÓPRIO usuário OU uma equipe REFERENCIADA por alguma obra acessível
+ * (`refE` = `_refsAcessiveis(usuarioId).refE`) — nunca um id arbitrário do dono
+ * que a obra não referencia (protege a PII dos membros). Leitura-só.
  */
-function _equipeParaObra(id, donoObraId, usuarioId) {
+function _equipeParaObra(id, usuarioId, refE) {
   const e = repoEncontrar(SCHEMA.EQUIPES, function (x) {
     return String(x.id) === String(id);
   });
-  if (
-    !e ||
-    (String(e.usuario_id) !== String(usuarioId) &&
-      String(e.usuario_id) !== String(donoObraId))
-  ) {
+  if (!e || (String(e.usuario_id) !== String(usuarioId) && !(refE && refE[String(id)]))) {
     lancar(ERRO.NAO_AUTORIZADO, "Equipe não disponível nesta obra.");
   }
   return e;

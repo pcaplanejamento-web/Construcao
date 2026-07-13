@@ -35,18 +35,15 @@ function _fornecedorDoUsuario(fornecedorId, usuarioId) {
 
 /**
  * Empresa para uso (LEITURA) numa oferta/despesa de OBRA ACESSÍVEL: aceita a
- * empresa do PRÓPRIO usuário OU do DONO da obra (catálogo compartilhado).
- * `donoObraId` = obra.usuario_id (ou o próprio usuário quando não há obra).
+ * empresa do PRÓPRIO usuário OU uma empresa REFERENCIADA por alguma obra
+ * acessível (`refF` = `_refsAcessiveis(usuarioId).refF`) — nunca um id arbitrário
+ * do dono que a obra não referencia. Leitura-só.
  */
-function _fornecedorParaObra(fornecedorId, donoObraId, usuarioId) {
+function _fornecedorParaObra(fornecedorId, usuarioId, refF) {
   const f = repoEncontrar(SCHEMA.FORNECEDORES, function (x) {
     return String(x.id) === String(fornecedorId);
   });
-  if (
-    !f ||
-    (String(f.usuario_id) !== String(usuarioId) &&
-      String(f.usuario_id) !== String(donoObraId))
-  ) {
+  if (!f || (String(f.usuario_id) !== String(usuarioId) && !(refF && refF[String(fornecedorId)]))) {
     lancar(ERRO.NAO_AUTORIZADO, "Empresa não disponível nesta obra.");
   }
   return f;

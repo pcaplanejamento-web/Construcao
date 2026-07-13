@@ -193,13 +193,13 @@ function dadosSnapshot(data, sessao) {
   // 2) FINANCEIRO por obra acessível (têm obra_id): transferências, pagamentos,
   //    repasses (own OU obra acessível — preserva os próprios e soma os da obra).
   const transferencias = repoFiltrar(SCHEMA.TRANSFERENCIAS, function (t) {
-    return String(t.usuario_id) === String(u.id) || idsAcc[t.obra_id];
+    return String(t.usuario_id) === String(u.id) || (t.obra_id && idsAcc[t.obra_id]);
   }).map(_lerTransferencia);
   const pagamentos = repoFiltrar(SCHEMA.PAGAMENTOS, function (p) {
-    return String(p.usuario_id) === String(u.id) || idsAcc[p.obra_id];
+    return String(p.usuario_id) === String(u.id) || (p.obra_id && idsAcc[p.obra_id]);
   }).map(_lerPagamento);
   const repasses = repoFiltrar(SCHEMA.REPASSES, function (r) {
-    return String(r.usuario_id) === String(u.id) || idsAcc[r.obra_id];
+    return String(r.usuario_id) === String(u.id) || (r.obra_id && idsAcc[r.obra_id]);
   }).map(_lerRepasse);
   transferencias.concat(pagamentos).forEach(function (t) {
     if (t.fornecedor_id) refF[String(t.fornecedor_id)] = true;
@@ -336,9 +336,13 @@ function dadosSnapshot(data, sessao) {
   const cargos = listarCargosUsuario(u.id);
   const jaCargoNome = {};
   cargos.forEach(function (cg) { jaCargoNome[String(cg.nome).trim().toLowerCase()] = true; });
+  // SÓ cargos de um DONO de obra acessível (senão, casar por NOME entre TODOS os
+  // usuários vazaria o cargo de um terceiro sem relação com esta sessão).
+  const donosAcc = {};
+  obras.forEach(function (o) { donosAcc[String(o.usuario_id)] = true; });
   repoListar(SCHEMA.CARGOS).forEach(function (cg) {
     var n = String(cg.nome || "").trim().toLowerCase();
-    if (n && refCargoNome[n] && !jaCargoNome[n] && String(cg.usuario_id) !== String(u.id)) {
+    if (n && refCargoNome[n] && !jaCargoNome[n] && String(cg.usuario_id) !== String(u.id) && donosAcc[String(cg.usuario_id)]) {
       cargos.push({
         id: cg.id, usuario_id: cg.usuario_id, nome: cg.nome, fixo: false,
         criado_em: cg.criado_em, atualizado_em: cg.atualizado_em,

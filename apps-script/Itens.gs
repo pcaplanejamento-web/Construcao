@@ -46,20 +46,16 @@ function _itemPorId(itemId, usuarioId) {
 
 /**
  * Item ATIVO para uso (LEITURA) numa despesa/estoque de OBRA ACESSÍVEL: aceita o
- * item do PRÓPRIO usuário OU do DONO da obra (catálogo compartilhado). O
- * colaborador usa o item do dono só para derivar nome/classificação/subclasse —
- * NÃO altera o item. `donoObraId` = obra.usuario_id. Corrige o "Item não pode ser
- * alterado" ao registrar despesa numa obra compartilhada.
+ * item do PRÓPRIO usuário OU um item REFERENCIADO por alguma obra acessível
+ * (`refI` = `_refsAcessiveis(usuarioId).refI`). Assim o colaborador só usa itens
+ * que o snapshot já lhe mostrou — nunca um id arbitrário do catálogo do dono que
+ * a obra não referencia (evita exfiltração via injeção→incorporar). Leitura-só.
  */
-function _itemParaObra(itemId, donoObraId, usuarioId) {
+function _itemParaObra(itemId, usuarioId, refI) {
   const i = repoEncontrar(SCHEMA.ITENS, function (x) {
     return String(x.id) === String(itemId);
   });
-  if (
-    !i ||
-    (String(i.usuario_id) !== String(usuarioId) &&
-      String(i.usuario_id) !== String(donoObraId))
-  ) {
+  if (!i || (String(i.usuario_id) !== String(usuarioId) && !(refI && refI[String(itemId)]))) {
     lancar(ERRO.NAO_AUTORIZADO, "Item não disponível nesta obra.");
   }
   if (!_itemAtivo(i)) lancar(ERRO.VALIDACAO, "Item inválido.");

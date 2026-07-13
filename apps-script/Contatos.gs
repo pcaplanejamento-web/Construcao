@@ -35,18 +35,15 @@ function _contatoDoUsuario(contatoId, usuarioId) {
 
 /**
  * Contato para uso (LEITURA) numa oferta/despesa de OBRA ACESSÍVEL: aceita o
- * contato do PRÓPRIO usuário OU do DONO da obra (catálogo compartilhado).
- * `donoObraId` = obra.usuario_id (ou o próprio usuário quando não há obra).
+ * contato do PRÓPRIO usuário OU um contato REFERENCIADO por alguma obra acessível
+ * (`refC` = `_refsAcessiveis(usuarioId).refC`) — nunca um id arbitrário do dono
+ * que a obra não referencia (protege PII: telefone/e-mail). Leitura-só.
  */
-function _contatoParaObra(contatoId, donoObraId, usuarioId) {
+function _contatoParaObra(contatoId, usuarioId, refC) {
   const c = repoEncontrar(SCHEMA.CONTATOS, function (x) {
     return String(x.id) === String(contatoId);
   });
-  if (
-    !c ||
-    (String(c.usuario_id) !== String(usuarioId) &&
-      String(c.usuario_id) !== String(donoObraId))
-  ) {
+  if (!c || (String(c.usuario_id) !== String(usuarioId) && !(refC && refC[String(contatoId)]))) {
     lancar(ERRO.NAO_AUTORIZADO, "Contato não disponível nesta obra.");
   }
   return c;

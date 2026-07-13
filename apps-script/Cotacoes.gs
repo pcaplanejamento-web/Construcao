@@ -220,21 +220,21 @@ function cotacoesAdicionarPreco(data, sessao) {
   const cotacao = cotacaoId ? _cotacaoDoUsuario(cotacaoId, usuarioId) : null;
   const orcamento = orcamentoId ? _orcamentoDoUsuario(orcamentoId, usuarioId) : null;
 
-  // Obra de destino (explícita → herda de cotação/orçamento). Quando a oferta
-  // nasce p/ virar despesa numa obra COMPARTILHADA, o `donoObra` libera o catálogo
-  // do dono (item/contato/empresa/equipe) para o colaborador — sem obra, `donoObra`
-  // é o próprio usuário (comportamento estrito de sempre).
+  // Obra de destino (explícita → herda de cotação/orçamento). Numa obra
+  // COMPARTILHADA o colaborador pode usar o catálogo REFERENCIADO pela obra (não o
+  // catálogo inteiro do dono) — `refs` = conjunto acessível (own + referenciado);
+  // sem obra, `refs` fica vazio → só o catálogo PRÓPRIO (comportamento estrito).
   let obraId = String((data && data.obra_id) || "");
   if (!obraId && cotacao) obraId = String(cotacao.obra_id || "");
   if (!obraId && orcamento) obraId = String(orcamento.obra_id || "");
   const obraDest = obraId ? _obraAcessivel(obraId, usuarioId) : null;
-  const donoObra = obraDest ? String(obraDest.usuario_id) : usuarioId;
+  const refs = obraDest ? _refsAcessiveis(usuarioId) : { refI: {}, refC: {}, refF: {}, refE: {} };
 
   // Item: obrigatório (herda da cotação se houver e não vier explícito).
   let itemId = String((data && data.item_id) || "");
   if (!itemId && cotacao) itemId = String(cotacao.item_id || "");
   if (!itemId) lancar(ERRO.VALIDACAO, "Selecione o item da oferta.");
-  const item = _itemParaObra(itemId, donoObra, usuarioId);
+  const item = _itemParaObra(itemId, usuarioId, refs.refI);
   const classificacao = String(item.classificacao || "");
   // Cotação por subclassificação: o item da oferta deve pertencer àquela subclasse.
   if (cotacao && String(cotacao.modo || "") === "subclasse" && String(cotacao.categoria_id || "")) {
@@ -256,10 +256,10 @@ function cotacoesAdicionarPreco(data, sessao) {
   }
   let contato = null;
   if (equipeId) {
-    _equipeParaObra(equipeId, donoObra, usuarioId);
+    _equipeParaObra(equipeId, usuarioId, refs.refE);
     contatoId = "";
   } else if (contatoId) {
-    contato = _contatoParaObra(contatoId, donoObra, usuarioId);
+    contato = _contatoParaObra(contatoId, usuarioId, refs.refC);
   }
 
   // Fornecedor: herdado do orçamento (Material) ou auto pelo contato ofertante.
@@ -268,7 +268,7 @@ function cotacoesAdicionarPreco(data, sessao) {
     fornecedorId = String(orcamento.fornecedor_id);
   if (!fornecedorId && contato && String(contato.fornecedor_id || ""))
     fornecedorId = String(contato.fornecedor_id);
-  if (fornecedorId) _fornecedorParaObra(fornecedorId, donoObra, usuarioId);
+  if (fornecedorId) _fornecedorParaObra(fornecedorId, usuarioId, refs.refF);
 
   // Regras por classificação do item.
   if (classificacao === "Material") {
@@ -282,7 +282,7 @@ function cotacoesAdicionarPreco(data, sessao) {
   if (!prazo) lancar(ERRO.VALIDACAO, "Informe a data/prazo de entrega.");
   const valor = Number(data && data.valor_unit);
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
-  // (obraId/donoObra já resolvidos no topo — usados no catálogo compartilhado.)
+  // (obraId/refs já resolvidos no topo — usados no catálogo referenciado da obra.)
 
   return comLock(function () {
     const agora = agoraIso();
@@ -574,12 +574,14 @@ function cotacoesRegistrarDespesa(data, sessao) {
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Valor da oferta inválido.");
 
   // Item da oferta (próprio; fallback à cotação no legado) → nome/classificação/subclasse.
+  // `refsReg` calculado 1× e reaproveitado no `_novaDespesa` abaixo.
+  const refsReg = _refsAcessiveis(sessao.usuario_id);
   const itemId = String(preco.item_id || (cotacao && cotacao.item_id) || "");
   let itemReg = null;
   if (itemId) {
     try {
-      // Aceita item próprio OU do dono da obra (catálogo compartilhado).
-      itemReg = _itemParaObra(itemId, obraReg && obraReg.usuario_id, sessao.usuario_id);
+      // Aceita item próprio OU REFERENCIADO por obra acessível.
+      itemReg = _itemParaObra(itemId, sessao.usuario_id, refsReg.refI);
     } catch (e) {
       itemReg = null;
     }
@@ -634,7 +636,7 @@ function cotacoesRegistrarDespesa(data, sessao) {
       // Estoque: quantidade/unidade da oferta congeladas (vira estoque ao quitar).
       quantidade: qtd,
       unidade: String(preco.unidade || (cotacao && cotacao.unidade) || ""),
-    });
+    }, refsReg.refI);
     if (cotacao) {
       // Marca esta oferta como registrada/escolhida, desmarca as demais e fecha a cotação.
       repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {
