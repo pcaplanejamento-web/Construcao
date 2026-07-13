@@ -139,12 +139,14 @@ const ROTAS = {
   "cotacoes.removerPreco": { fn: cotacoesRemoverPreco },
   "cotacoes.escolherPreco": { fn: cotacoesEscolherPreco },
   "cotacoes.registrarDespesa": { fn: cotacoesRegistrarDespesa },
+  "ofertas.incorporar": { fn: ofertasIncorporar },
 
   // Compras — Orçamentos (container de ofertas)
   "orcamentos.listar": { fn: orcamentosListar },
   "orcamentos.criar": { fn: orcamentosCriar },
   "orcamentos.atualizar": { fn: orcamentosAtualizar },
   "orcamentos.remover": { fn: orcamentosRemover },
+  "orcamentos.incorporar": { fn: orcamentosIncorporar },
 
   // Equipes (grupos: líder + membros + obras)
   "equipes.listar": { fn: equipesListar },

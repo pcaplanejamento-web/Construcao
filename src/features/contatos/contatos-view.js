@@ -12,7 +12,7 @@ import { abrirBannerVinculos, vinculosDoContato, vinculosDoCargo } from "../shar
 import { avatarNomeHtml, avatarHtml, corAvatar, whatsappBtnHtml } from "../shared/avatar.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
 import { editarEntidade, excluirEntidade } from "../shared/drop-crud.js";
-import { montarCompartilhados } from "../shared/compartilhados-lista.js";
+import "../shared/compartilhados-obra.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
@@ -78,7 +78,7 @@ class ContatosView extends BaseElement {
           </div>
           <div slot="compartilhados">
             <ui-card mesa title="Contatos de obras compartilhadas">
-              <div id="listaCompart"></div>
+              <compartilhados-obra tipo="contato"></compartilhados-obra>
             </ui-card>
           </div>
         </ui-tabs>
@@ -113,24 +113,14 @@ class ContatosView extends BaseElement {
     this.pintarCompartilhados();
   }
 
-  /** Aba "Compartilhados" (contatos vindos de obras compartilhadas) — só aparece
-   *  quando há algum; cada linha tem "Incorporar" ao acervo pessoal. */
+  /** Aba "Compartilhados" (por obra) — só aparece quando há obra compartilhada;
+   *  o `<compartilhados-obra>` cuida do conteúdo (chips + Incorporar). */
   pintarCompartilhados() {
-    const el = this.$("#listaCompart");
-    if (!el || !dataStore.carregado()) return;
-    const lista = dataStore.contatosCompartilhados();
     const abas = this.$("#abas");
-    if (abas && lista.length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
+    if (!abas || !dataStore.carregado()) return;
+    if (dataStore.obrasCompartilhadas().length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
       abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Compartilhados", icone: "usuarios" }];
     }
-    const mapaForn = {};
-    dataStore.fornecedores().forEach((f) => (mapaForn[f.id] = f.nome));
-    montarCompartilhados(el, lista, {
-      tipo: "contato",
-      icone: "contato",
-      vazio: "Contatos usados em obras compartilhadas com você aparecem aqui.",
-      render: (c) => this._linhaContato(c, mapaForn),
-    });
   }
 
   pintarEquipes() {

@@ -312,6 +312,59 @@ function cotacoesAdicionarPreco(data, sessao) {
   });
 }
 
+/** Uma oferta (preço) é acessível p/ incorporar? (de obra acessível OU origem de
+ *  uma despesa de obra acessível). Guard do ofertas.incorporar. */
+function _ofertaAcessivel(preco, usuarioId) {
+  const idsAcc = {};
+  obrasListar({}, { usuario_id: usuarioId }).obras.forEach(function (o) { idsAcc[o.id] = true; });
+  if (preco.obra_id && idsAcc[preco.obra_id]) return true;
+  const pid = String(preco.id);
+  return repoListar(SCHEMA.DESPESAS).some(function (d) {
+    return idsAcc[d.obra_id] && String(d.preco_id || "") === pid;
+  });
+}
+
+/**
+ * ofertas.incorporar -> { oferta } — COPIA uma oferta (preço) de obra
+ * compartilhada para o acervo PESSOAL como oferta AVULSA (desvincula cotação/
+ * orçamento/obra do dono; mantém item/fornecedor/valores). Sobrevive ao
+ * descompartilhamento (as FKs item/fornecedor podem precisar de re-vínculo).
+ */
+function ofertasIncorporar(data, sessao) {
+  const id = String((data && data.id) || "");
+  const origem = repoEncontrar(SCHEMA.COTACAO_PRECOS, function (x) { return String(x.id) === id; });
+  if (!origem) lancar(ERRO.NAO_ENCONTRADO, "Oferta não encontrada.");
+  if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Esta oferta já é sua.");
+  if (!_ofertaAcessivel(origem, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Oferta não disponível para incorporar.");
+  return comLock(function () {
+    const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+    const preco = {
+      id: novoId(),
+      cotacao_id: "", // avulsa
+      contato_id: origem.contato_id || "",
+      valor_unit: origem.valor_unit,
+      prazo_entrega: origem.prazo_entrega || "",
+      observacao: origem.observacao || "",
+      escolhido: false,
+      criado_em: agora,
+      atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
+      orcamento_id: "",
+      equipe_id: origem.equipe_id || "",
+      quantidade: origem.quantidade,
+      valor_unit_desconto: origem.valor_unit_desconto,
+      item_id: origem.item_id || "",
+      fornecedor_id: origem.fornecedor_id || "",
+      usuario_id: sessao.usuario_id,
+      obra_id: "",
+    };
+    repoInserir(SCHEMA.COTACAO_PRECOS, preco);
+    return { oferta: preco };
+  });
+}
+
 /** cotacoes.atualizarPreco -> { preco, historico } (historico só se o valor mudou). */
 function cotacoesAtualizarPreco(data, sessao) {
   const id = data && data.id;

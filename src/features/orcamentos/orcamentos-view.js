@@ -8,8 +8,10 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { montarGradeOrcamentos } from "./orcamento-grade.js";
 import "../../components/ui-card.js";
+import "../../components/ui-tabs.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
+import "../shared/compartilhados-obra.js";
 import "./orcamento-form.js";
 
 class OrcamentosView extends BaseElement {
@@ -33,27 +35,43 @@ class OrcamentosView extends BaseElement {
             <p class="sub">Agrupe ofertas de vários itens num orçamento (de um fornecedor ou grupo).</p>
           </div>
         </div>
-        <ui-card mesa acao-fixa title="Mesa com orçamentos">
-          <ui-button slot="acoes" id="novo">+ Novo orçamento</ui-button>
-          <div id="lista"></div>
-        </ui-card>
+        <ui-tabs id="abas">
+          <div slot="orcamentos">
+            <ui-card mesa acao-fixa title="Mesa com orçamentos">
+              <ui-button slot="acoes" id="novo">+ Novo orçamento</ui-button>
+              <div id="lista"></div>
+            </ui-card>
+          </div>
+          <div slot="compartilhados">
+            <ui-card mesa title="Orçamentos de obras compartilhadas">
+              <compartilhados-obra tipo="orcamento"></compartilhados-obra>
+            </ui-card>
+          </div>
+        </ui-tabs>
       </div>
     `;
   }
 
   aoConectar() {
+    this.$("#abas").abas = [{ id: "orcamentos", rotulo: "Orçamentos", icone: "recibo" }];
     this.$("#novo").addEventListener("click", () => this.abrirForm(null));
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
 
   pintar() {
+    const abas = this.$("#abas");
+    if (abas && dataStore.carregado() && dataStore.obrasCompartilhadas().length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
+      abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Compartilhados", icone: "recibo" }];
+    }
     const el = this.$("#lista");
     if (!el) return;
     if (!dataStore.carregado()) {
       el.innerHTML = `<ui-spinner centro text="Carregando..."></ui-spinner>`;
       return;
     }
-    montarGradeOrcamentos(el, dataStore.orcamentos());
+    const meu = String((dataStore.usuario() || {}).id || "");
+    const meus = dataStore.orcamentos().filter((o) => !o.usuario_id || String(o.usuario_id) === meu);
+    montarGradeOrcamentos(el, meus);
   }
 
   abrirForm(orcamento) {

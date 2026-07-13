@@ -13,7 +13,7 @@ import { colunasLog } from "../../core/audit-columns.js";
 import { abrirBannerVinculos, vinculosDoItem, vinculosDaSubclassificacao } from "../shared/vinculos.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
-import { montarCompartilhados } from "../shared/compartilhados-lista.js";
+import "../shared/compartilhados-obra.js";
 import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -65,7 +65,7 @@ class ItensView extends BaseElement {
           </div>
           <div slot="compartilhados">
             <ui-card mesa title="Itens de obras compartilhadas">
-              <div id="listaCompart"></div>
+              <compartilhados-obra tipo="item"></compartilhados-obra>
             </ui-card>
           </div>
         </ui-tabs>
@@ -89,25 +89,13 @@ class ItensView extends BaseElement {
     this.pintarCompartilhados();
   }
 
-  /** Aba "Compartilhados" (itens vindos de obras compartilhadas). */
+  /** Aba "Compartilhados" (por obra) — o `<compartilhados-obra>` cuida do conteúdo. */
   pintarCompartilhados() {
-    const el = this.$("#listaCompart");
-    if (!el || !dataStore.carregado()) return;
-    const lista = dataStore.itensCompartilhados();
     const abas = this.$("#abas");
-    if (abas && lista.length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
+    if (!abas || !dataStore.carregado()) return;
+    if (dataStore.obrasCompartilhadas().length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
       abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Compartilhados", icone: "recibo" }];
     }
-    montarCompartilhados(el, lista, {
-      tipo: "item",
-      icone: "recibo",
-      vazio: "Itens usados em obras compartilhadas com você aparecem aqui.",
-      render: (i) =>
-        `<div style="display:flex;align-items:center;gap:10px;min-width:0">
-          <span style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escItem(i.nome)}</span>
-          <category-badge nome="${i.classificacao || "—"}" cor="${COR_CLASSIFICACAO[i.classificacao] || "var(--cor-neutro)"}"></category-badge>
-        </div>`,
-    });
   }
 
   /* ------------------------------ Itens ------------------------------- */

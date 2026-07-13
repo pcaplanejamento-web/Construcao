@@ -278,6 +278,58 @@ const fornecedoresCompartilhados = () => fornecedores().filter(_ehCompart);
 const meusItensAtivos = () => itensAtivos().filter(_ehMeu);
 const itensCompartilhados = () => itens().filter(_ehCompart);
 
+/** Obras COMPARTILHADAS comigo (não sou o dono). */
+const obrasCompartilhadas = () => obras().filter((o) => o.ehDono === false);
+/**
+ * Dados COMPARTILHADOS referenciados por UMA obra, por tipo — para a aba
+ * "Compartilhados" organizada por obra (o usuário analisa cada compartilhamento).
+ * Só entidades que NÃO são minhas (usuario_id ≠ eu) e que a obra referencia.
+ */
+const compartilhadoDaObra = (obraId) => {
+  const meu = _meuId();
+  const share = (x) => !!(x && x.usuario_id && String(x.usuario_id) !== meu);
+  const desp = despesas(obraId);
+  const parts = participantesDaObra(obraId);
+  const oid = String(obraId);
+  const transf = transferencias().filter((t) => String(t.obra_id) === oid);
+  const pags = pagamentos().filter((p) => String(p.obra_id) === oid);
+  const precoIds = new Set(desp.map((d) => String(d.preco_id || "")).filter(Boolean));
+  const ofertasObra = todasOfertas().filter((p) => String(p.obra_id) === oid || precoIds.has(String(p.id)));
+  const orcs = orcamentos().filter((o) => String(o.obra_id) === oid);
+  const cIds = new Set(), fIds = new Set(), iIds = new Set();
+  const addCh = (ch) => { const s = String(ch || ""); if (s.indexOf("c:") === 0) cIds.add(s.slice(2)); };
+  parts.forEach((p) => addCh(p.chave));
+  desp.forEach((d) => {
+    if (d.item_id) iIds.add(String(d.item_id));
+    if (d.fornecedor_id) fIds.add(String(d.fornecedor_id));
+    if (d.ofertante_contato_id) cIds.add(String(d.ofertante_contato_id));
+    (d.responsaveis || []).forEach((r) => addCh(r.chave));
+    (d.pagamentos_realizados || []).forEach((lv) => {
+      if (lv.contato_id) cIds.add(String(lv.contato_id));
+      if (lv.fornecedor_id) fIds.add(String(lv.fornecedor_id));
+      addCh(lv.pagador);
+      (lv.distribuicao || []).forEach((x) => addCh(x.chave));
+    });
+  });
+  transf.concat(pags).forEach((t) => {
+    if (t.fornecedor_id) fIds.add(String(t.fornecedor_id));
+    if (t.recebedor_contato_id) cIds.add(String(t.recebedor_contato_id));
+    addCh(t.pagador_chave);
+  });
+  ofertasObra.forEach((p) => {
+    if (p.item_id) iIds.add(String(p.item_id));
+    if (p.fornecedor_id) fIds.add(String(p.fornecedor_id));
+    if (p.contato_id) cIds.add(String(p.contato_id));
+  });
+  return {
+    contatos: contatos().filter((c) => cIds.has(String(c.id)) && share(c)),
+    fornecedores: fornecedores().filter((f) => fIds.has(String(f.id)) && share(f)),
+    itens: itens().filter((i) => iIds.has(String(i.id)) && share(i)),
+    ofertas: ofertasObra.filter(share),
+    orcamentos: orcs.filter(share),
+  };
+};
+
 /* Rastreabilidade (derivada) — atalhos p/ as direções reversas mais usadas. */
 const ofertasDoContato = (id) => store.get().ofertas.filter((o) => String(o.contato_id) === String(id));
 const ofertasDoFornecedor = (id) => store.get().ofertas.filter((o) => String(o.fornecedor_id) === String(id));
@@ -1211,6 +1263,8 @@ async function incorporar(tipo, id) {
     contato: { acao: "contatos.incorporar", chave: "contatos", resp: "contato", ev: EVENTOS.CONTATOS },
     fornecedor: { acao: "fornecedores.incorporar", chave: "fornecedores", resp: "fornecedor", ev: EVENTOS.FORNECEDORES },
     item: { acao: "itens.incorporar", chave: "itens", resp: "item", ev: EVENTOS.ITENS },
+    oferta: { acao: "ofertas.incorporar", chave: "ofertas", resp: "oferta", ev: EVENTOS.COTACOES },
+    orcamento: { acao: "orcamentos.incorporar", chave: "orcamentos", resp: "orcamento", ev: EVENTOS.ORCAMENTOS },
   }[tipo];
   if (!cfg) throw new Error("Tipo inválido para incorporar: " + tipo);
   const r = await api.call(cfg.acao, { id });
@@ -1535,6 +1589,7 @@ export const dataStore = {
   notasDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, tiposTransferencia, itens, itensAtivos, item,
   meusContatosAtivos, contatosCompartilhados, meusFornecedoresAtivos, fornecedoresCompartilhados, meusItensAtivos, itensCompartilhados,
+  obrasCompartilhadas, compartilhadoDaObra,
   cotacoes, cotacao, precosDaCotacao, todasOfertas,
   historicoDaCotacao, itensDaSubclasse, precosDaCotacaoPorItem,
   orcamentos, orcamento, ofertasDoOrcamento,

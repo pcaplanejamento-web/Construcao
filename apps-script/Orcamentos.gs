@@ -104,6 +104,42 @@ function orcamentosCriar(data, sessao) {
   });
 }
 
+/**
+ * orcamentos.incorporar -> { orcamento } — COPIA um orçamento de obra
+ * compartilhada para o acervo PESSOAL (desvincula da obra do dono; mantém
+ * tipo/fornecedor/contato/equipe/título). Guard: orçamento de obra acessível.
+ */
+function orcamentosIncorporar(data, sessao) {
+  const id = String((data && data.id) || "");
+  const origem = repoEncontrar(SCHEMA.ORCAMENTOS, function (x) { return String(x.id) === id; });
+  if (!origem) lancar(ERRO.NAO_ENCONTRADO, "Orçamento não encontrado.");
+  if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Este orçamento já é seu.");
+  const idsAcc = {};
+  obrasListar({}, { usuario_id: sessao.usuario_id }).obras.forEach(function (o) { idsAcc[o.id] = true; });
+  if (!(origem.obra_id && idsAcc[origem.obra_id])) lancar(ERRO.NAO_AUTORIZADO, "Orçamento não disponível para incorporar.");
+  return comLock(function () {
+    const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+    const orc = {
+      id: novoId(),
+      usuario_id: sessao.usuario_id,
+      obra_id: "", // desvincula da obra do dono
+      tipo: origem.tipo,
+      fornecedor_id: origem.fornecedor_id || "",
+      contato_id: origem.contato_id || "",
+      equipe_id: origem.equipe_id || "",
+      titulo: origem.titulo || "",
+      ativo: true,
+      criado_em: agora,
+      atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
+    };
+    repoInserir(SCHEMA.ORCAMENTOS, orc);
+    return { orcamento: orc };
+  });
+}
+
 /** orcamentos.atualizar -> { orcamento }. Propaga o contato às ofertas se mudar. */
 function orcamentosAtualizar(data, sessao) {
   const id = data && data.id;

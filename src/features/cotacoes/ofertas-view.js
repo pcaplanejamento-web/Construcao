@@ -11,8 +11,10 @@ import { editarEmMassa } from "../shared/edicao-massa.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
+import "../../components/ui-tabs.js";
 import "../../components/ui-button.js";
 import "../../components/ui-spinner.js";
+import "../shared/compartilhados-obra.js";
 import "./preco-form.js";
 
 class OfertasView extends BaseElement {
@@ -36,27 +38,43 @@ class OfertasView extends BaseElement {
             <p class="sub">Todas as ofertas (preços) registradas — de cotações, orçamentos ou avulsas.</p>
           </div>
         </div>
-        <ui-card mesa title="Mesa com ofertas">
-          <ui-button slot="acoes" id="nova">+ Criar oferta</ui-button>
-          <div id="lista"></div>
-        </ui-card>
+        <ui-tabs id="abas">
+          <div slot="ofertas">
+            <ui-card mesa title="Mesa com ofertas">
+              <ui-button slot="acoes" id="nova">+ Criar oferta</ui-button>
+              <div id="lista"></div>
+            </ui-card>
+          </div>
+          <div slot="compartilhados">
+            <ui-card mesa title="Ofertas de obras compartilhadas">
+              <compartilhados-obra tipo="oferta"></compartilhados-obra>
+            </ui-card>
+          </div>
+        </ui-tabs>
       </div>
     `;
   }
 
   aoConectar() {
+    this.$("#abas").abas = [{ id: "ofertas", rotulo: "Ofertas", icone: "cifrao" }];
     this.$("#nova").addEventListener("click", () => this.abrirForm(null));
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
 
   pintar() {
+    const abas = this.$("#abas");
+    if (abas && dataStore.carregado() && dataStore.obrasCompartilhadas().length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
+      abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Compartilhados", icone: "cifrao" }];
+    }
     const el = this.$("#lista");
     if (!el) return;
     if (!dataStore.carregado()) {
       el.innerHTML = `<ui-spinner centro text="Carregando..."></ui-spinner>`;
       return;
     }
-    montarTabelaOfertas(el, dataStore.todasOfertas(), {
+    const meu = String((dataStore.usuario() || {}).id || "");
+    const minhas = dataStore.todasOfertas().filter((o) => !o.usuario_id || String(o.usuario_id) === meu);
+    montarTabelaOfertas(el, minhas, {
       clicavel: true,
       onLinha: (oferta) => abrirOferta(oferta), // clique na oferta → banner único
       acoes: [{ nome: "remover", rotulo: "Excluir", variant: "perigo" }],
