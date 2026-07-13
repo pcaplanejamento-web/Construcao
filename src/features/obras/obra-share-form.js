@@ -1,6 +1,7 @@
 /**
- * <obra-share-form> — Modal do DONO: compartilhar a obra com usuários (acesso
- * de colaboração) E gerar um LINK PÚBLICO somente-leitura.
+ * <obra-share-form> — Modal de quem tem acesso à obra (dono ou colaborador):
+ * compartilhar com usuários (acesso de colaboração) E gerar um LINK PÚBLICO
+ * somente-leitura. Só a EXCLUSÃO da obra é exclusiva do dono.
  *
  * Propriedade: .obra  Evento: "fechar".
  * - Link público: via data-store (gerar/remover); qualquer pessoa com o link vê
@@ -75,8 +76,8 @@ class ObraShareForm extends BaseElement {
         <hr />
         <div class="secao">
           <div class="titulo-secao"><ui-icon name="compartilhar" size="16"></ui-icon> Convidar usuários (colaboração)</div>
-          <p class="dica">Convidados podem ver a obra e lançar despesas, mas não
-          editá-la nem excluí-la.</p>
+          <p class="dica">Convidados podem ver, editar e lançar despesas na obra
+          (e convidar outros). Apenas o dono pode excluí-la.</p>
           <div class="lista" id="lista"><ui-spinner centro text="Carregando usuários..."></ui-spinner></div>
         </div>
         <div slot="rodape">

@@ -684,20 +684,16 @@ class ObraDetailView extends BaseElement {
         ${banner}
       </div>
       <div class="acoes-topo">
-        ${
-          ehDono
-            ? `<ui-button id="finalizarObra" variant="${ehFinalizada(o) ? "secundario" : "tonal"}">${ehFinalizada(o) ? "Reabrir obra" : "Finalizar obra"}</ui-button>
-               <ui-button id="compartilharObra" variant="secundario">Compartilhar</ui-button>
-               <ui-button id="editarObra" variant="secundario">Editar obra</ui-button>`
-            : ""
-        }
+        <ui-button id="finalizarObra" variant="${ehFinalizada(o) ? "secundario" : "tonal"}">${ehFinalizada(o) ? "Reabrir obra" : "Finalizar obra"}</ui-button>
+        <ui-button id="compartilharObra" variant="secundario">Compartilhar</ui-button>
+        <ui-button id="editarObra" variant="secundario">Editar obra</ui-button>
       </div>
     `;
-    if (ehDono) {
-      topo.querySelector("#editarObra").addEventListener("click", () => this.editarObra());
-      topo.querySelector("#compartilharObra").addEventListener("click", () => this.compartilharObra());
-      topo.querySelector("#finalizarObra").addEventListener("click", () => this.finalizarObra());
-    }
+    // Editar/Finalizar/Compartilhar valem p/ dono E colaborador (só a EXCLUSÃO é
+    // do dono, e essa nem existe nesta tela). A posse não muda no backend.
+    topo.querySelector("#editarObra").addEventListener("click", () => this.editarObra());
+    topo.querySelector("#compartilharObra").addEventListener("click", () => this.compartilharObra());
+    topo.querySelector("#finalizarObra").addEventListener("click", () => this.finalizarObra());
   }
 
   async finalizarObra() {

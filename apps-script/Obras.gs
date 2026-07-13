@@ -2,9 +2,11 @@
  * Obras.gs — CRUD de obras + compartilhamento entre usuários.
  *
  * Modelo de acesso:
- *  - DONO (obra.usuario_id): pode tudo (editar, excluir, compartilhar).
- *  - COMPARTILHADO (linha em Compartilhamentos): pode ver a obra e colaborar
- *    nas despesas, mas NÃO pode editar/excluir a obra nem gerir compartilhamento.
+ *  - DONO (obra.usuario_id): pode tudo, INCLUSIVE EXCLUIR a obra.
+ *  - COMPARTILHADO (linha em Compartilhamentos): pode ver, colaborar nas despesas
+ *    E editar a obra (nome/orçamento/status/prazo), finalizar/reabrir e gerir o
+ *    compartilhamento (convidar/link). SÓ NÃO pode EXCLUIR a obra (dono-só).
+ *    A posse (obra.usuario_id) nunca é transferida → o dono continua dono.
  *
  * Princípio nº 7: o acesso é sempre verificado no servidor a partir da sessão.
  */
@@ -243,7 +245,8 @@ function obrasObter(data, sessao) {
     // Categorias da obra = as do DONO (global + próprias), para que todos os
     // colaboradores vejam/usem o mesmo conjunto de classificações.
     categorias: listarCategoriasUsuario(obra.usuario_id),
-    compartilhamentos: obra.ehDono ? _listarCompartilhamentos(obra.id) : [],
+    // Colaborador também gere o compartilhamento → lista para qualquer acessível.
+    compartilhamentos: _listarCompartilhamentos(obra.id),
   };
 }
 
@@ -276,10 +279,10 @@ function obrasCriar(data, sessao) {
   });
 }
 
-/** obras.atualizar -> { obra } (apenas o dono). */
+/** obras.atualizar -> { obra } (dono ou compartilhado; posse não muda). */
 function obrasAtualizar(data, sessao) {
   const id = data && data.id;
-  _obraDono(id, sessao.usuario_id);
+  _obraAcessivel(id, sessao.usuario_id); // colaborador também edita; `usuario_id` nunca entra no patch
 
   const patch = { atualizado_em: agoraIso() };
   if (data.nome !== undefined) {
@@ -328,19 +331,22 @@ function obrasRemover(data, sessao) {
 
 /* ------------------------ Compartilhamento ---------------------------- */
 
-/** obras.compartilhamentos -> { compartilhamentos } (apenas o dono). */
+/** obras.compartilhamentos -> { compartilhamentos } (dono ou compartilhado). */
 function obrasCompartilhamentos(data, sessao) {
-  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  const obra = _obraAcessivel(data && data.obra_id, sessao.usuario_id);
   return { compartilhamentos: _listarCompartilhamentos(obra.id) };
 }
 
-/** obras.compartilhar -> { compartilhamentos } (apenas o dono). */
+/** obras.compartilhar -> { compartilhamentos } (dono ou compartilhado). */
 function obrasCompartilhar(data, sessao) {
-  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  const obra = _obraAcessivel(data && data.obra_id, sessao.usuario_id);
   const alvoId = data && data.usuario_id;
   if (!alvoId) lancar(ERRO.VALIDACAO, "Informe o usuário.");
+  if (String(alvoId) === String(obra.usuario_id)) {
+    lancar(ERRO.VALIDACAO, "Esse usuário é o dono desta obra.");
+  }
   if (String(alvoId) === String(sessao.usuario_id)) {
-    lancar(ERRO.VALIDACAO, "Você já é o dono desta obra.");
+    lancar(ERRO.VALIDACAO, "Você já tem acesso a esta obra.");
   }
   if (!buscarUsuarioPorId(alvoId)) {
     lancar(ERRO.NAO_ENCONTRADO, "Usuário não encontrado.");
@@ -359,9 +365,9 @@ function obrasCompartilhar(data, sessao) {
   });
 }
 
-/** obras.descompartilhar -> { compartilhamentos } (apenas o dono). */
+/** obras.descompartilhar -> { compartilhamentos } (dono ou compartilhado). */
 function obrasDescompartilhar(data, sessao) {
-  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  const obra = _obraAcessivel(data && data.obra_id, sessao.usuario_id);
   const alvoId = data && data.usuario_id;
 
   return comLock(function () {
@@ -391,9 +397,9 @@ function _tokenCurtoUnico() {
   return novoId().replace(/-/g, "").substring(0, 16);
 }
 
-/** obras.gerarLink -> { link_token } (apenas o dono). Gera/renova o token curto. */
+/** obras.gerarLink -> { link_token } (dono ou compartilhado). Gera/renova o token curto. */
 function obrasGerarLink(data, sessao) {
-  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  const obra = _obraAcessivel(data && data.obra_id, sessao.usuario_id);
   return comLock(function () {
     const token = _tokenCurtoUnico();
     repoAtualizar(SCHEMA.OBRAS, "id", obra.id, { link_token: token });
@@ -401,9 +407,9 @@ function obrasGerarLink(data, sessao) {
   });
 }
 
-/** obras.acessosLink -> { total, acessos:[{acessado_em}] } (apenas o dono). */
+/** obras.acessosLink -> { total, acessos:[{acessado_em}] } (dono ou compartilhado). */
 function obrasAcessosLink(data, sessao) {
-  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  const obra = _obraAcessivel(data && data.obra_id, sessao.usuario_id);
   const acessos = repoFiltrar(SCHEMA.ACESSOS_LINK, function (a) {
     return String(a.obra_id) === String(obra.id);
   });
@@ -418,9 +424,9 @@ function obrasAcessosLink(data, sessao) {
   };
 }
 
-/** obras.removerLink -> { link_token: "" } (apenas o dono). Desativa o link. */
+/** obras.removerLink -> { link_token: "" } (dono ou compartilhado). Desativa o link. */
 function obrasRemoverLink(data, sessao) {
-  const obra = _obraDono(data && data.obra_id, sessao.usuario_id);
+  const obra = _obraAcessivel(data && data.obra_id, sessao.usuario_id);
   return comLock(function () {
     repoAtualizar(SCHEMA.OBRAS, "id", obra.id, { link_token: "" });
     return { link_token: "" };

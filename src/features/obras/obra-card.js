@@ -111,15 +111,11 @@ class ObraCard extends BaseElement {
             : `<div class="valores"><span class="rotulo">Orçamento</span><span>não definido</span></div>`
         }
         ${log}
-        ${
-          ehDono
-            ? `<div class="acoes">
-                 <ui-button variant="tonal" id="editar">Editar</ui-button>
-                 <ui-button variant="secundario" id="compartilhar">Compartilhar</ui-button>
-                 <ui-button variant="perigo-contorno" id="remover" title="Excluir"><ui-icon name="excluir" size="16"></ui-icon></ui-button>
-               </div>`
-            : ""
-        }
+        <div class="acoes">
+          <ui-button variant="tonal" id="editar">Editar</ui-button>
+          <ui-button variant="secundario" id="compartilhar">Compartilhar</ui-button>
+          ${ehDono ? `<ui-button variant="perigo-contorno" id="remover" title="Excluir"><ui-icon name="excluir" size="16"></ui-icon></ui-button>` : ""}
+        </div>
       </div>
     `;
   }
