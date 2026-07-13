@@ -130,6 +130,8 @@ class CompartilhadosObra extends BaseElement {
 
     const dados = (ehObra ? dataStore.dadosDaObra(this._obraSel) : dataStore.compartilhadoDaObra(this._obraSel)) || {};
     const rotuloBtn = ehObra ? "Salvar nos meus dados" : "Incorporar";
+    // Índice do acervo montado 1× por render (O(1) por linha em vez de varrer o catálogo).
+    const idxAcervo = ehObra ? null : dataStore.indiceAcervo();
     const mostrarTitulo = tipos.length > 1;
     const secoes = tipos
       .map((tipo) => {
@@ -142,8 +144,8 @@ class CompartilhadosObra extends BaseElement {
           .map((x) => {
             const idd = _esc(String((cfg.idDe ? cfg.idDe(x) : x.id) || ""));
             // Catálogo: se já tenho uma cópia pessoal equivalente, o botão fica
-            // inativo com "Incorporado" (não incorporar 2×).
-            const jaTem = !ehObra && dataStore.jaIncorporado(tipo, x);
+            // inativo com "Incorporado" (não incorporar 2×) — consulta O(1) no índice.
+            const jaTem = !ehObra && dataStore.jaIncorporadoIdx(tipo, x, idxAcervo);
             const botao = !incorporavel
               ? ""
               : jaTem

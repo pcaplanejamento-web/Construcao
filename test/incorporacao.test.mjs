@@ -5,7 +5,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { jaIncorporado, filtrarDadosDaObra } from "../src/features/shared/incorporacao.js";
+import { jaIncorporado, filtrarDadosDaObra, indiceAcervo, jaIncorporadoIdx } from "../src/features/shared/incorporacao.js";
 
 // Acervo do usuário A (own) + itens compartilhados (usuario_id B).
 const CAT = {
@@ -112,4 +112,33 @@ test("filtrarDadosDaObra: por obra_id + preco_id da despesa", () => {
 test("filtrarDadosDaObra: pools vazios não quebram", () => {
   const r = filtrarDadosDaObra("o1", {});
   assert.deepEqual(r, { ofertas: [], cotacoes: [], orcamentos: [] });
+});
+
+test("jaIncorporadoIdx é EQUIVALENTE a jaIncorporado (índice O(1))", () => {
+  const idx = indiceAcervo(CAT);
+  const casos = [
+    ["contato", { nome: "João", telefone: "11" }],
+    ["contato", { nome: "João", telefone: "99" }],
+    ["contato", { nome: "  JOÃO ", telefone: "11" }],
+    ["contato", { nome: "", telefone: "11" }],
+    ["fornecedor", { nome: "Const" }],
+    ["fornecedor", { nome: "Nova" }],
+    ["item", { nome: "Cimento", classificacao: "Material" }],
+    ["item", { nome: "Cimento", classificacao: "Serviço" }],
+    ["equipe", { nome: "Equipe X" }],
+    ["cargo", { nome: "Pedreiro" }],
+    ["cargo", { nome: "SóDoDono" }],
+    ["categoria-item", { nome: "Ferro" }],
+    ["categoria-item", { nome: "Aço" }],
+    ["categoria-fornecedor", { nome: "Aço" }],
+    ["categoria-item", { nome: "Geral" }],
+    ["oferta", { nome: "x" }],
+  ];
+  for (const [tipo, x] of casos) {
+    assert.equal(
+      jaIncorporadoIdx(tipo, x, idx),
+      jaIncorporado(tipo, x, CAT),
+      `divergência em ${tipo} / ${JSON.stringify(x)}`
+    );
+  }
 });

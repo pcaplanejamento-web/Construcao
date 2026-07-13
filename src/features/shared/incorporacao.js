@@ -55,6 +55,61 @@ export function jaIncorporado(tipo, x, cat) {
 }
 
 /**
+ * Índice do acervo pessoal (Sets de chaves por tipo) — construído 1× por render
+ * para o `jaIncorporado` custar O(1) por linha (em vez de varrer o catálogo a
+ * cada linha). `jaIncorporadoIdx(tipo, x, idx)` consulta o índice. Os resultados
+ * são IDÊNTICOS a `jaIncorporado` (mesmo casamento nome + discriminador).
+ * @param {object} cat  { meuId, contatos, fornecedores, itens, equipes, cargos, categorias }
+ */
+export function indiceAcervo(cat) {
+  cat = cat || {};
+  const meu = String(cat.meuId || "");
+  const meus = (arr) => (arr || []).filter((y) => y && String(y.usuario_id || "") === meu);
+  const chaves = (arr, keyFn) => {
+    const s = new Set();
+    (arr || []).forEach((y) => {
+      if (_nrm(y.nome) !== "") s.add(keyFn(y));
+    });
+    return s;
+  };
+  const cats = (cat.categorias || []).filter(
+    (c) => String(c.usuario_id || "") === meu || String(c.usuario_id || "") === "GLOBAL"
+  );
+  return {
+    contato: chaves(meus(cat.contatos), (c) => _nrm(c.nome) + "|" + _nrm(c.telefone)),
+    fornecedor: chaves(meus(cat.fornecedores), (f) => _nrm(f.nome)),
+    item: chaves(meus(cat.itens), (i) => _nrm(i.nome) + "|" + _nrm(i.classificacao)),
+    equipe: chaves(meus(cat.equipes), (e) => _nrm(e.nome)),
+    cargo: chaves((cat.cargos || []).filter((cg) => cg.fixo || String(cg.usuario_id || "") === meu), (cg) => _nrm(cg.nome)),
+    "categoria-item": chaves(cats.filter((c) => _nrm(c.tipo) !== "fornecedor"), (c) => _nrm(c.nome)),
+    "categoria-fornecedor": chaves(cats.filter((c) => _nrm(c.tipo) === "fornecedor"), (c) => _nrm(c.nome)),
+  };
+}
+
+/** Versão O(1) de `jaIncorporado` usando o índice de `indiceAcervo`. */
+export function jaIncorporadoIdx(tipo, x, idx) {
+  if (!x || !idx || _nrm(x.nome) === "") return false;
+  switch (tipo) {
+    case "contato":
+      return idx.contato.has(_nrm(x.nome) + "|" + _nrm(x.telefone));
+    case "fornecedor":
+      return idx.fornecedor.has(_nrm(x.nome));
+    case "item":
+      return idx.item.has(_nrm(x.nome) + "|" + _nrm(x.classificacao));
+    case "equipe":
+      return idx.equipe.has(_nrm(x.nome));
+    case "cargo":
+      return idx.cargo.has(_nrm(x.nome));
+    case "categoria-item":
+      return idx["categoria-item"].has(_nrm(x.nome));
+    case "categoria-fornecedor":
+      return idx["categoria-fornecedor"].has(_nrm(x.nome));
+    default:
+      return false;
+  }
+}
+
+/**
  * @param {string} obraId
  * @param {object} pools  { ofertas, cotacoes, orcamentos, despesasDaObra }
  * @returns {{ofertas:Array, cotacoes:Array, orcamentos:Array}}

@@ -12,7 +12,12 @@
 import { criarStore } from "./store.js";
 import { fecharCompartilhado } from "../features/shared/compartilhamento-closure.js";
 import { pagamentosSemTransferencia } from "../features/pagamentos/transferencia-regra.js";
-import { jaIncorporado as _jaIncorporadoPuro, filtrarDadosDaObra } from "../features/shared/incorporacao.js";
+import {
+  jaIncorporado as _jaIncorporadoPuro,
+  filtrarDadosDaObra,
+  indiceAcervo as _indiceAcervoPuro,
+  jaIncorporadoIdx as _jaIncorporadoIdxPuro,
+} from "../features/shared/incorporacao.js";
 import { api } from "./api-client.js";
 import { auth } from "./auth-store.js";
 import { bus, EVENTOS, toastAviso, toastInfo } from "./event-bus.js";
@@ -400,13 +405,27 @@ const compartilhadoDaObra = (obraId) => {
  * à obra, não ao usuário — usados na aba "Das obras" com "Salvar nos meus dados".
  * Diferente de `compartilhadoDaObra` (que filtra por `usuario_id !== me`).
  */
-const dadosDaObra = (obraId) =>
-  filtrarDadosDaObra(obraId, {
-    ofertas: todasOfertas(),
-    cotacoes: cotacoes(),
-    orcamentos: orcamentos(),
-    despesasDaObra: despesas(obraId),
-  });
+// Memo por REFERÊNCIA das fatias do store (substituídas imutavelmente no set) —
+// `dadosDaObra`/`temDadosDeObraDeTipo` varrem ofertas/cotações/orçamentos por
+// obra; sem memo, isso reexecuta a cada render. Invalida sozinho quando qualquer
+// fatia muda.
+let _memoDados = { of: null, co: null, or: null, de: null, byObra: {} };
+const dadosDaObra = (obraId) => {
+  const s = store.get();
+  if (_memoDados.of !== s.ofertas || _memoDados.co !== s.cotacoes || _memoDados.or !== s.orcamentos || _memoDados.de !== s.despesas) {
+    _memoDados = { of: s.ofertas, co: s.cotacoes, or: s.orcamentos, de: s.despesas, byObra: {} };
+  }
+  const oid = String(obraId);
+  if (!(oid in _memoDados.byObra)) {
+    _memoDados.byObra[oid] = filtrarDadosDaObra(obraId, {
+      ofertas: s.ofertas,
+      cotacoes: s.cotacoes,
+      orcamentos: s.orcamentos,
+      despesasDaObra: (s.despesas || {})[oid] || [],
+    });
+  }
+  return _memoDados.byObra[oid];
+};
 
 /** Há ≥1 item de `chave` ("ofertas"|"cotacoes"|"orcamentos") em alguma obra acessível? */
 const temDadosDeObraDeTipo = (chave) =>
@@ -418,16 +437,20 @@ const temDadosDeObraDeTipo = (chave) =>
  * não incorporar 2×). Casa por NOME (case-insensitive) + discriminador do tipo
  * (telefone/classificação/tipo). Espelha o dedupe do backend.
  */
-const jaIncorporado = (tipo, x) =>
-  _jaIncorporadoPuro(tipo, x, {
-    meuId: _meuId(),
-    contatos: contatosAtivos(),
-    fornecedores: fornecedoresAtivos(),
-    itens: itensAtivos(),
-    equipes: equipes(),
-    cargos: cargos(),
-    categorias: categorias(),
-  });
+const _catalogoAcervo = () => ({
+  meuId: _meuId(),
+  contatos: contatosAtivos(),
+  fornecedores: fornecedoresAtivos(),
+  itens: itensAtivos(),
+  equipes: equipes(),
+  cargos: cargos(),
+  categorias: categorias(),
+});
+const jaIncorporado = (tipo, x) => _jaIncorporadoPuro(tipo, x, _catalogoAcervo());
+/** Índice do acervo (construir 1× por render) + consulta O(1) por linha — evita
+ *  varrer o catálogo a cada item na aba "Compartilhados". */
+const indiceAcervo = () => _indiceAcervoPuro(_catalogoAcervo());
+const jaIncorporadoIdx = (tipo, x, idx) => _jaIncorporadoIdxPuro(tipo, x, idx);
 
 /* Rastreabilidade (derivada) — atalhos p/ as direções reversas mais usadas. */
 const ofertasDoContato = (id) => store.get().ofertas.filter((o) => String(o.contato_id) === String(id));
@@ -1717,7 +1740,7 @@ export const dataStore = {
   notasDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, tiposTransferencia, itens, itensAtivos, item,
   meusContatosAtivos, contatosCompartilhados, meusFornecedoresAtivos, fornecedoresCompartilhados, meusItensAtivos, itensCompartilhados,
-  obrasCompartilhadas, compartilhadoDaObra, dadosDaObra, temDadosDeObraDeTipo, jaIncorporado,
+  obrasCompartilhadas, compartilhadoDaObra, dadosDaObra, temDadosDeObraDeTipo, jaIncorporado, indiceAcervo, jaIncorporadoIdx,
   cotacoes, cotacao, precosDaCotacao, todasOfertas,
   historicoDaCotacao, itensDaSubclasse, precosDaCotacaoPorItem,
   orcamentos, orcamento, ofertasDoOrcamento,
