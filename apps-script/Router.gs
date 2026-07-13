@@ -141,6 +141,7 @@ const ROTAS = {
   "cotacoes.removerPreco": { fn: cotacoesRemoverPreco },
   "cotacoes.escolherPreco": { fn: cotacoesEscolherPreco },
   "cotacoes.registrarDespesa": { fn: cotacoesRegistrarDespesa },
+  "cotacoes.incorporar": { fn: cotacoesIncorporar },
   "ofertas.incorporar": { fn: ofertasIncorporar },
 
   // Compras — Orçamentos (container de ofertas)

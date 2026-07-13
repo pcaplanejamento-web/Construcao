@@ -105,15 +105,17 @@ function orcamentosCriar(data, sessao) {
 }
 
 /**
- * orcamentos.incorporar -> { orcamento } — COPIA um orçamento de obra
- * compartilhada para o acervo PESSOAL (desvincula da obra do dono; mantém
- * tipo/fornecedor/contato/equipe/título). Guard: orçamento de obra acessível.
+ * orcamentos.incorporar -> { orcamento } — "Salvar nos meus dados": COPIA um
+ * orçamento DA OBRA para o acervo PESSOAL (desvincula da obra; mantém tipo/
+ * fornecedor/contato/equipe/título). Pertence à OBRA (obra_id) → QUALQUER membro
+ * (inclusive o dono/criador) pode salvar; só bloqueia re-salvar um pessoal.
  */
 function orcamentosIncorporar(data, sessao) {
   const id = String((data && data.id) || "");
   const origem = repoEncontrar(SCHEMA.ORCAMENTOS, function (x) { return String(x.id) === id; });
   if (!origem) lancar(ERRO.NAO_ENCONTRADO, "Orçamento não encontrado.");
-  if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Este orçamento já é seu.");
+  if (!String(origem.obra_id || "") && String(origem.usuario_id) === String(sessao.usuario_id))
+    lancar(ERRO.VALIDACAO, "Este orçamento já é seu.");
   const idsAcc = {};
   obrasListar({}, { usuario_id: sessao.usuario_id }).obras.forEach(function (o) { idsAcc[o.id] = true; });
   if (!(origem.obra_id && idsAcc[origem.obra_id])) lancar(ERRO.NAO_AUTORIZADO, "Orçamento não disponível para incorporar.");

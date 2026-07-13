@@ -46,8 +46,8 @@ class OfertasView extends BaseElement {
             </ui-card>
           </div>
           <div slot="compartilhados">
-            <ui-card mesa title="Ofertas de obras compartilhadas">
-              <compartilhados-obra tipo="oferta"></compartilhados-obra>
+            <ui-card mesa title="Ofertas registradas nas suas obras">
+              <compartilhados-obra escopo="obra" tipos="oferta"></compartilhados-obra>
             </ui-card>
           </div>
         </ui-tabs>
@@ -63,8 +63,8 @@ class OfertasView extends BaseElement {
 
   pintar() {
     const abas = this.$("#abas");
-    if (abas && dataStore.carregado() && dataStore.obrasCompartilhadas().length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
-      abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Compartilhados", icone: "cifrao" }];
+    if (abas && dataStore.carregado() && dataStore.temDadosDeObraDeTipo("ofertas") && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
+      abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Das obras", icone: "cifrao" }];
     }
     const el = this.$("#lista");
     if (!el) return;
@@ -72,8 +72,9 @@ class OfertasView extends BaseElement {
       el.innerHTML = `<ui-spinner centro text="Carregando..."></ui-spinner>`;
       return;
     }
+    // Catálogo PESSOAL: só ofertas SEM obra (as com obra_id vivem na obra → aba "Das obras").
     const meu = String((dataStore.usuario() || {}).id || "");
-    const minhas = dataStore.todasOfertas().filter((o) => !o.usuario_id || String(o.usuario_id) === meu);
+    const minhas = dataStore.todasOfertas().filter((o) => !o.obra_id && (!o.usuario_id || String(o.usuario_id) === meu));
     montarTabelaOfertas(el, minhas, {
       clicavel: true,
       onLinha: (oferta) => abrirOferta(oferta), // clique na oferta → banner único

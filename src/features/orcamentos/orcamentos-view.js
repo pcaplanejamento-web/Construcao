@@ -43,8 +43,8 @@ class OrcamentosView extends BaseElement {
             </ui-card>
           </div>
           <div slot="compartilhados">
-            <ui-card mesa title="Orçamentos de obras compartilhadas">
-              <compartilhados-obra tipo="orcamento"></compartilhados-obra>
+            <ui-card mesa title="Orçamentos registrados nas suas obras">
+              <compartilhados-obra escopo="obra" tipos="orcamento"></compartilhados-obra>
             </ui-card>
           </div>
         </ui-tabs>
@@ -60,8 +60,8 @@ class OrcamentosView extends BaseElement {
 
   pintar() {
     const abas = this.$("#abas");
-    if (abas && dataStore.carregado() && dataStore.obrasCompartilhadas().length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
-      abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Compartilhados", icone: "recibo" }];
+    if (abas && dataStore.carregado() && dataStore.temDadosDeObraDeTipo("orcamentos") && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
+      abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Das obras", icone: "recibo" }];
     }
     const el = this.$("#lista");
     if (!el) return;
@@ -69,8 +69,9 @@ class OrcamentosView extends BaseElement {
       el.innerHTML = `<ui-spinner centro text="Carregando..."></ui-spinner>`;
       return;
     }
+    // Catálogo PESSOAL: só orçamentos SEM obra (os com obra_id vivem na obra → aba "Das obras").
     const meu = String((dataStore.usuario() || {}).id || "");
-    const meus = dataStore.orcamentos().filter((o) => !o.usuario_id || String(o.usuario_id) === meu);
+    const meus = dataStore.orcamentos().filter((o) => !o.obra_id && (!o.usuario_id || String(o.usuario_id) === meu));
     montarGradeOrcamentos(el, meus);
   }
 

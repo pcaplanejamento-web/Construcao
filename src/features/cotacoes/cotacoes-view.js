@@ -55,8 +55,8 @@ class CotacoesView extends BaseElement {
             </ui-card>
           </div>
           <div slot="compartilhados">
-            <ui-card mesa title="Cotações de obras compartilhadas">
-              <compartilhados-obra tipos="cotacao"></compartilhados-obra>
+            <ui-card mesa title="Cotações registradas nas suas obras">
+              <compartilhados-obra escopo="obra" tipos="cotacao"></compartilhados-obra>
             </ui-card>
           </div>
         </ui-tabs>
@@ -79,8 +79,8 @@ class CotacoesView extends BaseElement {
   pintarCompartilhados() {
     const abas = this.$("#abas");
     if (!abas || !dataStore.carregado()) return;
-    if (dataStore.obrasCompartilhadas().length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
-      abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Compartilhados", icone: "cotacao" }];
+    if (dataStore.temDadosDeObraDeTipo("cotacoes") && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
+      abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Das obras", icone: "cotacao" }];
     }
   }
 
@@ -92,7 +92,8 @@ class CotacoesView extends BaseElement {
       return;
     }
 
-    const cotacoes = dataStore.cotacoes();
+    // Catálogo PESSOAL: só cotações SEM obra (as com obra_id vivem na obra → aba "Das obras").
+    const cotacoes = dataStore.cotacoes().filter((c) => !c.obra_id);
     if (!cotacoes.length) {
       el.innerHTML = `
         <ui-empty-state icone="cotacao" titulo="Nenhuma cotação"

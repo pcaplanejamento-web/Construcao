@@ -393,6 +393,26 @@ const compartilhadoDaObra = (obraId) => {
   };
 };
 
+/**
+ * Dados DA OBRA (ofertas/cotações/orçamentos com `obra_id` = obraId), de TODOS os
+ * criadores (dono + colaboradores). A obra "vive sozinha": esses itens pertencem
+ * à obra, não ao usuário — usados na aba "Das obras" com "Salvar nos meus dados".
+ * Diferente de `compartilhadoDaObra` (que filtra por `usuario_id !== me`).
+ */
+const dadosDaObra = (obraId) => {
+  const oid = String(obraId);
+  const desp = despesas(obraId);
+  const precoIds = new Set(desp.map((d) => String(d.preco_id || "")).filter(Boolean));
+  const ofertas = todasOfertas().filter((o) => String(o.obra_id || "") === oid || precoIds.has(String(o.id)));
+  const cots = cotacoes().filter((c) => String(c.obra_id || "") === oid);
+  const orcs = orcamentos().filter((o) => String(o.obra_id || "") === oid);
+  return { ofertas, cotacoes: cots, orcamentos: orcs };
+};
+
+/** Há ≥1 item de `chave` ("ofertas"|"cotacoes"|"orcamentos") em alguma obra acessível? */
+const temDadosDeObraDeTipo = (chave) =>
+  obras().some((o) => ((dadosDaObra(o.id) || {})[chave] || []).length > 0);
+
 /* Rastreabilidade (derivada) — atalhos p/ as direções reversas mais usadas. */
 const ofertasDoContato = (id) => store.get().ofertas.filter((o) => String(o.contato_id) === String(id));
 const ofertasDoFornecedor = (id) => store.get().ofertas.filter((o) => String(o.fornecedor_id) === String(id));
@@ -1324,6 +1344,7 @@ async function incorporar(tipo, id) {
     fornecedor: { acao: "fornecedores.incorporar", chave: "fornecedores", resp: "fornecedor", ev: EVENTOS.FORNECEDORES },
     item: { acao: "itens.incorporar", chave: "itens", resp: "item", ev: EVENTOS.ITENS },
     oferta: { acao: "ofertas.incorporar", chave: "ofertas", resp: "oferta", ev: EVENTOS.COTACOES },
+    cotacao: { acao: "cotacoes.incorporar", chave: "cotacoes", resp: "cotacao", ev: EVENTOS.COTACOES },
     orcamento: { acao: "orcamentos.incorporar", chave: "orcamentos", resp: "orcamento", ev: EVENTOS.ORCAMENTOS },
     equipe: { acao: "equipes.incorporar", chave: "equipes", resp: "equipe", ev: EVENTOS.EQUIPES },
     cargo: { acao: "cargos.incorporar", chave: "cargos", resp: "cargo", ev: EVENTOS.CONTATOS },
@@ -1345,6 +1366,16 @@ async function incorporar(tipo, id) {
       if (novos.length) {
         store.set({ contatos: [...cur, ...novos] });
         bus.emit(EVENTOS.CONTATOS, { tipo: "incorporado" });
+      }
+    }
+    // Incorporar cotação também traz cópias pessoais das ofertas dela.
+    if (Array.isArray(r.ofertas) && r.ofertas.length) {
+      const cur = store.get().ofertas || [];
+      const vistos = new Set(cur.map((o) => String(o.id)));
+      const novas = r.ofertas.filter((o) => o && !vistos.has(String(o.id)));
+      if (novas.length) {
+        store.set({ ofertas: [...cur, ...novas] });
+        bus.emit(EVENTOS.COTACOES, { tipo: "incorporado" });
       }
     }
     persistir();
@@ -1664,7 +1695,7 @@ export const dataStore = {
   notasDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, tiposTransferencia, itens, itensAtivos, item,
   meusContatosAtivos, contatosCompartilhados, meusFornecedoresAtivos, fornecedoresCompartilhados, meusItensAtivos, itensCompartilhados,
-  obrasCompartilhadas, compartilhadoDaObra,
+  obrasCompartilhadas, compartilhadoDaObra, dadosDaObra, temDadosDeObraDeTipo,
   cotacoes, cotacao, precosDaCotacao, todasOfertas,
   historicoDaCotacao, itensDaSubclasse, precosDaCotacaoPorItem,
   orcamentos, orcamento, ofertasDoOrcamento,

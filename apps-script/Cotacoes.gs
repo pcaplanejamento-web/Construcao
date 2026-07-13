@@ -330,43 +330,117 @@ function _ofertaAcessivel(preco, usuarioId) {
 }
 
 /**
- * ofertas.incorporar -> { oferta } — COPIA uma oferta (preço) de obra
- * compartilhada para o acervo PESSOAL como oferta AVULSA (desvincula cotação/
- * orçamento/obra do dono; mantém item/fornecedor/valores). Sobrevive ao
- * descompartilhamento (as FKs item/fornecedor podem precisar de re-vínculo).
+ * Uma cópia PESSOAL avulsa já existente para a mesma oferta? (dedupe do "salvar
+ * nos meus dados": mesmo item+fornecedor+valor, do usuário, sem obra/cotação).
+ */
+function _ofertaPessoalExistente(origem, usuarioId) {
+  return repoEncontrar(SCHEMA.COTACAO_PRECOS, function (x) {
+    return (
+      String(x.usuario_id || "") === String(usuarioId) &&
+      !String(x.obra_id || "") &&
+      !String(x.cotacao_id || "") &&
+      !String(x.orcamento_id || "") &&
+      String(x.item_id || "") === String(origem.item_id || "") &&
+      String(x.fornecedor_id || "") === String(origem.fornecedor_id || "") &&
+      Number(x.valor_unit) === Number(origem.valor_unit)
+    );
+  });
+}
+
+/** Constrói+insere a cópia PESSOAL avulsa de uma oferta (obra_id/cotacao_id/orcamento_id
+ *  vazios; usuario_id = me). `cotacaoId` opcional vincula a cópia a uma cotação incorporada. */
+function _inserirOfertaPessoal(origem, usuarioId, nomeUsuario, agora, cotacaoId) {
+  const preco = {
+    id: novoId(),
+    cotacao_id: String(cotacaoId || ""),
+    contato_id: origem.contato_id || "",
+    valor_unit: origem.valor_unit,
+    prazo_entrega: origem.prazo_entrega || "",
+    observacao: origem.observacao || "",
+    escolhido: false,
+    criado_em: agora,
+    atualizado_em: agora,
+    autor_nome: nomeUsuario,
+    editor_nome: nomeUsuario,
+    orcamento_id: "",
+    equipe_id: origem.equipe_id || "",
+    quantidade: origem.quantidade,
+    valor_unit_desconto: origem.valor_unit_desconto,
+    item_id: origem.item_id || "",
+    fornecedor_id: origem.fornecedor_id || "",
+    usuario_id: usuarioId,
+    obra_id: "",
+  };
+  repoInserir(SCHEMA.COTACAO_PRECOS, preco);
+  return preco;
+}
+
+/**
+ * ofertas.incorporar -> { oferta } — "Salvar nos meus dados": COPIA uma oferta
+ * (preço) DA OBRA para o acervo PESSOAL como oferta AVULSA (desvincula cotação/
+ * orçamento/obra; mantém item/fornecedor/valores). A oferta pertence à OBRA
+ * (obra_id), então QUALQUER membro (dono ou colaborador, inclusive o criador)
+ * pode salvá-la. Só bloqueia re-salvar uma oferta PESSOAL (sem obra_id). Dedupe:
+ * se já existe cópia pessoal igual, devolve a existente.
  */
 function ofertasIncorporar(data, sessao) {
   const id = String((data && data.id) || "");
   const origem = repoEncontrar(SCHEMA.COTACAO_PRECOS, function (x) { return String(x.id) === id; });
   if (!origem) lancar(ERRO.NAO_ENCONTRADO, "Oferta não encontrada.");
-  if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Esta oferta já é sua.");
+  if (!String(origem.obra_id || "") && String(origem.usuario_id) === String(sessao.usuario_id))
+    lancar(ERRO.VALIDACAO, "Esta oferta já é sua.");
   if (!_ofertaAcessivel(origem, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Oferta não disponível para incorporar.");
+  return comLock(function () {
+    const existente = _ofertaPessoalExistente(origem, sessao.usuario_id);
+    if (existente) return { oferta: existente };
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+    return { oferta: _inserirOfertaPessoal(origem, sessao.usuario_id, nomeUsuario, agoraIso(), "") };
+  });
+}
+
+/**
+ * cotacoes.incorporar -> { cotacao, ofertas } — "Salvar nos meus dados": cópia
+ * PROFUNDA de uma cotação DA OBRA para o acervo PESSOAL: cria uma cotação avulsa
+ * (obra_id="", usuario_id=me) e copia as ofertas dela como avulsas pessoais
+ * vinculadas à nova cotação. Guard = cotação acessível por obra.
+ */
+function cotacoesIncorporar(data, sessao) {
+  const id = String((data && data.id) || "");
+  const origem = repoEncontrar(SCHEMA.COTACOES, function (x) { return String(x.id) === id; });
+  if (!origem) lancar(ERRO.NAO_ENCONTRADO, "Cotação não encontrada.");
+  if (!String(origem.obra_id || "") && String(origem.usuario_id) === String(sessao.usuario_id))
+    lancar(ERRO.VALIDACAO, "Esta cotação já é sua.");
+  const idsAcc = {};
+  obrasListar({}, { usuario_id: sessao.usuario_id }).obras.forEach(function (o) { idsAcc[o.id] = true; });
+  if (!(origem.obra_id && idsAcc[origem.obra_id])) lancar(ERRO.NAO_AUTORIZADO, "Cotação não disponível para incorporar.");
   return comLock(function () {
     const agora = agoraIso();
     const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
-    const preco = {
+    const cotacao = {
       id: novoId(),
-      cotacao_id: "", // avulsa
-      contato_id: origem.contato_id || "",
-      valor_unit: origem.valor_unit,
-      prazo_entrega: origem.prazo_entrega || "",
-      observacao: origem.observacao || "",
-      escolhido: false,
+      usuario_id: sessao.usuario_id,
+      obra_id: "", // avulsa (pessoal)
+      descricao: origem.descricao || "",
+      quantidade: origem.quantidade || "",
+      unidade: origem.unidade || "",
+      categoria_id: origem.categoria_id || "",
+      status: "aberta",
       criado_em: agora,
       atualizado_em: agora,
+      item_id: origem.item_id || "",
+      classificacao: origem.classificacao || "",
       autor_nome: nomeUsuario,
       editor_nome: nomeUsuario,
-      orcamento_id: "",
-      equipe_id: origem.equipe_id || "",
-      quantidade: origem.quantidade,
-      valor_unit_desconto: origem.valor_unit_desconto,
-      item_id: origem.item_id || "",
-      fornecedor_id: origem.fornecedor_id || "",
-      usuario_id: sessao.usuario_id,
-      obra_id: "",
+      modo: origem.modo || "",
     };
-    repoInserir(SCHEMA.COTACAO_PRECOS, preco);
-    return { oferta: preco };
+    repoInserir(SCHEMA.COTACOES, cotacao);
+    // Copia as ofertas da cotação original como avulsas pessoais da nova cotação.
+    const ofertas = repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {
+      return String(p.cotacao_id || "") === String(origem.id);
+    }).map(function (p) {
+      return _inserirOfertaPessoal(p, sessao.usuario_id, nomeUsuario, agora, cotacao.id);
+    });
+    return { cotacao: cotacao, ofertas: ofertas };
   });
 }
 

@@ -49,6 +49,15 @@ class CompartilhadosObra extends BaseElement {
       .filter((t) => TIPOS[t]);
   }
 
+  // "catalogo" (default) = dados de CATÁLOGO compartilhados por outros usuários
+  // (contatos/itens/empresas — filtro usuario_id !== me, só obras compartilhadas).
+  // "obra" = dados DA OBRA (ofertas/cotações/orçamentos com obra_id) de TODAS as
+  // obras acessíveis (próprias + compartilhadas), de qualquer criador — "Salvar
+  // nos meus dados" disponível a todos (a obra vive sozinha).
+  get escopo() {
+    return this.getAttribute("escopo") === "obra" ? "obra" : "catalogo";
+  }
+
   estilos() {
     return `
       :host { display: block; }
@@ -92,11 +101,20 @@ class CompartilhadosObra extends BaseElement {
     const chipsEl = this.$("#chips");
     const listaEl = this.$("#lista");
     if (!chipsEl || !listaEl || !dataStore.carregado()) return;
-    const obras = dataStore.obrasCompartilhadas();
+    const ehObra = this.escopo === "obra";
+    const tipos = this.tiposList;
+    const chaves = tipos.map((t) => TIPOS[t].chave);
+    // escopo "obra": TODAS as obras acessíveis (com dados dos tipos); "catalogo":
+    // só as obras COMPARTILHADAS comigo.
+    const temItens = (o) => chaves.some((k) => ((dataStore.dadosDaObra(o.id) || {})[k] || []).length);
+    const obras = ehObra ? dataStore.obras().filter(temItens) : dataStore.obrasCompartilhadas();
     if (!obras.length) {
       chipsEl.innerHTML = "";
-      listaEl.innerHTML = `<ui-empty-state icone="usuarios" titulo="Nada compartilhado"
-        texto="Quando alguém compartilhar uma obra com você, os dados dela aparecem aqui para revisar e incorporar."></ui-empty-state>`;
+      listaEl.innerHTML = ehObra
+        ? `<ui-empty-state icone="cifrao" titulo="Nada das obras aqui"
+            texto="Ofertas, cotações e orçamentos registrados nas suas obras aparecem aqui para você salvar no seu acervo."></ui-empty-state>`
+        : `<ui-empty-state icone="usuarios" titulo="Nada compartilhado"
+            texto="Quando alguém compartilhar uma obra com você, os dados dela aparecem aqui para revisar e incorporar."></ui-empty-state>`;
       return;
     }
     if (!this._obraSel || !obras.some((o) => String(o.id) === String(this._obraSel))) this._obraSel = String(obras[0].id);
@@ -110,21 +128,22 @@ class CompartilhadosObra extends BaseElement {
       })
     );
 
-    const dados = dataStore.compartilhadoDaObra(this._obraSel) || {};
-    const tipos = this.tiposList;
+    const dados = (ehObra ? dataStore.dadosDaObra(this._obraSel) : dataStore.compartilhadoDaObra(this._obraSel)) || {};
+    const rotuloBtn = ehObra ? "Salvar nos meus dados" : "Incorporar";
     const mostrarTitulo = tipos.length > 1;
     const secoes = tipos
       .map((tipo) => {
         const cfg = TIPOS[tipo];
         const lista = dados[cfg.chave] || [];
         if (!lista.length) return "";
-        const incorporavel = cfg.incorporavel !== false;
+        // No escopo "obra" tudo é salvável (inclui cotação); no "catalogo" respeita cfg.
+        const incorporavel = ehObra ? true : cfg.incorporavel !== false;
         const linhas = lista
           .map((x) => {
             const idd = _esc(String((cfg.idDe ? cfg.idDe(x) : x.id) || ""));
             return `<div class="comp-row">
               <div class="comp-conteudo">${this._linha(tipo, x)}</div>
-              ${incorporavel ? `<button type="button" class="comp-inc" data-tipo="${tipo}" data-id="${idd}">Incorporar</button>` : ""}
+              ${incorporavel ? `<button type="button" class="comp-inc" data-tipo="${tipo}" data-id="${idd}">${rotuloBtn}</button>` : ""}
             </div>`;
           })
           .join("");
@@ -136,7 +155,7 @@ class CompartilhadosObra extends BaseElement {
       .filter(Boolean);
 
     if (!secoes.length) {
-      listaEl.innerHTML = `<p class="vazio">Nada compartilhado nesta obra.</p>`;
+      listaEl.innerHTML = `<p class="vazio">${ehObra ? "Nada registrado nesta obra." : "Nada compartilhado nesta obra."}</p>`;
       return;
     }
     listaEl.innerHTML = secoes.join("");
@@ -145,7 +164,7 @@ class CompartilhadosObra extends BaseElement {
         b.disabled = true;
         try {
           await dataStore.incorporar(b.dataset.tipo, b.dataset.id);
-          toastSucesso("Incorporado ao seu acervo.");
+          toastSucesso(ehObra ? "Salvo no seu acervo." : "Incorporado ao seu acervo.");
         } catch (e) {
           notificarErro(e);
           b.disabled = false;
