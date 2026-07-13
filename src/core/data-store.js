@@ -1390,7 +1390,13 @@ async function incorporar(tipo, id) {
   const ent = r[cfg.resp];
   if (ent) {
     const s = store.get();
-    store.set({ [cfg.chave]: [...s[cfg.chave], ent] });
+    // Dedupe por id: o backend pode DEVOLVER uma cópia já existente (dedupe de
+    // "incorporar"/"salvar 2×") — nesse caso substitui, não duplica no store.
+    const lista = s[cfg.chave] || [];
+    const existe = lista.some((y) => String(y.id) === String(ent.id));
+    store.set({
+      [cfg.chave]: existe ? lista.map((y) => (String(y.id) === String(ent.id) ? ent : y)) : [...lista, ent],
+    });
     // Incorporar equipe também cria cópias pessoais de líder/membros (contatos):
     // mescla-os no store para os nomes resolverem sem esperar novo snapshot.
     if (Array.isArray(r.contatos) && r.contatos.length) {
