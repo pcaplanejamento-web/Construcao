@@ -112,6 +112,52 @@ function obrasListar(data, sessao) {
   return { obras: acessiveis };
 }
 
+/**
+ * Guard do "incorporar": um id (contato/empresa/item/equipe) só pode ser
+ * incorporado se for REFERENCIADO por alguma obra ACESSÍVEL ao usuário (própria
+ * ou compartilhada) — mesma fronteira de privacidade do snapshot. Roda raro.
+ */
+function _idReferenciadoEmObraAcessivel(alvoId, usuarioId) {
+  const sid = String(alvoId || "");
+  if (!sid) return false;
+  const idsAcc = {};
+  obrasListar({}, { usuario_id: usuarioId }).obras.forEach(function (o) { idsAcc[o.id] = true; });
+  let achou = false;
+  function _hit(v) { if (String(v || "") === sid) achou = true; }
+  function _hitChave(ch) {
+    const s = String(ch || "");
+    if ((s.indexOf("c:") === 0 || s.indexOf("e:") === 0) && s.slice(2) === sid) achou = true;
+  }
+  repoListar(SCHEMA.DESPESAS).forEach(function (row) {
+    if (achou || !idsAcc[row.obra_id]) return;
+    const d = _lerDespesa(row);
+    _hit(d.item_id); _hit(d.fornecedor_id); _hit(d.ofertante_contato_id); _hit(d.ofertante_equipe_id);
+    (d.responsaveis || []).forEach(function (r) { _hitChave(r.chave); });
+    (d.pagamentos || []).forEach(function (p) { _hitChave(p.chave); });
+    (d.pagamentos_realizados || []).forEach(function (lv) {
+      _hit(lv.contato_id); _hit(lv.fornecedor_id); _hitChave(lv.pagador);
+      (lv.distribuicao || []).forEach(function (x) { _hitChave(x.chave); });
+    });
+  });
+  if (!achou) repoListar(SCHEMA.COTACAO_PRECOS).forEach(function (p) {
+    if (achou || !idsAcc[p.obra_id]) return;
+    _hit(p.item_id); _hit(p.fornecedor_id); _hit(p.contato_id); _hit(p.equipe_id);
+  });
+  if (!achou) repoListar(SCHEMA.TRANSFERENCIAS).forEach(function (t) {
+    if (achou || !idsAcc[t.obra_id]) return;
+    _hit(t.fornecedor_id); _hit(t.recebedor_contato_id); _hit(t.recebedor_equipe_id); _hitChave(t.pagador_chave);
+  });
+  if (!achou) repoListar(SCHEMA.PAGAMENTOS).forEach(function (p) {
+    if (achou || !idsAcc[p.obra_id]) return;
+    _hit(p.fornecedor_id); _hit(p.recebedor_contato_id); _hit(p.recebedor_equipe_id); _hitChave(p.pagador_chave);
+  });
+  if (!achou) repoListar(SCHEMA.OBRA_PARTICIPANTES).forEach(function (pt) {
+    if (achou || !idsAcc[pt.obra_id]) return;
+    if (String(pt.tipo) === "contato") _hit(pt.ref_id);
+  });
+  return achou;
+}
+
 /** obras.obter -> { obra, categorias, compartilhamentos }. */
 function obrasObter(data, sessao) {
   const obra = _obraAcessivel(data && data.id, sessao.usuario_id);

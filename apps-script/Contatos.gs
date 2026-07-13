@@ -39,6 +39,41 @@ function contatosListar(data, sessao) {
 }
 
 /**
+ * contatos.incorporar -> { contato } — COPIA um contato vindo de obra
+ * compartilhada para o acervo PESSOAL (vira do usuário; sobrevive ao
+ * descompartilhamento). FK do dono (fornecedor_id/superior_id) é limpa.
+ */
+function contatosIncorporar(data, sessao) {
+  const id = String((data && data.id) || "");
+  const origem = repoEncontrar(SCHEMA.CONTATOS, function (x) { return String(x.id) === id; });
+  if (!origem) lancar(ERRO.NAO_ENCONTRADO, "Contato não encontrado.");
+  if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Este contato já é seu.");
+  if (!_idReferenciadoEmObraAcessivel(id, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Contato não disponível para incorporar.");
+  return comLock(function () {
+    const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+    const contato = {
+      id: novoId(),
+      usuario_id: sessao.usuario_id,
+      nome: origem.nome,
+      telefone: origem.telefone || "",
+      email: origem.email || "",
+      cargo: origem.cargo || "",
+      fornecedor_id: "", // vínculo do dono não vale p/ mim (revincular manualmente)
+      observacao: origem.observacao || "",
+      ativo: true,
+      criado_em: agora,
+      atualizado_em: agora,
+      superior_id: "",
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
+    };
+    repoInserir(SCHEMA.CONTATOS, contato);
+    return { contato: contato };
+  });
+}
+
+/**
  * Valida os vínculos do contato conforme o cargo (lança se inválido):
  *  - Vendedor exige fornecedor_id (de um fornecedor do usuário).
  * (A antiga regra "Pedreiro → superior" foi removida; agora o Pedreiro é

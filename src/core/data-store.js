@@ -262,6 +262,22 @@ const equipesDaObra = (obraId) =>
 const ofertasDoOrcamento = (orcId) =>
   store.get().ofertas.filter((p) => String(p.orcamento_id) === String(orcId));
 
+// --- Compartilhamento -------------------------------------------------------
+// O snapshot inclui as entidades REFERENCIADAS por obras compartilhadas (para
+// resolver nomes/valores nas telas da obra). Cada linha traz `usuario_id`, então
+// aqui separamos o que é MEU do que veio de uma obra compartilhada. As telas da
+// obra e os dropdowns seguem usando os getters completos (resolvem por id); só as
+// LISTAS pessoais (aba "Compartilhados") usam estes.
+const _meuId = () => String((store.get().usuario || {}).id || "");
+const _ehMeu = (x) => !x || !x.usuario_id || String(x.usuario_id) === _meuId();
+const _ehCompart = (x) => !!(x && x.usuario_id && String(x.usuario_id) !== _meuId());
+const meusContatosAtivos = () => contatosAtivos().filter(_ehMeu);
+const contatosCompartilhados = () => contatos().filter(_ehCompart);
+const meusFornecedoresAtivos = () => fornecedoresAtivos().filter(_ehMeu);
+const fornecedoresCompartilhados = () => fornecedores().filter(_ehCompart);
+const meusItensAtivos = () => itensAtivos().filter(_ehMeu);
+const itensCompartilhados = () => itens().filter(_ehCompart);
+
 /* Rastreabilidade (derivada) — atalhos p/ as direções reversas mais usadas. */
 const ofertasDoContato = (id) => store.get().ofertas.filter((o) => String(o.contato_id) === String(id));
 const ofertasDoFornecedor = (id) => store.get().ofertas.filter((o) => String(o.fornecedor_id) === String(id));
@@ -1186,6 +1202,28 @@ async function removerTipoTransferencia(id) {
   persistir();
 }
 
+/* ---------------------- Mutação: incorporar (compartilhado → meu) ---------- */
+// Copia uma entidade que veio de obra compartilhada para o ACERVO PESSOAL do
+// usuário (vira dele; sobrevive ao descompartilhamento). O backend cria uma nova
+// linha com usuario_id = eu, remapeando/limpando FKs do dono.
+async function incorporar(tipo, id) {
+  const cfg = {
+    contato: { acao: "contatos.incorporar", chave: "contatos", resp: "contato", ev: EVENTOS.CONTATOS },
+    fornecedor: { acao: "fornecedores.incorporar", chave: "fornecedores", resp: "fornecedor", ev: EVENTOS.FORNECEDORES },
+    item: { acao: "itens.incorporar", chave: "itens", resp: "item", ev: EVENTOS.ITENS },
+  }[tipo];
+  if (!cfg) throw new Error("Tipo inválido para incorporar: " + tipo);
+  const r = await api.call(cfg.acao, { id });
+  const ent = r[cfg.resp];
+  if (ent) {
+    const s = store.get();
+    store.set({ [cfg.chave]: [...s[cfg.chave], ent] });
+    persistir();
+    bus.emit(cfg.ev, { tipo: "incorporado" });
+  }
+  return ent;
+}
+
 /* -------------------------- Mutações: itens -------------------------- */
 
 async function criarItem(dados) {
@@ -1496,6 +1534,7 @@ export const dataStore = {
   participantesDaObra,
   notasDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, tiposTransferencia, itens, itensAtivos, item,
+  meusContatosAtivos, contatosCompartilhados, meusFornecedoresAtivos, fornecedoresCompartilhados, meusItensAtivos, itensCompartilhados,
   cotacoes, cotacao, precosDaCotacao, todasOfertas,
   historicoDaCotacao, itensDaSubclasse, precosDaCotacaoPorItem,
   orcamentos, orcamento, ofertasDoOrcamento,
@@ -1519,6 +1558,7 @@ export const dataStore = {
   criarCategoria, atualizarCategoria, removerCategoria, reativarCategoria,
   criarFornecedor, atualizarFornecedor, removerFornecedor, reativarFornecedor,
   criarContato, atualizarContato, removerContato, reativarContato,
+  incorporar,
   criarCargo, atualizarCargo, removerCargo,
   listarContatosGoogle, enviarGoogle, vincularGoogle, desvincularGoogle, importarGoogle, sincronizarCargoGoogle,
   criarTipoTransferencia, atualizarTipoTransferencia, removerTipoTransferencia,

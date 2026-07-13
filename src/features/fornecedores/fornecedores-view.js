@@ -19,6 +19,7 @@ import {
 import { avatarNomeHtml, avatarHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
 import { editarEntidade, excluirEntidade } from "../shared/drop-crud.js";
+import { montarCompartilhados } from "../shared/compartilhados-lista.js";
 import { confirmar } from "../../components/confirmar.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import "../../components/ui-card.js";
@@ -71,6 +72,11 @@ class FornecedoresView extends BaseElement {
               <div id="listaClass"></div>
             </ui-card>
           </div>
+          <div slot="compartilhados">
+            <ui-card mesa title="Empresas de obras compartilhadas">
+              <div id="listaCompart"></div>
+            </ui-card>
+          </div>
         </ui-tabs>
       </div>
     `;
@@ -97,6 +103,26 @@ class FornecedoresView extends BaseElement {
   pintar() {
     this.pintarFornecedores();
     this.pintarClassificacoes();
+    this.pintarCompartilhados();
+  }
+
+  /** Aba "Compartilhados" (empresas vindas de obras compartilhadas). */
+  pintarCompartilhados() {
+    const el = this.$("#listaCompart");
+    if (!el || !dataStore.carregado()) return;
+    const lista = dataStore.fornecedoresCompartilhados();
+    const abas = this.$("#abas");
+    if (abas && lista.length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
+      abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Compartilhados", icone: "fornecedor" }];
+    }
+    const mapaCat = {};
+    dataStore.categorias().forEach((c) => (mapaCat[c.id] = c));
+    montarCompartilhados(el, lista, {
+      tipo: "fornecedor",
+      icone: "fornecedor",
+      vazio: "Empresas usadas em obras compartilhadas com você aparecem aqui.",
+      render: (f) => this._linhaFornecedor(f, mapaCat),
+    });
   }
 
   /* ---------------------------- Fornecedores --------------------------- */
@@ -109,7 +135,7 @@ class FornecedoresView extends BaseElement {
       return;
     }
 
-    const fornecedores = dataStore.fornecedoresAtivos();
+    const fornecedores = dataStore.meusFornecedoresAtivos();
     if (!fornecedores.length) {
       el.innerHTML = `
         <ui-empty-state icone="fornecedor" titulo="Nenhuma empresa"

@@ -49,6 +49,37 @@ function itensListar(data, sessao) {
   return { itens: listarItensUsuario(sessao.usuario_id) };
 }
 
+/**
+ * itens.incorporar -> { item } — COPIA um item (catálogo) vindo de obra
+ * compartilhada para o acervo PESSOAL. A subclassificação (categoria_id) do dono
+ * é limpa (reclassificar manualmente).
+ */
+function itensIncorporar(data, sessao) {
+  const id = String((data && data.id) || "");
+  const origem = repoEncontrar(SCHEMA.ITENS, function (x) { return String(x.id) === id; });
+  if (!origem) lancar(ERRO.NAO_ENCONTRADO, "Item não encontrado.");
+  if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Este item já é seu.");
+  if (!_idReferenciadoEmObraAcessivel(id, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Item não disponível para incorporar.");
+  return comLock(function () {
+    const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+    const item = {
+      id: novoId(),
+      usuario_id: sessao.usuario_id,
+      nome: origem.nome,
+      classificacao: _classificacaoValida(origem.classificacao),
+      ativo: true,
+      criado_em: agora,
+      atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
+      categoria_id: "", // subclassificação do dono não vale p/ mim
+    };
+    repoInserir(SCHEMA.ITENS, item);
+    return { item: item };
+  });
+}
+
 /** itens.criar -> { item }. */
 function itensCriar(data, sessao) {
   const nome = String((data && data.nome) || "").trim();

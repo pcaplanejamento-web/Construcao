@@ -38,6 +38,40 @@ function fornecedoresListar(data, sessao) {
   return { fornecedores: listarFornecedoresUsuario(sessao.usuario_id) };
 }
 
+/**
+ * fornecedores.incorporar -> { fornecedor } — COPIA uma empresa vinda de obra
+ * compartilhada para o acervo PESSOAL. A classificação (categoria_id) do dono é
+ * limpa (reclassificar manualmente).
+ */
+function fornecedoresIncorporar(data, sessao) {
+  const id = String((data && data.id) || "");
+  const origem = repoEncontrar(SCHEMA.FORNECEDORES, function (x) { return String(x.id) === id; });
+  if (!origem) lancar(ERRO.NAO_ENCONTRADO, "Empresa não encontrada.");
+  if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Esta empresa já é sua.");
+  if (!_idReferenciadoEmObraAcessivel(id, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Empresa não disponível para incorporar.");
+  return comLock(function () {
+    const agora = agoraIso();
+    const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
+    const fornecedor = {
+      id: novoId(),
+      usuario_id: sessao.usuario_id,
+      nome: origem.nome,
+      telefone: origem.telefone || "",
+      email: origem.email || "",
+      cnpj: origem.cnpj || "",
+      categoria_id: "", // classificação do dono não vale p/ mim
+      observacao: origem.observacao || "",
+      ativo: true,
+      criado_em: agora,
+      atualizado_em: agora,
+      autor_nome: nomeUsuario,
+      editor_nome: nomeUsuario,
+    };
+    repoInserir(SCHEMA.FORNECEDORES, fornecedor);
+    return { fornecedor: fornecedor };
+  });
+}
+
 /** fornecedores.criar -> { fornecedor }. */
 function fornecedoresCriar(data, sessao) {
   const nome = String((data && data.nome) || "").trim();

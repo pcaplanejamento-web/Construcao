@@ -101,12 +101,14 @@ const ROTAS = {
   "fornecedores.criar": { fn: fornecedoresCriar },
   "fornecedores.atualizar": { fn: fornecedoresAtualizar },
   "fornecedores.remover": { fn: fornecedoresRemover },
+  "fornecedores.incorporar": { fn: fornecedoresIncorporar },
 
   // Compras — Contatos
   "contatos.listar": { fn: contatosListar },
   "contatos.criar": { fn: contatosCriar },
   "contatos.atualizar": { fn: contatosAtualizar },
   "contatos.remover": { fn: contatosRemover },
+  "contatos.incorporar": { fn: contatosIncorporar },
 
   // Cargos (de contatos)
   "cargos.listar": { fn: cargosListar },
@@ -125,6 +127,7 @@ const ROTAS = {
   "itens.criar": { fn: itensCriar },
   "itens.atualizar": { fn: itensAtualizar },
   "itens.remover": { fn: itensRemover },
+  "itens.incorporar": { fn: itensIncorporar },
 
   // Compras — Cotações + ofertas
   "cotacoes.listar": { fn: cotacoesListar },

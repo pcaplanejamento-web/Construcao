@@ -13,6 +13,7 @@ import { colunasLog } from "../../core/audit-columns.js";
 import { abrirBannerVinculos, vinculosDoItem, vinculosDaSubclassificacao } from "../shared/vinculos.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { editarEmMassa } from "../shared/edicao-massa.js";
+import { montarCompartilhados } from "../shared/compartilhados-lista.js";
 import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
 import "../../components/ui-tabs.js";
@@ -26,6 +27,7 @@ import "../categorias/categoria-form.js";
 
 /** Cor do badge por classificação (espelha as cores padrão do sistema). */
 const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
+const _escItem = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 class ItensView extends BaseElement {
   estilos() {
@@ -61,6 +63,11 @@ class ItensView extends BaseElement {
               <div id="listaSub"></div>
             </ui-card>
           </div>
+          <div slot="compartilhados">
+            <ui-card mesa title="Itens de obras compartilhadas">
+              <div id="listaCompart"></div>
+            </ui-card>
+          </div>
         </ui-tabs>
       </div>
     `;
@@ -79,6 +86,28 @@ class ItensView extends BaseElement {
   pintar() {
     this.pintarItens();
     this.pintarSub();
+    this.pintarCompartilhados();
+  }
+
+  /** Aba "Compartilhados" (itens vindos de obras compartilhadas). */
+  pintarCompartilhados() {
+    const el = this.$("#listaCompart");
+    if (!el || !dataStore.carregado()) return;
+    const lista = dataStore.itensCompartilhados();
+    const abas = this.$("#abas");
+    if (abas && lista.length && !(abas.abas || []).some((a) => a.id === "compartilhados")) {
+      abas.abas = [...abas.abas, { id: "compartilhados", rotulo: "Compartilhados", icone: "recibo" }];
+    }
+    montarCompartilhados(el, lista, {
+      tipo: "item",
+      icone: "recibo",
+      vazio: "Itens usados em obras compartilhadas com você aparecem aqui.",
+      render: (i) =>
+        `<div style="display:flex;align-items:center;gap:10px;min-width:0">
+          <span style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escItem(i.nome)}</span>
+          <category-badge nome="${i.classificacao || "—"}" cor="${COR_CLASSIFICACAO[i.classificacao] || "var(--cor-neutro)"}"></category-badge>
+        </div>`,
+    });
   }
 
   /* ------------------------------ Itens ------------------------------- */
@@ -90,7 +119,7 @@ class ItensView extends BaseElement {
       el.innerHTML = `<ui-spinner centro text="Carregando..."></ui-spinner>`;
       return;
     }
-    const itens = dataStore.itensAtivos();
+    const itens = dataStore.meusItensAtivos();
     if (!itens.length) {
       el.innerHTML = `
         <ui-empty-state icone="recibo" titulo="Nenhum item"
