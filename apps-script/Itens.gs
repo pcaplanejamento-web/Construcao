@@ -44,6 +44,28 @@ function _itemPorId(itemId, usuarioId) {
   return i;
 }
 
+/**
+ * Item ATIVO para uso (LEITURA) numa despesa/estoque de OBRA ACESSÍVEL: aceita o
+ * item do PRÓPRIO usuário OU do DONO da obra (catálogo compartilhado). O
+ * colaborador usa o item do dono só para derivar nome/classificação/subclasse —
+ * NÃO altera o item. `donoObraId` = obra.usuario_id. Corrige o "Item não pode ser
+ * alterado" ao registrar despesa numa obra compartilhada.
+ */
+function _itemParaObra(itemId, donoObraId, usuarioId) {
+  const i = repoEncontrar(SCHEMA.ITENS, function (x) {
+    return String(x.id) === String(itemId);
+  });
+  if (
+    !i ||
+    (String(i.usuario_id) !== String(usuarioId) &&
+      String(i.usuario_id) !== String(donoObraId))
+  ) {
+    lancar(ERRO.NAO_AUTORIZADO, "Item não disponível nesta obra.");
+  }
+  if (!_itemAtivo(i)) lancar(ERRO.VALIDACAO, "Item inválido.");
+  return i;
+}
+
 /** itens.listar -> { itens: [...] }. */
 function itensListar(data, sessao) {
   return { itens: listarItensUsuario(sessao.usuario_id) };

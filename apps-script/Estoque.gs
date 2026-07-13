@@ -171,7 +171,7 @@ function estoqueCriarMovimento(data, sessao) {
   const obraId = String((data && data.obra_id) || "");
   const itemId = String((data && data.item_id) || "");
   const qtd = Number(data && data.quantidade) || 0;
-  _obraAcessivel(obraId, usuarioId);
+  const obra = _obraAcessivel(obraId, usuarioId); // colaborador usa o item do DONO da obra
   if (!itemId) lancar(ERRO.VALIDACAO, "Selecione o item.");
   if (!(qtd > 0)) lancar(ERRO.VALIDACAO, "Informe uma quantidade maior que zero.");
 
@@ -210,7 +210,7 @@ function estoqueCriarMovimento(data, sessao) {
   }
 
   if (acao === "manual") {
-    const item = _itemPorId(itemId, usuarioId); // valida + herda classificação/subclasse (item 16)
+    const item = _itemParaObra(itemId, obra && obra.usuario_id, usuarioId); // valida + herda classificação/subclasse (item 16)
     const unidade = String((data && data.unidade) || _unidadeAtual(obraId, itemId) || "");
     return comLock(function () {
       return {
@@ -233,7 +233,7 @@ function estoqueCriarMovimento(data, sessao) {
     const saldo = _saldoEstoque(obraId, itemId);
     if (qtd - saldo.em_estoque > 0.0001)
       lancar(ERRO.VALIDACAO, "Não há esse tanto em estoque p/ transferir (disponível: " + saldo.em_estoque + ").");
-    const item = _itemPorId(itemId, usuarioId);
+    const item = _itemParaObra(itemId, obra && obra.usuario_id, usuarioId);
     const unidade = _unidadeAtual(obraId, itemId) || "";
     const destino = repoEncontrar(SCHEMA.OBRAS, function (o) {
       return String(o.id) === destinoId;

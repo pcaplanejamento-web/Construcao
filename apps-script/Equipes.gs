@@ -42,6 +42,25 @@ function _equipeDoUsuario(id, usuarioId) {
   return e;
 }
 
+/**
+ * Equipe para uso (LEITURA) numa oferta/despesa de OBRA ACESSÍVEL: aceita a
+ * equipe do PRÓPRIO usuário OU do DONO da obra (catálogo compartilhado).
+ * `donoObraId` = obra.usuario_id (ou o próprio usuário quando não há obra).
+ */
+function _equipeParaObra(id, donoObraId, usuarioId) {
+  const e = repoEncontrar(SCHEMA.EQUIPES, function (x) {
+    return String(x.id) === String(id);
+  });
+  if (
+    !e ||
+    (String(e.usuario_id) !== String(usuarioId) &&
+      String(e.usuario_id) !== String(donoObraId))
+  ) {
+    lancar(ERRO.NAO_AUTORIZADO, "Equipe não disponível nesta obra.");
+  }
+  return e;
+}
+
 /** Valida o líder: contato do usuário com cargo em CARGOS_LIDER. */
 function _validarLider(liderId, usuarioId) {
   if (!liderId) lancar(ERRO.VALIDACAO, "Selecione o líder da equipe.");

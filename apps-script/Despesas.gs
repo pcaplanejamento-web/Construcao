@@ -125,7 +125,10 @@ function _novaDespesa(obraId, usuarioId, dados) {
   let classificacao = String((dados && dados.classificacao) || "");
   const itemId = String((dados && dados.item_id) || "");
   if (itemId) {
-    const it = _itemPorId(itemId, usuarioId);
+    // Colaborador de obra compartilhada usa o item do DONO (catálogo da obra) —
+    // aceita item próprio OU do dono da obra (leitura; não altera o item).
+    const obraRow = repoEncontrar(SCHEMA.OBRAS, function (o) { return String(o.id) === String(obraId); });
+    const it = _itemParaObra(itemId, obraRow && obraRow.usuario_id, usuarioId);
     itemNome = it.nome;
     classificacao = it.classificacao;
   }
@@ -212,7 +215,9 @@ function despesasAtualizar(data, sessao) {
   const patch = {};
   // Item: se vier item_id, re-deriva nome+classificacao do catálogo (fonte de verdade).
   if (data.item_id !== undefined && String(data.item_id || "")) {
-    const it = _itemPorId(String(data.item_id), sessao.usuario_id);
+    // Aceita item próprio OU do dono da obra (catálogo compartilhado).
+    const obraRow = repoEncontrar(SCHEMA.OBRAS, function (o) { return String(o.id) === String(atual.obra_id); });
+    const it = _itemParaObra(String(data.item_id), obraRow && obraRow.usuario_id, sessao.usuario_id);
     patch.item_id = String(data.item_id);
     patch.item = it.nome;
     patch.classificacao = it.classificacao;

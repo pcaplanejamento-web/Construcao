@@ -33,6 +33,25 @@ function _fornecedorDoUsuario(fornecedorId, usuarioId) {
   return f;
 }
 
+/**
+ * Empresa para uso (LEITURA) numa oferta/despesa de OBRA ACESSÍVEL: aceita a
+ * empresa do PRÓPRIO usuário OU do DONO da obra (catálogo compartilhado).
+ * `donoObraId` = obra.usuario_id (ou o próprio usuário quando não há obra).
+ */
+function _fornecedorParaObra(fornecedorId, donoObraId, usuarioId) {
+  const f = repoEncontrar(SCHEMA.FORNECEDORES, function (x) {
+    return String(x.id) === String(fornecedorId);
+  });
+  if (
+    !f ||
+    (String(f.usuario_id) !== String(usuarioId) &&
+      String(f.usuario_id) !== String(donoObraId))
+  ) {
+    lancar(ERRO.NAO_AUTORIZADO, "Empresa não disponível nesta obra.");
+  }
+  return f;
+}
+
 /** fornecedores.listar -> { fornecedores: [...] }. */
 function fornecedoresListar(data, sessao) {
   return { fornecedores: listarFornecedoresUsuario(sessao.usuario_id) };

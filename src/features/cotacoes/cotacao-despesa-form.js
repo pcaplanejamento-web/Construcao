@@ -646,6 +646,7 @@ class CotacaoDespesaForm extends BaseElement {
         valor_unit_desconto: desconto,
         prazo_entrega: prazo,
         observacao: (((this.$("#novaObs") || {}).value) || "").trim(),
+        obra_id: obraId, // libera o catálogo do dono numa obra compartilhada
       });
       await dataStore.registrarDespesaOferta(oferta.cotacao_id || "", oferta.id, obraId, "", responsaveis);
       const obra = dataStore.obra(obraId) || {};

@@ -220,11 +220,21 @@ function cotacoesAdicionarPreco(data, sessao) {
   const cotacao = cotacaoId ? _cotacaoDoUsuario(cotacaoId, usuarioId) : null;
   const orcamento = orcamentoId ? _orcamentoDoUsuario(orcamentoId, usuarioId) : null;
 
+  // Obra de destino (explícita → herda de cotação/orçamento). Quando a oferta
+  // nasce p/ virar despesa numa obra COMPARTILHADA, o `donoObra` libera o catálogo
+  // do dono (item/contato/empresa/equipe) para o colaborador — sem obra, `donoObra`
+  // é o próprio usuário (comportamento estrito de sempre).
+  let obraId = String((data && data.obra_id) || "");
+  if (!obraId && cotacao) obraId = String(cotacao.obra_id || "");
+  if (!obraId && orcamento) obraId = String(orcamento.obra_id || "");
+  const obraDest = obraId ? _obraAcessivel(obraId, usuarioId) : null;
+  const donoObra = obraDest ? String(obraDest.usuario_id) : usuarioId;
+
   // Item: obrigatório (herda da cotação se houver e não vier explícito).
   let itemId = String((data && data.item_id) || "");
   if (!itemId && cotacao) itemId = String(cotacao.item_id || "");
   if (!itemId) lancar(ERRO.VALIDACAO, "Selecione o item da oferta.");
-  const item = _itemPorId(itemId, usuarioId);
+  const item = _itemParaObra(itemId, donoObra, usuarioId);
   const classificacao = String(item.classificacao || "");
   // Cotação por subclassificação: o item da oferta deve pertencer àquela subclasse.
   if (cotacao && String(cotacao.modo || "") === "subclasse" && String(cotacao.categoria_id || "")) {
@@ -246,10 +256,10 @@ function cotacoesAdicionarPreco(data, sessao) {
   }
   let contato = null;
   if (equipeId) {
-    _equipeDoUsuario(equipeId, usuarioId);
+    _equipeParaObra(equipeId, donoObra, usuarioId);
     contatoId = "";
   } else if (contatoId) {
-    contato = _contatoDoUsuario(contatoId, usuarioId);
+    contato = _contatoParaObra(contatoId, donoObra, usuarioId);
   }
 
   // Fornecedor: herdado do orçamento (Material) ou auto pelo contato ofertante.
@@ -258,7 +268,7 @@ function cotacoesAdicionarPreco(data, sessao) {
     fornecedorId = String(orcamento.fornecedor_id);
   if (!fornecedorId && contato && String(contato.fornecedor_id || ""))
     fornecedorId = String(contato.fornecedor_id);
-  if (fornecedorId) _fornecedorDoUsuario(fornecedorId, usuarioId);
+  if (fornecedorId) _fornecedorParaObra(fornecedorId, donoObra, usuarioId);
 
   // Regras por classificação do item.
   if (classificacao === "Material") {
@@ -272,12 +282,7 @@ function cotacoesAdicionarPreco(data, sessao) {
   if (!prazo) lancar(ERRO.VALIDACAO, "Informe a data/prazo de entrega.");
   const valor = Number(data && data.valor_unit);
   if (!(valor > 0)) lancar(ERRO.VALIDACAO, "Informe um valor maior que zero.");
-
-  // Obra da oferta: explícita → herda da cotação → herda do orçamento (resolve obra de avulsa).
-  let obraId = String((data && data.obra_id) || "");
-  if (!obraId && cotacao) obraId = String(cotacao.obra_id || "");
-  if (!obraId && orcamento) obraId = String(orcamento.obra_id || "");
-  if (obraId) _obraAcessivel(obraId, usuarioId);
+  // (obraId/donoObra já resolvidos no topo — usados no catálogo compartilhado.)
 
   return comLock(function () {
     const agora = agoraIso();
@@ -481,7 +486,7 @@ function cotacoesRegistrarDespesa(data, sessao) {
 
   const obraId = String((data && data.obra_id) || "");
   if (!obraId) lancar(ERRO.VALIDACAO, "Selecione a obra.");
-  _obraAcessivel(obraId, sessao.usuario_id);
+  const obraReg = _obraAcessivel(obraId, sessao.usuario_id);
 
   // Quantidade e valor unitário PRÓPRIOS da oferta (fallback ao legado da cotação).
   // Valor FINAL = unitário com desconto (se houver) × quantidade.
@@ -499,7 +504,8 @@ function cotacoesRegistrarDespesa(data, sessao) {
   let itemReg = null;
   if (itemId) {
     try {
-      itemReg = _itemPorId(itemId, sessao.usuario_id);
+      // Aceita item próprio OU do dono da obra (catálogo compartilhado).
+      itemReg = _itemParaObra(itemId, obraReg && obraReg.usuario_id, sessao.usuario_id);
     } catch (e) {
       itemReg = null;
     }
