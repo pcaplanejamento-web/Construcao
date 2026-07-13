@@ -81,13 +81,15 @@ function categoriasIncorporar(data, sessao) {
   if (String(origem.usuario_id) === CATEGORIA_GLOBAL) lancar(ERRO.VALIDACAO, "Categoria padrão já está disponível.");
   if (!_categoriaReferenciadaEmObraAcessivel(id, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Categoria não disponível para incorporar.");
   return comLock(function () {
-    // Dedupe: se já tenho (própria ou GLOBAL) categoria com esse nome+tipo, devolve-a.
+    // Dedupe: cópia EXATA (origem_id) OU equivalente (nome+tipo, própria/GLOBAL) → devolve.
     const nk = String(origem.nome || "").trim().toLowerCase();
     const tk = String(origem.tipo || "") === "fornecedor" ? "fornecedor" : "item";
     const jaTenho = repoEncontrar(SCHEMA.CATEGORIAS, function (c) {
+      if (!_categoriaAtiva(c)) return false;
+      const minha = String(c.usuario_id) === String(sessao.usuario_id) || String(c.usuario_id) === CATEGORIA_GLOBAL;
+      if (!minha) return false;
+      if (String(c.origem_id || "") === String(origem.id)) return true;
       return (
-        _categoriaAtiva(c) &&
-        (String(c.usuario_id) === String(sessao.usuario_id) || String(c.usuario_id) === CATEGORIA_GLOBAL) &&
         String(c.nome || "").trim().toLowerCase() === nk &&
         (String(c.tipo || "") === "fornecedor" ? "fornecedor" : "item") === tk
       );
@@ -106,6 +108,7 @@ function categoriasIncorporar(data, sessao) {
       autor_nome: nomeUsuario,
       editor_nome: nomeUsuario,
       tipo: String(origem.tipo || "") === "fornecedor" ? "fornecedor" : "item",
+      origem_id: origem.id, // back-reference p/ dedup exato
     };
     repoInserir(SCHEMA.CATEGORIAS, categoria);
     cacheRemove(chaveCategorias(sessao.usuario_id));

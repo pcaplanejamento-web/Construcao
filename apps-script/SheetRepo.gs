@@ -31,7 +31,13 @@ function _abaDe(def) {
     aba = ss.insertSheet(def.aba);
     aba.appendRow(def.colunas);
     aba.setFrozenRows(1);
+    return aba;
   }
+  // Ao ADICIONAR colunas novas ao fim do schema, a grade da aba pode ter menos
+  // colunas que `def.colunas.length` → `getRange(...,colunas.length)` estouraria.
+  // Garante a largura (idempotente: só insere na 1ª vez após o deploy).
+  const faltam = def.colunas.length - aba.getMaxColumns();
+  if (faltam > 0) aba.insertColumnsAfter(aba.getMaxColumns(), faltam);
   return aba;
 }
 

@@ -27,28 +27,32 @@ const _nomeIgual = (a, b) => _nrm(a) !== "" && _nrm(a) === _nrm(b);
 export function jaIncorporado(tipo, x, cat) {
   if (!x || !cat) return false;
   const meu = String(cat.meuId || "");
+  const xid = String(x.id || "");
   const meus = (arr) => (arr || []).filter((y) => y && String(y.usuario_id || "") === meu);
+  // Dedup EXATO por back-reference: já tenho uma cópia cujo `origem_id` = id do
+  // compartilhado (resiste a renomear). Só quando o compartilhado tem id.
+  const porOrigem = (arr) => xid !== "" && meus(arr).some((y) => String(y.origem_id || "") === xid);
   const minhasCats = () =>
     (cat.categorias || []).filter(
       (c) => String(c.usuario_id || "") === meu || String(c.usuario_id || "") === "GLOBAL"
     );
   switch (tipo) {
     case "contato":
-      return meus(cat.contatos).some((c) => _nomeIgual(c.nome, x.nome) && _nrm(c.telefone) === _nrm(x.telefone));
+      return porOrigem(cat.contatos) || meus(cat.contatos).some((c) => _nomeIgual(c.nome, x.nome) && _nrm(c.telefone) === _nrm(x.telefone));
     case "fornecedor":
-      return meus(cat.fornecedores).some((f) => _nomeIgual(f.nome, x.nome));
+      return porOrigem(cat.fornecedores) || meus(cat.fornecedores).some((f) => _nomeIgual(f.nome, x.nome));
     case "item":
-      return meus(cat.itens).some((i) => _nomeIgual(i.nome, x.nome) && _nrm(i.classificacao) === _nrm(x.classificacao));
+      return porOrigem(cat.itens) || meus(cat.itens).some((i) => _nomeIgual(i.nome, x.nome) && _nrm(i.classificacao) === _nrm(x.classificacao));
     case "equipe":
-      return meus(cat.equipes).some((e) => _nomeIgual(e.nome, x.nome));
+      return porOrigem(cat.equipes) || meus(cat.equipes).some((e) => _nomeIgual(e.nome, x.nome));
     case "cargo":
       return (cat.cargos || [])
         .filter((cg) => cg.fixo || String(cg.usuario_id || "") === meu)
         .some((cg) => _nomeIgual(cg.nome, x.nome));
     case "categoria-item":
-      return minhasCats().some((c) => _nomeIgual(c.nome, x.nome) && _nrm(c.tipo) !== "fornecedor");
+      return minhasCats().some((c) => (xid !== "" && String(c.origem_id || "") === xid) || (_nomeIgual(c.nome, x.nome) && _nrm(c.tipo) !== "fornecedor"));
     case "categoria-fornecedor":
-      return minhasCats().some((c) => _nomeIgual(c.nome, x.nome) && _nrm(c.tipo) === "fornecedor");
+      return minhasCats().some((c) => (xid !== "" && String(c.origem_id || "") === xid) || (_nomeIgual(c.nome, x.nome) && _nrm(c.tipo) === "fornecedor"));
     default:
       return false; // oferta/cotação/orçamento (escopo=obra) não bloqueiam
   }
@@ -75,7 +79,17 @@ export function indiceAcervo(cat) {
   const cats = (cat.categorias || []).filter(
     (c) => String(c.usuario_id || "") === meu || String(c.usuario_id || "") === "GLOBAL"
   );
+  // Set global de `origem_id` das minhas cópias (ids são únicos entre tipos) →
+  // dedup EXATO por back-reference (resiste a renomear).
+  const origem = new Set();
+  [meus(cat.contatos), meus(cat.fornecedores), meus(cat.itens), meus(cat.equipes), cats].forEach((arr) =>
+    (arr || []).forEach((y) => {
+      const o = String(y.origem_id || "");
+      if (o) origem.add(o);
+    })
+  );
   return {
+    origem,
     contato: chaves(meus(cat.contatos), (c) => _nrm(c.nome) + "|" + _nrm(c.telefone)),
     fornecedor: chaves(meus(cat.fornecedores), (f) => _nrm(f.nome)),
     item: chaves(meus(cat.itens), (i) => _nrm(i.nome) + "|" + _nrm(i.classificacao)),
@@ -88,7 +102,10 @@ export function indiceAcervo(cat) {
 
 /** Versão O(1) de `jaIncorporado` usando o índice de `indiceAcervo`. */
 export function jaIncorporadoIdx(tipo, x, idx) {
-  if (!x || !idx || _nrm(x.nome) === "") return false;
+  if (!x || !idx) return false;
+  // Dedup exato por origem_id (independe do nome).
+  if (String(x.id || "") !== "" && idx.origem && idx.origem.has(String(x.id))) return true;
+  if (_nrm(x.nome) === "") return false;
   switch (tipo) {
     case "contato":
       return idx.contato.has(_nrm(x.nome) + "|" + _nrm(x.telefone));

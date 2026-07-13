@@ -104,6 +104,7 @@ const SCHEMA = {
       "editor_nome", // quem editou por último
       // Pool: distingue subclassificação de item × classificação de fornecedor.
       "tipo", // "item" (default/legado) | "fornecedor"
+      "origem_id", // (append) id da categoria ORIGINAL quando incorporada de obra compartilhada (dedup exato)
     ],
   },
 
@@ -149,6 +150,7 @@ const SCHEMA = {
       "autor_nome", // (append) quem criou
       "editor_nome", // (append) quem editou por último
       "google_resource_id", // (append) vínculo ao contato do Google (People API, ex.: people/c123)
+      "origem_id", // (append) id da linha ORIGINAL quando incorporada de obra compartilhada (dedup exato)
     ],
   },
 
@@ -170,6 +172,7 @@ const SCHEMA = {
       "autor_nome", // (append) quem criou
       "editor_nome", // (append) quem editou por último
       "google_resource_id", // (append) vínculo ao contato do Google (People API, ex.: people/c123)
+      "origem_id", // (append) id da linha ORIGINAL quando incorporado de obra compartilhada (dedup exato)
     ],
   },
 
@@ -205,6 +208,7 @@ const SCHEMA = {
       "autor_nome", // quem criou (desnormalizado)
       "editor_nome", // quem editou por último
       "categoria_id", // (append) SUBclassificação do item (obrigatória na criação)
+      "origem_id", // (append) id do item ORIGINAL quando incorporado de obra compartilhada (dedup exato)
     ],
   },
 
@@ -270,6 +274,7 @@ const SCHEMA = {
       "atualizado_em",
       "autor_nome",
       "editor_nome",
+      "origem_id", // (append) id da equipe ORIGINAL quando incorporada de obra compartilhada (dedup exato)
     ],
   },
 

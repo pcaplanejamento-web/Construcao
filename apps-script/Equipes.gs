@@ -132,12 +132,9 @@ function _copiaPessoalContato(origemId, usuarioId, nomeUsuario, agora, criadosOu
   const nomeKey = String(origem.nome || "").trim().toLowerCase();
   const telKey = String(origem.telefone || "").trim();
   const existente = repoEncontrar(SCHEMA.CONTATOS, function (c) {
-    return (
-      String(c.usuario_id) === String(usuarioId) &&
-      String(c.nome || "").trim().toLowerCase() === nomeKey &&
-      String(c.telefone || "").trim() === telKey &&
-      (c.ativo === true || c.ativo === "TRUE" || c.ativo === "true")
-    );
+    if (String(c.usuario_id) !== String(usuarioId) || !(c.ativo === true || c.ativo === "TRUE" || c.ativo === "true")) return false;
+    if (String(c.origem_id || "") === String(origem.id)) return true; // dedup EXATO
+    return String(c.nome || "").trim().toLowerCase() === nomeKey && String(c.telefone || "").trim() === telKey;
   });
   if (existente) return String(existente.id);
   const novo = {
@@ -155,6 +152,7 @@ function _copiaPessoalContato(origemId, usuarioId, nomeUsuario, agora, criadosOu
     superior_id: "",
     autor_nome: nomeUsuario,
     editor_nome: nomeUsuario,
+    origem_id: origem.id, // back-reference p/ dedup exato
   };
   repoInserir(SCHEMA.CONTATOS, novo);
   if (criadosOut) criadosOut.push(novo);
@@ -175,6 +173,11 @@ function equipesIncorporar(data, sessao) {
   if (String(origem.usuario_id) === String(sessao.usuario_id)) lancar(ERRO.VALIDACAO, "Esta equipe já é sua.");
   if (!_idReferenciadoEmObraAcessivel(id, sessao.usuario_id)) lancar(ERRO.NAO_AUTORIZADO, "Equipe não disponível para incorporar.");
   return comLock(function () {
+    // Dedupe EXATO: já incorporei esta equipe? devolve a existente (não re-copia).
+    const jaMinha = repoEncontrar(SCHEMA.EQUIPES, function (e) {
+      return String(e.usuario_id) === String(sessao.usuario_id) && _equipeAtiva(e) && String(e.origem_id || "") === String(origem.id);
+    });
+    if (jaMinha) return { equipe: _lerEquipe(jaMinha), contatos: [] };
     const agora = agoraIso();
     const nomeUsuario = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
     const criados = [];
@@ -196,6 +199,7 @@ function equipesIncorporar(data, sessao) {
       atualizado_em: agora,
       autor_nome: nomeUsuario,
       editor_nome: nomeUsuario,
+      origem_id: origem.id, // back-reference p/ dedup exato
     };
     repoInserir(SCHEMA.EQUIPES, equipe);
     return { equipe: _lerEquipe(equipe), contatos: criados };

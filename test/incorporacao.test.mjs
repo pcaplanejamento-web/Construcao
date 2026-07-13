@@ -114,6 +114,24 @@ test("filtrarDadosDaObra: pools vazios não quebram", () => {
   assert.deepEqual(r, { ofertas: [], cotacoes: [], orcamentos: [] });
 });
 
+test("origem_id: dedup EXATO resiste a renomear (nome diferente)", () => {
+  const cat = {
+    meuId: "A",
+    contatos: [{ id: "meu", usuario_id: "A", nome: "Renomeado", telefone: "00", origem_id: "src1" }],
+    fornecedores: [], itens: [], equipes: [], cargos: [],
+    categorias: [{ id: "catMeu", usuario_id: "A", nome: "RenomCat", tipo: "item", origem_id: "srcCat" }],
+  };
+  // compartilhado src1: nome/telefone DIFERENTES do meu, mas origem_id casa → já incorporado.
+  assert.equal(jaIncorporado("contato", { id: "src1", nome: "Original", telefone: "99" }, cat), true);
+  assert.equal(jaIncorporado("contato", { id: "outro", nome: "Zé", telefone: "1" }, cat), false);
+  assert.equal(jaIncorporado("categoria-item", { id: "srcCat", nome: "Qualquer" }, cat), true);
+  // Índice idem (Set global de origem_id).
+  const idx = indiceAcervo(cat);
+  assert.equal(jaIncorporadoIdx("contato", { id: "src1", nome: "Original", telefone: "99" }, idx), true);
+  assert.equal(jaIncorporadoIdx("contato", { id: "outro", nome: "Zé" }, idx), false);
+  assert.equal(jaIncorporadoIdx("categoria-item", { id: "srcCat", nome: "Qualquer" }, idx), true);
+});
+
 test("jaIncorporadoIdx é EQUIVALENTE a jaIncorporado (índice O(1))", () => {
   const idx = indiceAcervo(CAT);
   const casos = [
