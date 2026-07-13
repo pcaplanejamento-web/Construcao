@@ -302,7 +302,9 @@ class FornecedoresView extends BaseElement {
       return;
     }
 
-    const todas = dataStore.categoriasFornecedor();
+    // Classificações PESSOAIS (minhas + GLOBAL). As referenciadas de obra
+    // compartilhada ficam na aba "Compartilhados" (com Incorporar) — não aqui.
+    const todas = dataStore.minhasCategoriasFornecedor();
     if (!todas.length) {
       el.innerHTML = `
         <ui-empty-state icone="tag" titulo="Nenhuma categoria"

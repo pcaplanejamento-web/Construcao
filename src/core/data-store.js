@@ -299,6 +299,16 @@ const meusFornecedoresAtivos = () => fornecedoresAtivos().filter(_ehMeu);
 const fornecedoresCompartilhados = () => fornecedores().filter(_ehCompart);
 const meusItensAtivos = () => itensAtivos().filter(_ehMeu);
 const itensCompartilhados = () => itens().filter(_ehCompart);
+// Categorias PESSOAIS = minhas (usuario_id = eu / vazio) + GLOBAL. As
+// REFERENCIADAS de obra compartilhada (usuario_id do dono) ficam SÓ na aba
+// "Compartilhados"/"Das obras" — senão a aba Categorias parece que já as tenho,
+// mas o botão "Incorporar" (jaIncorporado) — corretamente — não as conta.
+const _catMinhaOuGlobal = (c) => {
+  const u = String((c && c.usuario_id) || "");
+  return u === "" || u === "GLOBAL" || u === _meuId();
+};
+const minhasCategoriasItem = () => categoriasItem().filter(_catMinhaOuGlobal);
+const minhasCategoriasFornecedor = () => categoriasFornecedor().filter(_catMinhaOuGlobal);
 
 /** Obras COMPARTILHADAS comigo (não sou o dono). */
 const obrasCompartilhadas = () => obras().filter((o) => o.ehDono === false);
@@ -1740,6 +1750,7 @@ export const dataStore = {
   notasDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, tiposTransferencia, itens, itensAtivos, item,
   meusContatosAtivos, contatosCompartilhados, meusFornecedoresAtivos, fornecedoresCompartilhados, meusItensAtivos, itensCompartilhados,
+  minhasCategoriasItem, minhasCategoriasFornecedor,
   obrasCompartilhadas, compartilhadoDaObra, dadosDaObra, temDadosDeObraDeTipo, jaIncorporado, indiceAcervo, jaIncorporadoIdx,
   cotacoes, cotacao, precosDaCotacao, todasOfertas,
   historicoDaCotacao, itensDaSubclasse, precosDaCotacaoPorItem,
