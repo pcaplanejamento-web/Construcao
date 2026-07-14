@@ -112,11 +112,12 @@ const COR_STATUS = { "A pagar": "#d97706", "Em pagamento": "var(--cor-info)", Pa
  */
 export function colunasOferta() {
   return [
-    { chave: "item_id", titulo: "Item", formato: (id, l) => _nomeItemOferta(l) },
+    { chave: "item_id", titulo: "Item", largura: "clamp(160px, 18vw, 280px)", formato: (id, l) => _nomeItemOferta(l) },
     {
       chave: "item_id",
       titulo: "Classificação",
       secundaria: true,
+      largura: "116px",
       formato: (id, l) => {
         const c = _classeOferta(l);
         return c
@@ -124,9 +125,9 @@ export function colunasOferta() {
           : _fraco("—");
       },
     },
-    { chave: "item_id", titulo: "Categoria", secundaria: true, formato: (id, l) => _subclasseOferta(l) || _fraco("—") },
-    { chave: "contato_id", titulo: "Ofertante", formato: (id, l) => ofertanteNome(l.contato_id, l.equipe_id) },
-    { chave: "fornecedor_id", titulo: "Empresa", formato: (id, l) => _fornecedorOferta(l) || _fraco("—") },
+    { chave: "item_id", titulo: "Categoria", secundaria: true, largura: "100px", formato: (id, l) => _subclasseOferta(l) || _fraco("—") },
+    { chave: "contato_id", titulo: "Ofertante", largura: "110px", formato: (id, l) => ofertanteNome(l.contato_id, l.equipe_id) },
+    { chave: "fornecedor_id", titulo: "Empresa", largura: "120px", formato: (id, l) => _fornecedorOferta(l) || _fraco("—") },
     {
       chave: "quantidade",
       titulo: "Qtd",
