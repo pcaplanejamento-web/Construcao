@@ -385,8 +385,13 @@ class UiDataTable extends BaseElement {
     const acoes = this.acoes;
     const temAcoes = acoes.length > 0;
 
-    // Poda a seleção para linhas ainda presentes.
-    this.__sel = new Set([...this._sel].filter((l) => this.rows.includes(l)));
+    // Poda + REMAPEIA a seleção para os objetos-linha ATUAIS, casando por `id`
+    // (com fallback à referência p/ linhas sem id). Assim a seleção SOBREVIVE a um
+    // refresh em 2º plano (app.js) que substitui os objetos do store — senão ela
+    // some no meio da ação e "Excluir selecionados" não faz nada.
+    const _selKey = (l) => (l && l.id != null ? "id:" + l.id : l);
+    const selMarcados = new Set([...this._sel].map(_selKey));
+    this.__sel = new Set(this.rows.filter((l) => selMarcados.has(_selKey(l))));
 
     if (!this.rows.length) {
       // Estado vazio RICO (ícone + explicação) quando há empty-titulo; senão, o
