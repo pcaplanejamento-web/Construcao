@@ -16,6 +16,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { confirmar } from "../../components/confirmar.js";
 import { avatarHtml } from "./avatar.js";
 import { moeda } from "../../core/formatters.js";
 import { ofertanteNome, rotuloOrcamento } from "../orcamentos/orcamento-util.js";
@@ -81,6 +82,11 @@ class CompartilhadosObra extends BaseElement {
         font: inherit; font-size: var(--fs-sm); font-weight: var(--peso-semi); min-height: 40px; padding: 0 var(--esp-3); }
       .comp-inc:hover { background: var(--cor-primaria); color: #fff; }
       .comp-inc[disabled] { opacity: .5; cursor: default; }
+      .comp-del { flex: none; border: 1px solid var(--cor-erro-suave); background: var(--cor-superficie);
+        color: var(--cor-erro); cursor: pointer; border-radius: var(--raio-sm); font: inherit;
+        font-size: var(--fs-sm); font-weight: var(--peso-semi); min-height: 40px; padding: 0 var(--esp-3); }
+      .comp-del:hover { background: var(--cor-erro); color: #fff; border-color: var(--cor-erro); }
+      .comp-del[disabled] { opacity: .5; cursor: default; }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); padding: var(--esp-3) 0; }
       .badge { display: inline-block; padding: 2px 10px; border-radius: var(--raio-completo);
         font-size: var(--fs-sm); font-weight: var(--peso-semi); }
@@ -132,6 +138,9 @@ class CompartilhadosObra extends BaseElement {
     const rotuloBtn = ehObra ? "Salvar nos meus dados" : "Incorporar";
     // Índice do acervo montado 1× por render (O(1) por linha em vez de varrer o catálogo).
     const idxAcervo = ehObra ? null : dataStore.indiceAcervo();
+    // Só o CRIADOR pode excluir a própria oferta/cotação/orçamento da obra.
+    const meuId = String((dataStore.usuario() || {}).id || "");
+    const podeExcluir = (tipo) => ehObra && ["oferta", "cotacao", "orcamento"].indexOf(tipo) >= 0;
     const mostrarTitulo = tipos.length > 1;
     const secoes = tipos
       .map((tipo) => {
@@ -151,9 +160,14 @@ class CompartilhadosObra extends BaseElement {
               : jaTem
                 ? `<button type="button" class="comp-inc" disabled>Incorporado</button>`
                 : `<button type="button" class="comp-inc" data-tipo="${tipo}" data-id="${idd}">${rotuloBtn}</button>`;
+            // Excluir: só o que É MEU (criei) — a de outro criador não é minha p/ excluir.
+            const btnDel =
+              podeExcluir(tipo) && String(x.usuario_id || "") === meuId
+                ? `<button type="button" class="comp-del" data-tipo="${tipo}" data-id="${idd}" data-cot="${_esc(String(x.cotacao_id || ""))}">Excluir</button>`
+                : "";
             return `<div class="comp-row">
               <div class="comp-conteudo">${this._linha(tipo, x)}</div>
-              ${botao}
+              ${botao}${btnDel}
             </div>`;
           })
           .join("");
@@ -177,6 +191,26 @@ class CompartilhadosObra extends BaseElement {
           toastSucesso(ehObra ? "Salvo no seu acervo." : "Incorporado ao seu acervo.");
         } catch (e) {
           notificarErro(e);
+          b.disabled = false;
+        }
+      })
+    );
+    // Excluir a oferta/cotação/orçamento da obra (só o criador). Tenta excluir; se o
+    // backend BLOQUEAR (ex.: oferta já virou despesa), mostra a mensagem de erro.
+    const ROTULO = { oferta: "oferta", cotacao: "cotação", orcamento: "orçamento" };
+    listaEl.querySelectorAll(".comp-del").forEach((b) =>
+      b.addEventListener("click", async () => {
+        const tipo = b.dataset.tipo;
+        const termo = ROTULO[tipo] || "item";
+        if (!(await confirmar({ titulo: `Excluir ${termo}`, mensagem: `Excluir esta ${termo} da obra?`, perigo: true, rotuloOk: "Excluir" }))) return;
+        b.disabled = true;
+        try {
+          if (tipo === "oferta") await dataStore.removerPreco(b.dataset.cot || "", b.dataset.id);
+          else if (tipo === "cotacao") await dataStore.removerCotacao(b.dataset.id);
+          else if (tipo === "orcamento") await dataStore.removerOrcamento(b.dataset.id);
+          toastSucesso(`${termo.charAt(0).toUpperCase() + termo.slice(1)} excluída.`);
+        } catch (e) {
+          notificarErro(e); // ex.: "Oferta já registrada como despesa; exclua a despesa primeiro."
           b.disabled = false;
         }
       })
