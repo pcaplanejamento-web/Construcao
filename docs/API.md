@@ -219,7 +219,7 @@ para dono **e** colaboradores.
 |--------|--------|---------|
 | `itens.listar` | `{}` | `{ itens:[{id,nome,classificacao,ativo,criado_em,atualizado_em,autor_nome,editor_nome}] }` (ativos, por nome) |
 | `itens.criar` | `{ nome, classificacao, categoria_id }` | `{ item }` (`classificacao` ∈ `Material`/`Serviço`; **`categoria_id` = subclassificação OBRIGATÓRIA**; grava `autor_nome`) |
-| `itens.atualizar` | `{ id, nome?, classificacao?, categoria_id? }` | `{ item }` (`categoria_id` não pode ficar vazio) |
+| `itens.atualizar` | `{ id, nome?, classificacao?, categoria_id? }` | `{ item, despesas }` — **propaga** nome/classificação/categoria às despesas do item (dados conectados); `despesas` = as afetadas (`categoria_id` não pode ficar vazio) |
 | `itens.remover` | `{ id }` | `{ id }` (remoção lógica, `ativo=false`) |
 
 ### Compras — Cotações + ofertas

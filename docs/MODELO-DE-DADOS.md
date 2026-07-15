@@ -161,6 +161,14 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > A exibição resolve o nome ATUAL pelo `id` na fonte — front via `dataStore.item(id)`;
 > backend re-deriva em `listarParticipantesObra` e `publicoObra`. Renomear a entidade
 > reflete em todos os lugares.
+>
+> **Despesa ↔ Item conectados:** a despesa guarda uma CÓPIA do item
+> (`item`/`classificacao`/`categoria_id`). Ao editar o item (`itens.atualizar`), o
+> backend **PROPAGA** nome/classificação/categoria para TODAS as despesas daquele
+> `item_id` (dentro do mesmo `comLock`) e devolve as despesas afetadas; o front as
+> espelha no store e recarrega os resumos em 2º plano. Assim, **mudar a categoria
+> do item muda a despesa** (tabela, detalhe e gráficos por `categoria_id`/
+> `classificacao` ficam sincronizados — não há valor congelado divergente).
 
 > **Bloqueio de exclusão:** `*.remover` recusa (`ERRO.VALIDACAO`) se a entidade
 > está vinculada (item→despesas/cotações; fornecedor→contatos; contato→ofertas/

@@ -1456,6 +1456,18 @@ async function atualizarItem(id, dados) {
   store.set({
     itens: s.itens.map((i) => (String(i.id) === String(id) ? r.item : i)),
   });
+  // DADOS CONECTADOS: o backend sincronizou a CÓPIA do item (nome/classificação/
+  // categoria) nas despesas dele → espelha no store p/ a tabela/detalhe refletirem
+  // na hora, e recarrega em 2º plano p/ atualizar os RESUMOS/gráficos das obras.
+  const afetadas = Array.isArray(r.despesas) ? r.despesas : [];
+  if (afetadas.length) {
+    afetadas.forEach((d) => {
+      const oid = d.obra_id;
+      _setDespesasObra(oid, despesas(oid).map((x) => (String(x.id) === String(d.id) ? d : x)), null);
+    });
+    bus.emit(EVENTOS.DESPESAS, { tipo: "atualizada" });
+    atualizarEmSegundoPlano(); // resumos/gráficos autoritativos (fire-and-forget)
+  }
   persistir();
   bus.emit(EVENTOS.ITENS, { tipo: "atualizado" });
   return r.item;

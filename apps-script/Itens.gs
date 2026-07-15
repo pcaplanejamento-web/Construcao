@@ -157,7 +157,29 @@ function itensAtualizar(data, sessao) {
 
   return comLock(function () {
     const item = repoAtualizar(SCHEMA.ITENS, "id", id, patch);
-    return { item: item };
+    // DADOS CONECTADOS: a despesa guarda uma CÓPIA do item (nome/classificação/
+    // categoria). Ao editar o item, propaga para TODAS as despesas dele — mudar a
+    // CATEGORIA do item muda a despesa também (idem nome/classificação). Devolve as
+    // despesas afetadas p/ o front espelhar sem esperar novo snapshot.
+    const despesasAfetadas = [];
+    const mexeu =
+      patch.nome !== undefined || patch.classificacao !== undefined || patch.categoria_id !== undefined;
+    if (mexeu) {
+      repoFiltrar(SCHEMA.DESPESAS, function (d) {
+        return String(d.item_id) === String(id);
+      }).forEach(function (d) {
+        const p = {};
+        if (patch.nome !== undefined && String(d.item || "") !== String(item.nome)) p.item = item.nome;
+        if (patch.classificacao !== undefined && String(d.classificacao || "") !== String(item.classificacao))
+          p.classificacao = item.classificacao;
+        if (patch.categoria_id !== undefined && String(d.categoria_id || "") !== String(item.categoria_id))
+          p.categoria_id = item.categoria_id;
+        if (Object.keys(p).length) {
+          despesasAfetadas.push(_lerDespesa(repoAtualizar(SCHEMA.DESPESAS, "id", d.id, p)));
+        }
+      });
+    }
+    return { item: item, despesas: despesasAfetadas };
   });
 }
 
