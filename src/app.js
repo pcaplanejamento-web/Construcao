@@ -9,7 +9,7 @@
 import { auth } from "./core/auth-store.js";
 import { dataStore } from "./core/data-store.js";
 import { criarRouter } from "./core/router.js";
-import { bus, EVENTOS, notificarErro } from "./core/event-bus.js";
+import { bus, EVENTOS, notificarErro, toastAviso } from "./core/event-bus.js";
 import { CONFIG } from "./core/config.js";
 import { tema } from "./core/theme.js";
 
@@ -120,6 +120,23 @@ async function iniciar() {
     } else {
       dataStore.limparCache();
       router.navegar("/login");
+    }
+  });
+
+  // Sessão inválida/expirada no meio de uma ação (o api-client dispara): encerra
+  // limpo e leva ao login com aviso — em vez de "travar" com um erro solto. Guarda
+  // reentrância (o próprio auth.logout chama auth.logout no servidor, que também
+  // pode falhar com NAO_AUTENTICADO). Com a sessão DESLIZANTE no backend isto é
+  // raro (só após 30 dias parado), mas mantém o app previsível quando acontece.
+  let _encerrando = false;
+  window.addEventListener("sessao-invalida", async () => {
+    if (_encerrando || !auth.estaAutenticado()) return;
+    _encerrando = true;
+    toastAviso("Sua sessão expirou. Entre novamente.");
+    try {
+      await auth.logout();
+    } finally {
+      _encerrando = false;
     }
   });
 

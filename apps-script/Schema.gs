@@ -479,8 +479,9 @@ const CARGOS_LIDER = ["Mestre de Obra", "Engenheiro", "Gestor"];
 /** Marcador de categoria global (compartilhada por todos). */
 const CATEGORIA_GLOBAL = "GLOBAL";
 
-/** Duração da sessão em horas. */
-const SESSAO_HORAS = 12;
+/** Duração da sessão em horas (janela DESLIZANTE: `validarToken` a renova a cada
+ * uso, então usuário ATIVO nunca é deslogado; só expira após 30 dias PARADO). */
+const SESSAO_HORAS = 720;
 
 /** Categorias semente criadas no bootstrap (usuario_id = GLOBAL). */
 const CATEGORIAS_SEED = [

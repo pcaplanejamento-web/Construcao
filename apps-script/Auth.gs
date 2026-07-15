@@ -152,9 +152,30 @@ function validarToken(token) {
     cachePut(chaveSessao(token), dados);
   }
 
-  if (new Date(dados.expira_em).getTime() < Date.now()) {
+  const agoraMs = Date.now();
+  if (new Date(dados.expira_em).getTime() < agoraMs) {
     cacheRemove(chaveSessao(token));
     lancar(ERRO.NAO_AUTENTICADO, "Sessão expirada.");
+  }
+
+  // Renovação DESLIZANTE: enquanto o usuário está ATIVO, a validade escorrega p/
+  // frente — quem usa o app NUNCA é deslogado no meio do trabalho (era 12h fixas
+  // desde o login → expirava no meio de um cadastro). Só grava quando já passou da
+  // METADE da janela (no máximo 1 gravação por meia-janela; barato). É best-effort:
+  // um erro na gravação não pode barrar a requisição do usuário.
+  const janelaMs = SESSAO_HORAS * 3600 * 1000;
+  if (new Date(dados.expira_em).getTime() - agoraMs < janelaMs / 2) {
+    const novoExpira = new Date(agoraMs + janelaMs).toISOString();
+    dados.expira_em = novoExpira;
+    cachePut(chaveSessao(token), dados);
+    try {
+      repoAtualizar(SCHEMA.SESSOES, "token", token, {
+        expira_em: novoExpira,
+        ultimo_acesso: new Date(agoraMs).toISOString(),
+      });
+    } catch (e) {
+      /* renovação best-effort — segue com a sessão válida do cache */
+    }
   }
   return dados;
 }

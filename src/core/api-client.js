@@ -65,7 +65,18 @@ export async function call(action, data = {}) {
 
   if (!json || json.ok !== true) {
     const err = (json && json.error) || {};
-    throw new ApiError(err.code || "ERRO", err.message || "Erro desconhecido.");
+    const code = err.code || "ERRO";
+    // Sessão inválida/expirada COM token enviado: avisa o app p/ encerrar limpo e
+    // levar ao login (evita "travar" numa ação e um erro solto). Sem token (ex.:
+    // auth.me no boot) NÃO dispara — é só o fluxo normal de não-autenticado.
+    if (code === "NAO_AUTENTICADO" && payload.token) {
+      try {
+        window.dispatchEvent(new CustomEvent("sessao-invalida"));
+      } catch (e) {
+        /* ambiente sem window (testes) — ignora */
+      }
+    }
+    throw new ApiError(code, err.message || "Erro desconhecido.");
   }
   return json.data;
 }

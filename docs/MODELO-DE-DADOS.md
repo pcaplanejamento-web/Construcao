@@ -477,8 +477,8 @@ A transferência agrupa N pagamentos (1 por despesa). Colunas relevantes ao **co
 | usuario_id | UUID | FK → Usuarios.id |
 | role | enum | cópia do papel (autorização rápida) |
 | criado_em | ISO datetime | |
-| expira_em | ISO datetime | +12h do login |
-| ultimo_acesso | ISO datetime | |
+| expira_em | ISO datetime | `now + SESSAO_HORAS` (720h ≈ 30 dias); **DESLIZANTE** — `validarToken` renova ao passar da metade da janela |
+| ultimo_acesso | ISO datetime | atualizado junto com a renovação deslizante de `expira_em` |
 
 As sessões ativas também ficam no `CacheService` (TTL ≤ 6h) para validação
 rápida; a aba é a fonte de verdade.

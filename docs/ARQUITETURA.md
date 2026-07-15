@@ -93,9 +93,16 @@ O Apps Script não tem websockets. O acompanhamento ao vivo é obtido por:
 
 ## Sessão e cache
 
-- Login cria um token UUID gravado na aba `Sessoes` (expira em 12h) e espelhado
-  no `CacheService` (validação rápida sem ler a planilha).
-- `auth.me` revalida a sessão no boot do SPA.
+- Login cria um token UUID gravado na aba `Sessoes` e espelhado no `CacheService`
+  (validação rápida sem ler a planilha). A validade é uma **janela DESLIZANTE de
+  `SESSAO_HORAS` (720h ≈ 30 dias)**: `validarToken` **renova `expira_em`** a cada
+  uso quando já passou da metade da janela (grava no máx. 1× por meia-janela) —
+  assim o usuário ATIVO **nunca** é deslogado no meio de uma ação (antes eram 12h
+  FIXAS desde o login → a sessão expirava no meio de um cadastro).
+- `auth.me` revalida a sessão no boot do SPA. Se QUALQUER chamada com token volta
+  `NAO_AUTENTICADO` (sessão inválida/expirada de fato), o `api-client` dispara
+  `sessao-invalida` → o `app.js` encerra limpo e leva ao login com aviso (não
+  "trava" a tela num erro solto).
 - **"Manter-me conectado"** (checkbox do login): marcado → token em `localStorage`
   (persiste entre sessões, padrão); desmarcado → `sessionStorage` (some ao fechar a
   aba). O `auth-store` infere a origem no boot e o `logout` limpa ambos.
