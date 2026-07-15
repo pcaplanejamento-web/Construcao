@@ -1675,13 +1675,14 @@ async function escolherPreco(cotacaoId, id) {
  * cotação (se houver) — tudo no servidor (atômico). Atualiza despesas/resumo,
  * a(s) oferta(s) e a cotação no store.
  */
-async function registrarDespesaOferta(cotacaoId, precoId, obraId, categoriaId, responsaveis) {
+async function registrarDespesaOferta(cotacaoId, precoId, obraId, categoriaId, responsaveis, dataDespesa) {
   const r = await api.call("cotacoes.registrarDespesa", {
     preco_id: precoId,
     cotacao_id: cotacaoId,
     obra_id: obraId,
     categoria_id: categoriaId,
     responsaveis: Array.isArray(responsaveis) ? responsaveis : [],
+    data: dataDespesa || "", // data da despesa (vazio → o servidor usa hoje)
   });
   _setDespesasObra(obraId, [r.despesa, ...despesas(obraId)], r.resumo);
   _mesclarOfertas(r.precos);
@@ -1704,11 +1705,11 @@ async function registrarDespesaOferta(cotacaoId, precoId, obraId, categoriaId, r
  * categoria vem do item (servidor) e a mesma responsabilidade é aplicada
  * a todas. Retorna { total, despesas }.
  */
-async function registrarOrcamentoCompleto(orcId, obraId, responsaveis) {
+async function registrarOrcamentoCompleto(orcId, obraId, responsaveis, dataDespesa) {
   const ofertas = ofertasDoOrcamento(orcId).filter((p) => !String(p.despesa_id || ""));
   const despesasCriadas = [];
   for (const oferta of ofertas) {
-    const r = await registrarDespesaOferta(oferta.cotacao_id || "", oferta.id, obraId, "", responsaveis);
+    const r = await registrarDespesaOferta(oferta.cotacao_id || "", oferta.id, obraId, "", responsaveis, dataDespesa);
     despesasCriadas.push(r.despesa);
   }
   return { total: despesasCriadas.length, despesas: despesasCriadas };

@@ -627,6 +627,7 @@ function cotacoesRegistrarDespesa(data, sessao) {
       classificacao: classificacao,
       valor: valor,
       categoria_id: categoriaId,
+      data: data && data.data, // data da despesa (vazio → _novaDespesa usa hoje)
       observacao: "Oferta · " + (ofertanteNome || ""),
       preco_id: precoId,
       fornecedor_id: fornecedorId,

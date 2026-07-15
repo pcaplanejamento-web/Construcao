@@ -16,10 +16,11 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
-import { moeda } from "../../core/formatters.js";
+import { moeda, hojeIso } from "../../core/formatters.js";
 import { toastSucesso, toastAviso, notificarErro } from "../../core/event-bus.js";
 import { totalOferta, qtdOferta, unitFinalOferta } from "./cotacao-util.js";
 import { ofertanteNome, rotuloOrcamento, previaOfertaHtml } from "../orcamentos/orcamento-util.js";
+import { nomeTipo } from "../pagamentos/pagamento-util.js";
 import { valorPositivo } from "../../core/validators.js";
 import { editarEntidade, excluirEntidade } from "../shared/drop-crud.js";
 import { focarPrimeiroErro } from "../shared/foco-erro.js";
@@ -92,6 +93,11 @@ class CotacaoDespesaForm extends BaseElement {
       .linha-item ui-button { flex: none; white-space: nowrap; }
       .info { font-size: var(--fs-sm); color: var(--cor-texto-suave); }
       .info b { color: var(--cor-texto); }
+      /* "Registrar como paga agora": checkbox + campos do pagamento inline. */
+      .ck { display: flex; align-items: center; gap: var(--esp-2); font-size: var(--fs-sm);
+        font-weight: var(--peso-medio); color: var(--cor-texto); cursor: pointer; }
+      .ck input { width: 18px; height: 18px; accent-color: var(--cor-primaria); flex: none; }
+      .pag-box { display: flex; flex-direction: column; gap: var(--esp-3); margin-top: var(--esp-3); }
       textarea { width: 100%; box-sizing: border-box; min-height: 56px; padding: var(--esp-3);
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-sm);
         font-family: inherit; font-size: var(--fs-md); resize: vertical; background: var(--cor-superficie); color: var(--cor-texto); }
@@ -145,6 +151,19 @@ class CotacaoDespesaForm extends BaseElement {
           ${topo}
           <div class="resumo" id="resumo" hidden></div>
           <div class="secao">
+            <label class="tx" for="dataDespesa">Data da despesa</label>
+            <ui-input id="dataDespesa" type="date"></ui-input>
+          </div>
+          <div class="secao">
+            <label class="ck"><input type="checkbox" id="jaPaga" /> Registrar como paga agora</label>
+            <div class="pag-box" id="pagBox" hidden>
+              <div class="linha">
+                <ui-select id="pagPagador" label="Quem pagou"></ui-select>
+                <ui-select id="pagTipo" label="Como"></ui-select>
+              </div>
+            </div>
+          </div>
+          <div class="secao">
             <label class="tx">Responsabilidade <ui-ajuda termo="responsabilidade"></ui-ajuda> — % por participante (soma 100%)</label>
             <split-editor id="responsaveis"></split-editor>
           </div>
@@ -181,10 +200,23 @@ class CotacaoDespesaForm extends BaseElement {
       const selObra = this.$("#obra");
       selObra.options = dataStore.obras().map((o) => ({ value: o.id, label: o.nome }));
       selObra.value = this.cotacao.obra_id || (dataStore.obras()[0] || {}).id || "";
-      selObra.addEventListener("change", () => this.atualizarResponsaveis());
+      selObra.addEventListener("change", () => { this.atualizarResponsaveis(); this.preencherPagamento(); });
       this.pintarResumo();
     }
     this.atualizarResponsaveis();
+
+    // Data da despesa: padrão hoje (o servidor usa hoje se vier vazio).
+    if (this.$("#dataDespesa")) this.$("#dataDespesa").value = hojeIso();
+    // "Registrar como paga agora": revela pagador/tipo e, no submit, lança o
+    // pagamento TOTAL já na criação (data = a da própria despesa).
+    const chkPaga = this.$("#jaPaga");
+    if (chkPaga) {
+      chkPaga.addEventListener("change", () => {
+        const box = this.$("#pagBox");
+        if (box) box.hidden = !chkPaga.checked;
+        if (chkPaga.checked) this.preencherPagamento();
+      });
+    }
 
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
@@ -512,6 +544,67 @@ class CotacaoDespesaForm extends BaseElement {
     ed.limite = 100;
   }
 
+  /** Popula "Quem pagou" (participantes da obra) + "Como" (tipos) do pagamento inline. */
+  preencherPagamento() {
+    const selPag = this.$("#pagPagador");
+    if (selPag) {
+      const u = dataStore.usuario();
+      const opts = dataStore.participantesDaObra(this.obraAtual()).map((p) => ({ value: p.chave, label: p.nome }));
+      if (!opts.length) {
+        if (u) opts.push({ value: "u:" + u.id, label: (u.nome || "Você") + " (você)" });
+        dataStore.contatosAtivos().forEach((c) => opts.push({ value: "c:" + c.id, label: c.nome }));
+      }
+      const atual = selPag.value;
+      selPag.setAttribute("placeholder", opts.length ? "Selecione quem pagou" : "Sem participantes");
+      selPag.options = opts;
+      selPag.value = opts.some((o) => o.value === atual) ? atual : (opts[0] || {}).value || "";
+    }
+    const selTipo = this.$("#pagTipo");
+    if (selTipo && !(selTipo.options || []).length) {
+      const tipos = dataStore.tiposTransferencia();
+      selTipo.options = tipos.map((t) => ({ value: t.nome, label: nomeTipo(t.nome) }));
+      selTipo.value = (tipos[0] && tipos[0].nome) || "dinheiro";
+    }
+  }
+
+  /**
+   * Lê o pagamento inline ("Registrar como paga agora"). Retorna { ok, pag }:
+   * `pag = null` quando não está marcado; `ok = false` (com erro no campo) quando
+   * marcado sem pagador — o chamador aborta sem criar a despesa.
+   */
+  _lerPagamento() {
+    const chk = this.$("#jaPaga");
+    if (!chk || !chk.checked) return { ok: true, pag: null };
+    const pagador = ((this.$("#pagPagador") || {}).value) || "";
+    if (!pagador) {
+      if (this.$("#pagPagador")) this.$("#pagPagador").setAttribute("error", "Selecione quem pagou.");
+      return { ok: false };
+    }
+    if (this.$("#pagPagador")) this.$("#pagPagador").removeAttribute("error");
+    const tipo = ((this.$("#pagTipo") || {}).value) || "dinheiro";
+    return { ok: true, pag: { pagador, tipo } };
+  }
+
+  /**
+   * Marca como paga: lança um pagamento TOTAL (o `resto` = valor cheio de uma
+   * despesa recém-criada) em cada despesa, com a MESMA data da despesa. Reusa o
+   * fluxo de pagamento existente (despesas.lancarPagamento → transferência).
+   */
+  async _quitarSePaga(lista, obraId, dataDespesa, pag) {
+    if (!pag) return;
+    for (const d of lista || []) {
+      const valor = Number(d && d.valor) || 0;
+      if (!d || !d.id || !(valor > 0)) continue;
+      await dataStore.lancarPagamento(obraId, d.id, {
+        valor,
+        pagador: pag.pagador,
+        tipo: pag.tipo,
+        data: dataDespesa || d.data || "",
+        distribuicao: [],
+      });
+    }
+  }
+
   async confirmar() {
     const alerta = this.$("#erro");
     if (alerta) alerta.mensagem = "";
@@ -531,9 +624,15 @@ class CotacaoDespesaForm extends BaseElement {
       return;
     }
 
+    // Data da despesa (vazio → o servidor usa hoje) + pagamento inline opcional.
+    const dataDespesa = ((this.$("#dataDespesa") || {}).value) || "";
+    const lerPag = this._lerPagamento();
+    if (!lerPag.ok) return; // "paga" marcada sem pagador — erro já sinalizado
+    const pag = lerPag.pag;
+
     // --- Nova despesa: cria a oferta (avulsa) e registra em um passo. ---
     if (this.modoObra && this.modoRegistro === "nova") {
-      return this.confirmarNova(obraId, responsaveis);
+      return this.confirmarNova(obraId, responsaveis, dataDespesa, pag);
     }
 
     const ehOrc = this.modoObra && this.modoRegistro === "orcamento";
@@ -553,9 +652,10 @@ class CotacaoDespesaForm extends BaseElement {
       }
       btn.setAttribute("loading", "");
       try {
-        const r = await dataStore.registrarOrcamentoCompleto(orc.id, obraId, responsaveis);
+        const r = await dataStore.registrarOrcamentoCompleto(orc.id, obraId, responsaveis, dataDespesa);
+        await this._quitarSePaga(r.despesas, obraId, dataDespesa, pag);
         const obra = dataStore.obra(obraId) || {};
-        toastSucesso(`${r.total} despesa(s) lançada(s) em "${obra.nome || "obra"}".`);
+        toastSucesso(`${r.total} despesa(s) lançada(s)${pag ? " e paga(s)" : ""} em "${obra.nome || "obra"}".`);
         this.emitir("registrado", { obra_id: obraId });
         this.emitir("fechar");
       } catch (e) {
@@ -575,9 +675,10 @@ class CotacaoDespesaForm extends BaseElement {
     try {
       // Cria a despesa E marca a oferta como registrada + fecha a cotação (servidor).
       // A categoria é herdada do item; "" deixa o servidor resolvê-la.
-      await dataStore.registrarDespesaOferta((cotacao && cotacao.id) || "", preco.id, obraId, "", responsaveis);
+      const r = await dataStore.registrarDespesaOferta((cotacao && cotacao.id) || "", preco.id, obraId, "", responsaveis, dataDespesa);
+      await this._quitarSePaga([r.despesa], obraId, dataDespesa, pag);
       const obra = dataStore.obra(obraId) || {};
-      toastSucesso(`Despesa lançada em "${obra.nome || "obra"}".`);
+      toastSucesso(`Despesa lançada${pag ? " e paga" : ""} em "${obra.nome || "obra"}".`);
       this.emitir("registrado", { obra_id: obraId });
       this.emitir("fechar");
     } catch (e) {
@@ -591,7 +692,7 @@ class CotacaoDespesaForm extends BaseElement {
    * cria a oferta AVULSA (`criarOferta`) e registra a despesa em seguida
    * (`registrarDespesaOferta`) — tudo em um passo, mesma lógica existente.
    */
-  async confirmarNova(obraId, responsaveis) {
+  async confirmarNova(obraId, responsaveis, dataDespesa, pag) {
     const alerta = this.$("#erro");
     if (alerta) alerta.mensagem = "";
     ["#novoItem", "#novoOfertante", "#novoFornecedor", "#novoValor", "#novoDesc", "#novoPrazo"].forEach((s) => {
@@ -648,9 +749,10 @@ class CotacaoDespesaForm extends BaseElement {
         observacao: (((this.$("#novaObs") || {}).value) || "").trim(),
         obra_id: obraId, // libera o catálogo do dono numa obra compartilhada
       });
-      await dataStore.registrarDespesaOferta(oferta.cotacao_id || "", oferta.id, obraId, "", responsaveis);
+      const r = await dataStore.registrarDespesaOferta(oferta.cotacao_id || "", oferta.id, obraId, "", responsaveis, dataDespesa);
+      await this._quitarSePaga([r.despesa], obraId, dataDespesa, pag);
       const obra = dataStore.obra(obraId) || {};
-      toastSucesso(`Despesa lançada em "${obra.nome || "obra"}".`);
+      toastSucesso(`Despesa lançada${pag ? " e paga" : ""} em "${obra.nome || "obra"}".`);
       this.emitir("registrado", { obra_id: obraId });
       this.emitir("fechar");
     } catch (e) {

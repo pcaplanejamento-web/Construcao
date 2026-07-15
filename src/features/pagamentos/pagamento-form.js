@@ -156,9 +156,11 @@ class PagamentoForm extends BaseElement {
     selTipo.options = tipos.map((t) => ({ value: t.nome, label: nomeTipo(t.nome) }));
     selTipo.value = (tipos[0] && tipos[0].nome) || "dinheiro";
 
-    // Data: padrão hoje + NÃO permite futuro (max no input interno).
+    // Data: quando paga UMA só despesa, puxa a data cadastrada nela (item 3);
+    // senão, hoje. NÃO permite futuro (max no input + clamp do padrão).
     const hoje = new Date().toISOString().substring(0, 10);
-    this.$("#data").value = hoje;
+    const umaDesp = this._restritas && this._restritas.length === 1 ? this._restritas[0] : null;
+    this.$("#data").value = umaDesp && umaDesp.data && umaDesp.data <= hoje ? umaDesp.data : hoje;
     const inpData = this.$("#data").shadowRoot && this.$("#data").shadowRoot.querySelector("input");
     if (inpData) inpData.max = hoje;
 
