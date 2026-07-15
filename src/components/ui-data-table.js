@@ -196,9 +196,51 @@ class UiDataTable extends BaseElement {
     return arr;
   }
 
+  /** Há filtro de coluna OU busca global ativa? */
+  _temFiltro() {
+    return Object.keys(this._filtros).length > 0 || !!this._buscaTexto;
+  }
+
+  /** Banner "filtro ativo" (só quando há filtro/busca): mostra quantos itens estão
+   * OCULTOS — evita a confusão de "adicionei um item e ele sumiu" — + Limpar filtros. */
+  _filtroAvisoHtml() {
+    if (!this._temFiltro()) return "";
+    const total = this.rows.length;
+    const vis = this._visiveis().length;
+    const ocultos = total - vis;
+    const txt =
+      ocultos > 0
+        ? `Filtro ativo — <span class="oculto-forte">${ocultos} ${ocultos > 1 ? "itens ocultos" : "item oculto"}</span> (mostrando ${vis} de ${total}).`
+        : `Filtro ativo — mostrando ${vis} de ${total}.`;
+    return `<div class="filtro-aviso"><span>${txt}</span><button type="button" class="limpar-filtros">Limpar filtros</button></div>`;
+  }
+
+  /** Zera filtros de coluna + busca global e re-renderiza (mostra tudo de novo). */
+  _limparFiltros() {
+    this.__filtros = {};
+    this._buscaTexto = "";
+    this.renderizar();
+    const busca = injetarBuscaNoCard(this, this); // idempotente: pega a <ui-busca> do card
+    if (busca && busca.definir) busca.definir("");
+  }
+
   estilos() {
     return `
       :host { display: block; }
+      /* Aviso de FILTRO ATIVO: deixa claro que há linhas ocultas (ex.: item recém
+         adicionado que não casa com o filtro) + botão p/ limpar num toque. */
+      .filtro-aviso { display: flex; align-items: center; justify-content: space-between;
+        gap: var(--esp-3); flex-wrap: wrap; margin-bottom: var(--esp-2);
+        padding: var(--esp-2) var(--esp-3); background: var(--cor-primaria-suave);
+        border: 1px solid var(--cor-primaria); border-radius: var(--raio-sm);
+        font-size: var(--fs-sm); color: var(--cor-texto); }
+      .filtro-aviso .oculto-forte { font-weight: var(--peso-semi); }
+      .limpar-filtros { flex: none; border: 1px solid var(--cor-primaria);
+        background: var(--cor-superficie); color: var(--cor-primaria); border-radius: var(--raio-sm);
+        padding: 4px 12px; font: inherit; font-size: var(--fs-sm); font-weight: var(--peso-medio);
+        cursor: pointer; min-height: 32px; }
+      .limpar-filtros:hover { background: var(--cor-primaria); color: #fff; }
+      @media (hover: none), (max-width: 820px) { .limpar-filtros { min-height: 40px; } }
       /* Área rolável com altura limitada: cabeçalho e totais ficam fixos (sticky)
          e a barra de rolagem horizontal fica sempre na base da tabela. */
       /* padding-bottom = ao border-spacing: junto com o translateY do tfoot (abaixo),
@@ -441,7 +483,7 @@ class UiDataTable extends BaseElement {
 
     const selbar = this._sel.size ? this._selbarHtml() : "";
 
-    return `${selbar}<div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${this._corpoHtml()}</tbody>${this._rodapeHtml()}</table></div>${this._barraExportarHtml()}`;
+    return `${this._filtroAvisoHtml()}${selbar}<div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${this._corpoHtml()}</tbody>${this._rodapeHtml()}</table></div>${this._barraExportarHtml()}`;
   }
 
   /** Barra de exportação (canto inferior esquerdo, após o Total): CSV/XLS/XLSX/PDF. */
@@ -616,6 +658,9 @@ class UiDataTable extends BaseElement {
     this.$$(".th-btn").forEach((btn) => {
       btn.addEventListener("click", () => this._abrirMenu(Number(btn.dataset.col), btn));
     });
+    // "Limpar filtros" do banner de filtro ativo.
+    const btnLimpar = this.$(".limpar-filtros");
+    if (btnLimpar) btnLimpar.addEventListener("click", () => this._limparFiltros());
     // Exportar (CSV/XLS/XLSX/PDF) — usa as linhas VISÍVEIS (filtro/busca/ordem aplicados).
     this.$$(".btn-export").forEach((btn) => {
       btn.addEventListener("click", (e) => {
