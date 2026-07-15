@@ -14,6 +14,13 @@
 import { BaseElement } from "./base-element.js";
 import "./ui-button.js";
 
+// Nomes dos meses em pt-BR (o filtro de data agrupa por Ano › Mês › Dia).
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+const RE_DATA_BR = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+
 class UiColunaMenu extends BaseElement {
   set coluna(v) {
     this._coluna = v || {};
@@ -71,6 +78,19 @@ class UiColunaMenu extends BaseElement {
         font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
       .vazio-lista { color: var(--cor-texto-fraco); font-size: var(--fs-sm); padding: var(--esp-2); }
       input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cor-primaria); flex: none; }
+      /* Filtro de DATA agrupado (Ano › Mês › Dia). Grupos com seta de expandir +
+         checkbox tri-estado; dias recuados. */
+      .grp { flex: none; display: flex; align-items: center; gap: 4px; min-height: 28px; }
+      .grp > label { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--esp-2);
+        cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .grp-ano > label { font-weight: var(--peso-semi); }
+      .grp-mes { padding-left: 18px; }
+      .grp small { color: var(--cor-texto-fraco); font-weight: 400; font-size: var(--fs-xs); }
+      .exp { flex: none; border: none; background: none; color: var(--cor-texto-suave); cursor: pointer;
+        width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
+        font-size: 11px; padding: 0; }
+      .exp:hover { color: var(--cor-primaria); }
+      .item.day { padding-left: 36px; }
       .rodape { display: flex; gap: var(--esp-2); padding: var(--esp-3);
         border-top: 1px solid var(--cor-divisor); }
       .rodape ui-button { flex: 1; }
@@ -145,12 +165,33 @@ class UiColunaMenu extends BaseElement {
     }
   }
 
+  /** Coluna de DATA? (todos os valores no padrão brasileiro "DD/MM/AAAA".) */
+  _ehData() {
+    const vs = this.valores;
+    return vs.length > 0 && vs.every((v) => RE_DATA_BR.test(String(v)));
+  }
+
+  _parseBR(v) {
+    const m = RE_DATA_BR.exec(String(v));
+    return m ? { d: m[1], mes: m[2], ano: m[3] } : null;
+  }
+
   _filtrados() {
-    const q = (this.$("#busca").value || "").toLowerCase();
-    return this.valores.filter((v) => !q || String(v).toLowerCase().includes(q));
+    const q = (this.$("#busca").value || "").toLowerCase().trim();
+    if (!q) return this.valores.slice();
+    // Em data, a busca também casa pelo NOME do mês (ex.: "abril") além dos dígitos.
+    if (this._ehData()) {
+      return this.valores.filter((v) => {
+        if (String(v).toLowerCase().includes(q)) return true;
+        const p = this._parseBR(v);
+        return p ? (MESES[Number(p.mes) - 1] || "").toLowerCase().includes(q) : false;
+      });
+    }
+    return this.valores.filter((v) => String(v).toLowerCase().includes(q));
   }
 
   pintarLista() {
+    if (this._ehData()) return this._pintarArvore();
     const lista = this.$("#lista");
     const vis = this._filtrados();
     lista.innerHTML =
@@ -171,6 +212,114 @@ class UiColunaMenu extends BaseElement {
       });
     });
     this.$("#todos").checked = vis.length > 0 && vis.every((x) => this._marcados.has(x));
+  }
+
+  /** Agrupa as datas-folha visíveis em Ano › Mês › Dia, tudo DESC (mais recente 1º). */
+  _arvore(leaves) {
+    const anos = new Map();
+    leaves.forEach((v) => {
+      const p = this._parseBR(v);
+      if (!p) return;
+      if (!anos.has(p.ano)) anos.set(p.ano, new Map());
+      const meses = anos.get(p.ano);
+      if (!meses.has(p.mes)) meses.set(p.mes, []);
+      meses.get(p.mes).push(v);
+    });
+    const desc = (a, b) => (a < b ? 1 : a > b ? -1 : 0);
+    return [...anos.keys()].sort(desc).map((ano) => ({
+      ano,
+      meses: [...anos.get(ano).keys()].sort(desc).map((mes) => ({
+        mes,
+        nome: MESES[Number(mes) - 1] || mes,
+        dias: anos
+          .get(ano)
+          .get(mes)
+          .slice()
+          .sort((a, b) => desc(this._parseBR(a).d, this._parseBR(b).d)),
+      })),
+    }));
+  }
+
+  /** Datas-folha VISÍVEIS (respeita a busca) sob uma chave de grupo "y:AAAA" ou "m:AAAA-MM". */
+  _diasDaChave(k) {
+    const leaves = this._filtrados();
+    if (k.indexOf("y:") === 0) {
+      const ano = k.slice(2);
+      return leaves.filter((v) => { const p = this._parseBR(v); return p && p.ano === ano; });
+    }
+    const alvo = k.slice(2); // "AAAA-MM"
+    return leaves.filter((v) => {
+      const p = this._parseBR(v);
+      return p && p.ano + "-" + p.mes === alvo;
+    });
+  }
+
+  /** Filtro de DATA agrupado (Ano › Mês › Dia). Folhas = "DD/MM/AAAA" (contrato do filtro
+   * inalterado); grupos são só UI que marca/desmarca as folhas embaixo. */
+  _pintarArvore() {
+    const lista = this.$("#lista");
+    if (!this._colapsado) this._colapsado = new Set();
+    const buscando = !!(this.$("#busca").value || "").trim();
+    const colapsado = (k) => !buscando && this._colapsado.has(k); // busca força expandir
+    const esc = (s) => String(s).replace(/"/g, "&quot;");
+    const leavesVis = this._filtrados();
+    const arvore = this._arvore(leavesVis);
+    const todosMarc = (dias) => dias.length > 0 && dias.every((v) => this._marcados.has(v));
+
+    let html = "";
+    arvore.forEach((a) => {
+      const diasAno = a.meses.reduce((s, m) => s.concat(m.dias), []);
+      const kAno = "y:" + a.ano;
+      const colAno = colapsado(kAno);
+      html += `<div class="grp grp-ano"><button type="button" class="exp" data-k="${kAno}" aria-label="Expandir/recolher">${colAno ? "▸" : "▾"}</button><label><input type="checkbox" class="ck-grp" data-k="${kAno}" ${todosMarc(diasAno) ? "checked" : ""}/> <span>${a.ano}</span> <small>(${diasAno.length})</small></label></div>`;
+      if (colAno) return;
+      a.meses.forEach((m) => {
+        const kMes = "m:" + a.ano + "-" + m.mes;
+        const colMes = colapsado(kMes);
+        html += `<div class="grp grp-mes"><button type="button" class="exp" data-k="${kMes}" aria-label="Expandir/recolher">${colMes ? "▸" : "▾"}</button><label><input type="checkbox" class="ck-grp" data-k="${kMes}" ${todosMarc(m.dias) ? "checked" : ""}/> <span>${m.nome}</span> <small>(${m.dias.length})</small></label></div>`;
+        if (colMes) return;
+        m.dias.forEach((v) => {
+          html += `<label class="item day"><input type="checkbox" class="ck-leaf" data-v="${esc(v)}" ${this._marcados.has(v) ? "checked" : ""}/> <span>${v}</span></label>`;
+        });
+      });
+    });
+    lista.innerHTML = html || `<div class="vazio-lista">Nenhum valor.</div>`;
+
+    // Tri-estado dos grupos (indeterminado quando parte das folhas está marcada).
+    lista.querySelectorAll(".ck-grp").forEach((cb) => {
+      const dias = this._diasDaChave(cb.dataset.k);
+      const marc = dias.filter((v) => this._marcados.has(v)).length;
+      cb.indeterminate = marc > 0 && marc < dias.length;
+    });
+    // Expandir/recolher (só reflete no #lista — a busca no topo mantém o foco).
+    lista.querySelectorAll(".exp").forEach((btn) =>
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const k = btn.dataset.k;
+        if (this._colapsado.has(k)) this._colapsado.delete(k);
+        else this._colapsado.add(k);
+        this.pintarLista();
+      })
+    );
+    // Marcar 1 dia.
+    lista.querySelectorAll(".ck-leaf").forEach((cb) =>
+      cb.addEventListener("change", () => {
+        if (cb.checked) this._marcados.add(cb.dataset.v);
+        else this._marcados.delete(cb.dataset.v);
+        this.pintarLista();
+      })
+    );
+    // Marcar um Ano/Mês inteiro = marca/desmarca todas as folhas VISÍVEIS embaixo.
+    lista.querySelectorAll(".ck-grp").forEach((cb) =>
+      cb.addEventListener("change", () => {
+        this._diasDaChave(cb.dataset.k).forEach((v) =>
+          cb.checked ? this._marcados.add(v) : this._marcados.delete(v)
+        );
+        this.pintarLista();
+      })
+    );
+    this.$("#todos").checked = leavesVis.length > 0 && leavesVis.every((v) => this._marcados.has(v));
   }
 
   posicionar() {
