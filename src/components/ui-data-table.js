@@ -138,6 +138,24 @@ class UiDataTable extends BaseElement {
     const n = c.valorNum ? c.valorNum(linha) : linha[c.chave];
     return Number(n) || 0;
   }
+  /** Chave de ORDENAÇÃO da célula: número (moeda/`valorNum`), `valorOrd(linha)` explícito,
+   * ou o TEXTO exibido — com datas "DD/MM/AAAA" viradas em "AAAAMMDD" p/ ordem CRONOLÓGICA
+   * (senão o localeCompare numérico ordena pelo DIA, ex.: 29/04 > 23/06). */
+  _ordVal(c, linha) {
+    if (c.moeda || c.valorNum) return this._num(c, linha);
+    if (c.valorOrd) return c.valorOrd(linha);
+    const t = String(this._texto(c, linha)).trim();
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t);
+    return m ? m[3] + m[2] + m[1] : t;
+  }
+  /** Comparador ÚNICO de 2 linhas por uma coluna (usado nos visíveis E no dropdown):
+   * numérico quando ambos são números; senão texto (localeCompare pt, numeric). */
+  _cmp(c, la, lb) {
+    const va = this._ordVal(c, la);
+    const vb = this._ordVal(c, lb);
+    if (typeof va === "number" && typeof vb === "number") return va - vb;
+    return String(va).localeCompare(String(vb), "pt", { numeric: true });
+  }
   _temMoeda() {
     return this.columns.some((c) => c.moeda);
   }
@@ -154,9 +172,7 @@ class UiDataTable extends BaseElement {
         out.push(l);
       }
     });
-    out.sort((a, b) =>
-      c.moeda ? this._num(c, a) - this._num(c, b) : this._texto(c, a).localeCompare(this._texto(c, b))
-    );
+    out.sort((a, b) => this._cmp(c, a, b));
     return out.map((l) => this._texto(c, l));
   }
 
@@ -175,12 +191,7 @@ class UiDataTable extends BaseElement {
     if (this._ordem && this.columns[this._ordem.col]) {
       const c = this.columns[this._ordem.col];
       const dir = this._ordem.dir === "desc" ? -1 : 1;
-      arr.sort((a, b) => {
-        const r = c.moeda
-          ? this._num(c, a.linha) - this._num(c, b.linha)
-          : this._texto(c, a.linha).localeCompare(this._texto(c, b.linha), "pt", { numeric: true });
-        return r * dir;
-      });
+      arr.sort((a, b) => this._cmp(c, a.linha, b.linha) * dir);
     }
     return arr;
   }
@@ -261,10 +272,14 @@ class UiDataTable extends BaseElement {
         font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
         cursor: pointer; padding: 0; }
       .th-btn:hover { color: var(--cor-primaria); }
-      .th-btn .seta { display: inline-flex; align-items: center; opacity: .55; color: currentColor; }
+      .th-btn .seta { display: inline-flex; align-items: center; opacity: .55; color: currentColor;
+        transition: transform .15s ease; }
       .th-btn .seta svg { display: block; }
       .th-btn.ativo { color: var(--cor-primaria); }
       .th-btn.ativo .seta { opacity: 1; }
+      /* Coluna ordenada: o próprio chevron indica a direção (baixo = decrescente,
+         cima = crescente) — dispensa o antigo marcador de bolinha. */
+      .th-btn.asc .seta { transform: rotate(180deg); }
       .acoes { display: flex; gap: var(--esp-2); justify-content: flex-end; }
       .btn-acao { border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
         border-radius: var(--raio-sm); padding: 4px 10px; font-size: var(--fs-xs); color: var(--cor-texto-suave); }
@@ -408,6 +423,8 @@ class UiDataTable extends BaseElement {
     const estilo = (c) => (c.largura ? ` style="min-width:${c.largura}"` : "");
     const classe = (c) => [c.alinhar === "dir" ? "dir" : "", c.secundaria ? "sec" : ""].filter(Boolean).join(" ");
     const ativa = (i) => (this._ordem && this._ordem.col === i) || this._filtros[i];
+    // Direção da ordenação da coluna (p/ girar o chevron: cima=asc, baixo=desc).
+    const ord = (i) => (this._ordem && this._ordem.col === i && this._ordem.dir) || "";
 
     const temSel = this._temSelecao();
     // Marca no host se há coluna de marcação (p/ a sombra do card começar após ela).
@@ -417,7 +434,7 @@ class UiDataTable extends BaseElement {
       cols
         .map(
           (c, i) =>
-            `<th class="${classe(c)}"${estilo(c)}><button class="th-btn ${ativa(i) ? "ativo" : ""}" data-col="${i}">${c.titulo}${ativa(i) ? " •" : ""} <span class="seta"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button></th>`
+            `<th class="${classe(c)}"${estilo(c)}><button class="th-btn ${ativa(i) ? "ativo" : ""} ${ord(i)}" data-col="${i}">${c.titulo} <span class="seta"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button></th>`
         )
         .join("") +
       (temAcoes ? "<th></th>" : "");

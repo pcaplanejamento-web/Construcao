@@ -28,7 +28,17 @@ const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
 
 class DespesaTable extends BaseElement {
   set despesas(v) {
-    this._despesas = Array.isArray(v) ? v : [];
+    // Ordem INICIAL: data DESC (mais recentes primeiro) — desempata por criado_em desc.
+    // Cópia (slice) p/ não mutar o array do store. A data "AAAA-MM-DD" (ISO) ordena
+    // cronologicamente; a ordenação por clique na `ui-data-table` sobrepõe isto.
+    const arr = Array.isArray(v) ? v.slice() : [];
+    arr.sort((a, b) => {
+      const da = String(a.data || "");
+      const db = String(b.data || "");
+      if (da !== db) return db.localeCompare(da);
+      return String(b.criado_em || "").localeCompare(String(a.criado_em || ""));
+    });
+    this._despesas = arr;
     this.atualizarTabela();
   }
   get despesas() {
@@ -105,7 +115,8 @@ class DespesaTable extends BaseElement {
   aposRender() {
     const tabela = this.$("#tabela");
     tabela.columns = [
-      { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
+      // valorOrd = data ISO ("AAAA-MM-DD") → ordena por DATA real, não pelo texto "DD/MM/AAAA".
+      { chave: "data", titulo: "Data", formato: (v) => fmtData(v), valorOrd: (l) => String(l.data || "") },
       {
         chave: "item",
         titulo: "Item",
@@ -154,6 +165,8 @@ class DespesaTable extends BaseElement {
         chave: "criado_em",
         titulo: "Adicionado",
         secundaria: true,
+        // Ordena pelo timestamp ISO de criação (o texto exibido leva "por <autor>").
+        valorOrd: (l) => String(l.criado_em || ""),
         formato: (criadoEm, linha) =>
           criadoEm
             ? `<div>${fmtData(criadoEm)}</div><small style="color:var(--cor-texto-fraco)">por ${
