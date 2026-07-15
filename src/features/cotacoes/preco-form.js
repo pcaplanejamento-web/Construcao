@@ -23,12 +23,17 @@ import { moeda } from "../../core/formatters.js";
 import { ofertanteNome, COR_CLASSIFICACAO } from "../orcamentos/orcamento-util.js";
 import { totalOferta, totalOfertaCheio, qtdOferta } from "./cotacao-util.js";
 import { valorPositivo } from "../../core/validators.js";
+import { editarEntidade, excluirEntidade } from "../shared/drop-crud.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
 import "../../components/ui-alert.js";
 import "../despesas/category-badge.js";
+// Cadastro inline (mesmo padrão do "Registrar Despesa" das obras): + Cadastrar item/contato/empresa.
+import "../itens/item-form.js";
+import "../contatos/contato-form.js";
+import "../fornecedores/fornecedor-form.js";
 
 class PrecoForm extends BaseElement {
   set cotacaoId(v) {
@@ -203,7 +208,7 @@ class PrecoForm extends BaseElement {
     const titulo = ro ? "Detalhes da oferta" : this.ehEdicao ? "Editar oferta" : "Criar oferta";
 
     const blocoItem = this.itemPrecisaSelect()
-      ? `<ui-select id="item" label="Item (define a classificação)" required></ui-select>
+      ? `<ui-select id="item" label="Item (define a classificação)" required criar="Cadastrar item"></ui-select>
          <div class="info" id="classInfo"></div>`
       : `<div><label class="tx">Item</label>
            <div class="resumo clicavel" id="itemCard" title="Ver detalhes do item"></div></div>`;
@@ -227,11 +232,11 @@ class PrecoForm extends BaseElement {
     const blocoOfertante = this.ehOrcTravado
       ? `<div><label class="tx">Ofertante</label>
            <div class="lido">${ofertanteNome(orc.contato_id, orc.equipe_id)} <small>· definido pelo orçamento</small></div></div>`
-      : `<ui-select id="ofertante" label="Ofertante (contato ou grupo)"></ui-select>`;
+      : `<ui-select id="ofertante" label="Ofertante (contato ou grupo)" criar="Cadastrar contato"></ui-select>`;
     const blocoFornecedor = this.ehOrcTravado
       ? `<div><label class="tx">Empresa</label>
            <div class="lido">${this._fornNome(orc.fornecedor_id) || "—"} <small>· definido pelo orçamento</small></div></div>`
-      : `<ui-select id="fornecedor" label="Empresa"></ui-select>`;
+      : `<ui-select id="fornecedor" label="Empresa" criar="Cadastrar empresa"></ui-select>`;
 
     return `
       <ui-modal open title="${titulo}">
@@ -285,47 +290,12 @@ class PrecoForm extends BaseElement {
       return;
     }
 
-    // Item (select) — só ao criar sem cotação.
-    const selItem = this.$("#item");
-    if (selItem) {
-      const ctxItem = this.cotacaoCtx();
-      let itens =
-        ctxItem && String(ctxItem.modo || "") === "subclasse" && ctxItem.categoria_id
-          ? dataStore.itensDaSubclasse(ctxItem.categoria_id)
-          : dataStore.itensAtivos();
-      const resolvidoId = this.itemResolvidoId();
-      if (resolvidoId && !itens.some((i) => String(i.id) === String(resolvidoId))) {
-        const it = dataStore.item(resolvidoId);
-        if (it) itens = [it, ...itens];
-      }
-      selItem.setAttribute("placeholder", itens.length ? "Selecione o item" : "Nenhum item cadastrado");
-      selItem.options = itens.map((i) => ({ value: i.id, label: `${i.nome} — ${i.classificacao}` }));
-      selItem.value = resolvidoId;
-      selItem.addEventListener("change", () => this.atualizarClasse());
-    }
-    // Ofertante (quando livre).
-    const selOf = this.$("#ofertante");
-    if (selOf) {
-      const opcoes = [{ value: "", label: "— Sem ofertante —" }];
-      dataStore.contatosAtivos().forEach((c) => opcoes.push({ value: "c:" + c.id, label: c.nome }));
-      dataStore.equipes().forEach((e) => opcoes.push({ value: "e:" + e.id, label: `${e.nome} — grupo` }));
-      selOf.options = opcoes;
-      selOf.value = p.equipe_id ? "e:" + p.equipe_id : p.contato_id ? "c:" + p.contato_id : "";
-      selOf.addEventListener("change", () => this.autoFornecedor());
-    }
-    // Fornecedor (quando livre).
-    const selForn = this.$("#fornecedor");
-    if (selForn) {
-      selForn.options = [{ value: "", label: "— Nenhum —" }].concat(
-        dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome }))
-      );
-      let fid = p.fornecedor_id || "";
-      if (!fid && p.contato_id) {
-        const ct = dataStore.contatos().find((x) => String(x.id) === String(p.contato_id));
-        fid = (ct && ct.fornecedor_id) || "";
-      }
-      selForn.value = fid;
-    }
+    // Item / Ofertante / Empresa: selects com CADASTRO INLINE (+ Cadastrar), mesmo
+    // padrão do "Registrar Despesa" das obras. No contexto do ORÇAMENTO só o item é
+    // select (ofertante/empresa vêm travados do orçamento → sem cadastro inline lá).
+    this._preencherItem();
+    this._preencherOfertante();
+    this._preencherFornecedor();
     // Quantidade: própria ou da cotação (legado), p/ não abrir vazia.
     const selQtd = this.$("#quantidade");
     if (selQtd && !String(selQtd.value || "")) {
@@ -377,6 +347,131 @@ class PrecoForm extends BaseElement {
       const ct = dataStore.contatos().find((x) => String(x.id) === String(v.slice(2)));
       if (ct && ct.fornecedor_id) selForn.value = String(ct.fornecedor_id);
     }
+  }
+
+  /* --------- Selects com cadastro inline (item/ofertante/empresa) ----------- */
+  /** Popula o select de ITEM (subclasse/ativos) + liga criar/editar/excluir 1×.
+   * Reusado no render E após cadastrar um item novo (para refrescar a lista). */
+  _preencherItem() {
+    const selItem = this.$("#item");
+    if (!selItem) return;
+    const ctx = this.cotacaoCtx();
+    let itens =
+      ctx && String(ctx.modo || "") === "subclasse" && ctx.categoria_id
+        ? dataStore.itensDaSubclasse(ctx.categoria_id)
+        : dataStore.itensAtivos();
+    const resolvidoId = this.itemResolvidoId();
+    if (resolvidoId && !itens.some((i) => String(i.id) === String(resolvidoId))) {
+      const it = dataStore.item(resolvidoId);
+      if (it) itens = [it, ...itens];
+    }
+    const atual = selItem.value;
+    selItem.setAttribute("placeholder", itens.length ? "Buscar o item…" : "Nenhum item — cadastre um");
+    selItem.options = itens.map((i) => ({ value: i.id, label: `${i.nome} — ${i.classificacao}`, editavel: true, removivel: true }));
+    selItem.value = atual && itens.some((i) => String(i.id) === String(atual)) ? atual : resolvidoId;
+    if (!selItem._ligado) {
+      const refresh = () => this._preencherItem();
+      selItem.addEventListener("change", () => this.atualizarClasse());
+      selItem.addEventListener("criar", () => this.abrirNovoItem());
+      selItem.addEventListener("editar", (e) => editarEntidade("item", e.detail.value, refresh));
+      selItem.addEventListener("excluir", (e) => excluirEntidade("item", e.detail.value, refresh));
+      selItem._ligado = true;
+    }
+  }
+
+  /** Popula o select de OFERTANTE (contatos + grupos) + liga criar/editar/excluir 1×. */
+  _preencherOfertante() {
+    const selOf = this.$("#ofertante");
+    if (!selOf) return;
+    const p = this.preco || {};
+    const atual = selOf.value;
+    const opcoes = [{ value: "", label: "— Sem ofertante —" }];
+    dataStore.contatosAtivos().forEach((c) => opcoes.push({ value: "c:" + c.id, label: c.nome, editavel: true, removivel: true }));
+    dataStore.equipes().forEach((e) => opcoes.push({ value: "e:" + e.id, label: `${e.nome} — grupo` }));
+    selOf.options = opcoes;
+    const inicial = p.equipe_id ? "e:" + p.equipe_id : p.contato_id ? "c:" + p.contato_id : "";
+    selOf.value = atual && opcoes.some((o) => String(o.value) === String(atual)) ? atual : inicial;
+    if (!selOf._ligado) {
+      const refresh = () => this._preencherOfertante();
+      selOf.addEventListener("change", () => this.autoFornecedor());
+      selOf.addEventListener("criar", () => this.abrirNovoContato());
+      selOf.addEventListener("editar", (e) => { const v = String(e.detail.value || ""); if (v.indexOf("c:") === 0) editarEntidade("contato", v.slice(2), refresh); });
+      selOf.addEventListener("excluir", (e) => { const v = String(e.detail.value || ""); if (v.indexOf("c:") === 0) excluirEntidade("contato", v.slice(2), refresh); });
+      selOf._ligado = true;
+    }
+  }
+
+  /** Popula o select de EMPRESA (fornecedores) + liga criar/editar/excluir 1×. */
+  _preencherFornecedor() {
+    const selForn = this.$("#fornecedor");
+    if (!selForn) return;
+    const p = this.preco || {};
+    const atual = selForn.value;
+    const opcoes = [{ value: "", label: "— Nenhuma —" }].concat(
+      dataStore.fornecedoresAtivos().map((f) => ({ value: f.id, label: f.nome, editavel: true, removivel: true }))
+    );
+    selForn.options = opcoes;
+    let fid = p.fornecedor_id || "";
+    if (!fid && p.contato_id) {
+      const ct = dataStore.contatos().find((x) => String(x.id) === String(p.contato_id));
+      fid = (ct && ct.fornecedor_id) || "";
+    }
+    selForn.value = atual && opcoes.some((o) => String(o.value) === String(atual)) ? atual : fid;
+    if (!selForn._ligado) {
+      const refresh = () => this._preencherFornecedor();
+      selForn.addEventListener("criar", () => this.abrirNovoFornecedor());
+      selForn.addEventListener("editar", (e) => editarEntidade("fornecedor", e.detail.value, refresh));
+      selForn.addEventListener("excluir", (e) => excluirEntidade("fornecedor", e.detail.value, refresh));
+      selForn._ligado = true;
+    }
+  }
+
+  /** Abre o <item-form> para cadastrar um item e o seleciona ao voltar. */
+  abrirNovoItem() {
+    if (!this.$("#item")) return;
+    const antes = new Set(dataStore.itens().map((i) => String(i.id)));
+    const form = document.createElement("item-form");
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => {
+      const novo = dataStore.itens().find((i) => !antes.has(String(i.id)));
+      this._preencherItem();
+      if (novo && this.$("#item")) {
+        this.$("#item").value = novo.id;
+        this.atualizarClasse();
+      }
+    });
+    document.body.appendChild(form);
+  }
+
+  /** Abre o <contato-form> para cadastrar um contato e o define como ofertante. */
+  abrirNovoContato() {
+    if (!this.$("#ofertante")) return;
+    const antes = new Set(dataStore.contatos().map((c) => String(c.id)));
+    const form = document.createElement("contato-form");
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => {
+      const novo = dataStore.contatos().find((c) => !antes.has(String(c.id)));
+      this._preencherOfertante();
+      if (novo && this.$("#ofertante")) {
+        this.$("#ofertante").value = "c:" + novo.id;
+        this.autoFornecedor();
+      }
+    });
+    document.body.appendChild(form);
+  }
+
+  /** Abre o <fornecedor-form> para cadastrar uma empresa e a seleciona. */
+  abrirNovoFornecedor() {
+    if (!this.$("#fornecedor")) return;
+    const antes = new Set(dataStore.fornecedores().map((f) => String(f.id)));
+    const form = document.createElement("fornecedor-form");
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => {
+      const novo = dataStore.fornecedores().find((f) => !antes.has(String(f.id)));
+      this._preencherFornecedor();
+      if (novo && this.$("#fornecedor")) this.$("#fornecedor").value = novo.id;
+    });
+    document.body.appendChild(form);
   }
 
   async salvar() {
