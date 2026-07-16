@@ -31,6 +31,7 @@ import "../cotacoes/cotacao-despesa-form.js";
 import "../orcamentos/orcamento-form.js";
 import "../despesas/despesa-table.js";
 import "../despesas/despesa-detail.js";
+import "../despesas/despesa-lote-form.js";
 import "../despesas/split-editor.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-alert.js";
@@ -589,6 +590,20 @@ class ObraDetailView extends BaseElement {
     const frescas = this._frescas(despesas);
     if (acao === "pagar") this.pagarMassa(frescas);
     else if (acao === "responsavel") this.responsabilidadeMassa(frescas);
+    else if (acao === "editar-lote") this.editarMassa(frescas);
+  }
+
+  /** Edição EM MASSA das selecionadas (data/ofertante/empresa + excluir pagamento). */
+  editarMassa(despesas) {
+    const lista = despesas || [];
+    if (!lista.length) return;
+    document.querySelectorAll("despesa-lote-form").forEach((f) => f.remove());
+    const form = document.createElement("despesa-lote-form");
+    form.obra = this._obra;
+    form.despesas = lista;
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => form.remove());
+    document.body.appendChild(form);
   }
 
   /** Lançar pagamento nas selecionadas — ignora as já QUITADAS (sem saldo a pagar).

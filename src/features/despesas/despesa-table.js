@@ -292,6 +292,7 @@ class DespesaTable extends BaseElement {
     tabela.acoesMassa = [
       { nome: "pagar", rotulo: "Registrar pagamento" },
       { nome: "responsavel", rotulo: "Definir responsabilidade" },
+      { nome: "editar-lote", rotulo: "Editar selecionadas" },
     ];
     tabela.addEventListener("acao-massa", (e) => {
       e.stopPropagation();
@@ -309,6 +310,7 @@ class DespesaTable extends BaseElement {
     lista.acoesMassa = [
       { nome: "pagar", rotulo: "Registrar pagamento" },
       { nome: "responsavel", rotulo: "Definir responsabilidade" },
+      { nome: "editar-lote", rotulo: "Editar selecionadas" },
     ];
     lista.addEventListener("abrir", (e) => { e.stopPropagation(); this.emitir("abrir", { despesa: e.detail.item }); });
     // Botões editar/excluir por linha.

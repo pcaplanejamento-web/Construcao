@@ -244,6 +244,30 @@ function despesasAtualizar(data, sessao) {
   if (data.recebidos !== undefined)
     patch.recebidos = JSON.stringify(Array.isArray(data.recebidos) ? data.recebidos : []);
 
+  // Ofertante (contato XOR equipe) e Empresa — usado pela EDIÇÃO EM MASSA. Só é
+  // permitido enquanto a despesa NÃO tem pagamento (senão o recebedor do pagamento
+  // já feito ficaria inconsistente — exclua o pagamento antes).
+  const mexeOfertante =
+    data.ofertante_contato_id !== undefined ||
+    data.ofertante_equipe_id !== undefined ||
+    data.fornecedor_id !== undefined;
+  if (mexeOfertante) {
+    if (_parseJsonLista(atual.pagamentos_realizados).length > 0) {
+      lancar(ERRO.VALIDACAO, "Despesa com pagamento; exclua o pagamento antes de mudar o ofertante/empresa.");
+    }
+    if (data.ofertante_equipe_id !== undefined) {
+      const eq = String(data.ofertante_equipe_id || "");
+      patch.ofertante_equipe_id = eq;
+      if (eq) patch.ofertante_contato_id = "";
+    }
+    if (data.ofertante_contato_id !== undefined) {
+      const ct = String(data.ofertante_contato_id || "");
+      patch.ofertante_contato_id = ct;
+      if (ct) patch.ofertante_equipe_id = "";
+    }
+    if (data.fornecedor_id !== undefined) patch.fornecedor_id = String(data.fornecedor_id || "");
+  }
+
   // Auditoria: registra quem editou e quando.
   patch.atualizado_em = agoraIso();
   patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
