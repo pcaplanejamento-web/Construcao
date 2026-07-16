@@ -9,7 +9,7 @@ import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
 import { totalPago, distribuicao, parseLista, statusPagamento } from "./despesa-split.js";
-import { ofertanteNome } from "../orcamentos/orcamento-util.js";
+import { ofertanteNome, rotuloOrcamento } from "../orcamentos/orcamento-util.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-lista-gestos.js";
 import { injetarBuscaNoCard } from "../../components/ui-busca.js";
@@ -25,6 +25,14 @@ function _esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").repl
 
 /** Cor do badge por classificação (espelha itens-view / backend). */
 const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
+
+/** Cor ESTÁVEL por id (hash → HSL) — usada p/ segmentar despesas por orçamento. */
+function _corDeId(id) {
+  const s = String(id || "");
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return `hsl(${(h * 137) % 360} 62% 46%)`; // ×137 (coprimo de 360) espalha bem as matizes
+}
 
 class DespesaTable extends BaseElement {
   set despesas(v) {
@@ -124,7 +132,14 @@ class DespesaTable extends BaseElement {
         // Item pode ter texto longo → coluna bem larga (evita quebra excessiva).
         largura: "280px",
         // Nome ao vivo do catálogo (reflete renome); `item` denormalizado é fallback.
-        formato: (v, linha) => (linha.item_id && (dataStore.item(linha.item_id) || {}).nome) || v || "—",
+        // Despesa vinda de ORÇAMENTO ganha uma FAIXA colorida (cor estável por orçamento)
+        // → itens do mesmo orçamento ficam visualmente SEGMENTADOS/agrupados na mesa.
+        formato: (v, linha) => {
+          const nome = (linha.item_id && (dataStore.item(linha.item_id) || {}).nome) || v || "—";
+          const seg = this._segOrc(linha);
+          if (!seg) return nome;
+          return `<span style="display:inline-flex;align-items:center;gap:8px;min-width:0"><span class="seg-orc" title="Do orçamento: ${_esc(seg.label)}" style="flex:none;width:4px;align-self:stretch;min-height:18px;border-radius:2px;background:${seg.cor}"></span><span style="overflow:hidden;text-overflow:ellipsis">${_esc(nome)}</span></span>`;
+        },
       },
       {
         chave: "classificacao",
@@ -315,10 +330,28 @@ class DespesaTable extends BaseElement {
   }
 
   atualizarTabela() {
+    // Mapa oferta→orçamento (p/ segmentar despesas por orçamento) — refeito quando os dados mudam.
+    this._orcPorPreco = {};
+    dataStore.todasOfertas().forEach((o) => {
+      if (o && o.orcamento_id) this._orcPorPreco[String(o.id)] = String(o.orcamento_id);
+    });
+    this._segCache = {};
     const tabela = this.$ ? this.$("#tabela") : null;
     if (tabela) tabela.rows = this.despesas;
     const lista = this.$ ? this.$("#lista") : null;
     if (lista) lista.itens = this.despesas;
+  }
+
+  /** Segmento de orçamento de uma despesa (via `preco_id`→oferta→orçamento): {cor,label} ou null. */
+  _segOrc(d) {
+    const orcId = (this._orcPorPreco || {})[String((d && d.preco_id) || "")];
+    if (!orcId) return null;
+    if (!this._segCache) this._segCache = {};
+    if (!this._segCache[orcId]) {
+      const orc = dataStore.orcamento(orcId) || {};
+      this._segCache[orcId] = { cor: _corDeId(orcId), label: rotuloOrcamento(orc) || "Orçamento" };
+    }
+    return this._segCache[orcId];
   }
 }
 
