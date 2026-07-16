@@ -11,6 +11,8 @@
 import { irPara } from "../../core/router.js";
 import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
+import { saldoPorDespesa } from "../despesas/despesa-split.js";
+import "../despesas/despesa-detail.js";
 import {
   rastrearContato,
   rastrearFornecedor,
@@ -227,6 +229,97 @@ export function abrirOrigemEstoque({ tituloItem, origens, obraId }) {
     }
   });
   corpo.appendChild(tab);
+  modal.appendChild(corpo);
+
+  const rod = document.createElement("div");
+  rod.setAttribute("slot", "rodape");
+  const btn = document.createElement("ui-button");
+  btn.textContent = "Fechar";
+  btn.addEventListener("click", () => modal.remove());
+  rod.appendChild(btn);
+  modal.appendChild(rod);
+
+  modal.addEventListener("fechar", () => modal.remove());
+  document.body.appendChild(modal);
+}
+
+/**
+ * Banner "Origem do acerto" — ao clicar numa linha do "quem deve a quem", mostra
+ * DE ONDE os números vêm: as despesas que geram o saldo do DEVEDOR e do CREDOR
+ * (responsabilidade × o que cada um pagou). Cada linha abre a despesa (despesa-detail).
+ * `acerto` = { de, de_nome, para, para_nome, valor }.
+ */
+export function abrirOrigemAcerto({ acerto, despesas, obraId }) {
+  const a = acerto || {};
+  const mapa = {};
+  (despesas || []).forEach((d) => (mapa[String(d.id)] = d));
+  const nomeVivo = (id, fallback) => {
+    const d = mapa[String(id)];
+    return (d && d.item_id && (dataStore.item(d.item_id) || {}).nome) || fallback || "—";
+  };
+
+  const modal = document.createElement("ui-modal");
+  modal.setAttribute("open", "");
+  modal.setAttribute("title", "Origem · " + (a.de_nome || "") + " → " + (a.para_nome || ""));
+
+  const corpo = document.createElement("div");
+  const alerta = document.createElement("ui-alert");
+  alerta.setAttribute("tipo", "info");
+  alerta.mensagem = `${a.de_nome || "—"} deve ${moeda(a.valor || 0)} a ${a.para_nome || "—"}. Estas são as despesas que geram o acerto (o que cada um deve pela responsabilidade × o que já pagou).`;
+  corpo.appendChild(alerta);
+
+  const abrirDespesa = (despesaId) => {
+    const d = mapa[String(despesaId)];
+    if (!d) return;
+    modal.remove();
+    document.querySelectorAll("despesa-detail").forEach((b) => b.remove());
+    const banner = document.createElement("despesa-detail");
+    banner.despesa = d;
+    banner.categorias = dataStore.categoriasDaObra(obraId).filter((c) => String(c.tipo || "") !== "fornecedor");
+    banner.addEventListener("fechar", () => banner.remove());
+    document.body.appendChild(banner);
+  };
+
+  const secao = (titulo, chave, colunas) => {
+    const linhas = saldoPorDespesa(despesas, chave).map((e) => ({
+      _id: e.despesa_id,
+      _item: nomeVivo(e.despesa_id, e.item),
+      _valor: moeda(e.valor),
+      _parte: moeda(e.devido),
+      _pagou: moeda(e.pago),
+    }));
+    const wrap = document.createElement("div");
+    const h = document.createElement("div");
+    h.textContent = titulo;
+    h.style.cssText = "font-weight:var(--peso-semi);margin:var(--esp-4) 0 var(--esp-2);color:var(--cor-texto)";
+    wrap.appendChild(h);
+    const tab = document.createElement("ui-data-table");
+    tab.setAttribute("fluido", "");
+    tab.setAttribute("clicavel", "");
+    tab.setAttribute("empty-text", "Nenhuma despesa.");
+    tab.columns = colunas;
+    tab.rows = linhas;
+    tab.addEventListener("linha", (e) => abrirDespesa((e.detail.linha || {})._id));
+    wrap.appendChild(tab);
+    return wrap;
+  };
+
+  corpo.appendChild(
+    secao(`${a.de_nome || "—"} — deve por estas despesas`, a.de, [
+      { chave: "_item", titulo: "Despesa" },
+      { chave: "_valor", titulo: "Valor", alinhar: "dir" },
+      { chave: "_parte", titulo: "Parte dele(a)", alinhar: "dir" },
+      { chave: "_pagou", titulo: "Já pagou", alinhar: "dir" },
+    ])
+  );
+  corpo.appendChild(
+    secao(`${a.para_nome || "—"} — tem a receber por estas despesas`, a.para, [
+      { chave: "_item", titulo: "Despesa" },
+      { chave: "_valor", titulo: "Valor", alinhar: "dir" },
+      { chave: "_pagou", titulo: "Pagou", alinhar: "dir" },
+      { chave: "_parte", titulo: "Parte dele(a)", alinhar: "dir" },
+    ])
+  );
   modal.appendChild(corpo);
 
   const rod = document.createElement("div");

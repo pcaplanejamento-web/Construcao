@@ -10,6 +10,7 @@ import {
   statusPagamento,
   balancos,
   acerto,
+  saldoPorDespesa,
 } from "../src/features/despesas/despesa-split.js";
 
 const aprox = (a, b, msg) => assert.ok(Math.abs(a - b) < 0.01, `${msg}: ${a} ≈ ${b}`);
@@ -93,4 +94,38 @@ test("acerto — quem deve a quem (reembolso entre participantes)", () => {
   assert.equal(acertos[0].de, "c:2", "devedor");
   assert.equal(acertos[0].para, "u:1", "credor");
   aprox(acertos[0].valor, 500, "valor do reembolso");
+});
+
+test("saldoPorDespesa — origem do saldo de uma chave (quem deve a quem)", () => {
+  const despesas = [
+    {
+      id: "d1",
+      item: "Cimento",
+      valor: 1000,
+      pagamentos: [{ chave: "u:1", valor: 1000 }],
+      responsaveis: [{ chave: "u:1", pct: 50 }, { chave: "c:2", pct: 50 }],
+    },
+    {
+      id: "d2",
+      item: "Areia",
+      valor: 200,
+      pagamentos: [{ chave: "c:2", valor: 200 }],
+      responsaveis: [{ chave: "c:2", pct: 100 }],
+    },
+    { id: "d3", item: "Outro", valor: 300, pagamentos: [], responsaveis: [{ chave: "u:1", pct: 100 }] },
+  ];
+  // Credor u:1: pagou 1000 em d1 (devido 500) e é responsável por 300 em d3.
+  const oU1 = saldoPorDespesa(despesas, "u:1");
+  assert.equal(oU1.length, 2, "u:1 aparece em d1 e d3, não em d2");
+  const d1 = oU1.find((x) => x.despesa_id === "d1");
+  aprox(d1.pago, 1000, "u:1 pagou em d1");
+  aprox(d1.devido, 500, "u:1 devia 500 em d1");
+  aprox(d1.saldo, 500, "saldo de u:1 em d1");
+  assert.ok(!oU1.some((x) => x.despesa_id === "d2"), "u:1 não entra em d2");
+  // Devedor c:2: responsável por 500 em d1 (não pagou) + pagou/deve 200 em d2 (zera).
+  const oC2 = saldoPorDespesa(despesas, "c:2");
+  const c2d1 = oC2.find((x) => x.despesa_id === "d1");
+  aprox(c2d1.devido, 500, "c:2 devia 500 em d1");
+  aprox(c2d1.pago, 0, "c:2 não pagou d1");
+  aprox(c2d1.saldo, -500, "saldo negativo de c:2 em d1");
 });

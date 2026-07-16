@@ -247,3 +247,29 @@ export function acerto(despesas, participantes) {
 
   return { saldos, acertos };
 }
+
+/**
+ * ORIGEM do saldo de UMA chave (participante) por despesa — de onde o "quem deve a
+ * quem" puxa os números. Só as despesas onde a chave PAGOU (`pagamentos`) ou é
+ * RESPONSÁVEL (`responsaveis`). Retorna [{ despesa_id, item, valor, pago, devido,
+ * saldo }] ordenado por |saldo| desc. Mesmos campos usados por `acerto`.
+ */
+export function saldoPorDespesa(despesas, chave) {
+  const ch = String(chave || "");
+  const out = [];
+  (despesas || []).forEach((d) => {
+    const v = Number(d.valor) || 0;
+    let pago = 0;
+    let devido = 0;
+    parseLista(d.pagamentos).forEach((p) => {
+      if (p && String(p.chave) === ch) pago += Number(p.valor) || 0;
+    });
+    parseLista(d.responsaveis).forEach((r) => {
+      if (r && String(r.chave) === ch) devido += (v * (Number(r.pct) || 0)) / 100;
+    });
+    if (pago > 0.005 || devido > 0.005) {
+      out.push({ despesa_id: d.id, item: String(d.item || ""), valor: v, pago: pago, devido: devido, saldo: pago - devido });
+    }
+  });
+  return out.sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
+}

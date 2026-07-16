@@ -15,6 +15,7 @@ import { irPara } from "../../core/router.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { acerto, rotuloOrigem, balancos } from "../despesas/despesa-split.js";
+import { abrirOrigemAcerto } from "../shared/vinculos.js";
 import { avatarNomeHtml, avatarHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { confirmar } from "../../components/confirmar.js";
 import "../../components/ui-card.js";
@@ -51,9 +52,12 @@ class ObraParticipantes extends BaseElement {
       .grupos { display: flex; flex-direction: column; gap: var(--esp-5); }
       .acertos { display: flex; flex-direction: column; gap: var(--esp-2); }
       .acerto-item { display: flex; align-items: center; gap: var(--esp-2);
-        padding: var(--esp-3); border: 1px solid var(--cor-borda); border-radius: var(--raio-sm); }
+        padding: var(--esp-3); border: 1px solid var(--cor-borda); border-radius: var(--raio-sm);
+        cursor: pointer; transition: border-color var(--transicao), background var(--transicao); }
+      .acerto-item:hover { border-color: var(--cor-primaria); background: var(--cor-primaria-suave); }
       .acerto-item .seta { color: var(--cor-texto-fraco); }
       .acerto-item .valor { margin-left: auto; font-weight: var(--peso-semi); color: var(--cor-erro); }
+      .acerto-item .ver { flex: none; color: var(--cor-texto-fraco); font-size: var(--fs-xs); }
       .ok { color: var(--cor-sucesso); font-size: var(--fs-sm); display: flex;
         align-items: center; gap: var(--esp-2); }
     `;
@@ -132,7 +136,7 @@ class ObraParticipantes extends BaseElement {
         if (!lg) { lg = this._novaListaParticipantes(); lista.replaceChildren(lg); }
         lg.render = (p) => this._cardParticipante(p);
         lg.itens = rows;
-        this._pintarAcertos(painel, acertos);
+        this._pintarAcertos(painel, acertos, despesas);
         return;
       }
 
@@ -188,24 +192,35 @@ class ObraParticipantes extends BaseElement {
     }
 
     // Painel "quem deve a quem".
-    this._pintarAcertos(painel, acertos);
+    this._pintarAcertos(painel, acertos, despesas);
   }
 
-  /** Painel "quem deve a quem" (comum a desktop e mobile). */
-  _pintarAcertos(painel, acertos) {
+  /** Painel "quem deve a quem" (comum a desktop e mobile). Cada linha é CLICÁVEL →
+   * banner de ORIGEM (de quais despesas o valor está sendo puxado). */
+  _pintarAcertos(painel, acertos, despesas) {
     if (!painel) return;
     if (!acertos.length) {
       painel.innerHTML = `<div class="ok"><ui-icon name="sucesso" size="16"></ui-icon> Sem pendências — tudo acertado.</div>`;
-    } else {
-      painel.innerHTML = `<div class="acertos">${acertos
-        .map(
-          (a) =>
-            `<div class="acerto-item"><span>${_esc(a.de_nome)}</span>
-               <span class="seta">→</span><span>${_esc(a.para_nome)}</span>
-               <span class="valor">${moeda(a.valor)}</span></div>`
-        )
-        .join("")}</div>`;
+      return;
     }
+    painel.innerHTML = `<div class="acertos">${acertos
+      .map(
+        (a, i) =>
+          `<div class="acerto-item" data-idx="${i}" role="button" tabindex="0" title="Ver a origem (despesas) deste acerto"><span>${_esc(a.de_nome)}</span>
+             <span class="seta">→</span><span>${_esc(a.para_nome)}</span>
+             <span class="valor">${moeda(a.valor)}</span><span class="ver">ver origem ›</span></div>`
+      )
+      .join("")}</div>`;
+    const abrir = (i) => {
+      const a = acertos[Number(i)];
+      if (a) abrirOrigemAcerto({ acerto: a, despesas: despesas || dataStore.despesas(this.obraId), obraId: this.obraId });
+    };
+    painel.querySelectorAll(".acerto-item").forEach((el) => {
+      el.addEventListener("click", () => abrir(el.dataset.idx));
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(el.dataset.idx); }
+      });
+    });
   }
 
   /** Card mobile de um participante: avatar + nome + Origem + valores compactos. */
