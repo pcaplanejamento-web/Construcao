@@ -305,8 +305,10 @@ class DespesaTable extends BaseElement {
         .map((d) => d.id);
       tabela.selecionarPorId(ids);
     });
-    // Exclusão em massa: a tabela confirma e emite as linhas; repassa à obra-detail.
+    // Exclusão em massa: a CONFIRMAÇÃO é da obra-detail (`removerMassa` oferece apagar os
+    // pagamentos antes) — `sem-confirmar-massa` evita o diálogo genérico duplicado da tabela.
     tabela.setAttribute("excluir-massa", "");
+    tabela.setAttribute("sem-confirmar-massa", "");
     tabela.addEventListener("excluir-massa", (e) => {
       e.stopPropagation();
       this.emitir("excluir-massa", { despesas: e.detail.linhas });

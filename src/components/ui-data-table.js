@@ -804,13 +804,17 @@ class UiDataTable extends BaseElement {
       btnExcluir.addEventListener("click", async () => {
         const linhas = [...this._sel];
         if (!linhas.length) return;
-        const ok = await confirmar({
-          titulo: "Excluir selecionados",
-          mensagem: `Excluir ${linhas.length} item(ns) selecionado(s)?`,
-          perigo: true,
-          rotuloOk: "Excluir",
-        });
-        if (!ok) return;
+        // `sem-confirmar-massa`: o CONSUMIDOR faz a confirmação (ex.: despesa-table, que
+        // oferece apagar pagamentos antes) → evita DUPLO diálogo. Sem o atributo, confirma aqui.
+        if (!this.hasAttribute("sem-confirmar-massa")) {
+          const ok = await confirmar({
+            titulo: "Excluir selecionados",
+            mensagem: `Excluir ${linhas.length} item(ns) selecionado(s)?`,
+            perigo: true,
+            rotuloOk: "Excluir",
+          });
+          if (!ok) return;
+        }
         this.__sel = new Set();
         this.emitir("excluir-massa", { linhas });
       });
