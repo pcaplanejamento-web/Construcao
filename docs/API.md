@@ -102,6 +102,9 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 > `categorias.remover`, `cargos.remover` e `cotacoes.removerPreco` lançam
 > `ERRO.VALIDACAO` ("… vinculado; remova os vínculos primeiro") quando a entidade
 > ainda tem vínculos. O cliente também antecipa via banner (`features/shared/vinculos.js`).
+> `itens.remover` bloqueia se o item estiver em despesa, cotação **ou OFERTA**
+> (`_itemEmUso` checa `COTACAO_PRECOS`) — senão registrar essa oferta depois falharia
+> com "Item inválido.".
 
 ### Estado inicial (cache-first)
 | Action | `data` | Retorno |
@@ -233,7 +236,7 @@ para dono **e** colaboradores.
 | `cotacoes.atualizarPreco` | `{ id, item_id?, contato_id?, equipe_id?, fornecedor_id?, valor_unit?, quantidade?, valor_unit_desconto?, prazo_entrega?, observacao? }` | `{ preco, historico }` (`historico` só se o valor mudou; senão `null`) |
 | `cotacoes.removerPreco` | `{ id }` | `{ id, cotacao_id }` (mantém o histórico; **bloqueia** se registrada) |
 | `cotacoes.escolherPreco` | `{ id }` | `{ precos }` (marca a escolhida e desmarca as demais da cotação) |
-| `cotacoes.registrarDespesa` | `{ preco_id, obra_id, categoria_id?, responsaveis? }` | `{ despesa, resumo, precos, cotacao, preco }` — **único caminho** p/ criar despesa. Item/fornecedor vêm da **oferta** (`cotacao` é opcional → `null` p/ avulsa/orçamento). Valor = `(valor_unit_desconto||valor_unit) × (preco.quantidade||cotacao.quantidade)`; **subclassificação herdada do item**. "Orçamento completo" = o front chama esta action por oferta. |
+| `cotacoes.registrarDespesa` | `{ preco_id, obra_id, categoria_id?, responsaveis?, data? }` | `{ despesa, resumo, precos, cotacao, preco }` — **único caminho** p/ criar despesa. `despesa` normalizada por `_lerDespesa` (listas → arrays; `pago` boolean), como `despesas.criar`. Item/fornecedor vêm da **oferta** (`cotacao` é opcional → `null` p/ avulsa/orçamento). Valor = `(valor_unit_desconto||valor_unit) × (preco.quantidade||cotacao.quantidade)`; **subclassificação herdada do item**. "Orçamento completo" = o front chama esta action por oferta. |
 
 ### Compras — Orçamentos (container de ofertas)
 | Action | `data` | Retorno |

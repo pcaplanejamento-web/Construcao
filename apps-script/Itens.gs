@@ -183,14 +183,20 @@ function itensAtualizar(data, sessao) {
   });
 }
 
-/** Verdadeiro se o item está vinculado a alguma despesa ou cotação. */
+/** Verdadeiro se o item está vinculado a alguma despesa, cotação OU oferta. */
 function _itemEmUso(itemId) {
   const naDespesa = repoEncontrar(SCHEMA.DESPESAS, function (d) {
     return String(d.item_id) === String(itemId);
   });
   if (naDespesa) return true;
-  return !!repoEncontrar(SCHEMA.COTACOES, function (c) {
+  const naCotacao = repoEncontrar(SCHEMA.COTACOES, function (c) {
     return String(c.item_id) === String(itemId);
+  });
+  if (naCotacao) return true;
+  // Também bloqueia se uma OFERTA usa o item: senão desativá-lo deixaria o registro
+  // dessa oferta como despesa falhar depois ("Item inválido." em _itemParaObra).
+  return !!repoEncontrar(SCHEMA.COTACAO_PRECOS, function (p) {
+    return String(p.item_id) === String(itemId);
   });
 }
 

@@ -654,7 +654,7 @@ function cotacoesRegistrarDespesa(data, sessao) {
         atualizado_em: agoraIso(),
       });
       return {
-        despesa: despesa,
+        despesa: _lerDespesa(despesa), // normaliza (listas → arrays; pago boolean) como despesasCriar
         resumo: _calcularResumo(obraId, sessao.usuario_id),
         precos: listarPrecosCotacao(cotacao.id),
         cotacao: cotAtual,
@@ -669,7 +669,7 @@ function cotacoesRegistrarDespesa(data, sessao) {
       despesa_id: despesa.id,
     });
     return {
-      despesa: despesa,
+      despesa: _lerDespesa(despesa), // normaliza (listas → arrays; pago boolean) como despesasCriar
       resumo: _calcularResumo(obraId, sessao.usuario_id),
       precos: [precoAtual],
       cotacao: null,
