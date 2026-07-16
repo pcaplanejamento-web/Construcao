@@ -26,6 +26,7 @@ import { BaseElement } from "./base-element.js";
 import { moeda } from "../core/formatters.js";
 import { vibrar, pulso, HAPTICO } from "./haptic.js";
 import "./ui-coluna-menu.js";
+import "./ui-filtro-data.js";
 import "./ui-empty-state.js";
 import { injetarBuscaNoCard } from "./ui-busca.js";
 import { confirmar } from "./confirmar.js";
@@ -88,6 +89,7 @@ class UiDataTable extends BaseElement {
 
   set columns(v) {
     this._columns = v || [];
+    this.__idxData = undefined; // recalcula a coluna de data padrão
     this._talvezRenderizar();
   }
   get columns() {
@@ -95,6 +97,7 @@ class UiDataTable extends BaseElement {
   }
   set rows(v) {
     this._rows = v || [];
+    this.__idxData = undefined;
     this._talvezRenderizar();
   }
   get rows() {
@@ -156,6 +159,36 @@ class UiDataTable extends BaseElement {
     if (typeof va === "number" && typeof vb === "number") return va - vb;
     return String(va).localeCompare(String(vb), "pt", { numeric: true });
   }
+
+  /** Data ISO ("AAAA-MM-DD") de uma linha nesta coluna (via `valorOrd` ISO ou o texto
+   * "DD/MM/AAAA"). "" quando não há data. Base do filtro por intervalo e da detecção. */
+  _isoDaLinha(c, linha) {
+    if (c.valorOrd) {
+      const v = String(c.valorOrd(linha) || "");
+      if (/^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+    }
+    const t = String(this._texto(c, linha)).trim();
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t);
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+  }
+
+  /** Coluna de DATA? (todos os textos distintos no padrão "DD/MM/AAAA"). */
+  _ehColunaData(col) {
+    const vals = this._distintos(col);
+    return vals.length > 0 && vals.every((v) => /^\d{2}\/\d{2}\/\d{4}$/.test(String(v)));
+  }
+
+  /** Datas ISO PRESENTES na coluna (p/ os chips adaptativos do `ui-filtro-data`). */
+  _datasDaColuna(col) {
+    const c = this.columns[col];
+    if (!c) return [];
+    const out = [];
+    this.rows.forEach((l) => {
+      const iso = this._isoDaLinha(c, l);
+      if (iso) out.push(iso);
+    });
+    return out;
+  }
   _temMoeda() {
     return this.columns.some((c) => c.moeda);
   }
@@ -182,8 +215,19 @@ class UiDataTable extends BaseElement {
     Object.keys(this._filtros).forEach((idx) => {
       const c = this.columns[idx];
       if (!c) return;
-      const permitidos = this._filtros[idx];
-      arr = arr.filter((o) => permitidos.has(this._texto(c, o.linha)));
+      const f = this._filtros[idx];
+      if (f instanceof Set) {
+        arr = arr.filter((o) => f.has(this._texto(c, o.linha)));
+      } else if (f && (f.de || f.ate)) {
+        // Filtro por INTERVALO de data (ui-filtro-data): linha visível ⇔ data no [de, ate].
+        arr = arr.filter((o) => {
+          const iso = this._isoDaLinha(c, o.linha);
+          if (!iso) return false;
+          if (f.de && iso < f.de) return false;
+          if (f.ate && iso > f.ate) return false;
+          return true;
+        });
+      }
     });
     // Busca global (qualquer coluna) — campo da <ui-busca> no cabeçalho.
     const q = this._buscaTexto || "";
@@ -192,8 +236,42 @@ class UiDataTable extends BaseElement {
       const c = this.columns[this._ordem.col];
       const dir = this._ordem.dir === "desc" ? -1 : 1;
       arr.sort((a, b) => this._cmp(c, a.linha, b.linha) * dir);
+    } else {
+      // PADRÃO (sem ordenação do usuário): ordem DECRESCENTE de data — se a mesa tem
+      // uma coluna de data, as linhas mais recentes ficam no topo.
+      const idx = this._colunaDataPadrao();
+      if (idx >= 0) {
+        const c = this.columns[idx];
+        arr.sort((a, b) => this._cmp(c, a.linha, b.linha) * -1);
+      }
     }
     return arr;
+  }
+
+  /** Índice da 1ª coluna de DATA (todas as células não-vazias de uma amostra são datas)
+   * — a ordenação-padrão decrescente usa ela. Cacheado; invalidado ao trocar rows/cols. */
+  _colunaDataPadrao() {
+    if (this.__idxData !== undefined) return this.__idxData;
+    this.__idxData = -1;
+    const amostra = this.rows.slice(0, 30);
+    if (amostra.length) {
+      for (let i = 0; i < this.columns.length; i++) {
+        const c = this.columns[i];
+        let comValor = 0;
+        let comData = 0;
+        amostra.forEach((l) => {
+          if (String(this._texto(c, l)).trim()) {
+            comValor++;
+            if (this._isoDaLinha(c, l)) comData++;
+          }
+        });
+        if (comValor > 0 && comData === comValor) {
+          this.__idxData = i;
+          break;
+        }
+      }
+    }
+    return this.__idxData;
   }
 
   /** Há filtro de coluna OU busca global ativa? */
@@ -349,11 +427,16 @@ class UiDataTable extends BaseElement {
       tfoot td.sel { z-index: 7; }
       tfoot .rotulo { font-family: var(--fonte-base); font-weight: var(--peso-semi);
         color: var(--cor-texto-suave); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
-      /* Barra de seleção (análise dos selecionados). */
-      .selbar { display: flex; align-items: center; gap: var(--esp-3); flex-wrap: wrap;
-        padding: var(--esp-2) var(--esp-3); margin-bottom: var(--esp-2);
-        background: var(--cor-primaria-suave); border: 1px solid var(--cor-primaria);
-        border-radius: var(--raio-sm); font-size: var(--fs-sm); }
+      /* Barra de seleção (análise dos selecionados): FLUTUA na base da mesa (sticky
+         bottom), ACIMA da linha de totais e POR CIMA das linhas — como o totais. Fora
+         do fluxo (não empurra a mesa), então selecionar NÃO dá "pulo" p/ cima/baixo.
+         O bottom é ajustado por JS p/ ficar logo acima do tfoot (totais) quando existe. */
+      .selbar { position: sticky; bottom: 0; z-index: 8; display: flex; align-items: center;
+        gap: var(--esp-3); flex-wrap: wrap; padding: var(--esp-2) var(--esp-3);
+        margin: var(--esp-2) 0 0; background: var(--vidro-fundo-forte, var(--cor-primaria-suave));
+        -webkit-backdrop-filter: var(--vidro-blur); backdrop-filter: var(--vidro-blur);
+        border: 1px solid var(--cor-primaria); border-radius: var(--raio-md);
+        box-shadow: var(--sombra-md); font-size: var(--fs-sm); }
       .selbar .n { font-weight: var(--peso-semi); color: var(--cor-primaria-escura); }
       .selbar .somas { display: flex; gap: var(--esp-3); flex-wrap: wrap; flex: 1; }
       .selbar .soma b { font-family: var(--fonte-titulo); }
@@ -494,7 +577,9 @@ class UiDataTable extends BaseElement {
 
     const selbar = this._sel.size ? this._selbarHtml() : "";
 
-    return `${this._filtroAvisoHtml()}${selbar}<div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${this._corpoHtml()}</tbody>${this._rodapeHtml()}</table></div>${this._barraExportarHtml()}`;
+    // A selbar vai DENTRO do `.wrap` (sticky bottom, acima dos totais) — flutua sobre
+    // as linhas como a linha de totais e NÃO empurra a mesa (selecionar não dá "pulo").
+    return `${this._filtroAvisoHtml()}<div class="wrap"><table><thead><tr>${cabecalho}</tr></thead><tbody>${this._corpoHtml()}</tbody>${this._rodapeHtml()}</table>${selbar}</div>${this._barraExportarHtml()}`;
   }
 
   /** Barra de exportação (canto inferior esquerdo, após o Total): CSV/XLS/XLSX/PDF. */
@@ -672,6 +757,7 @@ class UiDataTable extends BaseElement {
       });
     }
     this._ligarSelbar();
+    this._posicionarSelbar();
     // Cabeçalho → dropdown de ordenar/filtrar.
     this.$$(".th-btn").forEach((btn) => {
       btn.addEventListener("click", () => this._abrirMenu(Number(btn.dataset.col), btn));
@@ -736,17 +822,18 @@ class UiDataTable extends BaseElement {
    * ao topo a cada seleção). A barra é irmã do `.wrap`, então mexer nela não rola. */
   _atualizarSelbar() {
     const root = this.shadowRoot;
+    const wrap = root.querySelector(".wrap");
     const atual = root.querySelector(".selbar");
     if (this._sel.size > 0) {
       const html = this._selbarHtml();
       if (atual) {
         atual.insertAdjacentHTML("beforebegin", html);
         atual.remove();
-      } else {
-        const wrap = root.querySelector(".wrap");
-        if (wrap) wrap.insertAdjacentHTML("beforebegin", html);
+      } else if (wrap) {
+        wrap.insertAdjacentHTML("beforeend", html); // DENTRO do .wrap, após a tabela (sticky bottom)
       }
       this._ligarSelbar();
+      this._posicionarSelbar();
     } else if (atual) {
       atual.remove();
     }
@@ -757,6 +844,15 @@ class UiDataTable extends BaseElement {
       selTodos.checked = todos;
       selTodos.indeterminate = !todos && vis.some((l) => this._sel.has(l));
     }
+  }
+
+  /** Encosta a selbar logo ACIMA da linha de totais (tfoot sticky), se houver. */
+  _posicionarSelbar() {
+    const selbar = this.shadowRoot.querySelector(".selbar");
+    if (!selbar) return;
+    const tfoot = this.shadowRoot.querySelector("tfoot");
+    const h = tfoot ? Math.round(tfoot.getBoundingClientRect().height) : 0;
+    selbar.style.bottom = h + "px";
   }
 
   /** Liga eventos das linhas do tbody (ações, clique, seleção). Reusado pela busca. */
@@ -810,6 +906,8 @@ class UiDataTable extends BaseElement {
   _abrirMenu(col, anchorEl) {
     const c = this.columns[col];
     if (!c) return;
+    // Coluna de DATA → filtro por INTERVALO (ui-filtro-data), no lugar do checklist.
+    if (this._ehColunaData(col)) return this._abrirFiltroData(col, anchorEl);
     const menu = document.createElement("ui-coluna-menu");
     menu.coluna = c;
     menu.valores = this._distintos(col);
@@ -824,6 +922,40 @@ class UiDataTable extends BaseElement {
       const { ordem, selecionados } = e.detail;
       this._ordem = ordem ? { col, dir: ordem } : this._ordem && this._ordem.col === col ? null : this._ordem;
       if (selecionados) this._filtros[col] = selecionados;
+      else delete this._filtros[col];
+      fechar();
+      this.renderizar();
+    });
+    menu.addEventListener("remover", () => {
+      if (this._ordem && this._ordem.col === col) this._ordem = null;
+      delete this._filtros[col];
+      fechar();
+      this.renderizar();
+    });
+    document.body.appendChild(menu);
+  }
+
+  /** Abre o filtro EXCLUSIVO de data (ui-filtro-data) — intervalo De/Até + atalhos +
+   * chips de Ano/Mês adaptados aos dados. Guarda o filtro como `{de, ate}` (≠ Set). */
+  _abrirFiltroData(col, anchorEl) {
+    const c = this.columns[col];
+    const f = this._filtros[col];
+    const range = f && !(f instanceof Set) ? f : {};
+    const menu = document.createElement("ui-filtro-data");
+    menu.coluna = c;
+    menu.datas = this._datasDaColuna(col);
+    menu.estado = {
+      ordem: this._ordem && this._ordem.col === col ? this._ordem.dir : null,
+      de: range.de || "",
+      ate: range.ate || "",
+    };
+    menu.ancora = anchorEl.getBoundingClientRect();
+    const fechar = () => menu.remove();
+    menu.addEventListener("fechar", fechar);
+    menu.addEventListener("aplicar", (e) => {
+      const { ordem, de, ate } = e.detail || {};
+      this._ordem = ordem ? { col, dir: ordem } : this._ordem && this._ordem.col === col ? null : this._ordem;
+      if (de || ate) this._filtros[col] = { de: de || "", ate: ate || "" };
       else delete this._filtros[col];
       fechar();
       this.renderizar();
