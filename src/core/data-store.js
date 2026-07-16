@@ -1800,3 +1800,57 @@ export const dataStore = {
   criarEquipe, atualizarEquipe, removerEquipe,
   adminCriarUsuario, adminAtualizarUsuario,
 };
+
+/**
+ * Sinaliza (evento DOM DESACOPLADO) que a LINHA `id` está OCUPADA durante uma
+ * mutação. As tabelas (`ui-data-table`) e listas mobile (`ui-lista-gestos`) escutam
+ * e mostram um spinner SÓ naquela linha + bloqueiam a interação nela — sem
+ * re-render da tabela e sem afetar o resto da página. Contrato: `window` event
+ * "linha-ocupada" { id, ocupada }. Sem `window` (testes) → no-op silencioso.
+ */
+function _linhaOcupada(id, ocupada) {
+  const sid = String(id == null ? "" : id);
+  if (!sid) return;
+  try {
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new CustomEvent("linha-ocupada", { detail: { id: sid, ocupada: !!ocupada } }));
+    }
+  } catch (e) {
+    /* ambiente sem window — ignora */
+  }
+}
+
+// Envolve as mutações de ATUALIZAÇÃO de linha (uma por entidade de tabela) para
+// sinalizar "ocupada" durante a chamada — o `id` está no índice de argumento dado.
+// Um só ponto → vale p/ TODAS as tabelas do sistema (não toca as views).
+(function _envolverMutacoesDeLinha(alvo) {
+  const idxDoId = {
+    atualizarItem: 0,
+    atualizarDespesa: 1, // (obraId, id, dados)
+    atualizarOferta: 0,
+    atualizarContato: 0,
+    atualizarFornecedor: 0,
+    atualizarEquipe: 0,
+    atualizarCategoria: 0,
+    atualizarCargo: 0,
+    atualizarObra: 0,
+    atualizarCotacao: 0,
+    atualizarOrcamento: 0,
+    atualizarNota: 1, // (obraId, id, dados)
+    atualizarTipoTransferencia: 0,
+    lancarPagamento: 1, // (obraId, despesaId, dados) — atualiza a linha da despesa
+    adminAtualizarUsuario: 0,
+  };
+  Object.keys(idxDoId).forEach((nome) => {
+    const orig = alvo[nome];
+    if (typeof orig !== "function") return;
+    const i = idxDoId[nome];
+    alvo[nome] = function (...args) {
+      const id = args[i];
+      _linhaOcupada(id, true);
+      return Promise.resolve()
+        .then(() => orig.apply(this, args))
+        .finally(() => _linhaOcupada(id, false));
+    };
+  });
+})(dataStore);

@@ -106,6 +106,16 @@ class UiListaGestos extends BaseElement {
       [data-acao-linha] { transition: transform .12s cubic-bezier(0.22, 1, 0.36, 1); }
       [data-acao-linha]:active { transform: scale(0.86); }
       @media (prefers-reduced-motion: reduce) { [data-acao-linha] { transition: none; } }
+      /* CARD OCUPADO (atualizando): spinner SÓ neste card + bloqueia interação;
+         o conteúdo fica esmaecido atrás. Não afeta os outros cards nem o resto. */
+      .linha.ocupada { pointer-events: none; }
+      .linha.ocupada .conteudo { opacity: .5; transition: opacity .2s ease; }
+      .linha.ocupada::after { content: ""; position: absolute; z-index: 4;
+        top: 50%; left: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px;
+        border: 2.5px solid var(--cor-borda); border-top-color: var(--cor-primaria);
+        border-radius: 50%; animation: lg-spin .7s linear infinite; }
+      @keyframes lg-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .linha.ocupada::after { animation-duration: 1.8s; } }
       /* Círculo de seleção (aparece no modo seleção). */
       .check { flex: none; width: 0; height: 24px; border-radius: 50%; overflow: hidden;
         display: inline-flex; align-items: center; justify-content: center;
@@ -203,6 +213,7 @@ class UiListaGestos extends BaseElement {
     });
     raiz.innerHTML = html;
     this._pintarIndice(usaIndice ? letras : []);
+    this._aplicarOcupadasLista(); // reaplica o spinner nos cards ainda ocupados
   }
 
   _pintarIndice(letras) {
@@ -380,7 +391,37 @@ class UiListaGestos extends BaseElement {
     }
   }
 
-  aoDesconectar() { this._encerrar(); }
+  /** Escuta "linha-ocupada" (data-store) → spinner SÓ no card daquele `id`. */
+  aoConectar() {
+    if (!this._ocupadas) this._ocupadas = new Set();
+    this._onOcupada = (e) => {
+      const d = (e && e.detail) || {};
+      const sid = String(d.id == null ? "" : d.id);
+      if (!sid) return;
+      if (d.ocupada) this._ocupadas.add(sid);
+      else this._ocupadas.delete(sid);
+      this._aplicarOcupadaLista(sid);
+    };
+    window.addEventListener("linha-ocupada", this._onOcupada);
+  }
+  aoDesconectar() {
+    this._encerrar();
+    if (this._onOcupada) window.removeEventListener("linha-ocupada", this._onOcupada);
+  }
+
+  /** Aplica/remove a classe .ocupada no card do `id` (toggle direcionado). */
+  _aplicarOcupadaLista(sid) {
+    const el = this._linhaPorId(sid);
+    if (el) el.classList.toggle("ocupada", !!(this._ocupadas && this._ocupadas.has(sid)));
+  }
+  /** Reaplica os spinners após um re-render (ids ainda ocupados sobrevivem). */
+  _aplicarOcupadasLista() {
+    if (!this._ocupadas || !this._ocupadas.size) return;
+    this._ocupadas.forEach((sid) => {
+      const el = this._linhaPorId(sid);
+      if (el) el.classList.add("ocupada");
+    });
+  }
 }
 
 customElements.define("ui-lista-gestos", UiListaGestos);

@@ -295,6 +295,17 @@ class UiDataTable extends BaseElement {
       :host([tem-selecao]) tbody tr::after { left: 2.5rem; clip-path: inset(-24px -24px -24px 0); }
       /* a sombra (pseudo) sobe o MESMO tanto que o contorno (células) — ficam alinhados. */
       tbody tr:hover::after { box-shadow: var(--sombra-realce); transform: translateY(-4px); }
+      /* LINHA OCUPADA (a linha está sendo ATUALIZADA): spinner interno SÓ nesta linha
+         + bloqueia a interação nela; as células ficam esmaecidas atrás. Não re-renderiza
+         a tabela nem afeta as outras linhas/o resto da página. */
+      tbody tr.ocupada { pointer-events: none; }
+      tbody tr.ocupada td:not(.sel) { opacity: .45; transition: opacity var(--transicao); }
+      tbody tr.ocupada::before { content: ""; position: absolute; z-index: 6;
+        top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px;
+        border: 2.5px solid var(--cor-borda); border-top-color: var(--cor-primaria);
+        border-radius: 50%; animation: ui-dt-spin .7s linear infinite; }
+      @keyframes ui-dt-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { tbody tr.ocupada::before { animation-duration: 1.8s; } }
       .dir { text-align: right; }
       td.dir { font-family: var(--fonte-titulo); font-weight: var(--peso-forte); }
       /* Coluna de marcacao (selecao): largura FIXA (2.5rem = 40px) e na cor da MESA.
@@ -557,7 +568,8 @@ class UiDataTable extends BaseElement {
               )
               .join("")}</div></td>`
           : "";
-        return `<tr data-idx="${i}">${sel}${celulas}${botoes}</tr>`;
+        const idRow = String(linha && linha.id != null ? linha.id : "").replace(/"/g, "&quot;");
+        return `<tr data-idx="${i}" data-id="${idRow}">${sel}${celulas}${botoes}</tr>`;
       })
       .join("");
   }
@@ -604,6 +616,39 @@ class UiDataTable extends BaseElement {
       ? `<button class="excluir" id="excluirMassa">Excluir selecionadas</button>`
       : "";
     return `<div class="selbar"><span class="n">${selecionadas.length} selecionada(s)</span><div class="somas">${somas}</div>${custom}${editar}${excluir}</div>`;
+  }
+
+  /** Escuta o evento GLOBAL "linha-ocupada" (disparado pelo data-store durante uma
+   * atualização) e marca/desmarca o spinner SÓ na linha com aquele `id`. */
+  aoConectar() {
+    if (!this._ocupadas) this._ocupadas = new Set();
+    this._onOcupada = (e) => {
+      const d = (e && e.detail) || {};
+      const sid = String(d.id == null ? "" : d.id);
+      if (!sid) return;
+      if (d.ocupada) this._ocupadas.add(sid);
+      else this._ocupadas.delete(sid);
+      this._aplicarOcupada(sid);
+    };
+    window.addEventListener("linha-ocupada", this._onOcupada);
+  }
+  aoDesconectar() {
+    if (this._onOcupada) window.removeEventListener("linha-ocupada", this._onOcupada);
+  }
+
+  /** Aplica/remove a classe .ocupada na linha do `id` dado (toggle direcionado). */
+  _aplicarOcupada(sid) {
+    const on = this._ocupadas && this._ocupadas.has(sid);
+    this.$$("tbody tr").forEach((tr) => {
+      if (String(tr.dataset.id || "") === sid) tr.classList.toggle("ocupada", on);
+    });
+  }
+  /** Reaplica os spinners após um re-render (ids ainda ocupados sobrevivem). */
+  _aplicarOcupadas() {
+    if (!this._ocupadas || !this._ocupadas.size) return;
+    this.$$("tbody tr").forEach((tr) => {
+      if (this._ocupadas.has(String(tr.dataset.id || ""))) tr.classList.add("ocupada");
+    });
   }
 
   aposRender() {
@@ -705,6 +750,7 @@ class UiDataTable extends BaseElement {
         this.renderizar();
       });
     });
+    this._aplicarOcupadas(); // reaplica o spinner nas linhas ainda ocupadas após re-render
   }
 
   /** Re-renderiza SÓ o corpo/rodapé (busca) sem recriar a <ui-busca> nem o cabeçalho. */
