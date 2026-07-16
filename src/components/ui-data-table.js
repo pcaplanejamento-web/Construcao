@@ -662,43 +662,16 @@ class UiDataTable extends BaseElement {
         const visiveis = this._visiveis().map((o) => o.linha);
         if (selTodos.checked) visiveis.forEach((l) => this._sel.add(l));
         else visiveis.forEach((l) => this._sel.delete(l));
-        this.emitir("selecao", { linhas: [...this._sel] });
-        this.renderizar();
-      });
-    }
-    // Ações em massa customizadas → evento genérico "acao-massa" (a view decide).
-    this.$$(".acao-massa").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const a = this.acoesMassa[Number(btn.dataset.i)];
-        const linhas = [...this._sel];
-        if (a && linhas.length) this.emitir("acao-massa", { acao: a.nome, linhas });
-      });
-    });
-    // Editar selecionadas em massa — abre o form de edição (a view decide).
-    const btnEditar = this.$("#editarMassa");
-    if (btnEditar) {
-      btnEditar.addEventListener("click", () => {
-        const linhas = [...this._sel];
-        if (linhas.length) this.emitir("editar-massa", { linhas });
-      });
-    }
-    // Excluir selecionadas em massa.
-    const btnExcluir = this.$("#excluirMassa");
-    if (btnExcluir) {
-      btnExcluir.addEventListener("click", async () => {
-        const linhas = [...this._sel];
-        if (!linhas.length) return;
-        const ok = await confirmar({
-          titulo: "Excluir selecionados",
-          mensagem: `Excluir ${linhas.length} item(ns) selecionado(s)?`,
-          perigo: true,
-          rotuloOk: "Excluir",
+        // Reflete nos checkboxes das linhas VISÍVEIS + atualiza a barra — SEM
+        // re-render (senão o scroll da mesa volta ao topo).
+        this.$$(".rowsel").forEach((cb) => {
+          cb.checked = this._sel.has(this.rows[Number(cb.dataset.i)]);
         });
-        if (!ok) return;
-        this.__sel = new Set();
-        this.emitir("excluir-massa", { linhas });
+        this.emitir("selecao", { linhas: [...this._sel] });
+        this._atualizarSelbar();
       });
     }
+    this._ligarSelbar();
     // Cabeçalho → dropdown de ordenar/filtrar.
     this.$$(".th-btn").forEach((btn) => {
       btn.addEventListener("click", () => this._abrirMenu(Number(btn.dataset.col), btn));
@@ -721,6 +694,69 @@ class UiDataTable extends BaseElement {
     // (Re)liga em todo render; é idempotente. A <ui-busca> vive no card → preserva foco.
     const busca = injetarBuscaNoCard(this, this);
     if (busca && this._buscaTexto) busca.definir(this._buscaTexto);
+  }
+
+  /** Liga os botões da barra de seleção (Editar/Excluir/ações em massa). Reusado
+   * pelo render E pela atualização direcionada (`_atualizarSelbar`). */
+  _ligarSelbar() {
+    this.$$(".acao-massa").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const a = this.acoesMassa[Number(btn.dataset.i)];
+        const linhas = [...this._sel];
+        if (a && linhas.length) this.emitir("acao-massa", { acao: a.nome, linhas });
+      });
+    });
+    const btnEditar = this.$("#editarMassa");
+    if (btnEditar) {
+      btnEditar.addEventListener("click", () => {
+        const linhas = [...this._sel];
+        if (linhas.length) this.emitir("editar-massa", { linhas });
+      });
+    }
+    const btnExcluir = this.$("#excluirMassa");
+    if (btnExcluir) {
+      btnExcluir.addEventListener("click", async () => {
+        const linhas = [...this._sel];
+        if (!linhas.length) return;
+        const ok = await confirmar({
+          titulo: "Excluir selecionados",
+          mensagem: `Excluir ${linhas.length} item(ns) selecionado(s)?`,
+          perigo: true,
+          rotuloOk: "Excluir",
+        });
+        if (!ok) return;
+        this.__sel = new Set();
+        this.emitir("excluir-massa", { linhas });
+      });
+    }
+  }
+
+  /** Atualiza SÓ a barra de seleção + o "Selecionar todos" ao (des)marcar uma linha,
+   * SEM re-renderizar a tabela — preserva o scroll do `.wrap` (senão a mesa voltava
+   * ao topo a cada seleção). A barra é irmã do `.wrap`, então mexer nela não rola. */
+  _atualizarSelbar() {
+    const root = this.shadowRoot;
+    const atual = root.querySelector(".selbar");
+    if (this._sel.size > 0) {
+      const html = this._selbarHtml();
+      if (atual) {
+        atual.insertAdjacentHTML("beforebegin", html);
+        atual.remove();
+      } else {
+        const wrap = root.querySelector(".wrap");
+        if (wrap) wrap.insertAdjacentHTML("beforebegin", html);
+      }
+      this._ligarSelbar();
+    } else if (atual) {
+      atual.remove();
+    }
+    const selTodos = this.$("#selTodos");
+    if (selTodos) {
+      const vis = this._visiveis().map((o) => o.linha);
+      const todos = vis.length > 0 && vis.every((l) => this._sel.has(l));
+      selTodos.checked = todos;
+      selTodos.indeterminate = !todos && vis.some((l) => this._sel.has(l));
+    }
   }
 
   /** Liga eventos das linhas do tbody (ações, clique, seleção). Reusado pela busca. */
@@ -747,7 +783,7 @@ class UiDataTable extends BaseElement {
         else this._sel.delete(linha);
         vibrar(HAPTICO.toque); pulso(cb, 0.8); // clique tátil + pulso visual
         this.emitir("selecao", { linhas: [...this._sel] });
-        this.renderizar();
+        this._atualizarSelbar(); // direcionado (sem re-render → NÃO volta ao topo)
       });
     });
     this._aplicarOcupadas(); // reaplica o spinner nas linhas ainda ocupadas após re-render
