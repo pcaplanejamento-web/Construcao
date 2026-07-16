@@ -186,15 +186,22 @@ function cotacoesAtualizar(data, sessao) {
   });
 }
 
-/** cotacoes.remover -> { id } (remove a cotação e suas ofertas). */
+/** cotacoes.remover -> { id } (remove a cotação e suas ofertas). BLOQUEIA se alguma
+ * oferta já virou despesa — senão a despesa perderia o vínculo com a origem
+ * (`preco_id` pendurado). Espelha `cotacoesRemoverPreco`/`orcamentosRemover`. */
 function cotacoesRemover(data, sessao) {
   const id = data && data.id;
   _cotacaoDoUsuario(id, sessao.usuario_id);
 
+  const ofertas = repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {
+    return String(p.cotacao_id) === String(id);
+  });
+  if (ofertas.some(function (p) { return String(p.despesa_id || ""); })) {
+    lancar(ERRO.VALIDACAO, "Esta cotação tem ofertas já registradas como despesa; exclua a despesa primeiro.");
+  }
+
   return comLock(function () {
-    repoFiltrar(SCHEMA.COTACAO_PRECOS, function (p) {
-      return String(p.cotacao_id) === String(id);
-    }).forEach(function (p) {
+    ofertas.forEach(function (p) {
       repoRemover(SCHEMA.COTACAO_PRECOS, "id", p.id);
     });
     repoRemover(SCHEMA.COTACOES, "id", id);

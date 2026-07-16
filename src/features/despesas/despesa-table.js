@@ -28,15 +28,16 @@ const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
 
 class DespesaTable extends BaseElement {
   set despesas(v) {
-    // Ordem INICIAL: data DESC (mais recentes primeiro) — desempata por criado_em desc.
-    // Cópia (slice) p/ não mutar o array do store. A data "AAAA-MM-DD" (ISO) ordena
-    // cronologicamente; a ordenação por clique na `ui-data-table` sobrepõe isto.
+    // Ordem INICIAL: data CRESCENTE (mais antigas em cima); empate na data → ordem
+    // ALFABÉTICA pelo nome do item (ao vivo). Cópia (slice) p/ não mutar o store; a
+    // ordenação por clique na `ui-data-table` sobrepõe isto (desktop e mobile iguais).
+    const nomeDe = (d) => (d.item_id && (dataStore.item(d.item_id) || {}).nome) || d.item || "";
     const arr = Array.isArray(v) ? v.slice() : [];
     arr.sort((a, b) => {
       const da = String(a.data || "");
       const db = String(b.data || "");
-      if (da !== db) return db.localeCompare(da);
-      return String(b.criado_em || "").localeCompare(String(a.criado_em || ""));
+      if (da !== db) return da.localeCompare(db);
+      return String(nomeDe(a)).localeCompare(String(nomeDe(b)), "pt", { numeric: true });
     });
     this._despesas = arr;
     this.atualizarTabela();

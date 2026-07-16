@@ -605,6 +605,32 @@ class CotacaoDespesaForm extends BaseElement {
     }
   }
 
+  /**
+   * ORÇAMENTO pago: UMA ÚNICA transferência agrupando TODAS as despesas do orçamento
+   * (todas herdam o MESMO ofertante/empresa do orçamento → passa na regra de ouro).
+   * Reusa `lancarTransferencia` (1 transferência / N pagamentos). Se por acaso não
+   * forem homogêneas (raro), cai no pagamento por despesa (`_quitarSePaga`).
+   */
+  async _quitarOrcamento(lista, obraId, dataDespesa, pag) {
+    if (!pag) return;
+    const alocacoes = (lista || [])
+      .filter((d) => d && d.id && Number(d.valor) > 0)
+      .map((d) => ({ despesa_id: d.id, valor: Number(d.valor) || 0 }));
+    if (!alocacoes.length) return;
+    try {
+      await dataStore.lancarTransferencia({
+        obra_id: obraId,
+        alocacoes,
+        pagador: pag.pagador,
+        tipo: pag.tipo,
+        data: dataDespesa || "",
+        distribuicao: [],
+      });
+    } catch (e) {
+      await this._quitarSePaga(lista, obraId, dataDespesa, pag);
+    }
+  }
+
   async confirmar() {
     const alerta = this.$("#erro");
     if (alerta) alerta.mensagem = "";
@@ -653,7 +679,7 @@ class CotacaoDespesaForm extends BaseElement {
       btn.setAttribute("loading", "");
       try {
         const r = await dataStore.registrarOrcamentoCompleto(orc.id, obraId, responsaveis, dataDespesa);
-        await this._quitarSePaga(r.despesas, obraId, dataDespesa, pag);
+        await this._quitarOrcamento(r.despesas, obraId, dataDespesa, pag); // 1 transferência p/ o orçamento inteiro
         const obra = dataStore.obra(obraId) || {};
         toastSucesso(`${r.total} despesa(s) lançada(s)${pag ? " e paga(s)" : ""} em "${obra.nome || "obra"}".`);
         this.emitir("registrado", { obra_id: obraId });

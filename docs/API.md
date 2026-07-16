@@ -104,7 +104,9 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 > ainda tem vínculos. O cliente também antecipa via banner (`features/shared/vinculos.js`).
 > `itens.remover` bloqueia se o item estiver em despesa, cotação **ou OFERTA**
 > (`_itemEmUso` checa `COTACAO_PRECOS`) — senão registrar essa oferta depois falharia
-> com "Item inválido.".
+> com "Item inválido.". `cotacoes.remover` **bloqueia** se alguma oferta da cotação já
+> virou despesa (`despesa_id`) — senão a despesa perderia o vínculo com a origem
+> (`preco_id` pendurado); espelha `cotacoes.removerPreco`/`orcamentos.remover`.
 
 ### Estado inicial (cache-first)
 | Action | `data` | Retorno |

@@ -46,34 +46,33 @@ class UiFiltroData extends BaseElement {
     return `
       :host { position: fixed; inset: 0; z-index: var(--z-modal, 1000); }
       .backdrop { position: fixed; inset: 0; }
-      .painel { position: fixed; width: 340px; max-width: calc(100vw - 16px);
+      .painel { position: fixed; width: 336px; max-width: calc(100vw - 16px);
         background: var(--vidro-fundo-forte); -webkit-backdrop-filter: var(--vidro-blur);
         backdrop-filter: var(--vidro-blur); border: 1px solid var(--vidro-borda);
         border-top: 2px solid var(--cor-primaria); border-radius: 0 0 var(--raio-md) var(--raio-md);
         box-shadow: var(--vidro-realce), var(--sombra-lg); display: flex; flex-direction: column;
-        max-height: min(80vh, 560px); overflow: auto; padding: var(--esp-3); gap: var(--esp-3); }
-      .ordem { display: flex; gap: var(--esp-2); }
-      .ord { flex: 1; border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
-        border-radius: var(--raio-sm); padding: var(--esp-2); font-size: var(--fs-sm);
-        color: var(--cor-texto-suave); cursor: pointer; min-height: 40px; }
-      .ord.ativo { border-color: var(--cor-primaria); color: var(--cor-primaria);
-        background: var(--cor-primaria-suave); font-weight: var(--peso-semi); }
-      .presets { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
-      .chip { border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
-        color: var(--cor-texto-suave); border-radius: 999px; padding: 8px 14px; font: inherit;
-        font-size: var(--fs-sm); cursor: pointer; min-height: 40px; }
+        max-height: min(82vh, 580px); overflow: auto; padding: var(--esp-4); gap: var(--esp-4); }
+      /* Chip — base ÚNICA p/ ordem, atalhos, anos e meses (harmonia visual). */
+      .chip { display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+        border: 1px solid var(--cor-borda-forte); background: var(--cor-superficie);
+        color: var(--cor-texto-suave); border-radius: var(--raio-md); padding: 0 var(--esp-3);
+        min-height: 38px; font: inherit; font-size: var(--fs-sm); cursor: pointer;
+        transition: border-color var(--transicao), color var(--transicao), background var(--transicao); }
       .chip:hover { border-color: var(--cor-primaria); color: var(--cor-primaria); }
-      .chip.ativo { background: var(--cor-primaria); border-color: var(--cor-primaria);
-        color: #fff; font-weight: var(--peso-semi); }
-      .secao > label { display: block; font-size: var(--fs-xs); font-weight: var(--peso-forte);
-        text-transform: uppercase; letter-spacing: .06em; color: var(--cor-texto-fraco);
-        margin: 0 0 var(--esp-2); }
-      .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: var(--esp-2); }
-      .chips.anos { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
-      .chips .chip { border-radius: var(--raio-md); padding: 10px 8px; text-align: center; }
+      .chip.ativo { border-color: var(--cor-primaria); color: var(--cor-primaria);
+        background: var(--cor-primaria-suave); font-weight: var(--peso-semi); }
+      .ordem { display: flex; gap: var(--esp-2); }
+      .ordem .chip { flex: 1; }
+      .presets { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
+      .presets .chip { border-radius: 999px; } /* atalhos = pílulas */
+      .secao { display: flex; flex-direction: column; gap: var(--esp-2); }
+      .secao > label { font-size: var(--fs-xs); font-weight: var(--peso-forte);
+        text-transform: uppercase; letter-spacing: .06em; color: var(--cor-texto-fraco); margin: 0; }
+      .chips { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
+      .chips .chip { min-width: 60px; }
       .intervalo .linha { display: flex; gap: var(--esp-3); }
-      .intervalo .campo { flex: 1; min-width: 0; }
-      .intervalo .campo span { display: block; font-size: var(--fs-xs); color: var(--cor-texto-fraco); margin-bottom: 4px; }
+      .intervalo .campo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+      .intervalo .campo span { font-size: var(--fs-xs); color: var(--cor-texto-fraco); }
       .intervalo input { width: 100%; box-sizing: border-box; min-height: 44px; font: inherit;
         color: var(--cor-texto); background: var(--cor-superficie); border: 1px solid var(--cor-borda-forte);
         border-radius: var(--raio-sm); padding: var(--esp-2) var(--esp-3); }
@@ -81,7 +80,7 @@ class UiFiltroData extends BaseElement {
         box-shadow: 0 0 0 3px var(--cor-primaria-suave); }
       .rodape { display: flex; gap: var(--esp-2); border-top: 1px solid var(--cor-divisor); padding-top: var(--esp-3); }
       .rodape ui-button { flex: 1; }
-      @media (max-width: 600px) { .painel { width: calc(100vw - 16px); } }
+      @media (max-width: 600px) { .painel { width: calc(100vw - 16px); } .chip { min-height: 42px; } }
     `;
   }
 
@@ -90,8 +89,8 @@ class UiFiltroData extends BaseElement {
       <div class="backdrop"></div>
       <div class="painel" role="dialog" aria-label="Filtrar ${this.coluna.titulo || "data"}">
         <div class="ordem">
-          <button type="button" class="ord" data-ord="asc">↑ Crescente</button>
-          <button type="button" class="ord" data-ord="desc">↓ Decrescente</button>
+          <button type="button" class="chip" data-ord="asc">↑ Crescente</button>
+          <button type="button" class="chip" data-ord="desc">↓ Decrescente</button>
         </div>
         <div class="presets">
           <button type="button" class="chip" data-preset="tudo">Todo o período</button>
@@ -119,11 +118,11 @@ class UiFiltroData extends BaseElement {
 
   aposRender() {
     this._ordemSel = (this.estado && this.estado.ordem) || null;
-    this.$$(".ord").forEach((b) => {
+    this.$$(".ordem .chip").forEach((b) => {
       b.classList.toggle("ativo", b.dataset.ord === this._ordemSel);
       b.addEventListener("click", () => {
         this._ordemSel = this._ordemSel === b.dataset.ord ? null : b.dataset.ord;
-        this.$$(".ord").forEach((x) => x.classList.toggle("ativo", x.dataset.ord === this._ordemSel));
+        this.$$(".ordem .chip").forEach((x) => x.classList.toggle("ativo", x.dataset.ord === this._ordemSel));
       });
     });
     // Ano selecionado (contexto p/ os chips de mês). Default: o mais recente presente.
