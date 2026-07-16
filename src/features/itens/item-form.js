@@ -49,7 +49,7 @@ class ItemForm extends BaseElement {
             value="${(i.nome || "").replace(/"/g, "&quot;")}"
             placeholder="Ex.: Cimento CP-II"></ui-input>
           <ui-select id="classificacao" label="Classificação"></ui-select>
-          <ui-select id="categoria" label="Categoria"></ui-select>
+          <ui-select id="categoria" label="Categoria" criar="Cadastrar categoria"></ui-select>
         </div>
         <div slot="rodape">
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
@@ -68,6 +68,7 @@ class ItemForm extends BaseElement {
     this._preencherSubclasse();
     const selCat = this.$("#categoria");
     if (selCat && !selCat._ligado) {
+      selCat.addEventListener("criar", () => this.abrirNovaCategoria());
       selCat.addEventListener("editar", (e) => editarEntidade("classificacaoItem", e.detail.value, () => this._preencherSubclasse()));
       selCat.addEventListener("excluir", (e) => excluirEntidade("classificacaoItem", e.detail.value, () => this._preencherSubclasse()));
       selCat._ligado = true;
@@ -76,6 +77,23 @@ class ItemForm extends BaseElement {
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", async () => { await this.salvar(); focarPrimeiroErro(this); });
+  }
+
+  /** Abre o <categoria-form> (tipo item) e seleciona a nova categoria ao voltar. */
+  abrirNovaCategoria() {
+    const antes = new Set(dataStore.categoriasItem().map((c) => String(c.id)));
+    const form = document.createElement("categoria-form");
+    form.tipo = "item";
+    form.addEventListener("fechar", () => form.remove());
+    form.addEventListener("salvo", () => {
+      const nova = dataStore.categoriasItem().find((c) => !antes.has(String(c.id)));
+      this._preencherSubclasse();
+      if (nova && this.$("#categoria")) {
+        this.$("#categoria").value = nova.id;
+        this.$("#categoria").removeAttribute("error");
+      }
+    });
+    document.body.appendChild(form);
   }
 
   /** (Re)popula a Categoria (ícones editar/excluir; GLOBAL sem ações), preservando a seleção. */
