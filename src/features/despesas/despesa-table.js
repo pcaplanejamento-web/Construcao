@@ -102,7 +102,14 @@ class DespesaTable extends BaseElement {
         style="flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;
         border:none;background:none;cursor:pointer;color:${cor};padding:0">
         <ui-icon name="${acao}" size="20"></ui-icon></button>`;
-    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%;min-width:0">
+    // Faixa de orçamento (mesma cor estável do desktop): MARCADOR DE GRUPO clicável — tocar
+    // seleciona todas as despesas do mesmo orçamento. `.no-gesto` impede que o toque abra o
+    // card; `background-clip:content-box` mantém a faixa fina com boa área de toque.
+    const seg = this._segOrc(d);
+    const stripe = seg
+      ? `<span class="seg-orc grupo-sel no-gesto" data-grupo="${_esc(seg.orcId)}" title="Selecionar todas as despesas do orçamento: ${_esc(seg.label)}" style="flex:none;width:22px;align-self:stretch;margin:-2px 2px -2px -2px;padding:0 9px;box-sizing:border-box;background-clip:content-box;border-radius:3px;background:${seg.cor};cursor:pointer"></span>`
+      : "";
+    const corpo = `<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0">
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
           <span style="font-weight:var(--peso-semi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(item)}</span>
           <span style="font-family:var(--fonte-titulo);font-weight:700;white-space:nowrap">${moeda(Number(d.valor) || 0)}</span>
@@ -119,6 +126,7 @@ class DespesaTable extends BaseElement {
           </div>
         </div>
       </div>`;
+    return `<div style="display:flex;align-items:stretch;gap:6px;width:100%;min-width:0">${stripe}${corpo}</div>`;
   }
 
   aposRender() {
@@ -138,7 +146,10 @@ class DespesaTable extends BaseElement {
           const nome = (linha.item_id && (dataStore.item(linha.item_id) || {}).nome) || v || "—";
           const seg = this._segOrc(linha);
           if (!seg) return nome;
-          return `<span style="display:inline-flex;align-items:center;gap:8px;min-width:0"><span class="seg-orc" title="Do orçamento: ${_esc(seg.label)}" style="flex:none;width:4px;align-self:stretch;min-height:18px;border-radius:2px;background:${seg.cor}"></span><span style="overflow:hidden;text-overflow:ellipsis">${_esc(nome)}</span></span>`;
+          // A faixa é um MARCADOR DE GRUPO clicável: seleciona todas as despesas do mesmo
+          // orçamento. `background-clip:content-box` mantém a barra fina (4px) visível, mas o
+          // padding transparente dá ~18px de área de toque (dedo no mobile). Cor estável = grupo.
+          return `<span style="display:inline-flex;align-items:center;gap:6px;min-width:0"><span class="seg-orc grupo-sel" data-grupo="${_esc(seg.orcId)}" title="Selecionar todas as despesas do orçamento: ${_esc(seg.label)}" style="flex:none;width:18px;padding:0 7px;box-sizing:border-box;background-clip:content-box;align-self:stretch;min-height:22px;border-radius:3px;background:${seg.cor};cursor:pointer"></span><span style="overflow:hidden;text-overflow:ellipsis">${_esc(nome)}</span></span>`;
         },
       },
       {
@@ -282,6 +293,18 @@ class DespesaTable extends BaseElement {
       e.stopPropagation();
       this.emitir("abrir", { despesa: e.detail.linha });
     });
+    // Clique na FAIXA de orçamento → seleciona TODAS as despesas do mesmo orçamento
+    // (visíveis, respeitando filtros). Reusa `_orcPorPreco` já montado em atualizarTabela.
+    tabela.addEventListener("grupo", (e) => {
+      e.stopPropagation();
+      const orcId = String(e.detail.grupo || "");
+      if (!orcId) return;
+      const mapa = this._orcPorPreco || {};
+      const ids = this.despesas
+        .filter((d) => String(mapa[String((d && d.preco_id) || "")] || "") === orcId)
+        .map((d) => d.id);
+      tabela.selecionarPorId(ids);
+    });
     // Exclusão em massa: a tabela confirma e emite as linhas; repassa à obra-detail.
     tabela.setAttribute("excluir-massa", "");
     tabela.addEventListener("excluir-massa", (e) => {
@@ -313,6 +336,17 @@ class DespesaTable extends BaseElement {
       { nome: "editar-lote", rotulo: "Editar selecionadas" },
     ];
     lista.addEventListener("abrir", (e) => { e.stopPropagation(); this.emitir("abrir", { despesa: e.detail.item }); });
+    // Tocar na FAIXA de orçamento (mobile) → seleciona todas as despesas do mesmo orçamento.
+    lista.addEventListener("grupo", (e) => {
+      e.stopPropagation();
+      const orcId = String(e.detail.grupo || "");
+      if (!orcId) return;
+      const mapa = this._orcPorPreco || {};
+      const ids = this.despesas
+        .filter((d) => String(mapa[String((d && d.preco_id) || "")] || "") === orcId)
+        .map((d) => d.id);
+      lista.selecionarPorId(ids);
+    });
     // Botões editar/excluir por linha.
     lista.addEventListener("acao-linha", (e) => {
       e.stopPropagation();
@@ -351,7 +385,7 @@ class DespesaTable extends BaseElement {
     if (!this._segCache) this._segCache = {};
     if (!this._segCache[orcId]) {
       const orc = dataStore.orcamento(orcId) || {};
-      this._segCache[orcId] = { cor: _corDeId(orcId), label: rotuloOrcamento(orc) || "Orçamento" };
+      this._segCache[orcId] = { orcId, cor: _corDeId(orcId), label: rotuloOrcamento(orc) || "Orçamento" };
     }
     return this._segCache[orcId];
   }

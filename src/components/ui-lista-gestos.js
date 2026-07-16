@@ -168,6 +168,10 @@ class UiListaGestos extends BaseElement {
     // Botões de ação POR LINHA (ex.: editar/excluir na despesa): `data-acao-linha`.
     // Clique nativo (o gesto ignora <button>) → emite "acao-linha" {acao,item}.
     raiz.addEventListener("click", (e) => {
+      // Marcador de GRUPO (ex.: faixa de orçamento) — `.no-gesto` já barra o gesto; aqui
+      // o clique nativo seleciona o grupo inteiro (delegação → sobrevive a re-render).
+      const g = e.target.closest(".grupo-sel");
+      if (g) { e.stopPropagation(); this.emitir("grupo", { grupo: g.dataset.grupo }); return; }
       const b = e.target.closest("[data-acao-linha]");
       if (!b) return;
       const linha = b.closest(".linha");
@@ -358,6 +362,26 @@ class UiListaGestos extends BaseElement {
     if (!this._selMode) { this._selMode = true; this.setAttribute("sel-mode", ""); }
     this._sel.add(String(id));
     const l = this._linhaPorId(id); if (l) l.classList.add("sel");
+    this._pintarBarra();
+    this.emitir("selecao", { itens: this._itensSelecionados() });
+  }
+
+  /** Seleciona (entra em modo seleção com) todos os itens cujos ids estão em `ids` —
+   * seleção por grupo (ex.: faixa de orçamento). Espelha `ui-data-table.selecionarPorId`. */
+  selecionarPorId(ids) {
+    const set = new Set((Array.isArray(ids) ? ids : []).map(String));
+    if (!set.size) return;
+    this._sel = this._sel || new Set();
+    const alvo = this.itens.filter((it) => set.has(this._idDe(it)));
+    if (!alvo.length) return;
+    if (!this._selMode) { this._selMode = true; this.setAttribute("sel-mode", ""); }
+    alvo.forEach((it) => {
+      const id = String(this._idDe(it));
+      this._sel.add(id);
+      const l = this._linhaPorId(id);
+      if (l) l.classList.add("sel");
+    });
+    feedbackToque(this.$(".linha.sel .conteudo"), HAPTICO.selecionar, 0.98);
     this._pintarBarra();
     this.emitir("selecao", { itens: this._itensSelecionados() });
   }

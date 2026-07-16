@@ -851,19 +851,12 @@ class ObraDetailView extends BaseElement {
     }
   }
 
-  /** Exclusão em massa (a tabela já confirmou) — remove cada selecionada. */
+  /** Exclusão em massa. Estoque consumido = bloqueio duro (devolução manual). Se houver
+   * PAGAMENTO vinculado, OFERECE excluir os pagamentos e DEPOIS as despesas (num passo). */
   async removerMassa(despesas) {
     const lista = this._frescas(despesas);
-    const comPag = lista.filter((d) => dataStore.despesaTemPagamento(d));
-    if (comPag.length) {
-      await avisar({
-        titulo: "Despesas com pagamento vinculado",
-        mensagem: `${comPag.length} das ${lista.length} despesas selecionadas têm pagamento vinculado. Exclua os pagamentos/transferências antes — nenhuma foi excluída.`,
-        listaHtml: comPag.map((d) => `<span>• ${d.item || "Despesa"}</span>`).join(""),
-      });
-      return;
-    }
-    // Trava de estoque (itens 18/19/20): bloqueia as que já tiveram item consumido.
+    if (!lista.length) return;
+    // Trava de estoque (itens 18/19/20): não dá p/ resolver aqui (precisa devolver ao estoque).
     const comEstoque = lista.map((d) => ({ d, bloq: this._bloqueioEstoqueDespesa(d) })).filter((x) => x.bloq);
     if (comEstoque.length) {
       await avisar({
@@ -875,9 +868,26 @@ class ObraDetailView extends BaseElement {
       });
       return;
     }
+    // Pagamentos: em vez de bloquear, OFERECE excluir os pagamentos primeiro.
+    const comPag = lista.filter((d) => dataStore.despesaTemPagamento(d));
+    const ok = await confirmar({
+      titulo: comPag.length ? "Excluir pagamentos e despesas" : "Excluir despesas",
+      mensagem: comPag.length
+        ? `${comPag.length} das ${lista.length} despesas têm pagamento. Vou EXCLUIR os pagamentos e DEPOIS excluir as ${lista.length} despesa(s). Continuar?`
+        : `Excluir ${lista.length} despesa(s)? Esta ação não tem desfazer.`,
+      perigo: true,
+      rotuloOk: comPag.length ? "Excluir pagamentos e despesas" : "Excluir",
+      listaHtml: comPag.length ? comPag.map((d) => `<span>• ${d.item || "Despesa"}</span>`).join("") : "",
+    });
+    if (!ok) return;
     try {
+      // 1) exclui os pagamentos das que têm (torna-as sem vínculo de pagamento).
+      for (const d of comPag) {
+        for (const p of dataStore.pagamentosDaDespesa(d.id)) await dataStore.excluirPagamento(p);
+      }
+      // 2) exclui as despesas.
       for (const d of lista) await dataStore.removerDespesa(this.obraId, d.id);
-      toastSucesso(`${lista.length} despesa(s) excluída(s).`);
+      toastSucesso(`${lista.length} despesa(s) excluída(s)${comPag.length ? " (pagamentos incluídos)" : ""}.`);
     } catch (e) {
       notificarErro(e);
     }

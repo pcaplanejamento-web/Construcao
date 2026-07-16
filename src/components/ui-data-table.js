@@ -882,7 +882,44 @@ class UiDataTable extends BaseElement {
         this._atualizarSelbar(); // direcionado (sem re-render → NÃO volta ao topo)
       });
     });
+    // Marcador de GRUPO (ex.: faixa de orçamento): clicar seleciona o grupo inteiro.
+    // `stopPropagation` impede que o clique também abra a linha (ouvinte no <tr>).
+    this.$$(".grupo-sel").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        vibrar(HAPTICO.toque);
+        this.emitir("grupo", { grupo: el.dataset.grupo });
+      });
+    });
     this._aplicarOcupadas(); // reaplica o spinner nas linhas ainda ocupadas após re-render
+  }
+
+  /** Seleciona (adiciona) as linhas VISÍVEIS cujos ids estão em `ids` — respeita filtros
+   * ativos e NÃO re-renderiza (preserva o scroll). Reflete checkboxes, "selecionar todos"
+   * e a barra de seleção, e emite "selecao". Usado por seleção-por-grupo (ex.: orçamento). */
+  selecionarPorId(ids) {
+    const set = new Set((Array.isArray(ids) ? ids : []).map(String));
+    if (!set.size) return;
+    let mudou = false;
+    this._visiveis().forEach(({ linha }) => {
+      if (linha && linha.id != null && set.has(String(linha.id)) && !this._sel.has(linha)) {
+        this._sel.add(linha);
+        mudou = true;
+      }
+    });
+    if (!mudou) return;
+    this.$$(".rowsel").forEach((cb) => {
+      cb.checked = this._sel.has(this.rows[Number(cb.dataset.i)]);
+    });
+    const selTodos = this.$("#selTodos");
+    if (selTodos) {
+      const vis = this._visiveis().map((o) => o.linha);
+      selTodos.checked = vis.length > 0 && vis.every((l) => this._sel.has(l));
+      selTodos.indeterminate = !selTodos.checked && vis.some((l) => this._sel.has(l));
+    }
+    vibrar(HAPTICO.selecionar);
+    this.emitir("selecao", { linhas: [...this._sel] });
+    this._atualizarSelbar();
   }
 
   /** Re-renderiza SÓ o corpo/rodapé (busca) sem recriar a <ui-busca> nem o cabeçalho. */
