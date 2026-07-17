@@ -244,7 +244,7 @@ function pagamentosRemover(data, sessao) {
     return String(x.id) === String(id);
   });
   if (!pag) lancar(ERRO.NAO_ENCONTRADO, "Pagamento não encontrado.");
-  if (String(pag.usuario_id) !== String(sessao.usuario_id))
+  if (!_registroFinanceiroAcessivel(pag, sessao.usuario_id))
     lancar(ERRO.VALIDACAO, "Sem acesso a este pagamento.");
   const obraId = String(pag.obra_id || "");
   const transferenciaId = String(pag.transferencia_id || "");
@@ -283,7 +283,7 @@ function repassesLancar(data, sessao) {
     return String(x.id) === String(pagamentoId);
   });
   if (!pag) lancar(ERRO.NAO_ENCONTRADO, "Pagamento não encontrado.");
-  if (String(pag.usuario_id) !== String(usuarioId))
+  if (!_registroFinanceiroAcessivel(pag, usuarioId))
     lancar(ERRO.VALIDACAO, "Sem acesso a este pagamento.");
 
   const recebedorContatoId = String((data && data.recebedor_contato_id) || "");
@@ -328,7 +328,7 @@ function repassesRemover(data, sessao) {
     return String(x.id) === String(id);
   });
   if (!r) lancar(ERRO.NAO_ENCONTRADO, "Repasse não encontrado.");
-  if (String(r.usuario_id) !== String(sessao.usuario_id))
+  if (!_registroFinanceiroAcessivel(r, sessao.usuario_id))
     lancar(ERRO.VALIDACAO, "Sem acesso a este repasse.");
   return comLock(function () {
     repoRemover(SCHEMA.REPASSES, "id", id);

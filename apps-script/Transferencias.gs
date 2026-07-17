@@ -229,7 +229,7 @@ function transferenciasRemover(data, sessao) {
     return String(x.id) === String(id);
   });
   if (!t) lancar(ERRO.NAO_ENCONTRADO, "Transferência não encontrada.");
-  if (String(t.usuario_id) !== String(sessao.usuario_id))
+  if (!_registroFinanceiroAcessivel(t, sessao.usuario_id))
     lancar(ERRO.VALIDACAO, "Sem acesso a esta transferência.");
   const obraId = String(t.obra_id || "");
   const pagIds = _parseJsonLista(t.pagamento_ids);
@@ -250,13 +250,34 @@ function transferenciasRemover(data, sessao) {
   });
 }
 
-/** Acha a transferência do usuário (guarda de acesso). */
+/**
+ * Acesso a um registro FINANCEIRO (transferência/pagamento/repasse): o CRIADOR ou quem
+ * tem acesso à OBRA dele (dono/colaborador). Espelha EXATAMENTE o filtro do snapshot
+ * (`usuario_id === u.id || obra_id ∈ acessíveis`). Antes os guards de escrita eram
+ * ESTRITOS por `usuario_id` e barravam até o próprio dono quando o registro tinha um
+ * `usuario_id` antigo/de outro membro ("Sem acesso a esta transferência/pagamento").
+ * Compartilhado por Transferencias.gs e Pagamentos.gs (escopo global do Apps Script).
+ */
+function _registroFinanceiroAcessivel(rec, usuarioId) {
+  if (!rec) return false;
+  if (String(rec.usuario_id) === String(usuarioId)) return true;
+  const oid = String(rec.obra_id || "");
+  if (!oid) return false;
+  try {
+    _obraAcessivel(oid, usuarioId);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** Acha a transferência acessível (criador OU obra acessível). */
 function _transferenciaDoUsuario(id, usuarioId) {
   const t = repoEncontrar(SCHEMA.TRANSFERENCIAS, function (x) {
     return String(x.id) === String(id);
   });
   if (!t) lancar(ERRO.NAO_ENCONTRADO, "Transferência não encontrada.");
-  if (String(t.usuario_id) !== String(usuarioId))
+  if (!_registroFinanceiroAcessivel(t, usuarioId))
     lancar(ERRO.VALIDACAO, "Sem acesso a esta transferência.");
   return t;
 }
