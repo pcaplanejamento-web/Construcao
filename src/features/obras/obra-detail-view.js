@@ -14,6 +14,7 @@ import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { statusPrazo, textoPrazo, corPrazo, iconePrazo, ehFinalizada } from "./prazo-util.js";
 import { balancos, restoDespesa } from "../despesas/despesa-split.js";
+import { COR_CLASSIFICACAO as COR_CLASSIFICACAO_OBRA } from "../../core/classificacao.js";
 import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
@@ -53,9 +54,6 @@ import {
 import { confirmar, avisar } from "../../components/confirmar.js";
 import { abrirOrigemEstoque } from "../shared/vinculos.js";
 import "../despesas/category-badge.js";
-
-// Cor das classificações (fonte única em core/classificacao.js).
-import { COR_CLASSIFICACAO as COR_CLASSIFICACAO_OBRA } from "../../core/classificacao.js";
 
 /** Cor ESTÁVEL por id/chave (hash → HSL) — para os donuts de participante/empresa/item
  *  (espelha `_corDeId` de despesa-table). Mesma entrada → sempre a mesma matiz. */
@@ -300,42 +298,36 @@ class ObraDetailView extends BaseElement {
     const despesas = dataStore.despesas(this.obraId);
 
     this._despesas = despesas; // todas (KPIs/gráficos usam o total; tabela é filtrada)
-    this._dash.resumo = resumo;
-    // Barras = Categoria; Rosca = Classificação (Material/Serviço).
-    this._break.porCategoria = resumo.por_subclassificacao || resumo.por_categoria || [];
-    this._rosca.porCategoria = resumo.por_classificacao || [];
-    this._mensal.despesas = despesas;
-    this._tabela.categorias = categorias;
-    this._tabela.participantes = dataStore.participantesDaObra(this.obraId);
-    montarGradeOrcamentos(
-      this._gradeOrc,
-      dataStore.orcamentos().filter((o) => String(o.obra_id) === String(this.obraId))
+    // Cada WIDGET é atualizado de forma ISOLADA: uma falha num painel (ex.: dado com
+    // formato inesperado) é registrada no console mas NÃO derruba os demais — assim
+    // um erro nos gráficos nunca deixa Orçamentos/Despesas/Estoque em branco.
+    const S = (rotulo, fn) => {
+      try { fn(); } catch (e) { console.error("[obra-detail] falha ao atualizar " + rotulo, e); }
+    };
+    S("dashboard", () => (this._dash.resumo = resumo));
+    // Barras = Categoria; Rosca = Classificação.
+    S("gráfico por categoria", () => (this._break.porCategoria = resumo.por_subclassificacao || resumo.por_categoria || []));
+    S("gráfico por classificação", () => (this._rosca.porCategoria = resumo.por_classificacao || []));
+    S("gráfico mensal", () => (this._mensal.despesas = despesas));
+    S("tabela: categorias", () => (this._tabela.categorias = categorias));
+    S("tabela: participantes", () => (this._tabela.participantes = dataStore.participantesDaObra(this.obraId)));
+    S("grade de orçamentos", () =>
+      montarGradeOrcamentos(this._gradeOrc, dataStore.orcamentos().filter((x) => String(x.obra_id) === String(this.obraId)))
     );
-    montarGradeEquipes(this._gradeEquipes, dataStore.equipesDaObra(this.obraId));
-    this.montarFornecedores(despesas);
-    this.montarGraficosExtras(despesas);
-    // Tabela recebe TODAS as despesas; busca (campo da tabela) e filtro de
-    // Classificação (dropdown do tópico) acontecem dentro da própria tabela.
-    this._tabela.despesas = despesas;
+    S("grade de equipes", () => montarGradeEquipes(this._gradeEquipes, dataStore.equipesDaObra(this.obraId)));
+    S("empresas", () => this.montarFornecedores(despesas));
+    S("gráficos extras", () => this.montarGraficosExtras(despesas));
+    // Tabela recebe TODAS as despesas; busca/filtro acontecem dentro da própria tabela.
+    S("tabela de despesas", () => (this._tabela.despesas = despesas));
     // Transferências e pagamentos da obra (cards iguais aos da página /pagamentos).
-    montarGradeResumos(
-      this._listaTransf,
-      dataStore.transferenciasDaObra(this.obraId),
-      "transf",
-      previaTransferenciaHtml,
-      abrirTransferencia,
-      "Nenhuma transferência registrada nesta obra."
+    S("transferências", () =>
+      montarGradeResumos(this._listaTransf, dataStore.transferenciasDaObra(this.obraId), "transf", previaTransferenciaHtml, abrirTransferencia, "Nenhuma transferência registrada nesta obra.")
     );
-    montarGradeResumos(
-      this._listaPagTransf,
-      dataStore.pagamentosDaObra(this.obraId),
-      "pag",
-      previaPagamentoHtml,
-      abrirPagamento,
-      "Nenhum pagamento registrado nesta obra."
+    S("pagamentos", () =>
+      montarGradeResumos(this._listaPagTransf, dataStore.pagamentosDaObra(this.obraId), "pag", previaPagamentoHtml, abrirPagamento, "Nenhum pagamento registrado nesta obra.")
     );
-    this.montarEstoque(categorias);
-    this.pintarTopo();
+    S("estoque", () => this.montarEstoque(categorias));
+    S("topo", () => this.pintarTopo());
   }
 
   /* ------------------------------ Estoque ------------------------------ */

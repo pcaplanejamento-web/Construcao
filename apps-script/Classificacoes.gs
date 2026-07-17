@@ -13,24 +13,29 @@
  * em estoque (só Material entra) — comportamento herdado por serem ≠ "Material".
  */
 
-/** Só as EXTRAS (linhas da planilha), ordenadas por nome. Vão no snapshot. */
+/** Só as EXTRAS (linhas da planilha), ordenadas por nome. Vão no snapshot. Blindado:
+ *  qualquer falha na leitura da aba retorna [] — nunca derruba o snapshot inteiro. */
 function listarClassificacoesExtras() {
-  return repoFiltrar(SCHEMA.CLASSIFICACOES, function () {
-    return true;
-  })
-    .map(function (c) {
-      return {
-        id: c.id,
-        nome: c.nome,
-        cor: c.cor || "",
-        fixo: false,
-        criado_em: c.criado_em,
-        atualizado_em: c.atualizado_em,
-      };
+  try {
+    return repoFiltrar(SCHEMA.CLASSIFICACOES, function () {
+      return true;
     })
-    .sort(function (a, b) {
-      return String(a.nome).localeCompare(String(b.nome));
-    });
+      .map(function (c) {
+        return {
+          id: c.id,
+          nome: c.nome,
+          cor: c.cor || "",
+          fixo: false,
+          criado_em: c.criado_em,
+          atualizado_em: c.atualizado_em,
+        };
+      })
+      .sort(function (a, b) {
+        return String(a.nome).localeCompare(String(b.nome));
+      });
+  } catch (e) {
+    return [];
+  }
 }
 
 /** Lista completa: base fixas (com cor) + extras. */
