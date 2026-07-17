@@ -12,8 +12,11 @@ import { statusPagamento } from "../despesas/despesa-split.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-empty-state.js";
 
-/** Cor do badge por classificação — re-exporta a fonte única (compat p/ quem importa daqui). */
-export { COR_CLASSIFICACAO } from "../../core/classificacao.js";
+/** Cor do badge por classificação — IMPORTA a fonte única (binding LOCAL, usado aqui em
+ *  `colunasOferta`/`previaOfertaHtml`) e RE-EXPORTA (compat p/ quem importa daqui).
+ *  ⚠ um `export { X } from "..."` sozinho NÃO cria binding local → `X is not defined`. */
+import { COR_CLASSIFICACAO } from "../../core/classificacao.js";
+export { COR_CLASSIFICACAO };
 
 /** Nome do ofertante: equipe (se houver) ou contato. Usado em orçamento e oferta. */
 export function ofertanteNome(contatoId, equipeId) {
