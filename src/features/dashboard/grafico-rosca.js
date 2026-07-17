@@ -3,14 +3,16 @@
  * altura do cartão; legenda rola se houver muitos itens. O título é configurável
  * via o atributo `titulo` (padrão "Distribuição por categoria").
  * Propriedade: .porCategoria = [{ nome, cor, total }]
- * Atributo: titulo
+ *   .formato = (item, totalGeral) => string  (opcional; formata o VALOR na legenda —
+ *              padrão = "R$ x · y%"; use p/ valores não-monetários, ex.: quantidades).
+ * Atributos: titulo, vazio (texto do estado vazio).
  */
 import { BaseElement } from "../../components/base-element.js";
 import { moeda, percentual } from "../../core/formatters.js";
 
 class GraficoRosca extends BaseElement {
   static get observedAttributes() {
-    return ["titulo"];
+    return ["titulo", "vazio"];
   }
   attributeChangedCallback() {
     if (this.shadowRoot.childElementCount) this.renderizar();
@@ -22,8 +24,16 @@ class GraficoRosca extends BaseElement {
   get porCategoria() {
     return this._lista || [];
   }
+  /** Formatador do VALOR na legenda (opcional). Não re-renderiza sozinho: defina ANTES
+   *  de `porCategoria` (que dispara o render). */
+  set formato(fn) {
+    this._formato = typeof fn === "function" ? fn : null;
+  }
   get titulo() {
     return this.getAttribute("titulo") || "Distribuição por categoria";
+  }
+  get vazioTexto() {
+    return this.getAttribute("vazio") || "Sem despesas ainda.";
   }
 
   estilos() {
@@ -48,7 +58,7 @@ class GraficoRosca extends BaseElement {
     const lista = this.porCategoria;
     const total = lista.reduce((s, c) => s + (Number(c.total) || 0), 0);
     if (!total) {
-      return `<div class="titulo">${this.titulo}</div><div class="vazio">Sem despesas ainda.</div>`;
+      return `<div class="titulo">${this.titulo}</div><div class="vazio">${this.vazioTexto}</div>`;
     }
 
     let acc = 0;
@@ -63,12 +73,14 @@ class GraficoRosca extends BaseElement {
       })
       .join("");
 
+    const valTxt = (c) =>
+      this._formato ? this._formato(c, total) : `${moeda(c.total)} · ${percentual(c.total, total)}%`;
     const legenda = lista
       .map(
         (c) =>
           `<div class="li"><span class="dot" style="background:${c.cor || "var(--cor-neutro)"}"></span>
            <span class="nome">${c.nome}</span>
-           <span class="val">${moeda(c.total)} · ${percentual(c.total, total)}%</span></div>`
+           <span class="val">${valTxt(c)}</span></div>`
       )
       .join("");
 

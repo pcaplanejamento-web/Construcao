@@ -1,7 +1,7 @@
 /**
  * <obra-detail-view> — Detalhe da obra (rota /obras/:id).
  *
- * Layout: cabeçalho → dashboard → GRÁFICOS (categoria/rosca/mês) → formulário de
+ * Layout: cabeçalho → dashboard → GRÁFICOS (categoria/classificação/mês + participante/empresa/estoque) → formulário de
  * adição → TABELA full-width. Lê do data-store (cache-first) e sincroniza os
  * filhos por propriedade. A edição de um item é feita no BANNER <despesa-detail>
  * (clique na linha ou em Editar), não mais no formulário de adição.
@@ -57,6 +57,15 @@ import "../despesas/category-badge.js";
 // Cor das classificações (espelha despesa-table.js).
 const COR_CLASSIFICACAO_OBRA = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
 
+/** Cor ESTÁVEL por id/chave (hash → HSL) — para os donuts de participante/empresa/item
+ *  (espelha `_corDeId` de despesa-table). Mesma entrada → sempre a mesma matiz. */
+function _corDeId(id) {
+  const s = String(id || "");
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return `hsl(${(h * 137) % 360} 62% 46%)`; // ×137 (coprimo de 360) espalha as matizes
+}
+
 class ObraDetailView extends BaseElement {
   constructor() {
     super();
@@ -86,7 +95,7 @@ class ObraDetailView extends BaseElement {
       .prazo-banner .prazo-data { color: var(--cor-texto-suave); font-weight: var(--peso-medio); }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
-      /* Gráficos em grade 1 x 3, todos do MESMO tamanho (largura e altura). */
+      /* Gráficos em grade de 3 colunas (2 linhas de 3), todos do MESMO tamanho. */
       .graficos { display: grid; gap: var(--esp-5); grid-template-columns: repeat(3, 1fr); }
       .graficos > * { min-width: 0; height: 340px; }
       @media (max-width: 900px) {
@@ -124,6 +133,9 @@ class ObraDetailView extends BaseElement {
           <ui-card><category-breakdown id="break" titulo="Gastos por categoria"></category-breakdown></ui-card>
           <ui-card><grafico-rosca id="rosca" titulo="Distribuição por classificação"></grafico-rosca></ui-card>
           <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
+          <ui-card><grafico-rosca id="gPart" titulo="Recebido por participante" vazio="Ninguém recebeu valor ainda."></grafico-rosca></ui-card>
+          <ui-card><grafico-rosca id="gEmp" titulo="Total por empresa" vazio="Nenhuma empresa com despesas."></grafico-rosca></ui-card>
+          <ui-card><grafico-rosca id="gEst" titulo="Quantidade em estoque por item" vazio="Nenhum item em estoque."></grafico-rosca></ui-card>
         </div>
         <div slot="despesas" class="despesas-aba">
           <ui-card mesa acao-fixa title="Mesa com despesas da obra">
@@ -252,6 +264,9 @@ class ObraDetailView extends BaseElement {
     this._break = alvo.querySelector("#break");
     this._rosca = alvo.querySelector("#rosca");
     this._mensal = alvo.querySelector("#mensal");
+    this._gPart = alvo.querySelector("#gPart");
+    this._gEmp = alvo.querySelector("#gEmp");
+    this._gEst = alvo.querySelector("#gEst");
     this._tabela = alvo.querySelector("#tabela");
 
     alvo.querySelector("#addDespesa").addEventListener("click", () => this.abrirDespesaForm());
@@ -298,6 +313,7 @@ class ObraDetailView extends BaseElement {
     );
     montarGradeEquipes(this._gradeEquipes, dataStore.equipesDaObra(this.obraId));
     this.montarFornecedores(despesas);
+    this.montarGraficosExtras(despesas);
     // Tabela recebe TODAS as despesas; busca (campo da tabela) e filtro de
     // Classificação (dropdown do tópico) acontecem dentro da própria tabela.
     this._tabela.despesas = despesas;
@@ -780,6 +796,60 @@ class ObraDetailView extends BaseElement {
         return { id: fid, _nome: f.nome || "—", _tel: f.telefone || "", _qtd: qtd[fid] || 0, _total: v.total, _recebido: v.recebido, _resto: v.saldoReceber };
       })
       .sort((a, b) => b._resto - a._resto);
+  }
+
+  /** Nome ao vivo de uma CHAVE de participante ("c:"/"e:"/"u:") p/ o donut de participantes. */
+  _nomeDaChave(ch) {
+    const s = String(ch || "");
+    if (s.indexOf("c:") === 0) return (dataStore.contatos().find((x) => String(x.id) === s.slice(2)) || {}).nome || "Contato";
+    if (s.indexOf("e:") === 0) return (dataStore.equipes().find((x) => String(x.id) === s.slice(2)) || {}).nome || "Grupo";
+    if (s.indexOf("u:") === 0) return dataStore.usuarioNome(s.slice(2)) || "Usuário";
+    return "—";
+  }
+
+  /**
+   * Alimenta os 3 donuts extras da aba Gráficos (reusam `grafico-rosca`):
+   *  - Participantes: Recebido por participante (`balancos.porChave.recebido`);
+   *  - Empresas: Total por empresa (`balancos.porFornecedor.total`);
+   *  - Estoque: Quantidade em estoque por item (`estoqueDaObra`, valor não-monetário → `formato`).
+   * Cores ESTÁVEIS por id/chave; cada donut some sozinho (estado vazio) quando não há dado.
+   */
+  montarGraficosExtras(despesas) {
+    const { porChave, porFornecedor } = balancos(despesas);
+
+    if (this._gPart) {
+      this._gPart.porCategoria = Object.keys(porChave)
+        .map((ch) => ({ nome: this._nomeDaChave(ch), cor: _corDeId(ch), total: Number(porChave[ch].recebido) || 0 }))
+        .filter((x) => x.total > 0.01)
+        .sort((a, b) => b.total - a.total);
+    }
+
+    if (this._gEmp) {
+      this._gEmp.porCategoria = Object.keys(porFornecedor)
+        .map((fid) => ({
+          nome: (dataStore.fornecedores().find((f) => String(f.id) === String(fid)) || {}).nome || "—",
+          cor: _corDeId(fid),
+          total: Number(porFornecedor[fid].total) || 0,
+        }))
+        .filter((x) => x.total > 0.01)
+        .sort((a, b) => b.total - a.total);
+    }
+
+    if (this._gEst) {
+      // Quantidade (não R$) → formatador próprio na legenda; a fatia usa a quantidade.
+      const nf = (n) => (Math.round((Number(n) || 0) * 1000) / 1000).toLocaleString("pt-BR");
+      this._gEst.formato = (c) => nf(c.total) + (c.unidade ? " " + c.unidade : "");
+      this._gEst.porCategoria = dataStore
+        .estoqueDaObra(this.obraId)
+        .map((it) => ({
+          nome: (dataStore.item(it.item_id) || {}).nome || "—",
+          cor: _corDeId(it.item_id),
+          total: Number(it.em_estoque) || 0,
+          unidade: it.unidade || "",
+        }))
+        .filter((x) => x.total > 0.0001)
+        .sort((a, b) => b.total - a.total);
+    }
   }
 
   /** Abre o banner com a despesa (ver/editar/excluir). O banner é autossuficiente. */
