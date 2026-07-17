@@ -4,14 +4,14 @@
  * atributo `titulo` (padrão "Gastos por categoria") p/ reuso em outros contextos.
  *
  * Propriedade: .porCategoria = [{ nome, cor, total }]
- * Atributo: titulo
+ * Atributos: titulo, vazio (texto do estado vazio)
  */
 import { BaseElement } from "../../components/base-element.js";
 import { moeda, percentual } from "../../core/formatters.js";
 
 class CategoryBreakdown extends BaseElement {
   static get observedAttributes() {
-    return ["titulo"];
+    return ["titulo", "vazio"];
   }
   attributeChangedCallback() {
     if (this.shadowRoot.childElementCount) this.renderizar();
@@ -25,6 +25,9 @@ class CategoryBreakdown extends BaseElement {
   }
   get titulo() {
     return this.getAttribute("titulo") || "Gastos por categoria";
+  }
+  get vazioTexto() {
+    return this.getAttribute("vazio") || "Sem despesas ainda.";
   }
 
   estilos() {
@@ -48,7 +51,7 @@ class CategoryBreakdown extends BaseElement {
   template() {
     const lista = this.porCategoria;
     if (!lista.length) {
-      return `<div class="titulo">${this.titulo}</div><div class="vazio">Sem despesas ainda.</div>`;
+      return `<div class="titulo">${this.titulo}</div><div class="vazio">${this.vazioTexto}</div>`;
     }
     const total = lista.reduce((s, c) => s + (Number(c.total) || 0), 0);
     const linhas = lista

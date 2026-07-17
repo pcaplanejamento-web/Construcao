@@ -133,8 +133,8 @@ class ObraDetailView extends BaseElement {
           <ui-card><category-breakdown id="break" titulo="Gastos por categoria"></category-breakdown></ui-card>
           <ui-card><grafico-rosca id="rosca" titulo="Distribuição por classificação"></grafico-rosca></ui-card>
           <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
-          <ui-card><grafico-rosca id="gPart" titulo="Recebido por participante" vazio="Ninguém recebeu valor ainda."></grafico-rosca></ui-card>
-          <ui-card><grafico-rosca id="gEmp" titulo="Total por empresa" vazio="Nenhuma empresa com despesas."></grafico-rosca></ui-card>
+          <ui-card><category-breakdown id="gPart" titulo="Recebido por participante" vazio="Ninguém recebeu valor ainda."></category-breakdown></ui-card>
+          <ui-card><category-breakdown id="gEmp" titulo="Total por empresa" vazio="Nenhuma empresa com despesas."></category-breakdown></ui-card>
           <ui-card><grafico-rosca id="gEst" titulo="Quantidade em estoque por item" vazio="Nenhum item em estoque."></grafico-rosca></ui-card>
         </div>
         <div slot="despesas" class="despesas-aba">
@@ -808,11 +808,12 @@ class ObraDetailView extends BaseElement {
   }
 
   /**
-   * Alimenta os 3 donuts extras da aba Gráficos (reusam `grafico-rosca`):
-   *  - Participantes: Recebido por participante (`balancos.porChave.recebido`);
-   *  - Empresas: Total por empresa (`balancos.porFornecedor.total`);
-   *  - Estoque: Quantidade em estoque por item (`estoqueDaObra`, valor não-monetário → `formato`).
-   * Cores ESTÁVEIS por id/chave; cada donut some sozinho (estado vazio) quando não há dado.
+   * Alimenta os 3 gráficos extras da aba Gráficos:
+   *  - Participantes: Recebido por participante (`balancos.porChave.recebido`) — `category-breakdown` (barras);
+   *  - Empresas: Total por empresa (`balancos.porFornecedor.total`) — `category-breakdown` (barras);
+   *  - Estoque: Quantidade em estoque por item (`estoqueDaObra`, valor não-monetário → `formato`) — `grafico-rosca` (donut).
+   * Todos reusam a MESMA API `.porCategoria = [{nome,cor,total}]`. Cores ESTÁVEIS por
+   * id/chave; cada gráfico some sozinho (estado vazio) quando não há dado.
    */
   montarGraficosExtras(despesas) {
     const { porChave, porFornecedor } = balancos(despesas);
