@@ -43,6 +43,7 @@ function _orcamentoDoUsuario(id, usuarioId) {
 /**
  * Valida os vínculos do orçamento. Material → contato vendedor DESSE fornecedor
  * (sem equipe). Serviço → ofertante = exatamente UM de contato OU equipe.
+ * Documentação/Inicial (flexível) → empresa OU ofertante (ao menos um); valida os fornecidos.
  */
 function _validarVinculosOrcamento(tipo, fornecedorId, contatoId, equipeId, usuarioId) {
   if (tipo === "Material") {
@@ -53,7 +54,7 @@ function _validarVinculosOrcamento(tipo, fornecedorId, contatoId, equipeId, usua
     if (String(contato.fornecedor_id) !== String(fornecedorId)) {
       lancar(ERRO.VALIDACAO, "O contato deve ser um vendedor da empresa selecionada.");
     }
-  } else {
+  } else if (tipo === "Serviço") {
     // Serviço: contato OU equipe.
     if (equipeId) {
       _equipeDoUsuario(equipeId, usuarioId);
@@ -62,6 +63,13 @@ function _validarVinculosOrcamento(tipo, fornecedorId, contatoId, equipeId, usua
     } else {
       lancar(ERRO.VALIDACAO, "Selecione o ofertante (contato ou equipe).");
     }
+  } else {
+    // Documentação/Inicial: empresa OU ofertante (ao menos um); valida só os fornecidos.
+    if (fornecedorId) _fornecedorDoUsuario(fornecedorId, usuarioId);
+    if (equipeId) _equipeDoUsuario(equipeId, usuarioId);
+    else if (contatoId) _contatoDoUsuario(contatoId, usuarioId);
+    if (!fornecedorId && !contatoId && !equipeId)
+      lancar(ERRO.VALIDACAO, "Informe uma empresa ou um ofertante.");
   }
 }
 
@@ -75,9 +83,10 @@ function orcamentosCriar(data, sessao) {
   const tipo = _tipoOrcamentoValido(data && data.tipo);
   const obraId = String((data && data.obra_id) || "");
   if (obraId) _obraAcessivel(obraId, sessao.usuario_id);
-  const fornecedorId = tipo === "Material" ? String((data && data.fornecedor_id) || "") : "";
-  const equipeId = tipo === "Serviço" ? String((data && data.equipe_id) || "") : "";
-  // Ofertante = contato XOR equipe (equipe só no Serviço).
+  // Empresa vale p/ Material e flexíveis (Documentação/Inicial); equipe p/ Serviço e flexíveis.
+  const fornecedorId = tipo !== "Serviço" ? String((data && data.fornecedor_id) || "") : "";
+  const equipeId = tipo !== "Material" ? String((data && data.equipe_id) || "") : "";
+  // Ofertante = contato XOR equipe.
   const contatoId = equipeId ? "" : String((data && data.contato_id) || "");
   _validarVinculosOrcamento(tipo, fornecedorId, contatoId, equipeId, sessao.usuario_id);
 
@@ -148,12 +157,13 @@ function orcamentosAtualizar(data, sessao) {
   const atual = _orcamentoDoUsuario(id, sessao.usuario_id);
 
   const tipo = data.tipo !== undefined ? _tipoOrcamentoValido(data.tipo) : atual.tipo;
+  // Empresa p/ Material e flexíveis (não-Serviço); equipe p/ Serviço e flexíveis (não-Material).
   const fornecedorId =
-    tipo === "Material"
+    tipo !== "Serviço"
       ? String((data.fornecedor_id !== undefined ? data.fornecedor_id : atual.fornecedor_id) || "")
       : "";
   const equipeId =
-    tipo === "Serviço"
+    tipo !== "Material"
       ? String((data.equipe_id !== undefined ? data.equipe_id : atual.equipe_id) || "")
       : "";
   const contatoRaw = String((data.contato_id !== undefined ? data.contato_id : atual.contato_id) || "");

@@ -21,8 +21,7 @@ import "../dashboard/dashboard-summary.js";
 import "../dashboard/category-breakdown.js";
 import "../despesas/category-badge.js";
 
-/** Cor do badge por classificação (espelha itens-view / backend). */
-const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
+import { COR_CLASSIFICACAO } from "../../core/classificacao.js";
 const cap = (s) => {
   const t = String(s || "");
   return t.charAt(0).toUpperCase() + t.slice(1);

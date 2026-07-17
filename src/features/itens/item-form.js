@@ -13,14 +13,12 @@ import { focarPrimeiroErro } from "../shared/foco-erro.js";
 import { obrigatorio } from "../../core/validators.js";
 import { avisarDuplicado } from "../shared/duplicado.js";
 import { editarEntidade, excluirEntidade, ehPrimario } from "../shared/drop-crud.js";
+import { CLASSIFICACOES } from "../../core/classificacao.js";
 import "../categorias/categoria-form.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
-
-/** Classificações fixas (espelha CLASSIFICACOES_ITEM do backend). */
-const CLASSIFICACOES = ["Material", "Serviço"];
 
 class ItemForm extends BaseElement {
   set item(v) {

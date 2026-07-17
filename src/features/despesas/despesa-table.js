@@ -13,6 +13,7 @@ import { ofertanteNome, rotuloOrcamento } from "../orcamentos/orcamento-util.js"
 import "../../components/ui-data-table.js";
 import "../../components/ui-lista-gestos.js";
 import { injetarBuscaNoCard } from "../../components/ui-busca.js";
+import { COR_CLASSIFICACAO } from "../../core/classificacao.js";
 import "./category-badge.js";
 
 /** Nome da empresa (fornecedor) pelo id. */
@@ -22,9 +23,6 @@ function _empresaNome(id) {
 }
 
 function _esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
-
-/** Cor do badge por classificação (espelha itens-view / backend). */
-const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
 
 /** Cor ESTÁVEL por id (hash → HSL) — usada p/ segmentar despesas por orçamento. */
 function _corDeId(id) {

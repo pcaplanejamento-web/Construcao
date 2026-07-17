@@ -32,9 +32,7 @@ import "../../components/ui-alert.js";
 import "../../components/ui-ajuda.js";
 import "./split-editor.js";
 import "./category-badge.js";
-
-const CLASSIFICACOES = ["Material", "Serviço"];
-const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
+import { CLASSIFICACOES, COR_CLASSIFICACAO } from "../../core/classificacao.js";
 
 class DespesaDetail extends BaseElement {
   set despesa(v) {

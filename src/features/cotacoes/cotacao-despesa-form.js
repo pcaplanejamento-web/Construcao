@@ -35,8 +35,7 @@ import "../despesas/split-editor.js";
 import "../itens/item-form.js";
 import "../contatos/contato-form.js";
 import "../fornecedores/fornecedor-form.js";
-
-const CLASSIFICACOES = ["Material", "Serviço"];
+import { CLASSIFICACOES, exigeEmpresa, exigeOfertante } from "../../core/classificacao.js";
 
 class CotacaoDespesaForm extends BaseElement {
   set cotacao(v) {
@@ -374,7 +373,11 @@ class CotacaoDespesaForm extends BaseElement {
     const sub = it.categoria_id
       ? (dataStore.categorias().find((c) => String(c.id) === String(it.categoria_id)) || {}).nome
       : "";
-    const exige = it.classificacao === "Material" ? "fornecedor obrigatório" : "ofertante obrigatório";
+    const exige = exigeEmpresa(it.classificacao)
+      ? "empresa obrigatória"
+      : exigeOfertante(it.classificacao)
+      ? "ofertante obrigatório"
+      : "empresa ou ofertante";
     box.innerHTML = `Classificação: <b>${it.classificacao || "—"}</b>${sub ? ` · Categoria <ui-ajuda termo="categoria"></ui-ajuda>: <b>${sub}</b>` : ""} <small>(${exige})</small>`;
   }
 
@@ -731,7 +734,7 @@ class CotacaoDespesaForm extends BaseElement {
       return;
     }
     const item = dataStore.item(itemId) || {};
-    const ehMaterial = String(item.classificacao) === "Material";
+    const cl = String(item.classificacao);
 
     const vOf = ((this.$("#novoOfertante") || {}).value) || "";
     let contatoId = "";
@@ -740,12 +743,18 @@ class CotacaoDespesaForm extends BaseElement {
     else if (vOf.indexOf("e:") === 0) equipeId = vOf.slice(2);
     const fornecedorId = ((this.$("#novoFornecedor") || {}).value) || "";
 
-    if (ehMaterial && !fornecedorId) {
+    // Regra por classificação: Material→empresa; Serviço→ofertante; demais (ex.:
+    // "Documentação e Inicial")→FLEXÍVEL, exige empresa OU ofertante (ao menos um).
+    if (exigeEmpresa(cl) && !fornecedorId) {
       if (this.$("#novoFornecedor")) this.$("#novoFornecedor").setAttribute("error", "Material exige uma empresa.");
       return;
     }
-    if (!ehMaterial && !contatoId && !equipeId) {
+    if (exigeOfertante(cl) && !contatoId && !equipeId) {
       if (this.$("#novoOfertante")) this.$("#novoOfertante").setAttribute("error", "Serviço exige um ofertante.");
+      return;
+    }
+    if (!exigeEmpresa(cl) && !exigeOfertante(cl) && !fornecedorId && !contatoId && !equipeId) {
+      if (this.$("#novoOfertante")) this.$("#novoOfertante").setAttribute("error", "Informe uma empresa ou um ofertante.");
       return;
     }
 

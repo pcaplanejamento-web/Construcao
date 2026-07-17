@@ -25,8 +25,7 @@ import "../despesas/category-badge.js";
 import "./item-form.js";
 import "../categorias/categoria-form.js";
 
-/** Cor do badge por classificação (espelha as cores padrão do sistema). */
-const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
+import { COR_CLASSIFICACAO } from "../../core/classificacao.js";
 const _escItem = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 class ItensView extends BaseElement {
@@ -47,7 +46,7 @@ class ItensView extends BaseElement {
         <div class="cabecalho">
           <div>
             <h1>Itens</h1>
-            <p class="sub">Cadastre itens (Material ou Serviço) e suas categorias.</p>
+            <p class="sub">Cadastre itens (Material, Serviço, Documentação ou Inicial) e suas categorias.</p>
           </div>
         </div>
         <ui-tabs id="abas">
@@ -111,7 +110,7 @@ class ItensView extends BaseElement {
     if (!itens.length) {
       el.innerHTML = `
         <ui-empty-state icone="recibo" titulo="Nenhum item"
-          texto="Cadastre itens e classifique cada um como Material ou Serviço.">
+          texto="Cadastre itens e classifique cada um (Material, Serviço, Documentação ou Inicial).">
           <ui-button slot="acao" id="vazioItem">+ Cadastrar item</ui-button>
         </ui-empty-state>`;
       el.querySelector("#vazioItem").addEventListener("click", () => this.abrirItemForm(null));

@@ -277,12 +277,16 @@ function cotacoesAdicionarPreco(data, sessao) {
     fornecedorId = String(contato.fornecedor_id);
   if (fornecedorId) _fornecedorParaObra(fornecedorId, usuarioId, refs.refF);
 
-  // Regras por classificação do item.
+  // Regras por classificação do item: Material→empresa; Serviço→ofertante; demais
+  // (Documentação/Inicial e não-padrão)→FLEXÍVEL: empresa OU ofertante (ao menos um).
   if (classificacao === "Material") {
     if (!fornecedorId) lancar(ERRO.VALIDACAO, "Material exige uma empresa.");
-  } else {
+  } else if (classificacao === "Serviço") {
     if (!contatoId && !equipeId)
       lancar(ERRO.VALIDACAO, "Serviço exige um ofertante (contato ou equipe).");
+  } else {
+    if (!fornecedorId && !contatoId && !equipeId)
+      lancar(ERRO.VALIDACAO, "Informe uma empresa ou um ofertante.");
   }
 
   const prazo = String((data && data.prazo_entrega) || "").trim();

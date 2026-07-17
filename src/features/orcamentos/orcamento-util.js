@@ -12,8 +12,8 @@ import { statusPagamento } from "../despesas/despesa-split.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-empty-state.js";
 
-/** Cor do badge por classificação (espelha itens-view / backend). */
-export const COR_CLASSIFICACAO = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
+/** Cor do badge por classificação — re-exporta a fonte única (compat p/ quem importa daqui). */
+export { COR_CLASSIFICACAO } from "../../core/classificacao.js";
 
 /** Nome do ofertante: equipe (se houver) ou contato. Usado em orçamento e oferta. */
 export function ofertanteNome(contatoId, equipeId) {
@@ -29,10 +29,11 @@ export function ofertanteNome(contatoId, equipeId) {
 export function rotuloOrcamento(orc) {
   if (!orc) return "—";
   if (orc.titulo) return orc.titulo;
-  const alvo =
-    orc.tipo === "Material"
-      ? (dataStore.fornecedores().find((f) => String(f.id) === String(orc.fornecedor_id)) || {}).nome
-      : ofertanteNome(orc.contato_id, orc.equipe_id);
+  // Alvo pela PRESENÇA do fornecedor (robusto p/ tipos flexíveis Documentação/Inicial,
+  // que podem ter empresa OU ofertante) — não mais amarrado a `tipo === "Material"`.
+  const alvo = orc.fornecedor_id
+    ? (dataStore.fornecedores().find((f) => String(f.id) === String(orc.fornecedor_id)) || {}).nome
+    : ofertanteNome(orc.contato_id, orc.equipe_id);
   return `${orc.tipo || "Orçamento"}${alvo && alvo !== "—" ? " · " + alvo : ""}`;
 }
 

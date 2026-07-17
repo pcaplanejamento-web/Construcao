@@ -3,6 +3,7 @@
  *
  * Tipo Material → fornecedor + vendedor desse fornecedor (obrigatórios).
  * Tipo Serviço → qualquer contato (sem fornecedor). Obra é opcional.
+ * Tipos flexíveis (Documentação/Inicial) → empresa OU ofertante (ao menos um).
  *
  * Propriedade: .orcamento (objeto p/ edição; ausente = novo)
  * Eventos: "salvo" ({ orcamento }), "fechar". Auto-contido (chama o data-store).
@@ -10,12 +11,11 @@
 import { BaseElement } from "../../components/base-element.js";
 import { dataStore } from "../../core/data-store.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
+import { CLASSIFICACOES as TIPOS, exigeEmpresa, exigeOfertante, ehFlexivel } from "../../core/classificacao.js";
 import "../../components/ui-modal.js";
 import "../../components/ui-input.js";
 import "../../components/ui-select.js";
 import "../../components/ui-button.js";
-
-const TIPOS = ["Material", "Serviço"];
 
 class OrcamentoForm extends BaseElement {
   set orcamento(v) {
@@ -117,19 +117,20 @@ class OrcamentoForm extends BaseElement {
   }
 
   atualizarVisibilidade() {
-    const ehMaterial = this.tipo === "Material";
-    this.$("#fornecedor").style.display = ehMaterial ? "" : "none";
+    // Empresa aparece p/ Material e p/ os tipos flexíveis (Documentação/Inicial); só Serviço esconde.
+    const mostraEmpresa = exigeEmpresa(this.tipo) || ehFlexivel(this.tipo);
+    this.$("#fornecedor").style.display = mostraEmpresa ? "" : "none";
   }
 
   /**
-   * Ofertante. Material → contatos do fornecedor. Serviço → contatos + EQUIPES.
+   * Ofertante. Material → contatos do fornecedor. Serviço/flexíveis → contatos + EQUIPES.
    * Valores codificados: "c:<id>" (contato) / "e:<id>" (equipe).
    */
   preencherContatos() {
     const sel = this.$("#contato");
     if (!sel) return;
     const opcoes = [];
-    if (this.tipo === "Material") {
+    if (exigeEmpresa(this.tipo)) {
       const fornId = this.$("#fornecedor").value;
       dataStore
         .contatosAtivos()
@@ -149,12 +150,20 @@ class OrcamentoForm extends BaseElement {
   async salvar() {
     const tipo = this.tipo;
     const ofertante = this.$("#contato").value; // "c:<id>" / "e:<id>"
-    const fornecedorId = tipo === "Material" ? this.$("#fornecedor").value : "";
-    if (tipo === "Material" && !fornecedorId) {
+    // Empresa vale p/ Material e flexíveis (Documentação/Inicial); Serviço não usa empresa.
+    const usaEmpresa = exigeEmpresa(tipo) || ehFlexivel(tipo);
+    const fornecedorId = usaEmpresa ? this.$("#fornecedor").value : "";
+    if (exigeEmpresa(tipo) && !fornecedorId) {
       this.$("#fornecedor").setAttribute("error", "Selecione o fornecedor.");
       return;
     }
-    if (!ofertante) {
+    // Ofertante: obrigatório p/ Material (vendedor) e Serviço; flexível exige empresa OU ofertante.
+    if (ehFlexivel(tipo)) {
+      if (!fornecedorId && !ofertante) {
+        this.$("#contato").setAttribute("error", "Informe uma empresa ou um ofertante.");
+        return;
+      }
+    } else if (!ofertante) {
       this.$("#contato").setAttribute("error", "Selecione o ofertante.");
       return;
     }

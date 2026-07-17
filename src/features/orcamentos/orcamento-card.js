@@ -57,10 +57,9 @@ class OrcamentoCard extends BaseElement {
     const cor = COR_CLASSIFICACAO[o.tipo] || "var(--cor-neutro)";
     const ofertas = dataStore.ofertasDoOrcamento(o.id);
     const obra = o.obra_id ? dataStore.obra(o.obra_id) : null;
-    const fornecedor =
-      o.tipo === "Material"
-        ? dataStore.fornecedores().find((f) => String(f.id) === String(o.fornecedor_id))
-        : null;
+    const fornecedor = o.fornecedor_id
+      ? dataStore.fornecedores().find((f) => String(f.id) === String(o.fornecedor_id))
+      : null;
     const ofertante = ofertanteNome(o.contato_id, o.equipe_id);
     const partes = [];
     if (fornecedor) partes.push(fornecedor.nome);

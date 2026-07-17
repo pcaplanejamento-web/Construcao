@@ -457,11 +457,13 @@ const TIPOS_MOVIMENTO_ESTOQUE = [
   "retorno",
 ];
 
-/** Classificações de item (fixas). Toda despesa/item é Material ou Serviço. */
-const CLASSIFICACOES_ITEM = ["Material", "Serviço"];
+/** Classificações de item (fixas): Material, Serviço, Documentação e Inicial.
+ *  Material exige empresa e entra em estoque; Serviço exige ofertante; Documentação/
+ *  Inicial são FLEXÍVEIS (empresa OU ofertante) e não entram em estoque. */
+const CLASSIFICACOES_ITEM = ["Material", "Serviço", "Documentação", "Inicial"];
 
-/** Cor de cada classificação (espelha COR_CLASSIFICACAO do front em itens-view.js). */
-const CLASSIFICACAO_COR = { Material: "#2563eb", "Serviço": "#7c3aed" };
+/** Cor de cada classificação (espelha COR_CLASSIFICACAO do front em core/classificacao.js). */
+const CLASSIFICACAO_COR = { Material: "#2563eb", "Serviço": "#7c3aed", "Documentação": "#0d9488", "Inicial": "#ea580c" };
 
 /** Cargos obrigatórios (fixos/built-in). A lógica condicional depende destes nomes. */
 const CARGOS_OBRIGATORIOS = [

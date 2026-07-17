@@ -54,8 +54,8 @@ import { confirmar, avisar } from "../../components/confirmar.js";
 import { abrirOrigemEstoque } from "../shared/vinculos.js";
 import "../despesas/category-badge.js";
 
-// Cor das classificações (espelha despesa-table.js).
-const COR_CLASSIFICACAO_OBRA = { Material: "#1d4ed8", "Serviço": "#6d28d9" };
+// Cor das classificações (fonte única em core/classificacao.js).
+import { COR_CLASSIFICACAO as COR_CLASSIFICACAO_OBRA } from "../../core/classificacao.js";
 
 /** Cor ESTÁVEL por id/chave (hash → HSL) — para os donuts de participante/empresa/item
  *  (espelha `_corDeId` de despesa-table). Mesma entrada → sempre a mesma matiz. */

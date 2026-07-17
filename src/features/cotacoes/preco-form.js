@@ -21,6 +21,7 @@ import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { focarPrimeiroErro } from "../shared/foco-erro.js";
 import { moeda } from "../../core/formatters.js";
 import { ofertanteNome, COR_CLASSIFICACAO } from "../orcamentos/orcamento-util.js";
+import { exigeEmpresa, exigeOfertante } from "../../core/classificacao.js";
 import { totalOferta, totalOfertaCheio, qtdOferta } from "./cotacao-util.js";
 import { valorPositivo } from "../../core/validators.js";
 import { editarEntidade, excluirEntidade } from "../shared/drop-crud.js";
@@ -331,7 +332,11 @@ class PrecoForm extends BaseElement {
     const sub = item.categoria_id
       ? (dataStore.categorias().find((c) => String(c.id) === String(item.categoria_id)) || {}).nome
       : "";
-    const exige = item.classificacao === "Material" ? "fornecedor obrigatório" : "ofertante obrigatório";
+    const exige = exigeEmpresa(item.classificacao)
+      ? "empresa obrigatória"
+      : exigeOfertante(item.classificacao)
+      ? "ofertante obrigatório"
+      : "empresa ou ofertante";
     box.innerHTML = `Classificação: <b>${item.classificacao || "—"}</b>${
       sub ? ` · Categoria: <b>${sub}</b>` : ""
     } <small>(${exige})</small>`;
@@ -482,7 +487,7 @@ class PrecoForm extends BaseElement {
       return;
     }
     const item = dataStore.item(itemId) || {};
-    const ehMaterial = String(item.classificacao) === "Material";
+    const cl = String(item.classificacao);
 
     let contatoId = "";
     let equipeId = "";
@@ -501,12 +506,17 @@ class PrecoForm extends BaseElement {
       ? this.$("#fornecedor").value || ""
       : "";
 
-    if (ehMaterial && !fornecedorId) {
+    // Material→empresa; Serviço→ofertante; demais (Documentação/Inicial)→empresa OU ofertante.
+    if (exigeEmpresa(cl) && !fornecedorId) {
       if (this.$("#fornecedor")) this.$("#fornecedor").setAttribute("error", "Material exige um fornecedor.");
       return;
     }
-    if (!ehMaterial && !contatoId && !equipeId) {
+    if (exigeOfertante(cl) && !contatoId && !equipeId) {
       if (this.$("#ofertante")) this.$("#ofertante").setAttribute("error", "Serviço exige um ofertante.");
+      return;
+    }
+    if (!exigeEmpresa(cl) && !exigeOfertante(cl) && !fornecedorId && !contatoId && !equipeId) {
+      if (this.$("#ofertante")) this.$("#ofertante").setAttribute("error", "Informe uma empresa ou um ofertante.");
       return;
     }
 
