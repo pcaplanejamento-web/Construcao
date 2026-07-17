@@ -10,9 +10,11 @@ function _itemAtivo(i) {
   return i.ativo === true || i.ativo === "TRUE" || i.ativo === "true";
 }
 
-/** Normaliza a classificação para um valor válido (Material|Serviço). */
+/** Normaliza a classificação para um valor válido: base (CLASSIFICACOES_ITEM) OU uma
+ *  classificação EXTRA criada pelo admin (Classificacoes.gs). Inválida → base[0]. */
 function _classificacaoValida(v) {
-  return CLASSIFICACOES_ITEM.indexOf(v) >= 0 ? v : CLASSIFICACOES_ITEM[0];
+  const canonical = _nomesClassificacaoValidos()[String(v || "").trim().toLowerCase()];
+  return canonical || CLASSIFICACOES_ITEM[0];
 }
 
 /** Lista os itens ativos do usuário (ordenados por nome). */

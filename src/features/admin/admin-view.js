@@ -22,6 +22,7 @@ import "./users-table.js";
 import "./user-form.js";
 import "./user-config-form.js";
 import "./tipo-transf-form.js";
+import "./classificacao-form.js";
 import "./sistema-email-config.js";
 
 class AdminView extends BaseElement {
@@ -59,6 +60,13 @@ class AdminView extends BaseElement {
             </ui-card>
             <ui-card title="Tipos base (fixos)"><div id="tiposFixos"></div></ui-card>
           </div>
+          <div slot="classificacoes" class="pilha">
+            <ui-card mesa title="Mesa com classificações de item">
+              <ui-button slot="acoes" id="novaClass">+ Nova classificação</ui-button>
+              <div id="listaClass"></div>
+            </ui-card>
+            <ui-card title="Classificações base (fixas)"><div id="classFixas"></div></ui-card>
+          </div>
           <div slot="sistema" class="pilha">
             <ui-card title="E-mail do sistema (recuperação de senha)">
               <sistema-email-config></sistema-email-config>
@@ -75,10 +83,12 @@ class AdminView extends BaseElement {
       abas.abas = [
         { id: "usuarios", rotulo: "Usuários", icone: "usuario" },
         { id: "transferencias", rotulo: "Transferências", icone: "cifrao" },
+        { id: "classificacoes", rotulo: "Classificações", icone: "tag" },
         { id: "sistema", rotulo: "Sistema", icone: "email" },
       ];
     this.$("#novo").addEventListener("click", () => this.abrirUserForm(null));
     this.$("#novoTipo").addEventListener("click", () => this.abrirTipoForm(null));
+    this.$("#novaClass").addEventListener("click", () => this.abrirClassificacaoForm(null));
     this.pintar();
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
@@ -86,6 +96,48 @@ class AdminView extends BaseElement {
   pintar() {
     this.pintarUsuarios();
     this.pintarTipos();
+    this.pintarClassificacoes();
+  }
+
+  pintarClassificacoes() {
+    const el = this.$("#listaClass");
+    const fixasEl = this.$("#classFixas");
+    if (!el || !dataStore.carregado()) return;
+    const todas = dataStore.classificacoesItem();
+    const extras = todas.filter((c) => !c.fixo);
+    const fixas = todas.filter((c) => c.fixo);
+
+    // Extras (criadas pelo admin) — só estas têm Editar/Excluir.
+    if (!extras.length) {
+      el.innerHTML = `<p class="vazio">Nenhuma classificação personalizada. Use "+ Nova classificação" para criar (ex.: Locação, Imposto). As base ao lado são fixas.</p>`;
+    } else {
+      const tabela = document.createElement("ui-data-table");
+      tabela.setAttribute("fluido", "");
+      tabela.columns = [
+        {
+          chave: "nome",
+          titulo: "Classificação",
+          formato: (v, l) => `<category-badge nome="${String(v).replace(/"/g, "&quot;")}" cor="${l.cor || "var(--cor-neutro)"}"></category-badge>`,
+        },
+      ];
+      tabela.acoes = [
+        { nome: "editar", rotulo: "Editar" },
+        { nome: "excluir", rotulo: "Excluir", variant: "perigo" },
+      ];
+      tabela.rows = extras;
+      tabela.addEventListener("acao", (e) => {
+        if (e.detail.acao === "editar") this.abrirClassificacaoForm(e.detail.linha);
+        else this.removerClassificacao(e.detail.linha);
+      });
+      el.replaceChildren(tabela);
+    }
+
+    // Base (fixas) — apenas referência, sem ações.
+    if (fixasEl) {
+      fixasEl.innerHTML = `<div class="badges">${fixas
+        .map((c) => `<category-badge nome="${String(c.nome).replace(/"/g, "&quot;")}" cor="${c.cor || "var(--cor-neutro)"}"></category-badge>`)
+        .join("")}</div>`;
+    }
   }
 
   pintarUsuarios() {
@@ -173,6 +225,31 @@ class AdminView extends BaseElement {
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", fechar);
     document.body.appendChild(form);
+  }
+
+  abrirClassificacaoForm(classificacao) {
+    const form = document.createElement("classificacao-form");
+    form.classificacao = classificacao;
+    const fechar = () => form.remove();
+    form.addEventListener("fechar", fechar);
+    form.addEventListener("salvo", fechar);
+    document.body.appendChild(form);
+  }
+
+  async removerClassificacao(c) {
+    const ok = await confirmar({
+      titulo: "Excluir classificação",
+      mensagem: `Excluir a classificação "${c.nome}"? Os itens já classificados com ela mantêm o registro; ela apenas deixa de aparecer no seletor.`,
+      perigo: true,
+      rotuloOk: "Excluir",
+    });
+    if (!ok) return;
+    try {
+      await dataStore.removerClassificacao(c.id);
+      toastSucesso("Classificação excluída.");
+    } catch (e) {
+      notificarErro(e);
+    }
   }
 
   async removerTipo(tipo) {

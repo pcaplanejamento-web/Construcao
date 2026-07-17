@@ -10,6 +10,7 @@
  * Construído sobre criarStore() (store.js) + api-client + event-bus.
  */
 import { criarStore } from "./store.js";
+import { CLASSIFICACOES, COR_CLASSIFICACAO, registrarCores } from "./classificacao.js";
 import { fecharCompartilhado } from "../features/shared/compartilhamento-closure.js";
 import { pagamentosSemTransferencia } from "../features/pagamentos/transferencia-regra.js";
 import {
@@ -47,6 +48,7 @@ const ESTADO_VAZIO = {
   contatos: [], // módulo Compras (pessoas do usuário)
   cargos: [], // cargos de contatos (fixos + extras do usuário)
   tiposTransferencia: [], // tipos de transferência (base fixos + extras do usuário)
+  classificacoesExtras: [], // classificações de item EXTRAS (globais, criadas pelo admin)
   itens: [], // catálogo de itens (cada um Material ou Serviço)
   cotacoes: [], // módulo Compras (necessidades a cotar)
   ofertas: [], // módulo Compras — LISTA PLANA de ofertas (oferta independente da cotação)
@@ -88,6 +90,7 @@ function persistir() {
       contatos: s.contatos,
       cargos: s.cargos,
       tiposTransferencia: s.tiposTransferencia,
+      classificacoesExtras: s.classificacoesExtras,
       itens: s.itens,
       cotacoes: s.cotacoes,
       ofertas: s.ofertas,
@@ -150,6 +153,7 @@ function _aplicarSnapshot(d) {
     contatos: d.contatos || [],
     cargos: d.cargos || [],
     tiposTransferencia: d.tiposTransferencia || [],
+    classificacoesExtras: d.classificacoesItem || d.classificacoesExtras || [],
     itens: d.itens || [],
     cotacoes: d.cotacoes || [],
     ofertas: d.ofertas || [],
@@ -162,7 +166,18 @@ function _aplicarSnapshot(d) {
     estoque: d.estoque || [],
     usuarios: d.usuarios || [],
   });
+  _mesclarCoresClassificacao();
   persistir();
+}
+
+/** Mescla as cores das classificações EXTRAS (admin) no mapa compartilhado
+ *  `COR_CLASSIFICACAO` → badges de classificação exibem a cor certa em todo o app. */
+function _mesclarCoresClassificacao() {
+  const mapa = {};
+  (store.get().classificacoesExtras || []).forEach((c) => {
+    if (c && c.nome && c.cor) mapa[c.nome] = c.cor;
+  });
+  registrarCores(mapa);
 }
 
 /** Carrega tudo (carregamento inicial). */
@@ -238,6 +253,19 @@ const tiposTransferencia = () => {
   const lista = store.get().tiposTransferencia || [];
   return lista.length ? lista : ["dinheiro", "crédito", "débito", "boleto"].map((n) => ({ id: "builtin:" + n, nome: n, fixo: true }));
 };
+/** Classificações de item: 5 BASE fixas (Material/Serviço/Documentação/Inicial/Comissão,
+ *  de core/classificacao.js) + EXTRAS globais criadas pelo admin. `[{id,nome,cor,fixo}]`,
+ *  sem duplicar nome. Popula os seletores (item-form/orçamento) e o painel admin. */
+const classificacoesItem = () => {
+  const base = CLASSIFICACOES.map((nome) => ({ id: "builtin:" + nome, nome, cor: COR_CLASSIFICACAO[nome] || "", fixo: true }));
+  const vistos = new Set(base.map((c) => String(c.nome).toLowerCase()));
+  const extras = (store.get().classificacoesExtras || []).filter((c) => c && c.nome && !vistos.has(String(c.nome).toLowerCase()));
+  return base.concat(extras.map((c) => ({ id: c.id, nome: c.nome, cor: c.cor || "", fixo: false })));
+};
+/** Só os NOMES das classificações (base + extras) — p/ os `ui-select`. */
+const nomesClassificacaoItem = () => classificacoesItem().map((c) => c.nome);
+/** Só as EXTRAS (criadas pelo admin) — a lista editável no painel de configuração. */
+const classificacoesExtras = () => (store.get().classificacoesExtras || []).slice();
 const itens = () => store.get().itens;
 const itensAtivos = () => store.get().itens.filter((i) => i.ativo !== false);
 const item = (id) => store.get().itens.find((i) => String(i.id) === String(id)) || null;
@@ -1383,6 +1411,38 @@ async function removerTipoTransferencia(id) {
   persistir();
 }
 
+/* ----------------- Mutações: classificações de item (admin) ------------------ */
+
+async function criarClassificacao(dados) {
+  const r = await api.call("classificacoes.criar", dados);
+  const s = store.get();
+  store.set({ classificacoesExtras: [...s.classificacoesExtras, { ...r.classificacao, fixo: false }] });
+  _mesclarCoresClassificacao();
+  persistir();
+  bus.emit(EVENTOS.ITENS); // seletores de classificação reagem
+  return r.classificacao;
+}
+
+async function atualizarClassificacao(id, dados) {
+  const r = await api.call("classificacoes.atualizar", { id, ...dados });
+  const s = store.get();
+  store.set({
+    classificacoesExtras: s.classificacoesExtras.map((c) => (String(c.id) === String(id) ? { ...r.classificacao, fixo: false } : c)),
+  });
+  _mesclarCoresClassificacao();
+  persistir();
+  bus.emit(EVENTOS.ITENS);
+  return r.classificacao;
+}
+
+async function removerClassificacao(id) {
+  await api.call("classificacoes.remover", { id });
+  const s = store.get();
+  store.set({ classificacoesExtras: s.classificacoesExtras.filter((c) => String(c.id) !== String(id)) });
+  persistir();
+  bus.emit(EVENTOS.ITENS);
+}
+
 /* ---------------------- Mutação: incorporar (compartilhado → meu) ---------- */
 // Copia uma entidade que veio de obra compartilhada para o ACERVO PESSOAL do
 // usuário (vira dele; sobrevive ao descompartilhamento). O backend cria uma nova
@@ -1762,6 +1822,7 @@ export const dataStore = {
   participantesDaObra,
   notasDaObra,
   fornecedores, fornecedoresAtivos, contatos, contatosAtivos, cargos, tiposTransferencia, itens, itensAtivos, item,
+  classificacoesItem, nomesClassificacaoItem, classificacoesExtras,
   meusContatosAtivos, contatosCompartilhados, meusFornecedoresAtivos, fornecedoresCompartilhados, meusItensAtivos, itensCompartilhados,
   minhasCategoriasItem, minhasCategoriasFornecedor,
   obrasCompartilhadas, compartilhadoDaObra, dadosDaObra, temDadosDeObraDeTipo, jaIncorporado, indiceAcervo, jaIncorporadoIdx,
@@ -1792,6 +1853,7 @@ export const dataStore = {
   criarCargo, atualizarCargo, removerCargo,
   listarContatosGoogle, enviarGoogle, vincularGoogle, desvincularGoogle, importarGoogle, sincronizarCargoGoogle,
   criarTipoTransferencia, atualizarTipoTransferencia, removerTipoTransferencia,
+  criarClassificacao, atualizarClassificacao, removerClassificacao,
   criarItem, atualizarItem, removerItem, reativarItem,
   criarCotacao, atualizarCotacao, removerCotacao,
   criarOferta, atualizarOferta, removerPreco, escolherPreco, registrarDespesaOferta,

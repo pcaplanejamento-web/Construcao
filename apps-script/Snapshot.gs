@@ -365,6 +365,7 @@ function dadosSnapshot(data, sessao) {
     contatos: contatos,
     cargos: cargos,
     tiposTransferencia: listarTiposTransferenciaUsuario(u.id),
+    classificacoesItem: listarClassificacoesExtras(),
     itens: itens,
     cotacoes: cotacoes,
     precosPorCotacao: precosPorCotacao,

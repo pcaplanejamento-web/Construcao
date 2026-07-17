@@ -223,8 +223,12 @@ para dono **e** colaboradores.
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `itens.listar` | `{}` | `{ itens:[{id,nome,classificacao,ativo,criado_em,atualizado_em,autor_nome,editor_nome}] }` (ativos, por nome) |
-| `itens.criar` | `{ nome, classificacao, categoria_id }` | `{ item }` (`classificacao` ∈ `Material`/`Serviço`; **`categoria_id` = subclassificação OBRIGATÓRIA**; grava `autor_nome`) |
+| `itens.criar` | `{ nome, classificacao, categoria_id }` | `{ item }` (`classificacao` ∈ base ou extra do admin — normalizada por `_classificacaoValida`, inválida→`Material`; **`categoria_id` = subclassificação OBRIGATÓRIA**; grava `autor_nome`) |
 | `itens.atualizar` | `{ id, nome?, classificacao?, categoria_id? }` | `{ item, despesas }` — **propaga** nome/classificação/categoria às despesas do item (dados conectados); `despesas` = as afetadas (`categoria_id` não pode ficar vazio) |
+| `classificacoes.listar` | `{}` | `{ classificacoes:[{id,nome,cor,fixo}] }` — 5 base fixas + extras globais |
+| `classificacoes.criar` | `{ nome, cor }` | `{ classificacao }` — **admin only** (`exigirAdmin`); nome único (case-insensitive) |
+| `classificacoes.atualizar` | `{ id, nome, cor }` | `{ classificacao }` — **admin only**; só extras (base são fixas) |
+| `classificacoes.remover` | `{ id }` | `{ id }` — **admin only**; só extras. Itens já classificados mantêm o texto |
 | `itens.remover` | `{ id }` | `{ id }` (remoção lógica, `ativo=false`) |
 
 ### Compras — Cotações + ofertas

@@ -60,7 +60,8 @@ class ItemForm extends BaseElement {
   aposRender() {
     const i = this.item || {};
     const sel = this.$("#classificacao");
-    sel.options = CLASSIFICACOES.map((c) => ({ value: c, label: c }));
+    // Base fixas + extras criadas pelo admin (Configuração → Classificações).
+    sel.options = dataStore.nomesClassificacaoItem().map((c) => ({ value: c, label: c }));
     sel.value = i.classificacao || CLASSIFICACOES[0];
 
     this._preencherSubclasse();

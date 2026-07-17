@@ -124,6 +124,11 @@ const ROTAS = {
   "tiposTransferencia.atualizar": { fn: tiposTransferenciaAtualizar },
   "tiposTransferencia.remover": { fn: tiposTransferenciaRemover },
 
+  "classificacoes.listar": { fn: classificacoesListar },
+  "classificacoes.criar": { fn: classificacoesCriar },
+  "classificacoes.atualizar": { fn: classificacoesAtualizar },
+  "classificacoes.remover": { fn: classificacoesRemover },
+
   // Itens (catálogo Material/Serviço)
   "itens.listar": { fn: itensListar },
   "itens.criar": { fn: itensCriar },

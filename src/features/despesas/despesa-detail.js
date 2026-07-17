@@ -192,8 +192,10 @@ class DespesaDetail extends BaseElement {
   aposRender() {
     const d = this.despesa;
     if (!this.travado) {
-      const inicial = CLASSIFICACOES.indexOf(d.classificacao) >= 0 ? d.classificacao : CLASSIFICACOES[0];
-      this.$("#abas").abas = CLASSIFICACOES.map((c) => ({ id: c, rotulo: c, icone: "tag" }));
+      // Base fixas + extras criadas pelo admin (Configuração → Classificações).
+      const nomes = dataStore.nomesClassificacaoItem();
+      const inicial = nomes.indexOf(d.classificacao) >= 0 ? d.classificacao : nomes[0];
+      this.$("#abas").abas = nomes.map((c) => ({ id: c, rotulo: c, icone: "tag" }));
       this.$("#abas").setAttribute("ativo", inicial);
       this.$("#abas").addEventListener("mudar", () => this.preencherItens());
       this.preencherItens();

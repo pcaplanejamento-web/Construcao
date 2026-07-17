@@ -81,7 +81,8 @@ class OrcamentoForm extends BaseElement {
   aposRender() {
     const o = this.orcamento || {};
     const selTipo = this.$("#tipo");
-    selTipo.options = TIPOS.map((t) => ({ value: t, label: t }));
+    // Base fixas + extras criadas pelo admin (Configuração → Classificações).
+    selTipo.options = dataStore.nomesClassificacaoItem().map((t) => ({ value: t, label: t }));
     selTipo.value = o.tipo || TIPOS[0];
 
     const selForn = this.$("#fornecedor");

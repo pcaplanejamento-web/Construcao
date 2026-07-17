@@ -29,6 +29,16 @@ export function corClassificacao(cl) {
   return COR_CLASSIFICACAO[cl] || "var(--cor-neutro)";
 }
 
+/** Mescla as cores das classificações EXTRAS (criadas pelo admin) no mapa base. Como
+ *  `COR_CLASSIFICACAO` é exportado por REFERÊNCIA, todos os componentes que fazem
+ *  `COR_CLASSIFICACAO[nome]` passam a enxergar as cores novas. Chamado pelo data-store. */
+export function registrarCores(mapa) {
+  if (!mapa) return;
+  Object.keys(mapa).forEach((nome) => {
+    if (nome && mapa[nome]) COR_CLASSIFICACAO[nome] = mapa[nome];
+  });
+}
+
 /** Material exige empresa (fornecedor) e é a ÚNICA que entra em estoque. */
 export function exigeEmpresa(cl) {
   return String(cl) === "Material";

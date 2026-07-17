@@ -142,7 +142,12 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > desnormalizada). `categoria_id` é a **subclassificação** (opcional).
 > Gráficos: rosca por `classificacao`, barras por `categoria_id`.
 >
-> **Classificações (fonte única `src/core/classificacao.js`; backend `Schema.gs`):**
+> **Classificações — 5 BASE fixas (`src/core/classificacao.js`; backend `Schema.gs`) + EXTRAS
+> do admin (sheet `Classificacoes`, GLOBAIS):** o admin cria/edita/exclui classificações
+> extras em **Configuração → Classificações** (rotas `classificacoes.*`, escrita `exigirAdmin`;
+> `classificacoesItem` no snapshot p/ todos). Front: `dataStore.classificacoesItem()`/
+> `nomesClassificacaoItem()` = base + extras; as cores das extras entram no `COR_CLASSIFICACAO`
+> compartilhado via `registrarCores`. As 5 base:
 > **Material**, **Serviço**, **Documentação**, **Inicial**, **Comissão**. Regra de pagador/recebedor:
 > **Material** exige EMPRESA (fornecedor) e é a ÚNICA que entra em ESTOQUE ao quitar;
 > **Serviço** exige OFERTANTE (contato/equipe); **Documentação**/**Inicial**/**Comissão** são

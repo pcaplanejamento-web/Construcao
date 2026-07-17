@@ -186,7 +186,7 @@ class CotacaoDespesaForm extends BaseElement {
       selModo.value = "oferta";
       selModo.addEventListener("change", () => this.alternarModoReg());
 
-      this.$("#abas").abas = CLASSIFICACOES.map((c) => ({ id: c, rotulo: c, icone: "tag" }));
+      this.$("#abas").abas = dataStore.nomesClassificacaoItem().map((c) => ({ id: c, rotulo: c, icone: "tag" }));
       this.$("#abas").addEventListener("mudar", () => this.preencherOfertas());
       this.preencherOfertas();
       this.$("#oferta").addEventListener("change", (e) => this.onOfertaSelecionada(e.detail.value));
