@@ -12,7 +12,7 @@
 // hora (skipWaiting + clients.claim) e limpa o cache antigo no activate. O
 // clients.claim dispara `controllerchange` nas abas abertas → a página recarrega
 // sozinha (ver o registro em index.html) e pega o código novo. Sem passo manual.
-const CACHE = "dattaobra-shell-v46";
+const CACHE = "dattaobra-shell-v47";
 const ESSENCIAIS = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {

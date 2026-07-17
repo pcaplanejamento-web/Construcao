@@ -1,19 +1,19 @@
 /**
  * classificacao.js — FONTE ÚNICA das classificações de item/despesa/oferta/orçamento.
  *
- * Classificações: **Material**, **Serviço**, **Documentação** e **Inicial**.
+ * Classificações: **Material**, **Serviço**, **Documentação**, **Inicial** e **Comissão**.
  * Regra de PAGADOR/RECEBEDOR por classificação (usada nas validações dos forms + backend):
  *  - Material  → exige EMPRESA (fornecedor); entra em ESTOQUE ao quitar.
  *  - Serviço   → exige OFERTANTE (contato/equipe).
- *  - "Documentação"/"Inicial" (e qualquer outra não-padrão) → FLEXÍVEL: aceita EMPRESA
- *    **ou** OFERTANTE (ao menos um); NÃO entra em estoque (só Material entra).
+ *  - "Documentação"/"Inicial"/"Comissão" (e qualquer outra não-padrão) → FLEXÍVEL: aceita
+ *    EMPRESA **ou** OFERTANTE (ao menos um); NÃO entra em estoque (só Material entra).
  *
  * Este módulo centraliza a lista + as cores + as regras — antes duplicadas em vários
  * componentes. O backend (Apps Script) mantém sua própria cópia em `Schema.gs`
  * (`CLASSIFICACOES_ITEM`/`CLASSIFICACAO_COR`) por ser outro runtime — manter em sincronia.
  */
 
-export const CLASSIFICACOES = ["Material", "Serviço", "Documentação", "Inicial"];
+export const CLASSIFICACOES = ["Material", "Serviço", "Documentação", "Inicial", "Comissão"];
 
 /** Cor do badge por classificação (espelha o backend `CLASSIFICACAO_COR`). */
 export const COR_CLASSIFICACAO = {
@@ -21,6 +21,7 @@ export const COR_CLASSIFICACAO = {
   "Serviço": "#6d28d9",
   "Documentação": "#0d9488",
   "Inicial": "#ea580c",
+  "Comissão": "#db2777",
 };
 
 /** Cor da classificação com fallback neutro. */

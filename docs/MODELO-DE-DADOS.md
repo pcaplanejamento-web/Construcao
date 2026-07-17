@@ -93,7 +93,7 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 | pagamentos | JSON | `[{chave, valor}]` — quem pagou quanto (**derivado das levas** por `pagador`) |
 | responsaveis | JSON | `[{chave, pct}]` — de quem é a responsabilidade (% por participante) |
 | item_id | UUID | **FK → Itens.id (obrigatório p/ novas despesas)** |
-| classificacao | string | `Material` \| `Serviço` \| `Documentação` \| `Inicial` (desnormalizado de Itens.classificacao) |
+| classificacao | string | `Material` \| `Serviço` \| `Documentação` \| `Inicial` \| `Comissão` (desnormalizado de Itens.classificacao) |
 | preco_id | UUID | **FK → CotacaoPrecos.id** — a oferta registrada (despesa nasce dela) |
 | fornecedor_id | UUID | **empresa** que recebe (fornecedor do contato ofertante; vazio p/ equipe) |
 | ofertante_contato_id | UUID | ofertante **contato** (XOR equipe) |
@@ -143,9 +143,9 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > Gráficos: rosca por `classificacao`, barras por `categoria_id`.
 >
 > **Classificações (fonte única `src/core/classificacao.js`; backend `Schema.gs`):**
-> **Material**, **Serviço**, **Documentação**, **Inicial**. Regra de pagador/recebedor:
+> **Material**, **Serviço**, **Documentação**, **Inicial**, **Comissão**. Regra de pagador/recebedor:
 > **Material** exige EMPRESA (fornecedor) e é a ÚNICA que entra em ESTOQUE ao quitar;
-> **Serviço** exige OFERTANTE (contato/equipe); **Documentação**/**Inicial** são
+> **Serviço** exige OFERTANTE (contato/equipe); **Documentação**/**Inicial**/**Comissão** são
 > **FLEXÍVEIS** — aceitam EMPRESA **ou** OFERTANTE (ao menos um) e **não** entram em estoque.
 > A validação (forms + `Cotacoes.gs`/`Orcamentos.gs`) usa `exigeEmpresa`/`exigeOfertante`/
 > `ehFlexivel`; o `financeiro-view` roteia o "a receber" pelo pagador presente (empresa ou

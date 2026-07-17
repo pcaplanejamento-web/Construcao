@@ -46,7 +46,7 @@ class ItensView extends BaseElement {
         <div class="cabecalho">
           <div>
             <h1>Itens</h1>
-            <p class="sub">Cadastre itens (Material, Serviço, Documentação ou Inicial) e suas categorias.</p>
+            <p class="sub">Cadastre itens (Material, Serviço, Documentação, Inicial ou Comissão) e suas categorias.</p>
           </div>
         </div>
         <ui-tabs id="abas">
@@ -110,7 +110,7 @@ class ItensView extends BaseElement {
     if (!itens.length) {
       el.innerHTML = `
         <ui-empty-state icone="recibo" titulo="Nenhum item"
-          texto="Cadastre itens e classifique cada um (Material, Serviço, Documentação ou Inicial).">
+          texto="Cadastre itens e classifique cada um (Material, Serviço, Documentação, Inicial ou Comissão).">
           <ui-button slot="acao" id="vazioItem">+ Cadastrar item</ui-button>
         </ui-empty-state>`;
       el.querySelector("#vazioItem").addEventListener("click", () => this.abrirItemForm(null));
