@@ -36,6 +36,7 @@ const COR_ORIGEM = {
   dono: "var(--cor-primaria)",
   compartilhado: "var(--cor-info)",
   contato: "var(--cor-aviso)",
+  equipe: "var(--cor-roxo)",
 };
 
 class ObraParticipantes extends BaseElement {
@@ -91,11 +92,18 @@ class ObraParticipantes extends BaseElement {
     const painel = this.$("#acertos");
     if (!lista) return;
 
-    const todos = dataStore.participantesDaObra(this.obraId);
+    const formais = dataStore.participantesDaObra(this.obraId);
     const despesas = dataStore.despesas(this.obraId);
     // Saldos do modelo paga ↔ recebe (Pago/Recebido/Saldo a pagar/Saldo a receber).
     const { porChave } = balancos(despesas);
-    // Acerto entre participantes — só p/ o painel "quem deve a quem".
+    // Lista COMPLETA (espelha a lógica de Empresas/fornecedores): além dos participantes
+    // FORMAIS (dono + compartilhados + contatos adicionados), inclui QUEM TEVE ATIVIDADE
+    // FINANCEIRA na obra (recebeu/pagou/deve/tem a receber) mesmo sem ser participante
+    // formal — ex.: um ofertante (contato/grupo) que recebeu valor. Assim ninguém que
+    // recebeu fica de fora, e com os valores corretos de `balancos`.
+    const todos = this._participantesComAtividade(formais, porChave);
+    // Acerto entre participantes — só p/ o painel "quem deve a quem" (usa a lista COMPLETA
+    // p/ resolver os nomes de quem recebeu/pagou sem ser participante formal).
     const { acertos } = acerto(despesas, todos);
 
     const visiveis =
@@ -195,6 +203,53 @@ class ObraParticipantes extends BaseElement {
     this._pintarAcertos(painel, acertos, despesas);
   }
 
+  /**
+   * Lista COMPLETA de participantes = FORMAIS (dono/compartilhados/contatos adicionados)
+   * ∪ quem teve ATIVIDADE FINANCEIRA (`balancos.porChave`: recebeu/pagou/deve/a receber),
+   * mesmo sem ser participante formal. Espelha a lógica de Empresas (que lista todos os
+   * fornecedores das despesas). Preserva a ordem: formais primeiro, derivados depois.
+   */
+  _participantesComAtividade(formais, porChave) {
+    const porCh = {};
+    const ordem = [];
+    (formais || []).forEach((p) => {
+      const k = String(p.chave || "");
+      if (k && !porCh[k]) { porCh[k] = p; ordem.push(k); }
+    });
+    Object.keys(porChave || {}).forEach((k) => {
+      if (!k || porCh[k]) return;
+      const b = porChave[k] || {};
+      const ativo =
+        (b.recebido || 0) > 0.01 || (b.pago || 0) > 0.01 ||
+        (b.saldoApagar || 0) > 0.01 || (b.saldoReceber || 0) > 0.01;
+      if (!ativo) return;
+      porCh[k] = this._participanteDerivado(k);
+      ordem.push(k);
+    });
+    return ordem.map((k) => porCh[k]);
+  }
+
+  /** Resolve uma CHAVE ("c:"/"e:"/"u:") em um participante DERIVADO (não-formal): nome
+   * ao vivo do catálogo + origem/tipo. `_derivado:true` → não é removível manualmente. */
+  _participanteDerivado(ch) {
+    const s = String(ch || "");
+    if (s.indexOf("c:") === 0) {
+      const id = s.slice(2);
+      const c = dataStore.contatos().find((x) => String(x.id) === String(id));
+      return { chave: s, nome: (c && c.nome) || "Contato", origem: "contato", tipo: "contato", id, _derivado: true, eh_responsavel: false };
+    }
+    if (s.indexOf("e:") === 0) {
+      const id = s.slice(2);
+      const e = dataStore.equipes().find((x) => String(x.id) === String(id));
+      return { chave: s, nome: (e && e.nome) || "Grupo", origem: "equipe", tipo: "equipe", id, _derivado: true, eh_responsavel: false };
+    }
+    if (s.indexOf("u:") === 0) {
+      const id = s.slice(2);
+      return { chave: s, nome: dataStore.usuarioNome(id) || "Usuário", origem: "compartilhado", tipo: "usuario", id, _derivado: true, eh_responsavel: false };
+    }
+    return { chave: s, nome: "—", origem: "contato", tipo: "outro", id: "", _derivado: true, eh_responsavel: false };
+  }
+
   /** Painel "quem deve a quem" (comum a desktop e mobile). Cada linha é CLICÁVEL →
    * banner de ORIGEM (de quais despesas o valor está sendo puxado). */
   _pintarAcertos(painel, acertos, despesas) {
@@ -229,7 +284,8 @@ class ObraParticipantes extends BaseElement {
     const apagar = p._saldoApagar > 0.01 ? `<strong style="color:var(--cor-erro)">${moeda(p._saldoApagar)}</strong>` : "—";
     const areceber = p._saldoReceber > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(p._saldoReceber)}</strong>` : "—";
     const resp = this.modo === "responsaveis";
-    const podeRemover = resp || (p.tipo === "contato" && p.id);
+    // Derivado (só aparece por ter recebido/pago) NÃO é removível manualmente.
+    const podeRemover = !p._derivado && (resp || (p.tipo === "contato" && p.id));
     const rotuloRem = resp ? "Tirar dos responsáveis" : "Remover participante";
     const btnRem = podeRemover
       ? `<button type="button" data-acao-linha="remover" aria-label="${rotuloRem}" title="${rotuloRem}"
@@ -295,6 +351,10 @@ class ObraParticipantes extends BaseElement {
   }
 
   async removerContato(p) {
+    if (p._derivado) {
+      toastSucesso("Participante automático: aparece por ter recebido/pago valor na obra. Para tirá-lo, ajuste as despesas relacionadas.");
+      return;
+    }
     if (p.tipo !== "contato" || !p.id) {
       toastSucesso("Dono e usuários compartilhados são participantes automáticos.");
       return;

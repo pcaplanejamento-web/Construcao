@@ -142,7 +142,11 @@ Modelo flexível: o admin cria chaves arbitrárias sem alterar o schema.
 > Material/Serviço, desnormalizada). `categoria_id` é a **subclassificação** (opcional).
 > Gráficos: rosca por `classificacao`, barras por `categoria_id`.
 
-> `chave` de participante = `u:<usuario_id>` ou `c:<contato_id>`. `pagamentos`/
+> `chave` de participante = `u:<usuario_id>`, `c:<contato_id>` ou `e:<equipe_id>` (grupo).
+> A aba **Participantes** lista TODOS que têm saldo em `balancos.porChave` — participantes
+> formais (dono/compartilhados/contatos adicionados) **∪** quem só teve atividade financeira
+> (ofertante/integrante/pagador que recebeu/pagou), como a aba Empresas faz com `porFornecedor`.
+> `pagamentos`/
 > `responsaveis`/`pagamentos_realizados` são guardados como **JSON string** e devolvidos
 > como **arrays** ao cliente (o backend faz parse). `pagamentos` (quem pagou) e o
 > **acerto** "quem deve a quem" são **derivados das levas** (por `pagador`).

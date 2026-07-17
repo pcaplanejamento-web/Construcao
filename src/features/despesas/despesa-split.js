@@ -176,7 +176,13 @@ export function distribuicao(despesa) {
 
 /** Rótulo amigável da origem de um participante. */
 export function rotuloOrigem(origem) {
-  return origem === "dono" ? "Dono" : origem === "compartilhado" ? "Compartilhado" : "Contato";
+  return origem === "dono"
+    ? "Dono"
+    : origem === "compartilhado"
+    ? "Compartilhado"
+    : origem === "equipe"
+    ? "Grupo"
+    : "Contato";
 }
 
 /**
