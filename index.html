@@ -21,11 +21,11 @@
          de vir ANTES de qualquer CSS/asset para que os caminhos relativos (e os
          relativos dentro dos Shadow DOMs) resolvam no prefixo correto. -->
     <script>
-      document.write(
-        '<base href="' +
-          (location.hostname.endsWith("github.io") ? "/Construcao/" : "/") +
-          '">'
-      );
+      // Prefixo-base guardado p/ reuso (base + CSS globais). Escrever os CSS com o
+      // prefixo ABSOLUTO evita que o preload-scanner os resolva contra a rota atual
+      // (ex.: /orcamentos/<id>) ANTES do <base> aplicar → 404 → "Refused to apply style".
+      window.__BASE = location.hostname.endsWith("github.io") ? "/Construcao/" : "/";
+      document.write('<base href="' + window.__BASE + '">');
     </script>
 
     <title>Dattaobra</title>
@@ -74,10 +74,21 @@
       })();
     </script>
 
-    <!-- Estilos globais (fora do Shadow DOM): tokens, reset e layout -->
-    <link rel="stylesheet" href="src/styles/tokens.css" />
-    <link rel="stylesheet" href="src/styles/reset.css" />
-    <link rel="stylesheet" href="src/styles/global.css" />
+    <!-- Estilos globais (fora do Shadow DOM): tokens, reset e layout. Escritos com o
+         prefixo-base ABSOLUTO (window.__BASE) para o preload-scanner nunca resolvê-los
+         contra a rota atual (evita o erro de MIME em rotas aninhadas como /orcamentos/:id). -->
+    <script>
+      document.write(
+        '<link rel="stylesheet" href="' + window.__BASE + 'src/styles/tokens.css">' +
+        '<link rel="stylesheet" href="' + window.__BASE + 'src/styles/reset.css">' +
+        '<link rel="stylesheet" href="' + window.__BASE + 'src/styles/global.css">'
+      );
+    </script>
+    <noscript>
+      <link rel="stylesheet" href="src/styles/tokens.css" />
+      <link rel="stylesheet" href="src/styles/reset.css" />
+      <link rel="stylesheet" href="src/styles/global.css" />
+    </noscript>
   </head>
   <body>
     <!-- O app-shell é o único elemento de UI montado diretamente no HTML.

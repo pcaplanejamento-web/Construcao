@@ -162,7 +162,7 @@ class DespesaDetail extends BaseElement {
               </div>
               <div class="linha">
                 <ui-input id="pagValor" label="Valor a lançar (R$)" formato="moeda" placeholder="0,00"></ui-input>
-                <ui-input id="pagData" label="Data" type="date" value="${d.data || hojeIso()}"></ui-input>
+                <ui-input id="pagData" label="Data" type="date" value="${dataVal || hojeIso()}"></ui-input>
               </div>
               ${eqp ? `<label class="tx">Distribuir entre integrantes (R$)</label>
               <split-editor id="pagDist"></split-editor>` : ""}
