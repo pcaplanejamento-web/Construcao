@@ -56,7 +56,10 @@ test("balancos — paga ↔ recebe (contato+fornecedor e equipe)", () => {
   // Quem recebe: ofertante contato / grupo / integrante.
   aprox(porChave["c:c1"].recebido, 400, "contato ofertante recebido");
   aprox(porChave["c:c1"].saldoReceber, 600, "contato ofertante saldo a receber");
-  aprox(porChave["e:e1"].recebido, 600, "grupo recebido");
+  // Equipe com distribuição: os R$600 foram TODOS repassados aos integrantes (400+200),
+  // então a chave da equipe fica com 0 de recebido (senão contaria 2× = 1200). Só o
+  // "a receber" (resto não pago) fica na equipe.
+  aprox(porChave["e:e1"].recebido, 0, "grupo recebido (tudo distribuído aos integrantes)");
   aprox(porChave["e:e1"].saldoReceber, 1400, "grupo saldo a receber");
   aprox(porChave["c:10"].recebido, 400, "integrante recebido (distribuição)");
   aprox(porChave["c:11"].recebido, 200, "integrante recebido (distribuição)");

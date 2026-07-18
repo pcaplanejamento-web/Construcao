@@ -58,6 +58,7 @@ class SplitEditor extends BaseElement {
         gap: var(--esp-3); margin-top: var(--esp-1); }
       .total { font-size: var(--fs-sm); color: var(--cor-texto-suave); }
       .total.erro { color: var(--cor-erro); font-weight: var(--peso-semi); }
+      .total.incompleto { color: var(--cor-aviso); font-weight: var(--peso-semi); }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); margin-bottom: var(--esp-2); }
       /* MOBILE: o participante ganha a linha inteira; valor + remover dividem a
          próxima linha — sem apertar o select nem rolar na horizontal. */
@@ -153,13 +154,19 @@ class SplitEditor extends BaseElement {
     let lim = this._limite;
     if (this.modo === "pct" && lim == null) lim = 100;
     const excede = lim != null && soma - lim > 0.01;
+    // INCOMPLETO: soma parcial (>0 e < limite) — em % isso deixa parte da despesa SEM
+    // responsável, que some do acerto "quem deve a quem". Sinaliza (âmbar) p/ não passar
+    // despercebido; não bloqueia (edições legadas podem estar parciais).
+    const incompleto = lim != null && soma > 0.01 && lim - soma > 0.01;
     if (this.modo === "pct") {
-      el.textContent = `Soma: ${Math.round(soma * 100) / 100}% / ${lim}%`;
+      el.textContent = `Soma: ${Math.round(soma * 100) / 100}% / ${lim}%` +
+        (incompleto ? ` — faltam ${Math.round((lim - soma) * 100) / 100}%` : "");
     } else {
       el.textContent =
         "Total: " + moeda(soma) + (this._limite != null ? " / " + moeda(this._limite) : "");
     }
     el.classList.toggle("erro", excede);
+    el.classList.toggle("incompleto", incompleto && this.modo === "pct");
   }
 
   emitirMudou() {

@@ -6,6 +6,10 @@
  * (o backend já devolve arrays; parseLista é tolerante a string/vazio.)
  */
 
+/** Epsilon financeiro ÚNICO (1 centavo). Padroniza os cortes de "resíduo desprezível"
+ *  que antes variavam (0.01 / 0.005 / -0.01) e geravam "Em aberto" fantasma vs "Pago". */
+export const EPS = 0.01;
+
 export function parseLista(v) {
   if (Array.isArray(v)) return v;
   if (!v) return [];
@@ -44,8 +48,10 @@ export function restoDespesa(despesa) {
 export function statusPagamento(despesa) {
   const valor = Number((despesa || {}).valor) || 0;
   const pago = totalRealizado(despesa);
-  if (pago <= 0.01) return "A pagar";
-  if (pago - valor >= -0.01) return "Pago";
+  // Quitação PRIMEIRO (antes o ramo "A pagar" vinha antes e classificava uma despesa de
+  // centavos INTEGRALMENTE paga como "A pagar"). Epsilon único.
+  if (pago >= EPS && pago - valor >= -EPS) return "Pago";
+  if (pago < EPS) return "A pagar";
   return "Em pagamento";
 }
 
@@ -76,29 +82,38 @@ export function balancos(despesas) {
       if (r && r.chave) devido[r.chave] = (devido[r.chave] || 0) + (valor * (Number(r.pct) || 0)) / 100;
     });
 
-    // Levas: pago (por quem pagou) + recebido por integrante (distribuição).
+    // Levas: pago (por quem pagou) + recebido por integrante (distribuição por equipe).
+    // `distribuido` = quanto das levas já foi atribuído a integrantes (não recontar na equipe).
+    let distribuido = 0;
     parseLista(d.pagamentos_realizados).forEach((lv) => {
       if (lv && lv.pagador) pago[lv.pagador] = (pago[lv.pagador] || 0) + (Number(lv.valor) || 0);
       parseLista(lv.distribuicao).forEach((x) => {
-        if (x && x.chave) recebido[x.chave] = (recebido[x.chave] || 0) + (Number(x.valor) || 0);
+        if (x && x.chave) {
+          const v = Number(x.valor) || 0;
+          recebido[x.chave] = (recebido[x.chave] || 0) + v;
+          distribuido += v;
+        }
       });
     });
 
-    // Recebido + saldo a receber do ofertante (contato/grupo) e do fornecedor.
+    // Recebido/a-receber do ofertante. EQUIPE com distribuição: os integrantes já receberam
+    // suas partes (acima); a equipe fica só com o NÃO distribuído — antes somava o `realizado`
+    // CHEIO, contando 2× (equipe + integrantes = o dobro do pagamento). [FIX dupla contagem]
     if (d.ofertante_equipe_id) {
       const ch = "e:" + d.ofertante_equipe_id;
-      recebido[ch] = (recebido[ch] || 0) + realizado;
-      if (resto > 0.01) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
+      const naoDistribuido = Math.max(0, realizado - distribuido);
+      if (naoDistribuido > EPS) recebido[ch] = (recebido[ch] || 0) + naoDistribuido;
+      if (resto > EPS) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
     } else if (d.ofertante_contato_id) {
       const ch = "c:" + d.ofertante_contato_id;
       recebido[ch] = (recebido[ch] || 0) + realizado;
-      if (resto > 0.01) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
+      if (resto > EPS) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
     }
     if (d.fornecedor_id) {
       const f = (porFornecedor[d.fornecedor_id] = porFornecedor[d.fornecedor_id] || { total: 0, recebido: 0, saldoReceber: 0 });
       f.total += valor;
       f.recebido += realizado;
-      f.saldoReceber += resto;
+      if (resto > EPS) f.saldoReceber += resto; // epsilon: antes carregava resíduo < 1 centavo
     }
   });
 
@@ -126,14 +141,27 @@ export function balancosDePagamentos(despesas, pagamentos) {
   const saldoReceber = {};
   const porFornecedor = {};
   const alocadoPorDespesa = {};
+  const distribuidoPorDespesa = {}; // quanto de cada despesa já foi p/ integrantes (não recontar na equipe)
   (pagamentos || []).forEach((p) => {
     if (p && p.pagador_chave) pago[p.pagador_chave] = (pago[p.pagador_chave] || 0) + (Number(p.valor) || 0);
+    let distTotal = 0;
     parseLista(p.distribuicao).forEach((x) => {
-      if (x && x.chave) recebido[x.chave] = (recebido[x.chave] || 0) + (Number(x.valor) || 0);
+      if (x && x.chave) {
+        const v = Number(x.valor) || 0;
+        recebido[x.chave] = (recebido[x.chave] || 0) + v;
+        distTotal += v;
+      }
     });
-    parseLista(p.alocacoes).forEach((a) => {
-      if (a && a.despesa_id)
-        alocadoPorDespesa[a.despesa_id] = (alocadoPorDespesa[a.despesa_id] || 0) + (Number(a.valor) || 0);
+    const alocs = parseLista(p.alocacoes);
+    const totalAloc = alocs.reduce((s, a) => s + (Number((a || {}).valor) || 0), 0);
+    alocs.forEach((a) => {
+      if (!a || !a.despesa_id) return;
+      const av = Number(a.valor) || 0;
+      alocadoPorDespesa[a.despesa_id] = (alocadoPorDespesa[a.despesa_id] || 0) + av;
+      // Distribuição do pagamento rateada às despesas proporcional à alocação (pagamento de
+      // despesa única → vai toda p/ ela). Evita a dupla contagem equipe + integrantes.
+      if (distTotal > 0 && totalAloc > 0)
+        distribuidoPorDespesa[a.despesa_id] = (distribuidoPorDespesa[a.despesa_id] || 0) + distTotal * (av / totalAloc);
     });
   });
   (despesas || []).forEach((d) => {
@@ -145,18 +173,19 @@ export function balancosDePagamentos(despesas, pagamentos) {
     });
     if (d.ofertante_equipe_id) {
       const ch = "e:" + d.ofertante_equipe_id;
-      recebido[ch] = (recebido[ch] || 0) + realizado;
-      if (resto > 0.01) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
+      const naoDistribuido = Math.max(0, realizado - (distribuidoPorDespesa[d.id] || 0));
+      if (naoDistribuido > EPS) recebido[ch] = (recebido[ch] || 0) + naoDistribuido;
+      if (resto > EPS) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
     } else if (d.ofertante_contato_id) {
       const ch = "c:" + d.ofertante_contato_id;
       recebido[ch] = (recebido[ch] || 0) + realizado;
-      if (resto > 0.01) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
+      if (resto > EPS) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
     }
     if (d.fornecedor_id) {
       const f = (porFornecedor[d.fornecedor_id] = porFornecedor[d.fornecedor_id] || { total: 0, recebido: 0, saldoReceber: 0 });
       f.total += valor;
       f.recebido += realizado;
-      f.saldoReceber += resto;
+      if (resto > EPS) f.saldoReceber += resto;
     }
   });
   const porChave = {};
@@ -273,7 +302,7 @@ export function saldoPorDespesa(despesas, chave) {
     parseLista(d.responsaveis).forEach((r) => {
       if (r && String(r.chave) === ch) devido += (v * (Number(r.pct) || 0)) / 100;
     });
-    if (pago > 0.005 || devido > 0.005) {
+    if (pago > EPS || devido > EPS) {
       out.push({ despesa_id: d.id, item: String(d.item || ""), valor: v, pago: pago, devido: devido, saldo: pago - devido });
     }
   });
