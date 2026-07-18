@@ -53,33 +53,38 @@ function _abaDe(def) {
 /**
  * Confere que o cabeçalho da aba casa POSICIONALMENTE com o schema. O mapeamento
  * nome→índice é por POSIÇÃO: um cabeçalho reordenado ou renomeado leria/gravaria na
- * coluna errada em SILÊNCIO (corrupção de dados). Regra:
- *  - célula com texto DIFERENTE do nome do schema naquela posição → lança (falha
- *    ALTO, sem corromper — obriga a corrigir o cabeçalho);
+ * coluna errada em SILÊNCIO. Regra:
  *  - célula VAZIA (coluna recém-inserida por `insertColumnsAfter`) → grava o nome do
- *    schema (auto-cura o append, idempotente).
+ *    schema (auto-cura o append, idempotente);
+ *  - célula com texto DIFERENTE → REGISTRA a divergência (console.error) e SEGUE com
+ *    o mapeamento posicional de sempre.
+ * NUNCA lança: esta função roda em TODA leitura/escrita — lançar aqui derruba o app
+ * inteiro (uma aba com cabeçalho legado deixaria o snapshot vazio, "Nenhuma obra
+ * ainda"). O objetivo é OBSERVAR a deriva no log, não bloquear o sistema.
  * Roda 1× por aba por execução (cacheado em `_CABECALHO_VALIDADO`).
  */
 function _validarCabecalho(def, aba) {
-  const n = def.colunas.length;
-  const atual = aba.getRange(1, 1, 1, n).getValues()[0];
-  let precisaGravar = false;
-  for (let i = 0; i < n; i++) {
-    const esperado = def.colunas[i];
-    const encontrado = String(atual[i] == null ? "" : atual[i]).trim();
-    if (encontrado === "") {
-      atual[i] = esperado; // cabeçalho em branco (coluna nova ao fim) → preenche
-      precisaGravar = true;
-    } else if (encontrado !== esperado) {
-      throw new ErroApp(
-        ERRO.INTERNO,
-        "Cabeçalho da aba '" + def.aba + "' divergente do schema na coluna " + (i + 1) +
-          " (esperado '" + esperado + "', encontrado '" + encontrado + "'). " +
-          "As colunas são posicionais — reordenar/renomear corromperia os dados; corrija o cabeçalho."
-      );
+  try {
+    const n = def.colunas.length;
+    const atual = aba.getRange(1, 1, 1, n).getValues()[0];
+    let precisaGravar = false;
+    for (let i = 0; i < n; i++) {
+      const esperado = def.colunas[i];
+      const encontrado = String(atual[i] == null ? "" : atual[i]).trim();
+      if (encontrado === "") {
+        atual[i] = esperado; // cabeçalho em branco (coluna nova ao fim) → preenche
+        precisaGravar = true;
+      } else if (encontrado !== esperado) {
+        console.error(
+          "Cabeçalho divergente na aba '" + def.aba + "', coluna " + (i + 1) +
+            ": esperado '" + esperado + "', encontrado '" + encontrado + "'."
+        );
+      }
     }
+    if (precisaGravar) aba.getRange(1, 1, 1, n).setValues([atual]);
+  } catch (e) {
+    console.error("validação de cabeçalho (" + def.aba + "): " + e);
   }
-  if (precisaGravar) aba.getRange(1, 1, 1, n).setValues([atual]);
 }
 
 /** Constrói { nomeColuna: índiceZeroBased } a partir do schema. */
