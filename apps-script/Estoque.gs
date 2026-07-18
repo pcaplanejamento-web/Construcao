@@ -62,21 +62,25 @@ function _entradaDespesaExistente(despesaId) {
 }
 
 /**
- * Gatilho automático (itens 2/11): ao QUITAR (pago=true) uma despesa Material com
- * quantidade > 0, cria a entrada_despesa (idempotente — 1 por despesa_id). Ao
- * DESPAGAR (pago=false), remove a entrada SÓ se ainda couber no estoque (em_estoque
- * ≥ quantidade); senão mantém (a remoção segura ocorre ao devolver o consumido, ou
- * é bloqueada na exclusão da despesa — Fase 5). NUNCA lança (roda no fluxo de
- * pagamento, sob o comLock do chamador).
+ * Sincroniza a entrada_despesa de estoque com o ESTADO ATUAL da despesa (itens 2/4/5/11).
+ * Invariante: a entrada DEVE existir ⇔ despesa PAGA + classificação Material + quantidade > 0.
+ *  - deve existir e não existe → cria (idempotente — 1 por despesa_id);
+ *  - NÃO deve existir e existe  → remove SE ainda couber no estoque (em_estoque ≥ qtd);
+ *    senão mantém (a remoção segura ocorre ao devolver o consumido, ou é bloqueada na
+ *    exclusão da despesa — Fase 5).
+ * Cobre DESPAGAR, RECLASSIFICAR (Material→Serviço deixa de "dever existir" e a entrada é
+ * removida — antes o early-return em !Material a deixava presa) e zerar quantitativo.
+ * NUNCA lança (roda no fluxo de pagamento/edição, sob o comLock do chamador).
  */
 function _sincronizarEstoqueDaDespesa(desp, pago) {
   if (!desp) return;
-  if (String(desp.classificacao || "") !== "Material") return;
   const despesaId = String(desp.id || "");
+  if (!despesaId) return;
   const existente = _entradaDespesaExistente(despesaId);
-  if (pago) {
-    const qtd = Number(desp.quantidade) || 0;
-    if (qtd <= 0 || existente) return; // sem quantitativo ou já criada
+  const qtd = Number(desp.quantidade) || 0;
+  const deveExistir = !!pago && String(desp.classificacao || "") === "Material" && qtd > 0;
+  if (deveExistir) {
+    if (existente) return; // já criada
     const agora = agoraIso();
     repoInserir(SCHEMA.ESTOQUE, {
       id: novoId(),
@@ -295,6 +299,16 @@ function estoqueRemover(data, sessao) {
             return String(m.par_id) === par;
           })
         : [mov];
+      // Estornar mexe nos DOIS lados (origem e destino) → exige acesso às DUAS obras,
+      // não só à do movimento clicado (antes o lado da outra obra era alterado sem checar).
+      const obrasChecadas = {};
+      lados.forEach(function (m) {
+        const oid = String(m.obra_id || "");
+        if (oid && !obrasChecadas[oid]) {
+          _obraAcessivel(oid, sessao.usuario_id);
+          obrasChecadas[oid] = true;
+        }
+      });
       const entrada = lados.find(function (m) {
         return String(m.tipo) === "entrada_transferencia";
       });

@@ -159,14 +159,16 @@ function itensAtualizar(data, sessao) {
 
   return comLock(function () {
     const item = repoAtualizar(SCHEMA.ITENS, "id", id, patch);
-    // DADOS CONECTADOS: a despesa guarda uma CÓPIA do item (nome/classificação/
-    // categoria). Ao editar o item, propaga para TODAS as despesas dele — mudar a
-    // CATEGORIA do item muda a despesa também (idem nome/classificação). Devolve as
-    // despesas afetadas p/ o front espelhar sem esperar novo snapshot.
+    // DADOS CONECTADOS: despesa, ESTOQUE e COTAÇÃO guardam uma CÓPIA do item
+    // (nome/classificação/subclassificação). Ao editar o item, propaga para os TRÊS —
+    // antes só as despesas eram atualizadas (estoque/cotações ficavam com o valor velho).
+    // Devolve as despesas afetadas p/ o front espelhar sem esperar novo snapshot.
     const despesasAfetadas = [];
     const mexeu =
       patch.nome !== undefined || patch.classificacao !== undefined || patch.categoria_id !== undefined;
     if (mexeu) {
+      // 1) DESPESAS (nome/classificação/subclassificação). Reclassificar (Material→Serviço)
+      //    tira a despesa do estoque → re-sincroniza a entrada_despesa (NUNCA lança).
       repoFiltrar(SCHEMA.DESPESAS, function (d) {
         return String(d.item_id) === String(id);
       }).forEach(function (d) {
@@ -177,7 +179,43 @@ function itensAtualizar(data, sessao) {
         if (patch.categoria_id !== undefined && String(d.categoria_id || "") !== String(item.categoria_id))
           p.categoria_id = item.categoria_id;
         if (Object.keys(p).length) {
-          despesasAfetadas.push(_lerDespesa(repoAtualizar(SCHEMA.DESPESAS, "id", d.id, p)));
+          const atualizada = repoAtualizar(SCHEMA.DESPESAS, "id", d.id, p);
+          despesasAfetadas.push(_lerDespesa(atualizada));
+          if (patch.classificacao !== undefined) {
+            try {
+              _sincronizarEstoqueDaDespesa(atualizada, _boolDe(atualizada.pago));
+            } catch (e) {
+              console.error("sync estoque (itensAtualizar): " + e);
+            }
+          }
+        }
+      });
+      // 2) ESTOQUE (classificação/subclassificação — sem nome) nos movimentos restantes.
+      if (patch.classificacao !== undefined || patch.categoria_id !== undefined) {
+        repoFiltrar(SCHEMA.ESTOQUE, function (m) {
+          return String(m.item_id) === String(id);
+        }).forEach(function (m) {
+          const p = {};
+          if (patch.classificacao !== undefined && String(m.classificacao || "") !== String(item.classificacao))
+            p.classificacao = item.classificacao;
+          if (patch.categoria_id !== undefined && String(m.categoria_id || "") !== String(item.categoria_id))
+            p.categoria_id = item.categoria_id;
+          if (Object.keys(p).length) repoAtualizar(SCHEMA.ESTOQUE, "id", m.id, p);
+        });
+      }
+      // 3) COTAÇÕES (descricao=nome, classificação, subclassificação).
+      repoFiltrar(SCHEMA.COTACOES, function (c) {
+        return String(c.item_id) === String(id);
+      }).forEach(function (c) {
+        const p = {};
+        if (patch.nome !== undefined && String(c.descricao || "") !== String(item.nome)) p.descricao = item.nome;
+        if (patch.classificacao !== undefined && String(c.classificacao || "") !== String(item.classificacao))
+          p.classificacao = item.classificacao;
+        if (patch.categoria_id !== undefined && String(c.categoria_id || "") !== String(item.categoria_id))
+          p.categoria_id = item.categoria_id;
+        if (Object.keys(p).length) {
+          p.atualizado_em = agoraIso();
+          repoAtualizar(SCHEMA.COTACOES, "id", c.id, p);
         }
       });
     }
@@ -185,7 +223,7 @@ function itensAtualizar(data, sessao) {
   });
 }
 
-/** Verdadeiro se o item está vinculado a alguma despesa, cotação OU oferta. */
+/** Verdadeiro se o item está vinculado a despesa, cotação, oferta OU movimento de estoque. */
 function _itemEmUso(itemId) {
   const naDespesa = repoEncontrar(SCHEMA.DESPESAS, function (d) {
     return String(d.item_id) === String(itemId);
@@ -197,8 +235,14 @@ function _itemEmUso(itemId) {
   if (naCotacao) return true;
   // Também bloqueia se uma OFERTA usa o item: senão desativá-lo deixaria o registro
   // dessa oferta como despesa falhar depois ("Item inválido." em _itemParaObra).
-  return !!repoEncontrar(SCHEMA.COTACAO_PRECOS, function (p) {
+  const naOferta = repoEncontrar(SCHEMA.COTACAO_PRECOS, function (p) {
     return String(p.item_id) === String(itemId);
+  });
+  if (naOferta) return true;
+  // E se há MOVIMENTO de estoque do item (entrada manual/transferência/consumo): desativar
+  // deixaria o saldo derivado apontando p/ um item morto na aba Estoque.
+  return !!repoEncontrar(SCHEMA.ESTOQUE, function (m) {
+    return String(m.item_id) === String(itemId);
   });
 }
 
@@ -207,7 +251,7 @@ function itensRemover(data, sessao) {
   const id = data && data.id;
   _itemDoUsuario(id, sessao.usuario_id);
   if (_itemEmUso(id)) {
-    lancar(ERRO.VALIDACAO, "Item vinculado a despesas/cotações; remova os vínculos primeiro.");
+    lancar(ERRO.VALIDACAO, "Item vinculado a despesas/cotações/estoque; remova os vínculos primeiro.");
   }
 
   return comLock(function () {

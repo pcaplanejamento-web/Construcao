@@ -104,7 +104,10 @@ export function balancos(despesas) {
       const naoDistribuido = Math.max(0, realizado - distribuido);
       if (naoDistribuido > EPS) recebido[ch] = (recebido[ch] || 0) + naoDistribuido;
       if (resto > EPS) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
-    } else if (d.ofertante_contato_id) {
+    } else if (d.ofertante_contato_id && !d.fornecedor_id) {
+      // Payee CANÔNICO: só conta no contato quando NÃO há empresa. No Material o contato é
+      // o VENDEDOR da empresa (não o recebedor do dinheiro) → o `realizado` vai à empresa
+      // abaixo, não ao contato (antes contava nos DOIS = mesma grana atribuída 2×).
       const ch = "c:" + d.ofertante_contato_id;
       recebido[ch] = (recebido[ch] || 0) + realizado;
       if (resto > EPS) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
@@ -176,8 +179,8 @@ export function balancosDePagamentos(despesas, pagamentos) {
       const naoDistribuido = Math.max(0, realizado - (distribuidoPorDespesa[d.id] || 0));
       if (naoDistribuido > EPS) recebido[ch] = (recebido[ch] || 0) + naoDistribuido;
       if (resto > EPS) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
-    } else if (d.ofertante_contato_id) {
-      const ch = "c:" + d.ofertante_contato_id;
+    } else if (d.ofertante_contato_id && !d.fornecedor_id) {
+      const ch = "c:" + d.ofertante_contato_id; // payee canônico: contato só sem empresa (ver balancos)
       recebido[ch] = (recebido[ch] || 0) + realizado;
       if (resto > EPS) saldoReceber[ch] = (saldoReceber[ch] || 0) + resto;
     }

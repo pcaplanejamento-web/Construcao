@@ -117,8 +117,9 @@ function categoriasIncorporar(data, sessao) {
 }
 
 /**
- * Garante que a subclassificação é editável pelo usuário: ou é dele, ou é uma
- * padrão GLOBAL (compartilhada e editável por qualquer usuário). Retorna a linha.
+ * Garante que a subclassificação existe e é do usuário OU é uma padrão GLOBAL.
+ * Retorna a linha. NB: para GLOBAL o chamador ainda exige admin (exigirAdmin) —
+ * aqui só passa a linha adiante; a mutação de GLOBAL por não-admin é barrada acima.
  */
 function _categoriaEditavel(catId, usuarioId) {
   const c = repoEncontrar(SCHEMA.CATEGORIAS, function (x) {
@@ -142,6 +143,7 @@ function categoriasAtualizar(data, sessao) {
   const id = data && data.id;
   const atual = _categoriaEditavel(id, sessao.usuario_id);
   const ehGlobal = String(atual.usuario_id) === CATEGORIA_GLOBAL;
+  if (ehGlobal) exigirAdmin(sessao); // categoria GLOBAL é cross-tenant → só admin (igual Classificações)
 
   const patch = {};
   if (data.nome !== undefined) {
@@ -161,8 +163,17 @@ function categoriasAtualizar(data, sessao) {
   });
 }
 
-/** Verdadeiro se a subclassificação está vinculada a despesa/cotação/fornecedor. */
+/** Verdadeiro se a subclassificação está vinculada a item/despesa/cotação/fornecedor. */
 function _categoriaEmUso(catId) {
+  // ITEM ativo com esta subclassificação (a criação de item a EXIGE) — antes ficava de
+  // fora e permitia excluir a subclassificação deixando itens apontando p/ um id morto.
+  const noItem = repoEncontrar(SCHEMA.ITENS, function (i) {
+    return (
+      String(i.categoria_id) === String(catId) &&
+      (i.ativo === true || i.ativo === "TRUE" || i.ativo === "true")
+    );
+  });
+  if (noItem) return true;
   const naDespesa = repoEncontrar(SCHEMA.DESPESAS, function (d) {
     return String(d.categoria_id) === String(catId);
   });
@@ -184,8 +195,9 @@ function categoriasRemover(data, sessao) {
   const id = data && data.id;
   const atual = _categoriaEditavel(id, sessao.usuario_id);
   const ehGlobal = String(atual.usuario_id) === CATEGORIA_GLOBAL;
+  if (ehGlobal) exigirAdmin(sessao); // categoria GLOBAL é cross-tenant → só admin (igual Classificações)
   if (_categoriaEmUso(id)) {
-    lancar(ERRO.VALIDACAO, "Subclassificação vinculada a despesas/cotações/empresas; remova os vínculos primeiro.");
+    lancar(ERRO.VALIDACAO, "Subclassificação vinculada a itens/despesas/cotações/empresas; remova os vínculos primeiro.");
   }
 
   return comLock(function () {

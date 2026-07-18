@@ -274,6 +274,18 @@ function despesasAtualizar(data, sessao) {
 
   return comLock(function () {
     const despesa = repoAtualizar(SCHEMA.DESPESAS, "id", id, patch);
+    // ESTOQUE (item 5): a edição pode mudar `pago`, a classificação (via item_id) ou o item —
+    // qualquer um altera se a despesa "deve virar estoque". Roteia pelo sync (cria/remove a
+    // entrada_despesa conforme o estado atual), em vez de gravar `pago` cru. NUNCA lança.
+    const mexeEstoque =
+      patch.pago !== undefined || patch.classificacao !== undefined || patch.item_id !== undefined;
+    if (mexeEstoque) {
+      try {
+        _sincronizarEstoqueDaDespesa(despesa, _boolDe(despesa.pago));
+      } catch (e) {
+        console.error("sync estoque (despesasAtualizar): " + e);
+      }
+    }
     return {
       despesa: _lerDespesa(despesa),
       resumo: _calcularResumo(atual.obra_id, sessao.usuario_id),

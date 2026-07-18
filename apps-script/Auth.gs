@@ -110,7 +110,31 @@ function montarConfigUsuario(usuarioId) {
 
 /* ----------------------------- Sessões -------------------------------- */
 
+/**
+ * Poda as sessões JÁ EXPIRADAS deste usuário (a aba Sessoes só crescia — cada login
+ * deixava a sessão anterior expirada para sempre). Best-effort: qualquer falha aqui é
+ * engolida (nunca bloqueia o login). Roda no login, que é infrequente.
+ */
+function _podarSessoesExpiradas(usuarioId) {
+  try {
+    const agoraMs = new Date().getTime();
+    repoFiltrar(SCHEMA.SESSOES, function (s) {
+      return (
+        String(s.usuario_id) === String(usuarioId) &&
+        s.expira_em &&
+        new Date(s.expira_em).getTime() < agoraMs
+      );
+    }).forEach(function (s) {
+      repoRemover(SCHEMA.SESSOES, "token", s.token);
+      cacheRemove(chaveSessao(s.token));
+    });
+  } catch (e) {
+    console.error("poda de sessões expiradas: " + e);
+  }
+}
+
 function _criarSessao(usuario) {
+  _podarSessoesExpiradas(usuario.id); // mantém a aba Sessoes enxuta (item 8 da auditoria)
   const token = novoId();
   const agora = new Date();
   const expira = new Date(agora.getTime() + SESSAO_HORAS * 3600 * 1000);

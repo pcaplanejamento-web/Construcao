@@ -209,7 +209,10 @@ function orcamentosAtualizar(data, sessao) {
   });
 }
 
-/** orcamentos.remover -> { id }. Bloqueia se há oferta registrada; senão cascade. */
+/** orcamentos.remover -> { id }. Bloqueia se há oferta registrada; senão remove o
+ *  orçamento e SÓ apaga as ofertas exclusivas dele — as que também pertencem a uma
+ *  COTAÇÃO (cotacao_id preenchido) são apenas DESVINCULADAS (orcamento_id=""), senão
+ *  apagar o orçamento sumia com a oferta lá na cotação também. */
 function orcamentosRemover(data, sessao) {
   const id = data && data.id;
   _orcamentoDoUsuario(id, sessao.usuario_id);
@@ -224,8 +227,15 @@ function orcamentosRemover(data, sessao) {
   }
 
   return comLock(function () {
+    const agora = agoraIso();
     ofertas.forEach(function (p) {
-      repoRemover(SCHEMA.COTACAO_PRECOS, "id", p.id);
+      if (String(p.cotacao_id || "")) {
+        // Oferta compartilhada com uma cotação → só solta do orçamento (preserva na cotação).
+        repoAtualizar(SCHEMA.COTACAO_PRECOS, "id", p.id, { orcamento_id: "", atualizado_em: agora });
+      } else {
+        // Oferta exclusiva do orçamento → apaga.
+        repoRemover(SCHEMA.COTACAO_PRECOS, "id", p.id);
+      }
     });
     repoRemover(SCHEMA.ORCAMENTOS, "id", id);
     return { id: id };

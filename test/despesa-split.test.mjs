@@ -53,9 +53,9 @@ test("balancos — paga ↔ recebe (contato+fornecedor e equipe)", () => {
   aprox(porChave["c:2"].pago, 600, "c:2 pago");
   aprox(porChave["c:2"].saldoApagar, 0, "c:2 pagou mais que o devido → 0");
 
-  // Quem recebe: ofertante contato / grupo / integrante.
-  aprox(porChave["c:c1"].recebido, 400, "contato ofertante recebido");
-  aprox(porChave["c:c1"].saldoReceber, 600, "contato ofertante saldo a receber");
+  // Quem recebe: no Material (contato-vendedor + empresa), o dinheiro vai à EMPRESA, não
+  // ao contato-vendedor → c:c1 não aparece como recebedor (payee canônico, sem dupla atribuição).
+  assert.equal(porChave["c:c1"], undefined, "contato-vendedor de Material não conta como recebedor");
   // Equipe com distribuição: os R$600 foram TODOS repassados aos integrantes (400+200),
   // então a chave da equipe fica com 0 de recebido (senão contaria 2× = 1200). Só o
   // "a receber" (resto não pago) fica na equipe.

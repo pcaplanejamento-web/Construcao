@@ -23,6 +23,10 @@ function _planilha() {
   );
 }
 
+// Abas cujo cabeçalho já foi conferido contra o schema NESTA execução (o global é
+// reinicializado a cada invocação do Apps Script) — evita reler o cabeçalho a cada op.
+var _CABECALHO_VALIDADO = {};
+
 /** Obtém (ou cria) a aba de um schema, garantindo a linha de cabeçalho. */
 function _abaDe(def) {
   const ss = _planilha();
@@ -31,6 +35,7 @@ function _abaDe(def) {
     aba = ss.insertSheet(def.aba);
     aba.appendRow(def.colunas);
     aba.setFrozenRows(1);
+    _CABECALHO_VALIDADO[def.aba] = true;
     return aba;
   }
   // Ao ADICIONAR colunas novas ao fim do schema, a grade da aba pode ter menos
@@ -38,7 +43,43 @@ function _abaDe(def) {
   // Garante a largura (idempotente: só insere na 1ª vez após o deploy).
   const faltam = def.colunas.length - aba.getMaxColumns();
   if (faltam > 0) aba.insertColumnsAfter(aba.getMaxColumns(), faltam);
+  if (!_CABECALHO_VALIDADO[def.aba]) {
+    _validarCabecalho(def, aba);
+    _CABECALHO_VALIDADO[def.aba] = true;
+  }
   return aba;
+}
+
+/**
+ * Confere que o cabeçalho da aba casa POSICIONALMENTE com o schema. O mapeamento
+ * nome→índice é por POSIÇÃO: um cabeçalho reordenado ou renomeado leria/gravaria na
+ * coluna errada em SILÊNCIO (corrupção de dados). Regra:
+ *  - célula com texto DIFERENTE do nome do schema naquela posição → lança (falha
+ *    ALTO, sem corromper — obriga a corrigir o cabeçalho);
+ *  - célula VAZIA (coluna recém-inserida por `insertColumnsAfter`) → grava o nome do
+ *    schema (auto-cura o append, idempotente).
+ * Roda 1× por aba por execução (cacheado em `_CABECALHO_VALIDADO`).
+ */
+function _validarCabecalho(def, aba) {
+  const n = def.colunas.length;
+  const atual = aba.getRange(1, 1, 1, n).getValues()[0];
+  let precisaGravar = false;
+  for (let i = 0; i < n; i++) {
+    const esperado = def.colunas[i];
+    const encontrado = String(atual[i] == null ? "" : atual[i]).trim();
+    if (encontrado === "") {
+      atual[i] = esperado; // cabeçalho em branco (coluna nova ao fim) → preenche
+      precisaGravar = true;
+    } else if (encontrado !== esperado) {
+      throw new ErroApp(
+        ERRO.INTERNO,
+        "Cabeçalho da aba '" + def.aba + "' divergente do schema na coluna " + (i + 1) +
+          " (esperado '" + esperado + "', encontrado '" + encontrado + "'). " +
+          "As colunas são posicionais — reordenar/renomear corromperia os dados; corrija o cabeçalho."
+      );
+    }
+  }
+  if (precisaGravar) aba.getRange(1, 1, 1, n).setValues([atual]);
 }
 
 /** Constrói { nomeColuna: índiceZeroBased } a partir do schema. */
