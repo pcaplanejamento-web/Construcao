@@ -526,8 +526,15 @@ function _pagamentoDeLeva(lv, d) {
     distribuicao: Array.isArray(lv.distribuicao) ? lv.distribuicao : [],
   };
 }
+// Memoizado por REFERÊNCIA das fatias que consome (pagamentos + despesas + obras). Antes
+// era reconstruído O(despesas) a CADA chamada; como `transferencias()`/`transferenciaDoPagamento`
+// e a grade de /pagamentos o chamam por card, virava O(P×D) por pintura. Invalida sozinho
+// quando qualquer fatia muda (o store cria novo objeto/array em cada `set`).
+let _memoPag = { pg: null, de: null, ob: null, out: [] };
 const pagamentos = () => {
-  const ents = store.get().pagamentos || [];
+  const s = store.get();
+  if (_memoPag.pg === s.pagamentos && _memoPag.de === s.despesas && _memoPag.ob === s.obras) return _memoPag.out;
+  const ents = s.pagamentos || [];
   const cobertas = new Set();
   ents.forEach((p) => {
     if (p.origem_leva_id) cobertas.add(String(p.origem_leva_id)); // leva legada migrada
@@ -539,7 +546,9 @@ const pagamentos = () => {
       if (lv && lv.id && !cobertas.has(String(lv.id))) sint.push(_pagamentoDeLeva(lv, d));
     });
   });
-  return ents.concat(sint);
+  const out = ents.concat(sint);
+  _memoPag = { pg: s.pagamentos, de: s.despesas, ob: s.obras, out };
+  return out;
 };
 const repasses = () => store.get().repasses;
 const pagamentosDaDespesa = (id) =>
@@ -576,13 +585,19 @@ function _transferenciaDePagamento(p) {
     pagamento_ids: [p.id],
   };
 }
+// Memoizado por REFERÊNCIA (transferências reais + saída memoizada de pagamentos()).
+let _memoTransf = { tr: null, pg: null, out: [] };
 const transferencias = () => {
   const reais = store.get().transferencias || [];
+  const pg = pagamentos();
+  if (_memoTransf.tr === reais && _memoTransf.pg === pg) return _memoTransf.out;
   // Só sintetiza transferência p/ pagamento SEM transferência real (dedup nos dois
   // sentidos: p.transferencia_id E o reverso t.pagamento_ids) — senão a transferência
   // ficava "replicada com o pagamento" (bug). `pagamentosSemTransferencia` é pura/testada.
-  const sint = pagamentosSemTransferencia(reais, pagamentos()).map(_transferenciaDePagamento);
-  return reais.concat(sint);
+  const sint = pagamentosSemTransferencia(reais, pg).map(_transferenciaDePagamento);
+  const out = reais.concat(sint);
+  _memoTransf = { tr: reais, pg, out };
+  return out;
 };
 /* -------------------------- Estoque (getters) ------------------------- */
 // Livro-razão de movimentos; a "lista do estoque" e os "consumidos" são derivados.

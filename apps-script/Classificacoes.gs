@@ -125,11 +125,30 @@ function classificacoesAtualizar(data, sessao) {
   });
 }
 
-/** classificacoes.remover -> { id } (ADMIN). Base não podem ser removidas (são fixas). */
+/** Verdadeiro se o NOME de classificação está em uso (item/despesa/cotação). O nome é
+ *  desnormalizado (string), então remover uma classificação em uso deixa o registro com
+ *  um nome órfão → `_classificacaoValida` (Itens.gs) o reverte p/ "Material" silenciosamente
+ *  (muda a regra de pagador e faz entrar em estoque). Por isso bloqueamos, como `_itemEmUso`. */
+function _classificacaoEmUso(nome) {
+  const n = String(nome || "").trim().toLowerCase();
+  if (!n) return false;
+  const bate = function (v) { return String(v || "").trim().toLowerCase() === n; };
+  return !!(
+    repoEncontrar(SCHEMA.ITENS, function (i) { return bate(i.classificacao); }) ||
+    repoEncontrar(SCHEMA.DESPESAS, function (d) { return bate(d.classificacao); }) ||
+    repoEncontrar(SCHEMA.COTACOES, function (c) { return bate(c.classificacao); })
+  );
+}
+
+/** classificacoes.remover -> { id } (ADMIN). Base não podem ser removidas (são fixas);
+ *  extras EM USO também não (senão itens/despesas ficam com classificação órfã). */
 function classificacoesRemover(data, sessao) {
   exigirAdmin(sessao);
   const id = data && data.id;
-  _classificacaoExtra(id);
+  const c = _classificacaoExtra(id);
+  if (_classificacaoEmUso(c.nome)) {
+    lancar(ERRO.VALIDACAO, "Esta classificação está em uso por itens/despesas/cotações. Reclassifique-os antes de excluir.");
+  }
   return comLock(function () {
     repoRemover(SCHEMA.CLASSIFICACOES, "id", id);
     return { id: id };

@@ -63,7 +63,12 @@ function _cotacaoDoUsuario(cotacaoId, usuarioId) {
   const c = repoEncontrar(SCHEMA.COTACOES, function (x) {
     return String(x.id) === String(cotacaoId);
   });
-  if (!c || String(c.usuario_id) !== String(usuarioId)) {
+  // Acesso por OBRA (dono/colaborador) OU criador — espelha o snapshot (que lista
+  // cotações da obra acessível). Estrito por usuario_id barrava o próprio dono quando
+  // o registro tinha usuario_id antigo/de outro membro. `_registroFinanceiroAcessivel`
+  // (Transferencias.gs) = usuario_id === me || _obraAcessivel(obra_id). Cotação sem
+  // obra_id (geral/pessoal) → só o criador.
+  if (!c || !_registroFinanceiroAcessivel(c, usuarioId)) {
     lancar(ERRO.NAO_AUTORIZADO, "Cotação não pode ser alterada.");
   }
   return c;
@@ -76,7 +81,8 @@ function _precoDoUsuario(precoId, usuarioId) {
     return String(x.id) === String(precoId);
   });
   if (!p) lancar(ERRO.NAO_ENCONTRADO, "Oferta não encontrada.");
-  if (String(p.usuario_id || "") === String(usuarioId)) return p;
+  // Criador OU oferta de OBRA acessível (inclui oferta AVULSA da obra, sem cotação/orçamento).
+  if (_registroFinanceiroAcessivel(p, usuarioId)) return p;
   if (String(p.cotacao_id || "")) {
     _cotacaoDoUsuario(p.cotacao_id, usuarioId);
     return p;

@@ -107,7 +107,11 @@ function _sincronizarMirrorDespesa(despesaId) {
   // quebrar o fluxo de pagamento). Roda sob o comLock do chamador.
   try {
     _sincronizarEstoqueDaDespesa(atualizada || desp, pago);
-  } catch (e) {}
+  } catch (e) {
+    // Não lança (não pode quebrar o pagamento), mas REGISTRA — senão uma falha no
+    // estoque some sem rastro e o estoque diverge do financeiro silenciosamente.
+    try { console.error("Falha ao sincronizar estoque da despesa " + despesaId + ": " + e); } catch (e2) {}
+  }
   return atualizada;
 }
 

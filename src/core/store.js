@@ -10,8 +10,19 @@ export function criarStore(inicial = {}) {
   let estado = { ...inicial };
   const ouvintes = new Set();
 
+  // Cada assinante é ISOLADO: se um componente lançar ao repintar, os IRMÃOS ainda
+  // atualizam e a EXCEÇÃO NÃO sobe pelo `set()` que a disparou (senão o try/catch de uma
+  // mutação faria rollback de uma gravação que o servidor já aceitou). Loga p/ diagnóstico.
+  function _seguro(fn) {
+    try {
+      fn(estado);
+    } catch (e) {
+      try { console.error("[store] assinante falhou ao repintar:", e); } catch (e2) {}
+    }
+  }
+
   function notificar() {
-    ouvintes.forEach((fn) => fn(estado));
+    ouvintes.forEach(_seguro);
   }
 
   return {
@@ -35,7 +46,7 @@ export function criarStore(inicial = {}) {
     /** Inscreve ouvinte; chama imediatamente com o estado atual. Retorna unsub. */
     subscribe(fn) {
       ouvintes.add(fn);
-      fn(estado);
+      _seguro(fn); // a chamada imediata também é isolada
       return () => ouvintes.delete(fn);
     },
   };

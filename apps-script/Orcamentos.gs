@@ -34,7 +34,9 @@ function _orcamentoDoUsuario(id, usuarioId) {
   const o = repoEncontrar(SCHEMA.ORCAMENTOS, function (x) {
     return String(x.id) === String(id);
   });
-  if (!o || String(o.usuario_id) !== String(usuarioId)) {
+  // Acesso por OBRA (dono/colaborador) OU criador — espelha o snapshot. Orçamento sem
+  // obra_id (pessoal) → só o criador. Ver _registroFinanceiroAcessivel (Transferencias.gs).
+  if (!o || !_registroFinanceiroAcessivel(o, usuarioId)) {
     lancar(ERRO.NAO_AUTORIZADO, "Orçamento não encontrado.");
   }
   return o;
