@@ -110,6 +110,12 @@ class ContatoDetailView extends BaseElement {
             <div id="gradeOrc"></div>
           </ui-card>
         </div>
+        <div slot="vendas">
+          <ui-card mesa title="Mesa com vendas — quanto este contato nos vendeu">
+            <ui-data-table id="tabVendas" fluido clicavel
+              empty-text="Este contato ainda não nos vendeu nada."></ui-data-table>
+          </ui-card>
+        </div>
         <div slot="dados">
           <ui-card mesa title="Mesa com dados — a receber e a pagar por obra">
             <ui-data-table id="tabDados" fluido clicavel
@@ -124,6 +130,7 @@ class ContatoDetailView extends BaseElement {
     abas.push({ id: "equipes", rotulo: "Equipes", icone: "usuario" });
     abas.push({ id: "ofertas", rotulo: "Ofertas", icone: "cifrao" });
     abas.push({ id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" });
+    abas.push({ id: "vendas", rotulo: "Vendas", icone: "cifrao" });
     abas.push({ id: "dados", rotulo: "Dados", icone: "grafico" });
     alvo.querySelector("#abas").abas = abas;
 
@@ -157,6 +164,27 @@ class ContatoDetailView extends BaseElement {
     });
     this._tabOfertas.addEventListener("linha", (e) => abrirOferta(e.detail.linha));
     this._gradeOrc = alvo.querySelector("#gradeOrc");
+
+    // Vendas: quanto ele nos vendeu, quebrado por EMPRESA representada (e como pessoa
+    // física). Visão COMERCIAL — na venda por empresa quem recebe o dinheiro é a empresa,
+    // por isso esses valores NÃO aparecem em "Recebido" na aba Dados.
+    this._tabVendas = alvo.querySelector("#tabVendas");
+    this._tabVendas.columns = [
+      { chave: "_origem", titulo: "Vendeu por" },
+      { chave: "_total", titulo: "Vendido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "_recebido", titulo: "Já pago", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      {
+        chave: "_resto",
+        titulo: "A pagar",
+        alinhar: "dir",
+        moeda: true,
+        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
+      },
+    ];
+    this._tabVendas.addEventListener("linha", (e) => {
+      const fid = e.detail.linha.id;
+      if (fid) irPara("/fornecedores/" + fid); // linha da pessoa física não tem empresa
+    });
 
     // Dados: Pago/Recebido + Saldo a pagar/Saldo a receber, por obra.
     this._tabDados = alvo.querySelector("#tabDados");
@@ -220,15 +248,40 @@ class ContatoDetailView extends BaseElement {
       dataStore.orcamentos().filter((o) => String(o.contato_id) === String(c.id))
     );
 
-    // Dados: por obra, Pago/Recebido + Saldo a pagar/receber (modelo paga ↔ recebe).
+    // Dados (por obra) + Vendas (por empresa representada) — UMA passada de `balancos`
+    // por obra alimenta as duas abas.
     const dados = [];
+    const porEmpresa = {}; // fid ("" = pessoa física) -> {total, recebido, saldoReceber}
     dataStore.obras().forEach((o) => {
-      const v = balancos(dataStore.despesas(o.id)).porChave[chave];
+      const { porChave, porRepresentante } = balancos(dataStore.despesas(o.id));
+      const v = porChave[chave];
       if (v && (v.pago > 0.01 || v.recebido > 0.01 || v.saldoApagar > 0.01 || v.saldoReceber > 0.01)) {
         dados.push({ id: o.id, _obra: o.nome, _pago: v.pago, _recebido: v.recebido, _pagar: v.saldoApagar, _receber: v.saldoReceber });
       }
+      const rep = porRepresentante[c.id];
+      if (rep) {
+        Object.keys(rep.empresas).forEach((fid) => {
+          const e = rep.empresas[fid];
+          const acc = (porEmpresa[fid] = porEmpresa[fid] || { total: 0, recebido: 0, saldoReceber: 0 });
+          acc.total += e.total;
+          acc.recebido += e.recebido;
+          acc.saldoReceber += e.saldoReceber;
+        });
+      }
     });
     this._tabDados.rows = dados;
+    this._tabVendas.rows = Object.keys(porEmpresa)
+      .map((fid) => ({
+        id: fid, // "" = venda direta (sem empresa) → linha não navega
+        _origem: fid
+          ? (dataStore.fornecedores().find((f) => String(f.id) === String(fid)) || {}).nome || "—"
+          : "Conta própria (pessoa física)",
+        _total: porEmpresa[fid].total,
+        _recebido: porEmpresa[fid].recebido,
+        _resto: porEmpresa[fid].saldoReceber,
+      }))
+      .filter((r) => r._total > 0.01)
+      .sort((a, b) => b._total - a._total);
 
     this.pintarTopo();
   }

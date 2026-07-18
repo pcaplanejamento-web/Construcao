@@ -10,6 +10,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
 import { totalPago, distribuicao, parseLista, statusPagamento } from "./despesa-split.js";
 import { ofertanteNome, rotuloOrcamento } from "../orcamentos/orcamento-util.js";
+import { corDeId } from "../shared/cor-id.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-lista-gestos.js";
 import { injetarBuscaNoCard } from "../../components/ui-busca.js";
@@ -24,13 +25,7 @@ function _empresaNome(id) {
 
 function _esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-/** Cor ESTÁVEL por id (hash → HSL) — usada p/ segmentar despesas por orçamento. */
-function _corDeId(id) {
-  const s = String(id || "");
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return `hsl(${(h * 137) % 360} 62% 46%)`; // ×137 (coprimo de 360) espalha bem as matizes
-}
+// Cor ESTÁVEL por id (hash → HSL) — fonte única em shared/cor-id.js.
 
 class DespesaTable extends BaseElement {
   set despesas(v) {
@@ -385,7 +380,7 @@ class DespesaTable extends BaseElement {
     if (!this._segCache) this._segCache = {};
     if (!this._segCache[orcId]) {
       const orc = dataStore.orcamento(orcId) || {};
-      this._segCache[orcId] = { orcId, cor: _corDeId(orcId), label: rotuloOrcamento(orc) || "Orçamento" };
+      this._segCache[orcId] = { orcId, cor: corDeId(orcId), label: rotuloOrcamento(orc) || "Orçamento" };
     }
     return this._segCache[orcId];
   }

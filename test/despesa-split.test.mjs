@@ -70,6 +70,66 @@ test("balancos — paga ↔ recebe (contato+fornecedor e equipe)", () => {
   aprox(porFornecedor["f1"].saldoReceber, 600, "fornecedor saldo a receber");
 });
 
+test("balancos — PESSOA FÍSICA (sem empresa) recebe normalmente", () => {
+  // Autônomo/prestador: não há empresa, então o dinheiro é DELE — tem que aparecer
+  // em porChave. (O payee canônico só desvia p/ a empresa quando ela existe.)
+  const d = {
+    valor: 1000,
+    fornecedor_id: "",
+    ofertante_contato_id: "joao",
+    responsaveis: [{ chave: "u:1", pct: 100 }],
+    pagamentos_realizados: [{ valor: 700, pagador: "u:1", distribuicao: [] }],
+  };
+  const { porChave, porRepresentante } = balancos([d]);
+  aprox(porChave["c:joao"].recebido, 700, "pessoa física recebeu");
+  aprox(porChave["c:joao"].saldoReceber, 300, "pessoa física ainda tem a receber");
+  // E também conta como "vendeu p/ nós", sob a chave de empresa vazia (venda direta).
+  aprox(porRepresentante["joao"].total, 1000, "pessoa física vendeu 1000");
+  aprox(porRepresentante["joao"].empresas[""].recebido, 700, "venda direta (sem empresa)");
+});
+
+test("porRepresentante — quanto cada vendedor intermediou (visão COMERCIAL)", () => {
+  // Maria vende pela Alfa (o dinheiro vai à Alfa) e também presta serviço por conta
+  // própria. As duas vendas somam no total DELA, separadas por empresa.
+  const porAlfa = {
+    valor: 1000,
+    fornecedor_id: "alfa",
+    ofertante_contato_id: "maria",
+    responsaveis: [{ chave: "u:1", pct: 100 }],
+    pagamentos_realizados: [{ valor: 400, pagador: "u:1", distribuicao: [] }],
+  };
+  const porContaPropria = {
+    valor: 500,
+    fornecedor_id: "",
+    ofertante_contato_id: "maria",
+    responsaveis: [{ chave: "u:1", pct: 100 }],
+    pagamentos_realizados: [{ valor: 500, pagador: "u:1", distribuicao: [] }],
+  };
+  const { porChave, porFornecedor, porRepresentante } = balancos([porAlfa, porContaPropria]);
+
+  // Financeiro: os 400 da venda pela Alfa são da ALFA; só os 500 diretos são da Maria.
+  aprox(porFornecedor["alfa"].recebido, 400, "empresa recebeu a venda intermediada");
+  aprox(porChave["c:maria"].recebido, 500, "Maria só recebe o que vendeu direto");
+
+  // Comercial: a Maria vendeu 1500 no total (1000 pela Alfa + 500 direto).
+  const m = porRepresentante["maria"];
+  aprox(m.total, 1500, "total vendido pela Maria");
+  aprox(m.recebido, 900, "já pago através da Maria (400 + 500)");
+  aprox(m.saldoReceber, 600, "ainda a pagar pelas vendas da Maria");
+  aprox(m.empresas["alfa"].total, 1000, "vendido representando a Alfa");
+  aprox(m.empresas[""].total, 500, "vendido como pessoa física");
+});
+
+test("porRepresentante — equipe ofertante não gera representante", () => {
+  const d = {
+    valor: 800,
+    ofertante_equipe_id: "e1",
+    responsaveis: [{ chave: "u:1", pct: 100 }],
+    pagamentos_realizados: [],
+  };
+  assert.deepEqual(balancos([d]).porRepresentante, {}, "equipe não tem vendedor pessoa");
+});
+
 test("balancos — sem pagamento: tudo a pagar / a receber", () => {
   const d = {
     valor: 8000,

@@ -16,6 +16,7 @@ import { statusPrazo, textoPrazo, corPrazo, iconePrazo, ehFinalizada } from "./p
 import { balancos, restoDespesa } from "../despesas/despesa-split.js";
 import { COR_CLASSIFICACAO as COR_CLASSIFICACAO_OBRA } from "../../core/classificacao.js";
 import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
+import { corDeId } from "../shared/cor-id.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
 import "../../components/ui-card.js";
@@ -55,14 +56,7 @@ import { confirmar, avisar } from "../../components/confirmar.js";
 import { abrirOrigemEstoque } from "../shared/vinculos.js";
 import "../despesas/category-badge.js";
 
-/** Cor ESTÁVEL por id/chave (hash → HSL) — para os donuts de participante/empresa/item
- *  (espelha `_corDeId` de despesa-table). Mesma entrada → sempre a mesma matiz. */
-function _corDeId(id) {
-  const s = String(id || "");
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return `hsl(${(h * 137) % 360} 62% 46%)`; // ×137 (coprimo de 360) espalha as matizes
-}
+// Cor ESTÁVEL por id/chave (participante/empresa/item/representante): shared/cor-id.js.
 
 class ObraDetailView extends BaseElement {
   constructor() {
@@ -133,6 +127,7 @@ class ObraDetailView extends BaseElement {
           <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
           <ui-card><category-breakdown id="gPart" titulo="Recebido por participante" vazio="Ninguém recebeu valor ainda."></category-breakdown></ui-card>
           <ui-card><category-breakdown id="gEmp" titulo="Total por empresa" vazio="Nenhuma empresa com despesas."></category-breakdown></ui-card>
+          <ui-card><category-breakdown id="gRep" titulo="Vendas por representante" vazio="Nenhum representante com vendas."></category-breakdown></ui-card>
           <ui-card><grafico-rosca id="gEst" titulo="Quantidade em estoque por item" vazio="Nenhum item em estoque."></grafico-rosca></ui-card>
         </div>
         <div slot="despesas" class="despesas-aba">
@@ -264,6 +259,7 @@ class ObraDetailView extends BaseElement {
     this._mensal = alvo.querySelector("#mensal");
     this._gPart = alvo.querySelector("#gPart");
     this._gEmp = alvo.querySelector("#gEmp");
+    this._gRep = alvo.querySelector("#gRep");
     this._gEst = alvo.querySelector("#gEst");
     this._tabela = alvo.querySelector("#tabela");
 
@@ -808,11 +804,11 @@ class ObraDetailView extends BaseElement {
    * id/chave; cada gráfico some sozinho (estado vazio) quando não há dado.
    */
   montarGraficosExtras(despesas) {
-    const { porChave, porFornecedor } = balancos(despesas);
+    const { porChave, porFornecedor, porRepresentante } = balancos(despesas);
 
     if (this._gPart) {
       this._gPart.porCategoria = Object.keys(porChave)
-        .map((ch) => ({ nome: this._nomeDaChave(ch), cor: _corDeId(ch), total: Number(porChave[ch].recebido) || 0 }))
+        .map((ch) => ({ nome: this._nomeDaChave(ch), cor: corDeId(ch), total: Number(porChave[ch].recebido) || 0 }))
         .filter((x) => x.total > 0.01)
         .sort((a, b) => b.total - a.total);
     }
@@ -821,8 +817,22 @@ class ObraDetailView extends BaseElement {
       this._gEmp.porCategoria = Object.keys(porFornecedor)
         .map((fid) => ({
           nome: (dataStore.fornecedores().find((f) => String(f.id) === String(fid)) || {}).nome || "—",
-          cor: _corDeId(fid),
+          cor: corDeId(fid),
           total: Number(porFornecedor[fid].total) || 0,
+        }))
+        .filter((x) => x.total > 0.01)
+        .sort((a, b) => b.total - a.total);
+    }
+
+    if (this._gRep) {
+      // COMERCIAL (≠ caixa): quanto cada VENDEDOR intermediou. Inclui a venda feita pela
+      // empresa — ali o dinheiro vai à empresa (aparece em "Total por empresa"), mas quem
+      // vendeu foi a pessoa. Por isso este gráfico NÃO soma com os outros dois.
+      this._gRep.porCategoria = Object.keys(porRepresentante)
+        .map((cid) => ({
+          nome: (dataStore.contatos().find((c) => String(c.id) === String(cid)) || {}).nome || "—",
+          cor: corDeId(cid),
+          total: Number(porRepresentante[cid].total) || 0,
         }))
         .filter((x) => x.total > 0.01)
         .sort((a, b) => b.total - a.total);
@@ -836,7 +846,7 @@ class ObraDetailView extends BaseElement {
         .estoqueDaObra(this.obraId)
         .map((it) => ({
           nome: (dataStore.item(it.item_id) || {}).nome || "—",
-          cor: _corDeId(it.item_id),
+          cor: corDeId(it.item_id),
           total: Number(it.em_estoque) || 0,
           unidade: it.unidade || "",
         }))

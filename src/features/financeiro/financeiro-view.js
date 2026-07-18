@@ -72,6 +72,13 @@ class FinanceiroView extends BaseElement {
                 empty-texto="Quando houver valores a pagar por responsável, eles aparecem aqui."></ui-data-table>
             </ui-card>
           </div>
+          <div slot="representantes">
+            <ui-card mesa title="Mesa com ranking de representantes por volume vendido">
+              <ui-data-table id="tabReps" fluido clicavel empty-icone="cifrao"
+                empty-titulo="Nenhuma venda por representante"
+                empty-texto="Quando alguém vender para você (por uma empresa ou por conta própria), o ranking aparece aqui."></ui-data-table>
+            </ui-card>
+          </div>
           <div slot="aberto">
             <ui-card mesa title="Mesa com despesas em aberto">
               <ui-data-table id="tabAberto" fluido clicavel empty-icone="recibo"
@@ -88,8 +95,27 @@ class FinanceiroView extends BaseElement {
     this.$("#abas").abas = [
       { id: "receber", rotulo: "A receber", icone: "carteira" },
       { id: "pagar", rotulo: "A pagar", icone: "recibo" },
+      { id: "representantes", rotulo: "Representantes", icone: "contato" },
       { id: "aberto", rotulo: "Em aberto", icone: "cifrao" },
     ];
+    // Ranking COMERCIAL (≠ caixa): quem mais nos vendeu, somando o que vendeu por
+    // empresas e por conta própria. Na venda por empresa o dinheiro entra na EMPRESA
+    // (aba "A receber"); aqui o crédito é de quem intermediou.
+    this._tabReps = this.$("#tabReps");
+    this._tabReps.columns = [
+      { chave: "_nome", titulo: "Representante" },
+      { chave: "_empresas", titulo: "Vendeu por" },
+      { chave: "_total", titulo: "Vendido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "_recebido", titulo: "Já pago", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      {
+        chave: "_resto",
+        titulo: "A pagar",
+        alinhar: "dir",
+        moeda: true,
+        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
+      },
+    ];
+    this._tabReps.addEventListener("linha", (e) => irPara("/contatos/" + e.detail.linha.id));
     this._tabReceber = this.$("#tabReceber");
     this._tabReceber.columns = [
       { chave: "_nome", titulo: "Destinatário" },
@@ -135,7 +161,7 @@ class FinanceiroView extends BaseElement {
       return;
     }
     const despesas = dataStore.todasDespesas();
-    const { porChave } = balancos(despesas);
+    const { porChave, porRepresentante } = balancos(despesas);
 
     // Mapa global de participantes (resolve nomes de responsáveis u:/c:).
     this._mapaPart = {};
@@ -194,6 +220,30 @@ class FinanceiroView extends BaseElement {
       .map((ch) => ({ _nome: this._nome(ch), _pago: porChave[ch].pago, _saldo: porChave[ch].saldoApagar }))
       .filter((r) => r._saldo > 0.01 || r._pago > 0.01)
       .sort((a, b) => b._saldo - a._saldo);
+
+    // Representantes — ranking por volume vendido (todas as obras). "Vendeu por" lista as
+    // empresas representadas; venda sem empresa vira "conta própria".
+    this._tabReps.rows = Object.keys(porRepresentante)
+      .map((cid) => {
+        const r = porRepresentante[cid];
+        const origens = Object.keys(r.empresas)
+          .map((fid) =>
+            fid
+              ? (dataStore.fornecedores().find((f) => String(f.id) === String(fid)) || {}).nome || "—"
+              : "conta própria"
+          )
+          .sort();
+        return {
+          id: cid,
+          _nome: (dataStore.contatos().find((c) => String(c.id) === String(cid)) || {}).nome || "—",
+          _empresas: origens.join(", ") || "—",
+          _total: r.total,
+          _recebido: r.recebido,
+          _resto: r.saldoReceber,
+        };
+      })
+      .filter((r) => r._total > 0.01)
+      .sort((a, b) => b._total - a._total);
 
     // Em aberto — despesas com resto > 0.
     this._tabAberto.rows = despesas

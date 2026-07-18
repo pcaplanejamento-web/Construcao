@@ -106,6 +106,12 @@ class FornecedorDetailView extends BaseElement {
             <div id="gradeOrc"></div>
           </ui-card>
         </div>
+        <div slot="representantes" class="aba">
+          <ui-card mesa title="Mesa com representantes — quanto cada um vendeu">
+            <ui-data-table id="tabReps" fluido clicavel
+              empty-text="Nenhum representante desta empresa vendeu ainda."></ui-data-table>
+          </ui-card>
+        </div>
         <div slot="dados" class="aba">
           <ui-card mesa title="Mesa com dados — a receber por obra">
             <ui-data-table id="tabDados" fluido clicavel
@@ -118,6 +124,7 @@ class FornecedorDetailView extends BaseElement {
       { id: "contatos", rotulo: "Contatos", icone: "contato" },
       { id: "ofertas", rotulo: "Ofertas", icone: "cifrao" },
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
+      { id: "representantes", rotulo: "Representantes", icone: "cifrao" },
       { id: "dados", rotulo: "Dados", icone: "grafico" },
     ];
 
@@ -149,6 +156,25 @@ class FornecedorDetailView extends BaseElement {
     this._tabOfertas.addEventListener("linha", (e) => abrirOferta(e.detail.linha));
 
     this._gradeOrc = alvo.querySelector("#gradeOrc");
+
+    // Representantes: quanto cada vendedor DESTA empresa intermediou (todas as obras).
+    // Visão COMERCIAL — quem recebe o dinheiro é a empresa (aba Dados); aqui é quem VENDEU.
+    this._tabReps = alvo.querySelector("#tabReps");
+    this._tabReps.columns = [
+      { chave: "_nome", titulo: "Representante", formato: (v) => avatarNomeHtml(v) },
+      { chave: "_total", titulo: "Vendido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      { chave: "_recebido", titulo: "Já pago", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
+      {
+        chave: "_resto",
+        titulo: "A pagar",
+        alinhar: "dir",
+        moeda: true,
+        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`),
+      },
+    ];
+    this._tabReps.addEventListener("linha", (e) => {
+      irPara("/contatos/" + e.detail.linha.id);
+    });
 
     // Dados: Recebido / Saldo a receber por obra (a empresa recebe).
     this._tabDados = alvo.querySelector("#tabDados");
@@ -209,13 +235,36 @@ class FornecedorDetailView extends BaseElement {
       dataStore.orcamentos().filter((o) => String(o.fornecedor_id) === String(f.id))
     );
 
-    // Dados: por obra, recebido/saldo a receber das despesas desta empresa.
+    // Dados (por obra) + Representantes (por vendedor) — UMA passada de `balancos` por
+    // obra alimenta as duas abas (antes o loop já existia só p/ Dados).
     const dados = [];
+    const porRep = {};
     dataStore.obras().forEach((o) => {
-      const v = balancos(dataStore.despesas(o.id)).porFornecedor[f.id];
+      const { porFornecedor, porRepresentante } = balancos(dataStore.despesas(o.id));
+      const v = porFornecedor[f.id];
       if (v) dados.push({ id: o.id, _obra: o.nome, _recebido: v.recebido, _resto: v.saldoReceber });
+      // Só o que o vendedor fez REPRESENTANDO esta empresa (`empresas[f.id]`) — o que ele
+      // vendeu por conta própria ou por outra empresa fica de fora desta aba.
+      Object.keys(porRepresentante).forEach((cid) => {
+        const daEmpresa = porRepresentante[cid].empresas[String(f.id)];
+        if (!daEmpresa) return;
+        const acc = (porRep[cid] = porRep[cid] || { total: 0, recebido: 0, saldoReceber: 0 });
+        acc.total += daEmpresa.total;
+        acc.recebido += daEmpresa.recebido;
+        acc.saldoReceber += daEmpresa.saldoReceber;
+      });
     });
     this._tabDados.rows = dados.sort((a, b) => b._resto - a._resto);
+    this._tabReps.rows = Object.keys(porRep)
+      .map((cid) => ({
+        id: cid,
+        _nome: (dataStore.contatos().find((c) => String(c.id) === String(cid)) || {}).nome || "—",
+        _total: porRep[cid].total,
+        _recebido: porRep[cid].recebido,
+        _resto: porRep[cid].saldoReceber,
+      }))
+      .filter((r) => r._total > 0.01)
+      .sort((a, b) => b._total - a._total);
 
     this.pintarTopo();
   }

@@ -64,14 +64,55 @@ export function statusPagamento(despesa) {
  *  - **saldoApagar**[chave] = max(0, devido − pago); devido = Σ valor×(pct/100)
  *  - **saldoReceber**[chave]= ofertante (`c:`/`e:`) → Σ resto (grupo no nível `e:`)
  *  - **porFornecedor**[fid] = { total, recebido(=Σrealizado), saldoReceber(=Σresto) }
- * Retorna { porChave:{chave:{pago,recebido,saldoApagar,saldoReceber}}, porFornecedor }.
+ *  - **porRepresentante**[contato_id] = visão COMERCIAL (quanto o vendedor intermediou),
+ *    ver `_acumularRepresentante`. NÃO é caixa e NUNCA soma com os de cima.
+ *
+ * Quem RECEBE o dinheiro (payee canônico): empresa quando a despesa tem empresa; senão o
+ * contato (pessoa física/autônomo recebe normalmente) ou a equipe. Só o par empresa+vendedor
+ * roteia p/ a empresa — daí `porRepresentante` existir, p/ o vendedor não sumir dos números.
+ *
+ * Retorna { porChave:{chave:{pago,recebido,saldoApagar,saldoReceber}}, porFornecedor, porRepresentante }.
  */
+/**
+ * Acumula a venda de um contato-ofertante no agregado COMERCIAL (por representante).
+ *
+ * Responde "quanto a Maria, da Alfa, nos vendeu" — pergunta DIFERENTE de "quem recebeu
+ * o dinheiro" (`porChave`/`porFornecedor`). No Material o dinheiro vai à EMPRESA, mas a
+ * venda foi INTERMEDIADA por uma pessoa; sem este agregado o vendedor sumiria de tudo.
+ * Os dois nunca se somam: um mede caixa, o outro mede volume vendido.
+ *
+ * Forma: porRepresentante[contato_id] = { total, recebido, saldoReceber, empresas:{ [fid]: {…} } }
+ * onde `fid` = "" significa venda como PESSOA FÍSICA (sem empresa). O contato pode
+ * representar mais de uma empresa — por isso `empresas` é um mapa, não um campo único.
+ */
+function _acumularRepresentante(porRepresentante, d, valor, realizado, resto) {
+  const cid = d.ofertante_contato_id;
+  if (!cid) return; // ofertante equipe (ou sem ofertante) não tem representante
+  const rep = (porRepresentante[cid] = porRepresentante[cid] || {
+    total: 0,
+    recebido: 0,
+    saldoReceber: 0,
+    empresas: {},
+  });
+  const fid = String(d.fornecedor_id || ""); // "" = vendeu como pessoa física
+  const e = (rep.empresas[fid] = rep.empresas[fid] || { total: 0, recebido: 0, saldoReceber: 0 });
+  rep.total += valor;
+  e.total += valor;
+  rep.recebido += realizado;
+  e.recebido += realizado;
+  if (resto > EPS) {
+    rep.saldoReceber += resto;
+    e.saldoReceber += resto;
+  }
+}
+
 export function balancos(despesas) {
   const pago = {};
   const devido = {};
   const recebido = {};
   const saldoReceber = {};
   const porFornecedor = {};
+  const porRepresentante = {};
   (despesas || []).forEach((d) => {
     const valor = Number(d.valor) || 0;
     const realizado = totalRealizado(d);
@@ -118,6 +159,8 @@ export function balancos(despesas) {
       f.recebido += realizado;
       if (resto > EPS) f.saldoReceber += resto; // epsilon: antes carregava resíduo < 1 centavo
     }
+    // Visão COMERCIAL (independente de quem recebeu): quanto este vendedor intermediou.
+    _acumularRepresentante(porRepresentante, d, valor, realizado, resto);
   });
 
   const porChave = {};
@@ -126,7 +169,7 @@ export function balancos(despesas) {
   Object.keys(recebido).forEach((k) => (g(k).recebido = recebido[k]));
   Object.keys(saldoReceber).forEach((k) => (g(k).saldoReceber = saldoReceber[k]));
   Object.keys(devido).forEach((k) => (g(k).saldoApagar = Math.max(0, (devido[k] || 0) - (pago[k] || 0))));
-  return { porChave, porFornecedor };
+  return { porChave, porFornecedor, porRepresentante };
 }
 
 /**
@@ -143,6 +186,7 @@ export function balancosDePagamentos(despesas, pagamentos) {
   const recebido = {};
   const saldoReceber = {};
   const porFornecedor = {};
+  const porRepresentante = {};
   const alocadoPorDespesa = {};
   const distribuidoPorDespesa = {}; // quanto de cada despesa já foi p/ integrantes (não recontar na equipe)
   (pagamentos || []).forEach((p) => {
@@ -190,6 +234,8 @@ export function balancosDePagamentos(despesas, pagamentos) {
       f.recebido += realizado;
       if (resto > EPS) f.saldoReceber += resto;
     }
+    // Visão COMERCIAL (independente de quem recebeu): quanto este vendedor intermediou.
+    _acumularRepresentante(porRepresentante, d, valor, realizado, resto);
   });
   const porChave = {};
   const g = (k) => (porChave[k] = porChave[k] || { pago: 0, recebido: 0, saldoApagar: 0, saldoReceber: 0 });
@@ -197,7 +243,7 @@ export function balancosDePagamentos(despesas, pagamentos) {
   Object.keys(recebido).forEach((k) => (g(k).recebido = recebido[k]));
   Object.keys(saldoReceber).forEach((k) => (g(k).saldoReceber = saldoReceber[k]));
   Object.keys(devido).forEach((k) => (g(k).saldoApagar = Math.max(0, (devido[k] || 0) - (pago[k] || 0))));
-  return { porChave, porFornecedor };
+  return { porChave, porFornecedor, porRepresentante };
 }
 
 /** "nenhum" | "unico" | "distribuido" conforme o nº de pagantes com valor > 0. */
