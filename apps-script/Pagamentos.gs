@@ -192,6 +192,19 @@ function _pagamentoMontar(data, sessao) {
   };
 }
 
+/** Re-valida (AUTORITATIVO — chamar DENTRO do comLock, logo antes de gravar) que as
+ *  alocações não estouram o valor das despesas. Fecha a janela TOCTOU: a validação de
+ *  _pagamentoMontar acontece ANTES do lock, então duplo-clique/2 abas passavam ambas e
+ *  gravavam pagamento em dobro. Aqui relê o já-alocado (que inclui o concorrente que venceu). */
+function _revalidarAlocacoesNaoEstouram(alocacoes, usuarioId) {
+  (alocacoes || []).forEach(function (a) {
+    const d = _despesaAcessivel(String((a && a.despesa_id) || ""), usuarioId);
+    const jaAlocado = _totalAlocadoNaDespesa(String(a.despesa_id), null);
+    if (jaAlocado + (Number(a.valor) || 0) - (Number(d.valor) || 0) > 0.01)
+      lancar(ERRO.VALIDACAO, "O pagamento excede o valor da despesa (ela já foi paga em outra operação).");
+  });
+}
+
 /** Grava um pagamento (já montado/validado) e re-sincroniza os espelhos. SEM lock. */
 function _pagamentoGravar(pagamento) {
   repoInserir(SCHEMA.PAGAMENTOS, pagamento);
@@ -229,6 +242,7 @@ function pagamentosLancar(data, sessao) {
   const pagamento = _pagamentoMontar(data, sessao);
   const obraId = String(pagamento.obra_id || "");
   return comLock(function () {
+    _revalidarAlocacoesNaoEstouram(_parseJsonLista(pagamento.alocacoes), sessao.usuario_id); // TOCTOU
     const r = _pagamentoGravar(pagamento);
     return {
       pagamento: r.pagamento,

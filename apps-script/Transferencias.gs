@@ -185,6 +185,9 @@ function transferenciasLancar(data, sessao) {
   };
 
   return comLock(function () {
+    // TOCTOU: re-valida não-estouro DENTRO do lock (a validação de _pagamentoMontar rodou
+    // antes do lock; duplo-clique/2 abas passavam ambas e pagavam a despesa 2×).
+    _revalidarAlocacoesNaoEstouram(alocacoes, usuarioId);
     repoInserir(SCHEMA.TRANSFERENCIAS, transferencia);
     // Comprovante no Drive: salva e vincula. Erro de Drive NÃO derruba a transferência
     // (try/catch) — o usuário pode anexar depois pelo banner.

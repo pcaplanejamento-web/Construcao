@@ -130,11 +130,15 @@ function dadosSnapshot(data, sessao) {
   const resumos = {};
   const categoriasPorObra = {};
   const participantesPorObra = {};
+  // Contexto de participantes carregado UMA vez (contatos/usuários/compartilhamentos/
+  // obra_participantes) → o loop não re-varre 5 abas POR obra (era o gargalo que dava
+  // timeout em conta grande; ver auditoria).
+  const ctxPart = _ctxParticipantes(obras);
   obras.forEach(function (o) {
     const dono = o.usuario_id;
     resumos[o.id] = _resumoEmMemoria(o, despesasPorObra[o.id], catMapDe(dono));
     categoriasPorObra[o.id] = catListaDe(dono);
-    participantesPorObra[o.id] = listarParticipantesObra(o.id);
+    participantesPorObra[o.id] = _construirParticipantesObra(o.id, ctxPart);
   });
 
   // Notas por obra (compartilhadas: quem tem acesso à obra vê), mais recentes 1º.

@@ -13,18 +13,18 @@ function _chaveParticipante(tipo, refId) {
   return (tipo === "contato" ? "c:" : "u:") + refId;
 }
 
-/** Lista os participantes de uma obra (derivados + contatos adicionados). */
-function listarParticipantesObra(obraId) {
-  const obra = repoEncontrar(SCHEMA.OBRAS, function (o) {
-    return String(o.id) === String(obraId);
-  });
-  const usuarios = _mapaUsuarios();
-  // Nome do contato é RE-DERIVADO ao vivo (reflete renome); o `nome` gravado na
-  // linha é só fallback (contato excluído/legado).
-  const contatos = {};
-  repoListar(SCHEMA.CONTATOS).forEach(function (c) {
-    contatos[c.id] = c;
-  });
+/**
+ * Constrói os participantes de UMA obra a partir de dados JÁ carregados (ctx) — sem
+ * varrer sheet nenhum. `ctx` = { obrasMap:{id→obra}, usuarios:{id→usuario},
+ * contatosMap:{id→contato}, compartPorObra:{obraId→[compart]}, partPorObra:{obraId→[part]} }.
+ * O snapshot monta o ctx UMA vez e chama isto por obra (antes cada chamada re-varria 5
+ * abas → O(N obras × sheets), causando timeout em conta grande).
+ */
+function _construirParticipantesObra(obraId, ctx) {
+  const oid = String(obraId);
+  const obra = (ctx.obrasMap || {})[oid];
+  const usuarios = ctx.usuarios || {};
+  const contatos = ctx.contatosMap || {};
   const lista = [];
   const indice = {}; // chave -> item
 
@@ -46,16 +46,12 @@ function listarParticipantesObra(obraId) {
   }
 
   if (obra) addUsuario(obra.usuario_id, "dono");
-  repoFiltrar(SCHEMA.COMPARTILHAMENTOS, function (s) {
-    return String(s.obra_id) === String(obraId);
-  }).forEach(function (s) {
+  ((ctx.compartPorObra || {})[oid] || []).forEach(function (s) {
     addUsuario(s.usuario_id, "compartilhado");
   });
 
-  // Linhas gravadas: contatos adicionados + flags de responsável (Fase 2).
-  repoFiltrar(SCHEMA.OBRA_PARTICIPANTES, function (p) {
-    return String(p.obra_id) === String(obraId);
-  }).forEach(function (p) {
+  // Linhas gravadas: contatos adicionados + flags de responsável.
+  ((ctx.partPorObra || {})[oid] || []).forEach(function (p) {
     const chave = _chaveParticipante(p.tipo, p.ref_id);
     if (p.tipo === "contato") {
       if (!indice[chave]) {
@@ -64,6 +60,7 @@ function listarParticipantesObra(obraId) {
           chave: chave,
           tipo: "contato",
           ref_id: p.ref_id,
+          // Nome RE-DERIVADO ao vivo (reflete renome); o gravado é só fallback (legado).
           nome: (contatos[p.ref_id] || {}).nome || p.nome || "(contato)",
           email: "",
           origem: "contato",
@@ -73,13 +70,47 @@ function listarParticipantesObra(obraId) {
         lista.push(item);
       }
     } else if (indice[chave]) {
-      // usuário marcado como responsável (Fase 2)
       indice[chave].eh_responsavel = _boolDe(p.eh_responsavel);
       indice[chave]._linhaId = p.id;
     }
   });
 
   return lista;
+}
+
+/** Contexto (sheets carregados 1×) para `_construirParticipantesObra`. */
+function _ctxParticipantes(obras) {
+  const obrasMap = {};
+  (obras || repoListar(SCHEMA.OBRAS)).forEach(function (o) { obrasMap[String(o.id)] = o; });
+  const contatosMap = {};
+  repoListar(SCHEMA.CONTATOS).forEach(function (c) { contatosMap[c.id] = c; });
+  const compartPorObra = {};
+  repoListar(SCHEMA.COMPARTILHAMENTOS).forEach(function (s) {
+    const oid = String(s.obra_id || "");
+    (compartPorObra[oid] = compartPorObra[oid] || []).push(s);
+  });
+  const partPorObra = {};
+  repoListar(SCHEMA.OBRA_PARTICIPANTES).forEach(function (p) {
+    const oid = String(p.obra_id || "");
+    (partPorObra[oid] = partPorObra[oid] || []).push(p);
+  });
+  return { obrasMap: obrasMap, usuarios: _mapaUsuarios(), contatosMap: contatosMap, compartPorObra: compartPorObra, partPorObra: partPorObra };
+}
+
+/** Lista os participantes de uma obra (derivados + contatos adicionados). Uso avulso
+ *  (fora do snapshot): monta o ctx só desta obra e delega. */
+function listarParticipantesObra(obraId) {
+  const obra = repoEncontrar(SCHEMA.OBRAS, function (o) { return String(o.id) === String(obraId); });
+  const contatosMap = {};
+  repoListar(SCHEMA.CONTATOS).forEach(function (c) { contatosMap[c.id] = c; });
+  const ctx = {
+    obrasMap: obra ? (function () { const m = {}; m[String(obra.id)] = obra; return m; })() : {},
+    usuarios: _mapaUsuarios(),
+    contatosMap: contatosMap,
+    compartPorObra: (function () { const m = {}; m[String(obraId)] = repoFiltrar(SCHEMA.COMPARTILHAMENTOS, function (s) { return String(s.obra_id) === String(obraId); }); return m; })(),
+    partPorObra: (function () { const m = {}; m[String(obraId)] = repoFiltrar(SCHEMA.OBRA_PARTICIPANTES, function (p) { return String(p.obra_id) === String(obraId); }); return m; })(),
+  };
+  return _construirParticipantesObra(obraId, ctx);
 }
 
 /** participantes.listar -> { participantes: [...] }. */

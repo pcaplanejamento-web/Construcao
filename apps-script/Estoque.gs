@@ -180,6 +180,9 @@ function estoqueCriarMovimento(data, sessao) {
     if (qtd - saldo.em_estoque > 0.0001)
       lancar(ERRO.VALIDACAO, "Não há esse tanto em estoque (disponível: " + saldo.em_estoque + ").");
     return comLock(function () {
+      const s2 = _saldoEstoque(obraId, itemId); // TOCTOU: re-checa dentro do lock (evita estoque negativo no duplo-clique)
+      if (qtd - s2.em_estoque > 0.0001)
+        lancar(ERRO.VALIDACAO, "Não há esse tanto em estoque (disponível: " + s2.em_estoque + ").");
       return {
         movimentos: [
           _inserirMovimento(usuarioId, {
@@ -197,6 +200,9 @@ function estoqueCriarMovimento(data, sessao) {
     if (qtd - saldo.consumido > 0.0001)
       lancar(ERRO.VALIDACAO, "Não dá p/ devolver mais do que foi consumido (consumido: " + saldo.consumido + ").");
     return comLock(function () {
+      const s2 = _saldoEstoque(obraId, itemId); // TOCTOU: re-checa dentro do lock
+      if (qtd - s2.consumido > 0.0001)
+        lancar(ERRO.VALIDACAO, "Não dá p/ devolver mais do que foi consumido (consumido: " + s2.consumido + ").");
       return {
         movimentos: [
           _inserirMovimento(usuarioId, {
@@ -239,6 +245,9 @@ function estoqueCriarMovimento(data, sessao) {
       return String(o.id) === destinoId;
     }) || {};
     return comLock(function () {
+      const s2 = _saldoEstoque(obraId, itemId); // TOCTOU: re-checa dentro do lock
+      if (qtd - s2.em_estoque > 0.0001)
+        lancar(ERRO.VALIDACAO, "Não há esse tanto em estoque p/ transferir (disponível: " + s2.em_estoque + ").");
       const par = novoId();
       const saida = _inserirMovimento(usuarioId, {
         obra_id: obraId, item_id: itemId, tipo: "saida_transferencia", quantidade: qtd,

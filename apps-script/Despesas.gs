@@ -324,6 +324,13 @@ function despesasRemover(data, sessao) {
   }
 
   return comLock(function () {
+    // TOCTOU: re-checa DENTRO do lock que não surgiu pagamento vinculado entre a validação
+    // acima e aqui (senão um pagamento concorrente ficaria órfão apontando p/ despesa apagada).
+    const temPag2 = repoListar(SCHEMA.PAGAMENTOS).some(function (p) {
+      return _parseJsonLista(p.alocacoes).some(function (a) { return String(a.despesa_id) === String(id); });
+    });
+    if (temPag2)
+      lancar(ERRO.VALIDACAO, "Esta despesa tem pagamento vinculado. Exclua o pagamento ou a transferência antes de excluir a despesa.");
     repoRemover(SCHEMA.DESPESAS, "id", id);
     // Reduz o saldo do estoque (item 18): remove a entrada vinculada a esta despesa.
     if (entradaEstoque) repoRemover(SCHEMA.ESTOQUE, "id", entradaEstoque.id);
