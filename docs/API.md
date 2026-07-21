@@ -132,10 +132,24 @@ para dono **e** colaboradores.
 | `obras.removerLink` | `{ obra_id }` | `{ link_token: "" }` (só dono — desativa o link) |
 | `obras.acessosLink` | `{ obra_id }` | `{ total, acessos:[{acessado_em}] }` (só dono — log de acessos ao link) |
 
+### Grupos de obras (pastas)
+| Action | `data` | Retorno |
+|--------|--------|---------|
+| `grupos.listar` | `{}` | `{ grupos:[{id,nome,link_token,...}] }` (do usuário) |
+| `grupos.criar` | `{ nome }` | `{ grupo }` |
+| `grupos.atualizar` | `{ id, nome }` | `{ grupo }` (renomear) |
+| `grupos.remover` | `{ id }` | `{ id }` — desvincula as obras (`grupo_id=""`) e apaga o grupo (obras NÃO são excluídas) |
+| `grupos.gerarLink` | `{ id }` | `{ link_token }` (token curto do grupo) |
+| `grupos.removerLink` | `{ id }` | `{ link_token: "" }` (desativa) |
+
+> Uma obra pertence a 0 ou 1 grupo via **`OBRAS.grupo_id`** (aceito em `obras.criar`/`obras.atualizar`, validado como grupo do próprio usuário). Grupos aparecem no snapshot (`grupos`).
+
 ### Público (sem login — somente leitura)
 | Action | `data` | Retorno |
 |--------|--------|---------|
 | `publico.obra` | `{ token }` | Obra INTEIRA p/ a visão pública somente-leitura (todas as abas): `{ obra:{id,nome,endereco,descricao,orcamento,status}, resumo, despesas:[{item,valor,data,classificacao,categoria_nome,categoria_cor}] (itens), despesasRaw (cru → balanços/acerto/gráficos), participantes, categorias, fornecedores, contatos, equipes, itens:[{id,nome,unidade}] (estes **só os referenciados** nesta obra — privacidade), estoque:[movimentos da obra] (p/ o gráfico "Quantidade em estoque por item" — o front deriva o saldo com emEstoqueDaObra), orcamentos, transferencias, pagamentos, tiposTransferencia }` — **não** expõe usuários/observações nem dados de outras obras do dono |
+| `publico.grupo` | `{ token }` | `{ grupo:{nome}, obras:[{id,nome,endereco,status,orcamento,total_gasto}] }` — lista das obras do GRUPO p/ o visitante escolher (link do grupo) |
+| `publico.grupoObra` | `{ token, obra_id }` | Payload COMPLETO de uma obra do grupo (mesmo de `publico.obra`, via `_payloadObra`) — valida o token do grupo + a obra pertencer ao grupo |
 
 ### Usuários (autenticado)
 | Action | `data` | Retorno |

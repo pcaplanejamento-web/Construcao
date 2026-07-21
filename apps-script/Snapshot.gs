@@ -360,6 +360,7 @@ function dadosSnapshot(data, sessao) {
     config: montarConfigUsuario(u.id),
     categorias: categorias,
     obras: obras,
+    grupos: listarGruposUsuario(u.id),
     despesas: despesasPorObra,
     resumos: resumos,
     categoriasPorObra: categoriasPorObra,

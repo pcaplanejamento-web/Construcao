@@ -31,7 +31,7 @@ import {
   origensDoItem as _origensDoItemEstoque,
 } from "../features/estoque/estoque.js";
 
-const CACHE_VERSAO = 7; // bump: coleção notas (anotações por obra)
+const CACHE_VERSAO = 8; // bump: coleção grupos (pastas de obras)
 
 const ESTADO_VAZIO = {
   carregado: false,
@@ -39,6 +39,7 @@ const ESTADO_VAZIO = {
   config: {},
   categorias: [],
   obras: [],
+  grupos: [], // pastas de obras (grupo tem link público próprio; obra.grupo_id aponta p/ cá)
   despesas: {}, // obraId -> [despesa]
   resumos: {}, // obraId -> resumo
   categoriasPorObra: {}, // obraId -> [categoria do dono]
@@ -81,6 +82,7 @@ function persistir() {
       config: s.config,
       categorias: s.categorias,
       obras: s.obras,
+      grupos: s.grupos,
       despesas: s.despesas,
       resumos: s.resumos,
       categoriasPorObra: s.categoriasPorObra,
@@ -144,6 +146,7 @@ function _aplicarSnapshot(d) {
     config: d.config || {},
     categorias: d.categorias || [],
     obras: d.obras || [],
+    grupos: d.grupos || [],
     despesas: d.despesas || {},
     resumos: d.resumos || {},
     categoriasPorObra: d.categoriasPorObra || {},
@@ -213,6 +216,12 @@ const categorias = () => store.get().categorias;
 const usuarios = () => store.get().usuarios;
 const obras = () => store.get().obras;
 const obra = (id) => store.get().obras.find((o) => String(o.id) === String(id)) || null;
+const grupos = () => store.get().grupos;
+const grupo = (id) => store.get().grupos.find((g) => String(g.id) === String(id)) || null;
+/** Obras próprias (dono) de um grupo — só o dono agrupa suas obras. */
+const obrasDoGrupo = (grupoId) => obras().filter((o) => o.ehDono !== false && String(o.grupo_id || "") === String(grupoId));
+/** Obras próprias (dono) sem grupo. */
+const obrasSemGrupo = () => obras().filter((o) => o.ehDono !== false && !o.grupo_id);
 const despesas = (obraId) => store.get().despesas[obraId] || [];
 /** Todas as despesas (de todas as obras carregadas) — p/ visões cross-obra. */
 const todasDespesas = () => obras().flatMap((o) => despesas(o.id));
@@ -824,6 +833,61 @@ async function gerarLinkPublico(obraId) {
 async function removerLinkPublico(obraId) {
   await api.call("obras.removerLink", { obra_id: obraId });
   _setLinkObra(obraId, "");
+}
+
+/* ------------------------- Mutações: grupos -------------------------- */
+
+async function criarGrupo(dados) {
+  const r = await api.call("grupos.criar", dados);
+  const s = store.get();
+  store.set({ grupos: [...s.grupos, r.grupo] });
+  persistir();
+  bus.emit(EVENTOS.OBRAS, { tipo: "grupo-criado" });
+  return r.grupo;
+}
+
+async function atualizarGrupo(id, dados) {
+  const r = await api.call("grupos.atualizar", { id, ...dados });
+  const s = store.get();
+  store.set({ grupos: s.grupos.map((g) => (String(g.id) === String(id) ? { ...g, ...r.grupo } : g)) });
+  persistir();
+  bus.emit(EVENTOS.OBRAS, { tipo: "grupo-atualizado" });
+  return r.grupo;
+}
+
+async function removerGrupo(id) {
+  await api.call("grupos.remover", { id });
+  const s = store.get();
+  store.set({
+    grupos: s.grupos.filter((g) => String(g.id) !== String(id)),
+    obras: s.obras.map((o) => (String(o.grupo_id) === String(id) ? { ...o, grupo_id: "" } : o)),
+  });
+  persistir();
+  bus.emit(EVENTOS.OBRAS, { tipo: "grupo-removido" });
+}
+
+/** Atualiza o link_token de um grupo no store. */
+function _setLinkGrupo(id, token) {
+  const s = store.get();
+  store.set({ grupos: s.grupos.map((g) => (String(g.id) === String(id) ? { ...g, link_token: token } : g)) });
+  persistir();
+  bus.emit(EVENTOS.OBRAS, { tipo: "grupo-link" });
+}
+
+async function gerarLinkGrupo(id) {
+  const r = await api.call("grupos.gerarLink", { id });
+  _setLinkGrupo(id, r.link_token);
+  return r.link_token;
+}
+
+async function removerLinkGrupo(id) {
+  await api.call("grupos.removerLink", { id });
+  _setLinkGrupo(id, "");
+}
+
+/** Move uma obra para um grupo (grupoId vazio = sem grupo). Reusa obras.atualizar. */
+async function moverObraParaGrupo(obraId, grupoId) {
+  return atualizarObra(obraId, { grupo_id: grupoId || "" });
 }
 
 /* ---------------------- Mutações: despesas --------------------------- */
@@ -1841,6 +1905,7 @@ export const dataStore = {
   meusContatosAtivos, contatosCompartilhados, meusFornecedoresAtivos, fornecedoresCompartilhados, meusItensAtivos, itensCompartilhados,
   minhasCategoriasItem, minhasCategoriasFornecedor,
   obrasCompartilhadas, compartilhadoDaObra, dadosDaObra, temDadosDeObraDeTipo, jaIncorporado, indiceAcervo, jaIncorporadoIdx,
+  grupos, grupo, obrasDoGrupo, obrasSemGrupo,
   cotacoes, cotacao, precosDaCotacao, todasOfertas,
   historicoDaCotacao, itensDaSubclasse, precosDaCotacaoPorItem,
   orcamentos, orcamento, ofertasDoOrcamento,
@@ -1853,6 +1918,7 @@ export const dataStore = {
   movimentosEstoque, estoqueConsolidadoDaObra, estoqueDaObra, estoqueConsumidoDaObra, saldoEstoqueItem, origensDoEstoque, movimentosDoItemEstoque,
   // mutações
   criarObra, atualizarObra, removerObra,
+  criarGrupo, atualizarGrupo, removerGrupo, gerarLinkGrupo, removerLinkGrupo, moverObraParaGrupo,
   adicionarParticipante, removerParticipante, definirResponsavel,
   adicionarNota, atualizarNota, removerNota,
   gerarLinkPublico, removerLinkPublico,

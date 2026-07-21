@@ -80,7 +80,13 @@ class PublicoView extends BaseElement {
   async carregar() {
     const alvo = this.$("#conteudo");
     try {
-      const d = await api.call("publico.obra", { token: this.token });
+      // Modo GRUPO: quando montado por <publico-grupo-view> com grupo-token + obra-id,
+      // busca a obra escolhida via o link do grupo (sem exigir link próprio da obra).
+      const grupoToken = this.getAttribute("grupo-token");
+      const obraId = this.getAttribute("obra-id");
+      const d = grupoToken && obraId
+        ? await api.call("publico.grupoObra", { token: grupoToken, obra_id: obraId })
+        : await api.call("publico.obra", { token: this.token });
       this.pintar(d);
     } catch (e) {
       alvo.innerHTML = `<ui-card title="Link indisponível"><p>${

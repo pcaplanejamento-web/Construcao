@@ -273,6 +273,7 @@ function obrasCriar(data, sessao) {
       prazo: String((data && data.prazo) || "").slice(0, 10),
       finalizada: (data && data.finalizada) === true,
       finalizada_em: (data && data.finalizada) === true ? agora : "",
+      grupo_id: _grupoIdValido(data && data.grupo_id, sessao.usuario_id),
     };
     repoInserir(SCHEMA.OBRAS, obra);
     return { obra: obra };
@@ -300,6 +301,7 @@ function obrasAtualizar(data, sessao) {
     patch.finalizada = data.finalizada === true;
     patch.finalizada_em = data.finalizada === true ? agoraIso() : "";
   }
+  if (data.grupo_id !== undefined) patch.grupo_id = _grupoIdValido(data.grupo_id, sessao.usuario_id);
   patch.editor_nome = (buscarUsuarioPorId(sessao.usuario_id) || {}).nome || "";
 
   return comLock(function () {
@@ -444,18 +446,28 @@ function publicoObra(data) {
     return o.link_token && String(o.link_token) === String(token);
   });
   if (!obra) lancar(ERRO.NAO_ENCONTRADO, "Link inválido ou desativado.");
+  _logAcessoLink(obra.id, token);
+  return _payloadObra(obra);
+}
 
-  // Registra o acesso (log do link).
+/** Registra um acesso ao link público (obra ou grupo→obra). */
+function _logAcessoLink(obraId, token) {
   comLock(function () {
     repoInserir(SCHEMA.ACESSOS_LINK, {
       id: novoId(),
-      obra_id: obra.id,
+      obra_id: obraId,
       token: token,
       acessado_em: agoraIso(),
     });
     return true;
   });
+}
 
+/**
+ * Monta o payload PÚBLICO (somente leitura) de UMA obra. Reusado por publico.obra
+ * (link da obra) e publico.grupoObra (link do grupo → obra escolhida pelo visitante).
+ */
+function _payloadObra(obra) {
   const despesas = repoFiltrar(SCHEMA.DESPESAS, function (d) {
     return String(d.obra_id) === String(obra.id);
   });

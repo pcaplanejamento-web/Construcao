@@ -62,8 +62,18 @@ const ROTAS = {
   "obras.removerLink": { fn: obrasRemoverLink },
   "obras.acessosLink": { fn: obrasAcessosLink },
 
+  // Grupos de obras (pastas) + link público do grupo
+  "grupos.listar": { fn: gruposListar },
+  "grupos.criar": { fn: gruposCriar },
+  "grupos.atualizar": { fn: gruposAtualizar },
+  "grupos.remover": { fn: gruposRemover },
+  "grupos.gerarLink": { fn: gruposGerarLink },
+  "grupos.removerLink": { fn: gruposRemoverLink },
+
   // Visão pública somente-leitura (sem login)
   "publico.obra": { fn: publicoObra, publica: true },
+  "publico.grupo": { fn: publicoGrupo, publica: true },
+  "publico.grupoObra": { fn: publicoGrupoObra, publica: true },
 
   // Participantes da obra
   "participantes.listar": { fn: participantesListar },

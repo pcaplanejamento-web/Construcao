@@ -48,6 +48,23 @@ const SCHEMA = {
       "prazo", // (append) data esperada de término (YYYY-MM-DD; vazio = sem prazo)
       "finalizada", // (append) obra marcada como concluída (para a contagem regressiva)
       "finalizada_em", // (append) quando foi finalizada (ISO)
+      "grupo_id", // (append) grupo/pasta a que a obra pertence (vazio = sem grupo). Ver GRUPOS.
+    ],
+  },
+
+  // Grupos de obras (pastas) — organizam obras e permitem 1 link público de GRUPO
+  // (o visitante escolhe qual obra ver). Uma obra pertence a 0 ou 1 grupo (OBRAS.grupo_id).
+  GRUPOS: {
+    aba: "Grupos",
+    colunas: [
+      "id",
+      "usuario_id",
+      "nome",
+      "link_token", // token do link público do GRUPO (vazio = desativado)
+      "criado_em",
+      "atualizado_em",
+      "autor_nome", // (append) quem criou
+      "editor_nome", // (append) quem editou por último
     ],
   },
 

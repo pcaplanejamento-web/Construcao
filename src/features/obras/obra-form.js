@@ -69,6 +69,7 @@ class ObraForm extends BaseElement {
           </div>
           <ui-input id="prazo" label="Prazo de término (opcional)" type="date"
                     value="${o.prazo || ""}"></ui-input>
+          <ui-select id="grupo" label="Grupo (opcional)" value="${o.grupo_id || ""}"></ui-select>
         </div>
         <div slot="rodape">
           <ui-button id="cancelar" variant="secundario">Cancelar</ui-button>
@@ -84,6 +85,9 @@ class ObraForm extends BaseElement {
       { value: "pausada", label: "Pausada" },
       { value: "concluida", label: "Concluída" },
     ];
+    this.$("#grupo").options = [{ value: "", label: "— Sem grupo —" }].concat(
+      dataStore.grupos().map((g) => ({ value: g.id, label: g.nome }))
+    );
     this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
     this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
     this.$("#salvar").addEventListener("click", async () => { await this.salvar(); focarPrimeiroErro(this); });
@@ -105,6 +109,7 @@ class ObraForm extends BaseElement {
       orcamento: Number(this.$("#orcamento").value) || 0,
       status: this.$("#status").value || "ativa",
       prazo: this.$("#prazo").value || "",
+      grupo_id: this.$("#grupo").value || "",
     };
 
     const btn = this.$("#salvar");
