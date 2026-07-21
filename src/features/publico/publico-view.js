@@ -11,7 +11,7 @@
 import { BaseElement } from "../../components/base-element.js";
 import { api } from "../../core/api-client.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
-import { balancos, acerto, saldoPorDespesa } from "../despesas/despesa-split.js";
+import { balancos, acerto } from "../despesas/despesa-split.js";
 import { emEstoqueDaObra } from "../estoque/estoque.js";
 import { corDeId } from "../shared/cor-id.js";
 import "../../components/ui-card.js";
@@ -55,13 +55,9 @@ class PublicoView extends BaseElement {
       /* Todos os gráficos (mesmos componentes da obra) numa grade de 3 colunas. */
       .graficos { display: grid; gap: var(--esp-5); grid-template-columns: repeat(3, 1fr); }
       .graficos > * { min-width: 0; height: 340px; }
-      .graficos > .par { grid-column: 1 / -1; height: auto; display: grid; gap: var(--esp-5); grid-template-columns: 1fr 1fr; }
-      .par > * { min-width: 0; height: 340px; }
       @media (max-width: 900px) {
         .graficos { grid-template-columns: 1fr; }
         .graficos > * { height: auto; min-height: 300px; }
-        .graficos > .par { grid-template-columns: 1fr; }
-        .par > * { height: auto; min-height: 300px; }
       }
       .acertos { display: flex; flex-direction: column; gap: var(--esp-2); }
       .acerto-item { display: flex; align-items: center; gap: var(--esp-2);
@@ -136,10 +132,7 @@ class PublicoView extends BaseElement {
           <ui-card><category-breakdown id="break" titulo="Gastos por categoria"></category-breakdown></ui-card>
           <ui-card><grafico-rosca id="rosca" titulo="Distribuição por classificação"></grafico-rosca></ui-card>
           <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
-          <div class="par">
-            <ui-card><category-breakdown id="gPart" titulo="Recebido por participante" vazio="Ninguém recebeu valor ainda."></category-breakdown></ui-card>
-            <ui-card><category-breakdown id="gRep" titulo="Vendas por representante" vazio="Nenhum representante com vendas."></category-breakdown></ui-card>
-          </div>
+          <ui-card><category-breakdown id="gOfertante" titulo="Por ofertante" vazio="Nenhum ofertante com vendas."></category-breakdown></ui-card>
           <ui-card><category-breakdown id="gEmp" titulo="Total por empresa" vazio="Nenhuma empresa com despesas."></category-breakdown></ui-card>
           <ui-card><category-breakdown id="gEst" titulo="Quantidade em estoque por item" vazio="Nenhum item em estoque."></category-breakdown></ui-card>
         </div>
@@ -177,7 +170,7 @@ class PublicoView extends BaseElement {
     // Gráficos — TODOS os mesmos componentes da obra, somente leitura + drill-down.
     const resumo = d.resumo || {};
     const despRaw = d.despesasRaw || [];
-    const { porChave, porFornecedor, porRepresentante } = balancos(despRaw);
+    const { porChave, porFornecedor, porOfertante } = balancos(despRaw);
     const byId = {};
     despRaw.forEach((x) => (byId[String(x.id)] = x));
     const itemMap = {};
@@ -207,18 +200,14 @@ class PublicoView extends BaseElement {
       this._origem("Mês · " + (c.rotulo || c.mes), DESP_COLS, despRows(despRaw.filter((x) => String(x.data || "").startsWith(c.mes))));
     this.$("#mensal").despesas = despRaw;
 
-    this.$("#gPart").aoSelecionar = (c) =>
-      this._origem("Recebido · " + c.nome,
-        [{ chave: "_item", titulo: "Despesa" }, { chave: "_valor", titulo: "Valor", alinhar: "dir" }, { chave: "_recebido", titulo: "Recebido", alinhar: "dir" }],
-        saldoPorDespesa(despRaw, c.chave).map((e) => ({ _item: nomeItem((byId[String(e.despesa_id)] || {}).item_id), _valor: moeda(e.valor), _recebido: moeda(e.pago) })));
-    this.$("#gPart").porCategoria = Object.keys(porChave)
-      .map((ch) => ({ nome: this._nomeChave(ch), cor: corDeId(ch), total: Number(porChave[ch].recebido) || 0, chave: ch }))
-      .filter((x) => x.total > 0.01).sort((a, b) => b.total - a.total);
-
-    this.$("#gRep").aoSelecionar = (c) =>
-      this._origem("Representante · " + c.nome, DESP_COLS, despRows(despRaw.filter((x) => String(x.ofertante_contato_id) === String(c.contato_id))));
-    this.$("#gRep").porCategoria = Object.keys(porRepresentante)
-      .map((cid) => ({ nome: this._nomeContato(cid), cor: corDeId(cid), total: Number(porRepresentante[cid].total) || 0, contato_id: cid }))
+    // Por ofertante (UNIFICADO: contato "c:" OU equipe "e:") — junta representante + ofertante-equipe.
+    this.$("#gOfertante").aoSelecionar = (c) =>
+      this._origem("Ofertante · " + c.nome, DESP_COLS, despRows(despRaw.filter((x) => {
+        const k = x.ofertante_contato_id ? "c:" + x.ofertante_contato_id : (x.ofertante_equipe_id ? "e:" + x.ofertante_equipe_id : "");
+        return k === c.chave;
+      })));
+    this.$("#gOfertante").porCategoria = Object.keys(porOfertante)
+      .map((ch) => ({ nome: this._nomeChave(ch), cor: corDeId(ch), total: Number(porOfertante[ch]) || 0, chave: ch }))
       .filter((x) => x.total > 0.01).sort((a, b) => b.total - a.total);
 
     this.$("#gEmp").aoSelecionar = (c) =>

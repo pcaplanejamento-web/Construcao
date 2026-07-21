@@ -13,7 +13,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { statusPrazo, textoPrazo, corPrazo, iconePrazo, ehFinalizada } from "./prazo-util.js";
-import { balancos, restoDespesa, saldoPorDespesa } from "../despesas/despesa-split.js";
+import { balancos, restoDespesa } from "../despesas/despesa-split.js";
 import { COR_CLASSIFICACAO as COR_CLASSIFICACAO_OBRA } from "../../core/classificacao.js";
 import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { corDeId } from "../shared/cor-id.js";
@@ -90,15 +90,9 @@ class ObraDetailView extends BaseElement {
       /* Gráficos em grade de 3 colunas, todos do MESMO tamanho. */
       .graficos { display: grid; gap: var(--esp-5); grid-template-columns: repeat(3, 1fr); }
       .graficos > * { min-width: 0; height: 340px; }
-      /* PAR (item 1): "Recebido por participante" + "Vendas por representante" JUNTOS,
-         lado a lado, ocupando a linha inteira. */
-      .graficos > .par { grid-column: 1 / -1; height: auto; display: grid; gap: var(--esp-5); grid-template-columns: 1fr 1fr; }
-      .par > * { min-width: 0; height: 340px; }
       @media (max-width: 900px) {
         .graficos { grid-template-columns: 1fr; }
         .graficos > * { height: auto; min-height: 300px; }
-        .graficos > .par { grid-template-columns: 1fr; }
-        .par > * { height: auto; min-height: 300px; }
       }
       .despesas-aba { display: flex; flex-direction: column; gap: var(--esp-5); }
     `;
@@ -131,10 +125,7 @@ class ObraDetailView extends BaseElement {
           <ui-card><category-breakdown id="break" titulo="Gastos por categoria"></category-breakdown></ui-card>
           <ui-card><grafico-rosca id="rosca" titulo="Distribuição por classificação"></grafico-rosca></ui-card>
           <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
-          <div class="par">
-            <ui-card><category-breakdown id="gPart" titulo="Recebido por participante" vazio="Ninguém recebeu valor ainda."></category-breakdown></ui-card>
-            <ui-card><category-breakdown id="gRep" titulo="Vendas por representante" vazio="Nenhum representante com vendas."></category-breakdown></ui-card>
-          </div>
+          <ui-card><category-breakdown id="gOfertante" titulo="Por ofertante" vazio="Nenhum ofertante com vendas."></category-breakdown></ui-card>
           <ui-card><category-breakdown id="gEmp" titulo="Total por empresa" vazio="Nenhuma empresa com despesas."></category-breakdown></ui-card>
           <ui-card><category-breakdown id="gEst" titulo="Quantidade em estoque por item" vazio="Nenhum item em estoque."></category-breakdown></ui-card>
         </div>
@@ -265,9 +256,8 @@ class ObraDetailView extends BaseElement {
     this._break = alvo.querySelector("#break");
     this._rosca = alvo.querySelector("#rosca");
     this._mensal = alvo.querySelector("#mensal");
-    this._gPart = alvo.querySelector("#gPart");
+    this._gOfertante = alvo.querySelector("#gOfertante");
     this._gEmp = alvo.querySelector("#gEmp");
-    this._gRep = alvo.querySelector("#gRep");
     this._gEst = alvo.querySelector("#gEst");
     this._tabela = alvo.querySelector("#tabela");
 
@@ -276,8 +266,7 @@ class ObraDetailView extends BaseElement {
     this._break.aoSelecionar = (c) => this._origemCategoria(c);
     this._rosca.aoSelecionar = (c) => this._origemClassificacao(c);
     this._mensal.aoSelecionar = (c) => this._origemMes(c);
-    this._gPart.aoSelecionar = (c) => this._origemParticipante(c);
-    this._gRep.aoSelecionar = (c) => this._origemRepresentante(c);
+    this._gOfertante.aoSelecionar = (c) => this._origemOfertante(c);
     this._gEmp.aoSelecionar = (c) => this._origemEmpresa(c);
     this._gEst.aoSelecionar = (c) => this._origemEstoqueItem(c);
 
@@ -814,19 +803,23 @@ class ObraDetailView extends BaseElement {
   }
 
   /**
-   * Alimenta os 3 gráficos extras da aba Gráficos:
-   *  - Participantes: Recebido por participante (`balancos.porChave.recebido`) — `category-breakdown` (barras);
-   *  - Empresas: Total por empresa (`balancos.porFornecedor.total`) — `category-breakdown` (barras);
-   *  - Estoque: Quantidade em estoque por item (`estoqueDaObra`, valor não-monetário → `formato`) — `grafico-rosca` (donut).
-   * Todos reusam a MESMA API `.porCategoria = [{nome,cor,total}]`. Cores ESTÁVEIS por
+   * Alimenta os gráficos extras da aba Gráficos (todos `category-breakdown`, barras):
+   *  - Ofertante: Por ofertante (`balancos.porOfertante` — contato "c:" OU equipe "e:"; UNIFICA
+   *    a antiga "Vendas por representante" com os ofertantes-equipe);
+   *  - Empresas: Total por empresa (`balancos.porFornecedor.total`);
+   *  - Estoque: Quantidade em estoque por item (`estoqueDaObra`, quantidade+unidade via `.formato`).
+   * Todos reusam a MESMA API `.porCategoria = [{nome,cor,total,...ref}]`. Cores ESTÁVEIS por
    * id/chave; cada gráfico some sozinho (estado vazio) quando não há dado.
    */
   montarGraficosExtras(despesas) {
-    const { porChave, porFornecedor, porRepresentante } = balancos(despesas);
+    const { porFornecedor, porOfertante } = balancos(despesas);
 
-    if (this._gPart) {
-      this._gPart.porCategoria = Object.keys(porChave)
-        .map((ch) => ({ nome: this._nomeDaChave(ch), cor: corDeId(ch), total: Number(porChave[ch].recebido) || 0, chave: ch }))
+    if (this._gOfertante) {
+      // UNIFICADO (item): volume ofertado por OFERTANTE (contato "c:" OU equipe "e:").
+      // Junta a antiga "Vendas por representante" (contato) e os ofertantes-equipe num
+      // só gráfico. Visão COMERCIAL (quem vendeu/ofertou), não soma com o caixa.
+      this._gOfertante.porCategoria = Object.keys(porOfertante)
+        .map((ch) => ({ nome: this._nomeDaChave(ch), cor: corDeId(ch), total: Number(porOfertante[ch]) || 0, chave: ch }))
         .filter((x) => x.total > 0.01)
         .sort((a, b) => b.total - a.total);
     }
@@ -838,21 +831,6 @@ class ObraDetailView extends BaseElement {
           cor: corDeId(fid),
           total: Number(porFornecedor[fid].total) || 0,
           fornecedor_id: fid,
-        }))
-        .filter((x) => x.total > 0.01)
-        .sort((a, b) => b.total - a.total);
-    }
-
-    if (this._gRep) {
-      // COMERCIAL (≠ caixa): quanto cada VENDEDOR intermediou. Inclui a venda feita pela
-      // empresa — ali o dinheiro vai à empresa (aparece em "Total por empresa"), mas quem
-      // vendeu foi a pessoa. Por isso este gráfico NÃO soma com os outros dois.
-      this._gRep.porCategoria = Object.keys(porRepresentante)
-        .map((cid) => ({
-          nome: (dataStore.contatos().find((c) => String(c.id) === String(cid)) || {}).nome || "—",
-          cor: corDeId(cid),
-          total: Number(porRepresentante[cid].total) || 0,
-          contato_id: cid,
         }))
         .filter((x) => x.total > 0.01)
         .sort((a, b) => b.total - a.total);
@@ -918,36 +896,15 @@ class ObraDetailView extends BaseElement {
     const ds = (this._despesas || []).filter((d) => String(d.fornecedor_id) === String(c.fornecedor_id));
     this._bannerDespesas("Empresa · " + c.nome, "Despesas desta empresa.", ds);
   }
-  _origemRepresentante(c) {
-    const ds = (this._despesas || []).filter((d) => String(d.ofertante_contato_id) === String(c.contato_id));
-    this._bannerDespesas("Representante · " + c.nome, "Vendas intermediadas por este representante.", ds);
+  _origemOfertante(c) {
+    const ds = (this._despesas || []).filter((d) => {
+      const k = d.ofertante_contato_id ? "c:" + d.ofertante_contato_id : (d.ofertante_equipe_id ? "e:" + d.ofertante_equipe_id : "");
+      return k === c.chave;
+    });
+    this._bannerDespesas("Ofertante · " + c.nome, "Despesas ofertadas/vendidas por este ofertante.", ds);
   }
   _origemEstoqueItem(c) {
     abrirOrigemEstoque({ tituloItem: c.nome, origens: dataStore.origensDoEstoque(this.obraId, c.item_id), obraId: this.obraId });
-  }
-  _origemParticipante(c) {
-    const despById = {};
-    (this._despesas || []).forEach((d) => (despById[String(d.id)] = d));
-    const rows = saldoPorDespesa(this._despesas || [], c.chave).map((e) => ({
-      _item: (dataStore.item((despById[String(e.despesa_id)] || {}).item_id) || {}).nome || e.item || "—",
-      _valor: moeda(e.valor),
-      _recebido: moeda(e.pago),
-      _id: e.despesa_id,
-    }));
-    abrirOrigemGrafico({
-      titulo: "Recebido · " + c.nome,
-      descricao: "Despesas que compõem o valor recebido por este participante.",
-      linhas: rows,
-      colunas: [
-        { chave: "_item", titulo: "Despesa" },
-        { chave: "_valor", titulo: "Valor", alinhar: "dir" },
-        { chave: "_recebido", titulo: "Recebido", alinhar: "dir" },
-      ],
-      aoAbrir: (l, modal) => {
-        const d = despById[String(l._id)];
-        if (d) { modal.remove(); this.abrirBanner(d); }
-      },
-    });
   }
 
   /** Abre o banner com a despesa (ver/editar/excluir). O banner é autossuficiente. */

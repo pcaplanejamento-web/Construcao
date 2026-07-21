@@ -113,10 +113,22 @@ export function balancos(despesas) {
   const saldoReceber = {};
   const porFornecedor = {};
   const porRepresentante = {};
+  // porOfertante = visão UNIFICADA por OFERTANTE (contato "c:" OU equipe "e:") —
+  // volume ofertado (Σ valor). Junta "representante" (contato) + ofertantes-equipe
+  // num só agregado (gráfico "Por ofertante").
+  const porOfertante = {};
   (despesas || []).forEach((d) => {
     const valor = Number(d.valor) || 0;
     const realizado = totalRealizado(d);
     const resto = Math.max(0, valor - realizado);
+
+    // Chave do ofertante (quem ofertou/vendeu): contato ou equipe.
+    const ofKey = d.ofertante_contato_id
+      ? "c:" + d.ofertante_contato_id
+      : d.ofertante_equipe_id
+      ? "e:" + d.ofertante_equipe_id
+      : "";
+    if (ofKey) porOfertante[ofKey] = (porOfertante[ofKey] || 0) + valor;
 
     // Devido (responsabilidade) — base interna do saldo a pagar.
     parseLista(d.responsaveis).forEach((r) => {
@@ -169,7 +181,7 @@ export function balancos(despesas) {
   Object.keys(recebido).forEach((k) => (g(k).recebido = recebido[k]));
   Object.keys(saldoReceber).forEach((k) => (g(k).saldoReceber = saldoReceber[k]));
   Object.keys(devido).forEach((k) => (g(k).saldoApagar = Math.max(0, (devido[k] || 0) - (pago[k] || 0))));
-  return { porChave, porFornecedor, porRepresentante };
+  return { porChave, porFornecedor, porRepresentante, porOfertante };
 }
 
 /**
@@ -187,6 +199,7 @@ export function balancosDePagamentos(despesas, pagamentos) {
   const saldoReceber = {};
   const porFornecedor = {};
   const porRepresentante = {};
+  const porOfertante = {}; // volume ofertado por ofertante (contato "c:" OU equipe "e:") — espelha balancos
   const alocadoPorDespesa = {};
   const distribuidoPorDespesa = {}; // quanto de cada despesa já foi p/ integrantes (não recontar na equipe)
   (pagamentos || []).forEach((p) => {
@@ -215,6 +228,12 @@ export function balancosDePagamentos(despesas, pagamentos) {
     const valor = Number(d.valor) || 0;
     const realizado = alocadoPorDespesa[d.id] || 0;
     const resto = Math.max(0, valor - realizado);
+    const ofKey = d.ofertante_contato_id
+      ? "c:" + d.ofertante_contato_id
+      : d.ofertante_equipe_id
+      ? "e:" + d.ofertante_equipe_id
+      : "";
+    if (ofKey) porOfertante[ofKey] = (porOfertante[ofKey] || 0) + valor;
     parseLista(d.responsaveis).forEach((r) => {
       if (r && r.chave) devido[r.chave] = (devido[r.chave] || 0) + (valor * (Number(r.pct) || 0)) / 100;
     });
@@ -243,7 +262,7 @@ export function balancosDePagamentos(despesas, pagamentos) {
   Object.keys(recebido).forEach((k) => (g(k).recebido = recebido[k]));
   Object.keys(saldoReceber).forEach((k) => (g(k).saldoReceber = saldoReceber[k]));
   Object.keys(devido).forEach((k) => (g(k).saldoApagar = Math.max(0, (devido[k] || 0) - (pago[k] || 0))));
-  return { porChave, porFornecedor, porRepresentante };
+  return { porChave, porFornecedor, porRepresentante, porOfertante };
 }
 
 /** "nenhum" | "unico" | "distribuido" conforme o nº de pagantes com valor > 0. */
