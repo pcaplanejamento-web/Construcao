@@ -14,6 +14,12 @@ scripts/
 dist/
 node_modules/
 
+# Repositório Git — NUNCA servir .git/ (expõe todo o histórico/código, inclusive
+# o backend que é excluído acima; e é grande). O código-fonte já é público no
+# GitHub, mas não há motivo p/ servir o .git/ no domínio.
+.git/
+.gitattributes
+
 # Markdown (README etc.) e metadados/configuração do projeto
 *.md
 .gitignore
