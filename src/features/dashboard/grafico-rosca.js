@@ -29,6 +29,11 @@ class GraficoRosca extends BaseElement {
   set formato(fn) {
     this._formato = typeof fn === "function" ? fn : null;
   }
+  /** Callback de clique numa fatia/legenda (opcional; abre o banner de origem — item 4). */
+  set aoSelecionar(fn) {
+    this._aoSel = typeof fn === "function" ? fn : null;
+    if (this.shadowRoot.childElementCount) this.renderizar();
+  }
   get titulo() {
     return this.getAttribute("titulo") || "Distribuição por categoria";
   }
@@ -51,6 +56,9 @@ class GraficoRosca extends BaseElement {
       .li .nome { color: var(--cor-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .li .val { margin-left: auto; color: var(--cor-texto-suave); white-space: nowrap; }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
+      /* Interativo (item 4): legenda clicável abre o banner de origem. */
+      .legenda.clicavel .li { cursor: pointer; border-radius: var(--raio-sm); padding: 2px 4px; margin: 0 -4px; }
+      .legenda.clicavel .li:hover { background: var(--cor-superficie-2); }
     `;
   }
 
@@ -77,8 +85,8 @@ class GraficoRosca extends BaseElement {
       this._formato ? this._formato(c, total) : `${moeda(c.total)} · ${percentual(c.total, total)}%`;
     const legenda = lista
       .map(
-        (c) =>
-          `<div class="li"><span class="dot" style="background:${c.cor || "var(--cor-neutro)"}"></span>
+        (c, i) =>
+          `<div class="li" data-i="${i}"><span class="dot" style="background:${c.cor || "var(--cor-neutro)"}"></span>
            <span class="nome">${c.nome}</span>
            <span class="val">${valTxt(c)}</span></div>`
       )
@@ -91,9 +99,20 @@ class GraficoRosca extends BaseElement {
           <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--cor-borda)" stroke-width="6"></circle>
           ${segmentos}
         </svg>
-        <div class="legenda">${legenda}</div>
+        <div class="legenda ${this._aoSel ? "clicavel" : ""}">${legenda}</div>
       </div>
     `;
+  }
+
+  aposRender() {
+    if (!this._aoSel) return;
+    this.$$(".li").forEach((el) =>
+      el.addEventListener("click", () => {
+        const i = Number(el.dataset.i);
+        const datum = this.porCategoria[i];
+        if (datum) this._aoSel(datum, i);
+      })
+    );
   }
 }
 

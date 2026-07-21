@@ -13,7 +13,7 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda } from "../../core/formatters.js";
 import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { statusPrazo, textoPrazo, corPrazo, iconePrazo, ehFinalizada } from "./prazo-util.js";
-import { balancos, restoDespesa } from "../despesas/despesa-split.js";
+import { balancos, restoDespesa, saldoPorDespesa } from "../despesas/despesa-split.js";
 import { COR_CLASSIFICACAO as COR_CLASSIFICACAO_OBRA } from "../../core/classificacao.js";
 import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { corDeId } from "../shared/cor-id.js";
@@ -53,7 +53,7 @@ import {
   montarGradeResumos,
 } from "../pagamentos/pagamento-util.js";
 import { confirmar, avisar } from "../../components/confirmar.js";
-import { abrirOrigemEstoque } from "../shared/vinculos.js";
+import { abrirOrigemEstoque, abrirOrigemGrafico } from "../shared/vinculos.js";
 import "../despesas/category-badge.js";
 
 // Cor ESTÁVEL por id/chave (participante/empresa/item/representante): shared/cor-id.js.
@@ -87,12 +87,18 @@ class ObraDetailView extends BaseElement {
       .prazo-banner .prazo-data { color: var(--cor-texto-suave); font-weight: var(--peso-medio); }
       h1 { font-size: var(--fs-2xl); font-weight: var(--peso-forte); }
       .meta { color: var(--cor-texto-suave); font-size: var(--fs-sm); }
-      /* Gráficos em grade de 3 colunas (2 linhas de 3), todos do MESMO tamanho. */
+      /* Gráficos em grade de 3 colunas, todos do MESMO tamanho. */
       .graficos { display: grid; gap: var(--esp-5); grid-template-columns: repeat(3, 1fr); }
       .graficos > * { min-width: 0; height: 340px; }
+      /* PAR (item 1): "Recebido por participante" + "Vendas por representante" JUNTOS,
+         lado a lado, ocupando a linha inteira. */
+      .graficos > .par { grid-column: 1 / -1; height: auto; display: grid; gap: var(--esp-5); grid-template-columns: 1fr 1fr; }
+      .par > * { min-width: 0; height: 340px; }
       @media (max-width: 900px) {
         .graficos { grid-template-columns: 1fr; }
         .graficos > * { height: auto; min-height: 300px; }
+        .graficos > .par { grid-template-columns: 1fr; }
+        .par > * { height: auto; min-height: 300px; }
       }
       .despesas-aba { display: flex; flex-direction: column; gap: var(--esp-5); }
     `;
@@ -125,10 +131,12 @@ class ObraDetailView extends BaseElement {
           <ui-card><category-breakdown id="break" titulo="Gastos por categoria"></category-breakdown></ui-card>
           <ui-card><grafico-rosca id="rosca" titulo="Distribuição por classificação"></grafico-rosca></ui-card>
           <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
-          <ui-card><category-breakdown id="gPart" titulo="Recebido por participante" vazio="Ninguém recebeu valor ainda."></category-breakdown></ui-card>
+          <div class="par">
+            <ui-card><category-breakdown id="gPart" titulo="Recebido por participante" vazio="Ninguém recebeu valor ainda."></category-breakdown></ui-card>
+            <ui-card><category-breakdown id="gRep" titulo="Vendas por representante" vazio="Nenhum representante com vendas."></category-breakdown></ui-card>
+          </div>
           <ui-card><category-breakdown id="gEmp" titulo="Total por empresa" vazio="Nenhuma empresa com despesas."></category-breakdown></ui-card>
-          <ui-card><category-breakdown id="gRep" titulo="Vendas por representante" vazio="Nenhum representante com vendas."></category-breakdown></ui-card>
-          <ui-card><grafico-rosca id="gEst" titulo="Quantidade em estoque por item" vazio="Nenhum item em estoque."></grafico-rosca></ui-card>
+          <ui-card><category-breakdown id="gEst" titulo="Quantidade em estoque por item" vazio="Nenhum item em estoque."></category-breakdown></ui-card>
         </div>
         <div slot="despesas" class="despesas-aba">
           <ui-card mesa acao-fixa title="Mesa com despesas da obra">
@@ -262,6 +270,16 @@ class ObraDetailView extends BaseElement {
     this._gRep = alvo.querySelector("#gRep");
     this._gEst = alvo.querySelector("#gEst");
     this._tabela = alvo.querySelector("#tabela");
+
+    // Clique numa fatia/barra → banner de ORIGEM (item 4). Definido UMA vez; os
+    // handlers leem `this._despesas` fresco a cada sincronizar.
+    this._break.aoSelecionar = (c) => this._origemCategoria(c);
+    this._rosca.aoSelecionar = (c) => this._origemClassificacao(c);
+    this._mensal.aoSelecionar = (c) => this._origemMes(c);
+    this._gPart.aoSelecionar = (c) => this._origemParticipante(c);
+    this._gRep.aoSelecionar = (c) => this._origemRepresentante(c);
+    this._gEmp.aoSelecionar = (c) => this._origemEmpresa(c);
+    this._gEst.aoSelecionar = (c) => this._origemEstoqueItem(c);
 
     alvo.querySelector("#addDespesa").addEventListener("click", () => this.abrirDespesaForm());
     alvo.querySelector("#addOrc").addEventListener("click", () => this.abrirOrcamentoForm());
@@ -808,7 +826,7 @@ class ObraDetailView extends BaseElement {
 
     if (this._gPart) {
       this._gPart.porCategoria = Object.keys(porChave)
-        .map((ch) => ({ nome: this._nomeDaChave(ch), cor: corDeId(ch), total: Number(porChave[ch].recebido) || 0 }))
+        .map((ch) => ({ nome: this._nomeDaChave(ch), cor: corDeId(ch), total: Number(porChave[ch].recebido) || 0, chave: ch }))
         .filter((x) => x.total > 0.01)
         .sort((a, b) => b.total - a.total);
     }
@@ -819,6 +837,7 @@ class ObraDetailView extends BaseElement {
           nome: (dataStore.fornecedores().find((f) => String(f.id) === String(fid)) || {}).nome || "—",
           cor: corDeId(fid),
           total: Number(porFornecedor[fid].total) || 0,
+          fornecedor_id: fid,
         }))
         .filter((x) => x.total > 0.01)
         .sort((a, b) => b.total - a.total);
@@ -833,13 +852,15 @@ class ObraDetailView extends BaseElement {
           nome: (dataStore.contatos().find((c) => String(c.id) === String(cid)) || {}).nome || "—",
           cor: corDeId(cid),
           total: Number(porRepresentante[cid].total) || 0,
+          contato_id: cid,
         }))
         .filter((x) => x.total > 0.01)
         .sort((a, b) => b.total - a.total);
     }
 
     if (this._gEst) {
-      // Quantidade (não R$) → formatador próprio na legenda; a fatia usa a quantidade.
+      // Mesmo componente de "Gastos por categoria" (barras) — item 2. Quantidade (não R$)
+      // → formatador próprio no valor; a barra usa a quantidade relativa.
       const nf = (n) => (Math.round((Number(n) || 0) * 1000) / 1000).toLocaleString("pt-BR");
       this._gEst.formato = (c) => nf(c.total) + (c.unidade ? " " + c.unidade : "");
       this._gEst.porCategoria = dataStore
@@ -849,10 +870,84 @@ class ObraDetailView extends BaseElement {
           cor: corDeId(it.item_id),
           total: Number(it.em_estoque) || 0,
           unidade: it.unidade || "",
+          item_id: it.item_id,
         }))
         .filter((x) => x.total > 0.0001)
         .sort((a, b) => b.total - a.total);
     }
+  }
+
+  /* ---------------------- Origem dos gráficos (item 4) ------------------ */
+
+  /** Banner de origem listando despesas (linha → abre a despesa). */
+  _bannerDespesas(titulo, descricao, despesas) {
+    const rows = (despesas || []).map((d) => ({
+      _item: (dataStore.item(d.item_id) || {}).nome || d.descricao || "—",
+      _valor: moeda(d.valor),
+      _data: d.data || "—",
+      _id: d.id,
+    }));
+    abrirOrigemGrafico({
+      titulo, descricao, linhas: rows,
+      colunas: [
+        { chave: "_item", titulo: "Despesa" },
+        { chave: "_valor", titulo: "Valor", alinhar: "dir" },
+        { chave: "_data", titulo: "Data" },
+      ],
+      aoAbrir: (l, modal) => {
+        const d = (despesas || []).find((x) => String(x.id) === String(l._id));
+        if (d) { modal.remove(); this.abrirBanner(d); }
+      },
+    });
+  }
+
+  _origemCategoria(c) {
+    const ds = (this._despesas || []).filter((d) => String(d.categoria_id) === String(c.categoria_id));
+    this._bannerDespesas("Categoria · " + c.nome, "Despesas desta categoria.", ds);
+  }
+  _origemClassificacao(c) {
+    const alvo = c.nome === "Sem classificação" ? "" : c.nome; // entrada agregada usa "" p/ vazio
+    const ds = (this._despesas || []).filter((d) => String(d.classificacao || "") === String(alvo));
+    this._bannerDespesas("Classificação · " + c.nome, "Despesas desta classificação.", ds);
+  }
+  _origemMes(c) {
+    const ds = (this._despesas || []).filter((d) => String(d.data || "").startsWith(c.mes));
+    this._bannerDespesas("Mês · " + (c.rotulo || c.mes), "Despesas deste mês.", ds);
+  }
+  _origemEmpresa(c) {
+    const ds = (this._despesas || []).filter((d) => String(d.fornecedor_id) === String(c.fornecedor_id));
+    this._bannerDespesas("Empresa · " + c.nome, "Despesas desta empresa.", ds);
+  }
+  _origemRepresentante(c) {
+    const ds = (this._despesas || []).filter((d) => String(d.ofertante_contato_id) === String(c.contato_id));
+    this._bannerDespesas("Representante · " + c.nome, "Vendas intermediadas por este representante.", ds);
+  }
+  _origemEstoqueItem(c) {
+    abrirOrigemEstoque({ tituloItem: c.nome, origens: dataStore.origensDoEstoque(this.obraId, c.item_id), obraId: this.obraId });
+  }
+  _origemParticipante(c) {
+    const despById = {};
+    (this._despesas || []).forEach((d) => (despById[String(d.id)] = d));
+    const rows = saldoPorDespesa(this._despesas || [], c.chave).map((e) => ({
+      _item: (dataStore.item((despById[String(e.despesa_id)] || {}).item_id) || {}).nome || e.item || "—",
+      _valor: moeda(e.valor),
+      _recebido: moeda(e.pago),
+      _id: e.despesa_id,
+    }));
+    abrirOrigemGrafico({
+      titulo: "Recebido · " + c.nome,
+      descricao: "Despesas que compõem o valor recebido por este participante.",
+      linhas: rows,
+      colunas: [
+        { chave: "_item", titulo: "Despesa" },
+        { chave: "_valor", titulo: "Valor", alinhar: "dir" },
+        { chave: "_recebido", titulo: "Recebido", alinhar: "dir" },
+      ],
+      aoAbrir: (l, modal) => {
+        const d = despById[String(l._id)];
+        if (d) { modal.remove(); this.abrirBanner(d); }
+      },
+    });
   }
 
   /** Abre o banner com a despesa (ver/editar/excluir). O banner é autossuficiente. */

@@ -135,7 +135,7 @@ para dono **e** colaboradores.
 ### Público (sem login — somente leitura)
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `publico.obra` | `{ token }` | Obra INTEIRA p/ a visão pública somente-leitura (todas as abas): `{ obra:{id,nome,endereco,descricao,orcamento,status}, resumo, despesas:[{item,valor,data,classificacao,categoria_nome,categoria_cor}] (itens), despesasRaw (cru → balanços/acerto), participantes, categorias, fornecedores, contatos, equipes (estes três **só os referenciados** nesta obra — privacidade), orcamentos, transferencias, pagamentos, tiposTransferencia }` — **não** expõe usuários/observações nem dados de outras obras do dono |
+| `publico.obra` | `{ token }` | Obra INTEIRA p/ a visão pública somente-leitura (todas as abas): `{ obra:{id,nome,endereco,descricao,orcamento,status}, resumo, despesas:[{item,valor,data,classificacao,categoria_nome,categoria_cor}] (itens), despesasRaw (cru → balanços/acerto/gráficos), participantes, categorias, fornecedores, contatos, equipes, itens:[{id,nome,unidade}] (estes **só os referenciados** nesta obra — privacidade), estoque:[movimentos da obra] (p/ o gráfico "Quantidade em estoque por item" — o front deriva o saldo com emEstoqueDaObra), orcamentos, transferencias, pagamentos, tiposTransferencia }` — **não** expõe usuários/observações nem dados de outras obras do dono |
 
 ### Usuários (autenticado)
 | Action | `data` | Retorno |

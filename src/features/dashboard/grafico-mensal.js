@@ -2,6 +2,8 @@
  * <grafico-mensal> — Barras verticais do gasto por mês (CSS). Preenche a altura
  * do cartão; com muitos meses, rola horizontalmente.
  * Propriedade: .despesas = [{ valor, data }]
+ *   .aoSelecionar = ({ mes:"AAAA-MM", rotulo, total }) => void  (opcional; ao clicar
+ *              numa coluna abre o banner de origem — item 4).
  */
 import { BaseElement } from "../../components/base-element.js";
 import { moeda } from "../../core/formatters.js";
@@ -15,6 +17,11 @@ class GraficoMensal extends BaseElement {
   }
   get despesas() {
     return this._despesas || [];
+  }
+  /** Callback de clique numa coluna (opcional). Habilita a interação. */
+  set aoSelecionar(fn) {
+    this._aoSel = typeof fn === "function" ? fn : null;
+    if (this.shadowRoot.childElementCount) this.renderizar();
   }
 
   estilos() {
@@ -32,6 +39,9 @@ class GraficoMensal extends BaseElement {
         border-radius: var(--raio-sm) var(--raio-sm) 0 0; min-height: 2px; transition: height .3s; }
       .rotulo { font-size: var(--fs-xs); color: var(--cor-texto-fraco); }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
+      /* Interativo (item 4): coluna clicável abre o banner de origem. */
+      .grafico.clicavel .col { cursor: pointer; border-radius: var(--raio-sm); }
+      .grafico.clicavel .col:hover { background: var(--cor-superficie-2); }
     `;
   }
 
@@ -52,14 +62,27 @@ class GraficoMensal extends BaseElement {
         const rotulo = `${MESES[Number(partes[1]) - 1] || partes[1]}/${partes[0].slice(2)}`;
         const altura = max ? Math.round((acc[ym] / max) * 100) : 0;
         return `
-          <div class="col" title="${rotulo}: ${moeda(acc[ym])}">
+          <div class="col" data-mes="${ym}" data-rotulo="${rotulo}" title="${rotulo}: ${moeda(acc[ym])}">
             <div class="val">${moeda(acc[ym])}</div>
             <div class="barra-wrap"><div class="barra" style="height:${altura}%"></div></div>
             <div class="rotulo">${rotulo}</div>
           </div>`;
       })
       .join("");
-    return `<div class="titulo">Gasto por mês</div><div class="grafico">${barras}</div>`;
+    return `<div class="titulo">Gasto por mês</div><div class="grafico ${this._aoSel ? "clicavel" : ""}">${barras}</div>`;
+  }
+
+  aposRender() {
+    if (!this._aoSel) return;
+    this.$$(".col").forEach((el) =>
+      el.addEventListener("click", () => {
+        const mes = el.dataset.mes;
+        const total = this.despesas
+          .filter((d) => String(d.data || "").startsWith(mes))
+          .reduce((s, d) => s + (Number(d.valor) || 0), 0);
+        this._aoSel({ mes, rotulo: el.dataset.rotulo, total });
+      })
+    );
   }
 }
 

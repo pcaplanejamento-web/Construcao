@@ -335,6 +335,49 @@ export function abrirOrigemAcerto({ acerto, despesas, obraId }) {
 }
 
 /**
+ * Banner de ORIGEM de um dado de gráfico (item 4): ao clicar numa fatia/barra,
+ * mostra as linhas que compõem aquele número. Neutro e reutilizável — compõe
+ * ui-modal + ui-alert(info) + ui-data-table (sem componente novo). `aoAbrir`
+ * (opcional) recebe `(linha, modal)` no clique de uma linha — no compartilhamento
+ * (somente leitura) é omitido → tabela apenas exibe.
+ */
+export function abrirOrigemGrafico({ titulo, descricao, colunas, linhas, aoAbrir }) {
+  const modal = document.createElement("ui-modal");
+  modal.setAttribute("open", "");
+  modal.setAttribute("title", "Origem · " + (titulo || ""));
+
+  const corpo = document.createElement("div");
+  if (descricao) {
+    const alerta = document.createElement("ui-alert");
+    alerta.setAttribute("tipo", "info");
+    alerta.mensagem = descricao;
+    corpo.appendChild(alerta);
+  }
+  const tab = document.createElement("ui-data-table");
+  tab.setAttribute("fluido", "");
+  tab.setAttribute("empty-text", "Sem registros.");
+  tab.style.marginTop = "var(--esp-3)";
+  if (aoAbrir) tab.setAttribute("clicavel", "");
+  tab.columns = colunas || [];
+  tab.rows = linhas || [];
+  if (aoAbrir) tab.addEventListener("linha", (e) => aoAbrir(e.detail.linha, modal));
+  corpo.appendChild(tab);
+  modal.appendChild(corpo);
+
+  const rod = document.createElement("div");
+  rod.setAttribute("slot", "rodape");
+  const btn = document.createElement("ui-button");
+  btn.textContent = "Fechar";
+  btn.addEventListener("click", () => modal.remove());
+  rod.appendChild(btn);
+  modal.appendChild(rod);
+
+  modal.addEventListener("fechar", () => modal.remove());
+  document.body.appendChild(modal);
+  return modal;
+}
+
+/**
  * Abre o banner de vínculos. Se não houver vínculos, executa `aoExcluir`
  * (que deve conter a confirmação + a chamada ao data-store).
  */

@@ -11,14 +11,20 @@
 import { BaseElement } from "../../components/base-element.js";
 import { api } from "../../core/api-client.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
-import { balancos, acerto } from "../despesas/despesa-split.js";
+import { balancos, acerto, saldoPorDespesa } from "../despesas/despesa-split.js";
+import { emEstoqueDaObra } from "../estoque/estoque.js";
+import { corDeId } from "../shared/cor-id.js";
 import "../../components/ui-card.js";
 import "../../components/ui-icon.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
+import "../../components/ui-modal.js";
+import "../../components/ui-button.js";
 import "../dashboard/dashboard-summary.js";
 import "../dashboard/category-breakdown.js";
+import "../dashboard/grafico-rosca.js";
+import "../dashboard/grafico-mensal.js";
 import "../despesas/category-badge.js";
 
 import { COR_CLASSIFICACAO } from "../../core/classificacao.js";
@@ -46,6 +52,17 @@ class PublicoView extends BaseElement {
       .colunas { display: grid; gap: var(--esp-5); grid-template-columns: 2fr 1fr; }
       .colunas > * { min-width: 0; }
       @media (max-width: 860px) { .colunas { grid-template-columns: 1fr; } }
+      /* Todos os gráficos (mesmos componentes da obra) numa grade de 3 colunas. */
+      .graficos { display: grid; gap: var(--esp-5); grid-template-columns: repeat(3, 1fr); }
+      .graficos > * { min-width: 0; height: 340px; }
+      .graficos > .par { grid-column: 1 / -1; height: auto; display: grid; gap: var(--esp-5); grid-template-columns: 1fr 1fr; }
+      .par > * { min-width: 0; height: 340px; }
+      @media (max-width: 900px) {
+        .graficos { grid-template-columns: 1fr; }
+        .graficos > * { height: auto; min-height: 300px; }
+        .graficos > .par { grid-template-columns: 1fr; }
+        .par > * { height: auto; min-height: 300px; }
+      }
       .acertos { display: flex; flex-direction: column; gap: var(--esp-2); }
       .acerto-item { display: flex; align-items: center; gap: var(--esp-2);
         padding: var(--esp-2) var(--esp-3); border: 1px solid var(--cor-borda);
@@ -115,8 +132,16 @@ class PublicoView extends BaseElement {
       <span class="selo"><ui-icon name="olho" size="14"></ui-icon> Somente leitura — link compartilhado</span>
       <dashboard-summary id="dash"></dashboard-summary>
       <ui-tabs id="abas">
-        <div slot="graficos">
+        <div slot="graficos" class="graficos">
           <ui-card><category-breakdown id="break" titulo="Gastos por categoria"></category-breakdown></ui-card>
+          <ui-card><grafico-rosca id="rosca" titulo="Distribuição por classificação"></grafico-rosca></ui-card>
+          <ui-card><grafico-mensal id="mensal"></grafico-mensal></ui-card>
+          <div class="par">
+            <ui-card><category-breakdown id="gPart" titulo="Recebido por participante" vazio="Ninguém recebeu valor ainda."></category-breakdown></ui-card>
+            <ui-card><category-breakdown id="gRep" titulo="Vendas por representante" vazio="Nenhum representante com vendas."></category-breakdown></ui-card>
+          </div>
+          <ui-card><category-breakdown id="gEmp" titulo="Total por empresa" vazio="Nenhuma empresa com despesas."></category-breakdown></ui-card>
+          <ui-card><category-breakdown id="gEst" titulo="Quantidade em estoque por item" vazio="Nenhum item em estoque."></category-breakdown></ui-card>
         </div>
         <div slot="despesas">
           <ui-card mesa title="Mesa com itens"><ui-data-table id="tDesp" fluido empty-text="Nenhuma despesa registrada."></ui-data-table></ui-card>
@@ -149,10 +174,69 @@ class PublicoView extends BaseElement {
       { id: "transferencias", rotulo: "Transferências", icone: "cifrao" },
     ];
 
-    // Gráficos
-    this.$("#dash").resumo = d.resumo || {};
-    this.$("#break").porCategoria =
-      (d.resumo && (d.resumo.por_subclassificacao || d.resumo.por_categoria)) || [];
+    // Gráficos — TODOS os mesmos componentes da obra, somente leitura + drill-down.
+    const resumo = d.resumo || {};
+    const despRaw = d.despesasRaw || [];
+    const { porChave, porFornecedor, porRepresentante } = balancos(despRaw);
+    const byId = {};
+    despRaw.forEach((x) => (byId[String(x.id)] = x));
+    const itemMap = {};
+    (d.itens || []).forEach((i) => (itemMap[String(i.id)] = i));
+    const nomeItem = (id) => (itemMap[String(id)] || {}).nome || "—";
+    const nf = (n) => (Math.round((Number(n) || 0) * 1000) / 1000).toLocaleString("pt-BR");
+    const DESP_COLS = [
+      { chave: "_item", titulo: "Despesa" },
+      { chave: "_valor", titulo: "Valor", alinhar: "dir" },
+      { chave: "_data", titulo: "Data" },
+    ];
+    const despRows = (arr) => arr.map((x) => ({ _item: nomeItem(x.item_id), _valor: moeda(x.valor), _data: fmtData(x.data) }));
+
+    this.$("#dash").resumo = resumo;
+
+    this.$("#break").aoSelecionar = (c) =>
+      this._origem("Categoria · " + c.nome, DESP_COLS, despRows(despRaw.filter((x) => String(x.categoria_id) === String(c.categoria_id))));
+    this.$("#break").porCategoria = resumo.por_subclassificacao || resumo.por_categoria || [];
+
+    this.$("#rosca").aoSelecionar = (c) => {
+      const alvo = c.nome === "Sem classificação" ? "" : c.nome;
+      this._origem("Classificação · " + c.nome, DESP_COLS, despRows(despRaw.filter((x) => String(x.classificacao || "") === String(alvo))));
+    };
+    this.$("#rosca").porCategoria = resumo.por_classificacao || [];
+
+    this.$("#mensal").aoSelecionar = (c) =>
+      this._origem("Mês · " + (c.rotulo || c.mes), DESP_COLS, despRows(despRaw.filter((x) => String(x.data || "").startsWith(c.mes))));
+    this.$("#mensal").despesas = despRaw;
+
+    this.$("#gPart").aoSelecionar = (c) =>
+      this._origem("Recebido · " + c.nome,
+        [{ chave: "_item", titulo: "Despesa" }, { chave: "_valor", titulo: "Valor", alinhar: "dir" }, { chave: "_recebido", titulo: "Recebido", alinhar: "dir" }],
+        saldoPorDespesa(despRaw, c.chave).map((e) => ({ _item: nomeItem((byId[String(e.despesa_id)] || {}).item_id), _valor: moeda(e.valor), _recebido: moeda(e.pago) })));
+    this.$("#gPart").porCategoria = Object.keys(porChave)
+      .map((ch) => ({ nome: this._nomeChave(ch), cor: corDeId(ch), total: Number(porChave[ch].recebido) || 0, chave: ch }))
+      .filter((x) => x.total > 0.01).sort((a, b) => b.total - a.total);
+
+    this.$("#gRep").aoSelecionar = (c) =>
+      this._origem("Representante · " + c.nome, DESP_COLS, despRows(despRaw.filter((x) => String(x.ofertante_contato_id) === String(c.contato_id))));
+    this.$("#gRep").porCategoria = Object.keys(porRepresentante)
+      .map((cid) => ({ nome: this._nomeContato(cid), cor: corDeId(cid), total: Number(porRepresentante[cid].total) || 0, contato_id: cid }))
+      .filter((x) => x.total > 0.01).sort((a, b) => b.total - a.total);
+
+    this.$("#gEmp").aoSelecionar = (c) =>
+      this._origem("Empresa · " + c.nome, DESP_COLS, despRows(despRaw.filter((x) => String(x.fornecedor_id) === String(c.fornecedor_id))));
+    this.$("#gEmp").porCategoria = Object.keys(porFornecedor)
+      .map((fid) => ({ nome: this._nomeForn(d, fid), cor: corDeId(fid), total: Number(porFornecedor[fid].total) || 0, fornecedor_id: fid }))
+      .filter((x) => x.total > 0.01).sort((a, b) => b.total - a.total);
+
+    // Quantidade em estoque por item — MESMO componente de barras (item 2).
+    const ROTULO_MOV = { entrada_despesa: "Compra (despesa)", entrada_manual: "Entrada manual", entrada_transferencia: "Recebido por transferência", saida_transferencia: "Enviado por transferência", consumo: "Consumo", retorno: "Retorno" };
+    this.$("#gEst").aoSelecionar = (c) =>
+      this._origem("Estoque · " + c.nome,
+        [{ chave: "_tipo", titulo: "Movimento" }, { chave: "_qtd", titulo: "Quantidade", alinhar: "dir" }, { chave: "_data", titulo: "Data" }],
+        (d.estoque || []).filter((m) => String(m.item_id) === String(c.item_id)).map((m) => ({ _tipo: ROTULO_MOV[m.tipo] || m.tipo, _qtd: nf(m.quantidade) + (m.unidade ? " " + m.unidade : ""), _data: fmtData(m.data) })));
+    this.$("#gEst").formato = (c) => nf(c.total) + (c.unidade ? " " + c.unidade : "");
+    this.$("#gEst").porCategoria = emEstoqueDaObra(d.estoque || [], o.id)
+      .map((it) => ({ nome: nomeItem(it.item_id), cor: corDeId(it.item_id), total: Number(it.em_estoque) || 0, unidade: it.unidade || "", item_id: it.item_id }))
+      .filter((x) => x.total > 0.0001).sort((a, b) => b.total - a.total);
 
     // Despesas (itens)
     this.$("#tDesp").columns = [
@@ -180,9 +264,8 @@ class PublicoView extends BaseElement {
     this.$("#tDesp").rows = d.despesas || [];
 
     // Acerto de contas (balanços por participante + quem deve a quem) — helpers PUROS.
-    const despRaw = d.despesasRaw || [];
+    // (despRaw/porChave/porFornecedor já calculados no bloco de Gráficos acima.)
     const participantes = d.participantes || [];
-    const { porChave, porFornecedor } = balancos(despRaw);
     const rowsAcerto = participantes.map((p) => {
       const b = porChave[p.chave] || { pago: 0, recebido: 0, saldoApagar: 0, saldoReceber: 0 };
       return { nome: p.nome, _pago: b.pago || 0, _recebido: b.recebido || 0, _saldoApagar: b.saldoApagar || 0, _saldoReceber: b.saldoReceber || 0 };
@@ -264,6 +347,33 @@ class PublicoView extends BaseElement {
   _nomeForn(d, fid) {
     const f = (d.fornecedores || []).find((x) => String(x.id) === String(fid));
     return f ? f.nome : "—";
+  }
+
+  /**
+   * Banner de ORIGEM (item 4) na visão pública — somente leitura (sem navegação/edição).
+   * Compõe ui-modal + ui-data-table (isolado; não puxa o data-store autenticado).
+   */
+  _origem(titulo, colunas, linhas) {
+    const modal = document.createElement("ui-modal");
+    modal.setAttribute("open", "");
+    modal.setAttribute("title", "Origem · " + titulo);
+    const corpo = document.createElement("div");
+    const tab = document.createElement("ui-data-table");
+    tab.setAttribute("fluido", "");
+    tab.setAttribute("empty-text", "Sem registros.");
+    tab.columns = colunas;
+    tab.rows = linhas;
+    corpo.appendChild(tab);
+    modal.appendChild(corpo);
+    const rod = document.createElement("div");
+    rod.setAttribute("slot", "rodape");
+    const btn = document.createElement("ui-button");
+    btn.textContent = "Fechar";
+    btn.addEventListener("click", () => modal.remove());
+    rod.appendChild(btn);
+    modal.appendChild(rod);
+    modal.addEventListener("fechar", () => modal.remove());
+    document.body.appendChild(modal);
   }
 }
 

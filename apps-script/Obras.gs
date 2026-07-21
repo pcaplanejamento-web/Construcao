@@ -538,6 +538,18 @@ function publicoObra(data) {
     return eIds[e.id];
   });
 
+  // Estoque (movimentos da obra) p/ o gráfico "Quantidade em estoque por item" no
+  // compartilhamento — o front deriva o saldo com o helper puro emEstoqueDaObra.
+  // `itensRef` = só os itens REFERENCIADOS (privacidade: não vaza o catálogo do dono).
+  const estoqueMov = listarMovimentosDeObras([obra.id]);
+  const iIds = {};
+  despesasRaw.forEach(function (d) { if (d.item_id) iIds[d.item_id] = true; });
+  estoqueMov.forEach(function (m) { if (m.item_id) iIds[m.item_id] = true; });
+  const itensRef = Object.keys(iIds).map(function (id) {
+    const it = itens[id] || {};
+    return { id: id, nome: it.nome || "—", unidade: it.unidade || "" };
+  });
+
   return {
     obra: {
       id: obra.id,
@@ -559,6 +571,8 @@ function publicoObra(data) {
     transferencias: transferencias,
     pagamentos: pagamentos,
     tiposTransferencia: listarTiposTransferenciaUsuario(dono),
+    estoque: estoqueMov, // movimentos da obra (front deriva o saldo por item)
+    itens: itensRef, // só os itens referenciados (nome/unidade)
     servidor_em: agoraIso(),
   };
 }
