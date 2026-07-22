@@ -34,6 +34,10 @@ import "./split-editor.js";
 import "./category-badge.js";
 import { CLASSIFICACOES, COR_CLASSIFICACAO } from "../../core/classificacao.js";
 
+function esc(s) {
+  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 class DespesaDetail extends BaseElement {
   set despesa(v) {
     this._despesa = v || null;
@@ -119,6 +123,9 @@ class DespesaDetail extends BaseElement {
 
   template() {
     const d = this.despesa;
+    // Link público (somente-leitura): o MESMO banner, porém DISPLAY-ONLY — sem
+    // campos editáveis, sem lançar/excluir pagamento, sem Salvar/Excluir.
+    if (dataStore.somenteLeitura()) return this._templateSomenteLeitura(d);
     const editado =
       d.editor_nome && d.atualizado_em && String(d.atualizado_em) !== String(d.criado_em);
     const dataVal = d.data ? String(d.data).substring(0, 10) : "";
@@ -189,8 +196,88 @@ class DespesaDetail extends BaseElement {
     `;
   }
 
+  /** Banner SOMENTE-LEITURA (link público): a despesa exibida sem nenhum campo
+   *  editável — item/valor/data/observação/responsáveis como texto; pagamentos só
+   *  para visualizar (clique → banner do pagamento read-only); rodapé só "Fechar". */
+  _templateSomenteLeitura(d) {
+    const editado = d.editor_nome && d.atualizado_em && String(d.atualizado_em) !== String(d.criado_em);
+    const itemNome = (d.item_id && (dataStore.item(d.item_id) || {}).nome) || d.item || "—";
+    const emp = this.empresaNome(d.fornecedor_id);
+    const ofertante =
+      d.ofertante_contato_id || d.ofertante_equipe_id ? ofertanteNome(d.ofertante_contato_id, d.ofertante_equipe_id) : "";
+    let topo;
+    if (this.travado) {
+      topo = `<label class="tx">Oferta de origem</label>
+        <div class="resumo clicavel" id="ofertaBox" title="Ver detalhes da oferta"></div>`;
+    } else {
+      topo = `<div class="resumo">
+        <span class="item">${esc(itemNome)}</span>
+        <span class="val">${moeda(Number(d.valor) || 0)}</span>
+        ${d.classificacao ? `<small>${esc(d.classificacao)}</small>` : ""}
+      </div>`;
+    }
+    const metas = [`Data: ${fmtData(d.data)}`];
+    if (ofertante && ofertante !== "—") metas.push(`Ofertante: ${esc(ofertante)}`);
+    if (emp) metas.push(`Empresa: ${esc(emp)}`);
+    const resp = parseLista(d.responsaveis);
+    const respHtml = resp.length
+      ? resp
+          .map((r) => `<category-badge nome="${esc(this._nomeResp(r.chave))} · ${Number(r.pct) || 0}%" cor="var(--cor-aviso)"></category-badge>`)
+          .join(" ")
+      : `<span class="muted">Sem responsáveis definidos.</span>`;
+    return `
+      <ui-modal open title="Despesa">
+        <div class="campos">
+          ${topo}
+          <div class="muted">${metas.join(" · ")}</div>
+          ${d.observacao ? `<div><label class="tx">Observação</label><div>${esc(d.observacao)}</div></div>` : ""}
+          <div class="secao" id="secPag">
+            <label class="tx">Pagamentos</label>
+            <div class="statuslinha" id="statusLinha"></div>
+            <div class="pag-cards" id="listaPag"></div>
+          </div>
+          <div class="secao">
+            <label class="tx">Responsabilidade — % por participante</label>
+            <div>${respHtml}</div>
+          </div>
+          <div class="auditoria">
+            <span>Adicionada em ${fmtData(d.criado_em)} por ${esc(d.autor_nome || "—")}</span>
+            ${editado ? `<span>Editado por ${esc(d.editor_nome)} em ${fmtData(d.atualizado_em)}</span>` : ""}
+          </div>
+        </div>
+        <div slot="rodape" class="rodape">
+          <span class="cresce"></span>
+          <ui-button id="cancelar" variant="secundario">Fechar</ui-button>
+        </div>
+      </ui-modal>`;
+  }
+
+  /** Nome de um responsável (chave c:/e:/u:) — via participantes da obra + fallback. */
+  _nomeResp(chave) {
+    const p = dataStore.participantesDaObra(this.despesa.obra_id).find((x) => String(x.chave) === String(chave));
+    if (p && p.nome) return p.nome;
+    return this._nomeChave(chave);
+  }
+
   aposRender() {
     const d = this.despesa;
+    // Somente-leitura: só liga o card da oferta (read-only), status e pagamentos
+    // (visualização) + Fechar. Nada de item/valor/salvar/excluir/lançar.
+    if (dataStore.somenteLeitura()) {
+      if (this.travado) {
+        const oferta = dataStore.todasOfertas().find((o) => String(o.id) === String(d.preco_id));
+        const box = this.$("#ofertaBox");
+        if (oferta && box) {
+          box.innerHTML = previaOfertaHtml(oferta);
+          box.addEventListener("click", () => abrirOferta(oferta, { somenteLeitura: true }));
+        }
+      }
+      this.atualizarStatusPag();
+      this.pintarLancamentos();
+      this.$("ui-modal").addEventListener("fechar", () => this.emitir("fechar"));
+      this.$("#cancelar").addEventListener("click", () => this.emitir("fechar"));
+      return;
+    }
     if (!this.travado) {
       // Base fixas + extras criadas pelo admin (Configuração → Classificações).
       const nomes = dataStore.nomesClassificacaoItem();
@@ -302,16 +389,19 @@ class DespesaDetail extends BaseElement {
         if (e.target.closest(".rem")) return;
         abrirPagamento(p);
       });
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "rem";
-      btn.textContent = "✕";
-      btn.title = "Excluir pagamento";
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.excluirPag(p);
-      });
-      card.appendChild(btn);
+      // Somente-leitura (link público): sem ✕ para excluir pagamento (só visualizar).
+      if (!dataStore.somenteLeitura()) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "rem";
+        btn.textContent = "✕";
+        btn.title = "Excluir pagamento";
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.excluirPag(p);
+        });
+        card.appendChild(btn);
+      }
       cont.appendChild(card);
     });
     // Regra: pode lançar VÁRIOS pagamentos PARCIAIS até QUITAR (cada um vira uma

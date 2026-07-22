@@ -155,7 +155,9 @@ class ObraParticipantes extends BaseElement {
 
       const tabela = document.createElement("ui-data-table");
       tabela.setAttribute("fluido", "");
-      tabela.setAttribute("clicavel", "");
+      // Somente-leitura: sem `clicavel` (a navegação p/ /contatos·/equipes já é gated;
+      // o hover "clicável" seria enganoso no link público).
+      if (!dataStore.somenteLeitura()) tabela.setAttribute("clicavel", "");
       tabela.columns = [
         { chave: "nome", titulo: "Participante", formato: (v) => avatarNomeHtml(v) },
         { chave: "_tel", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },

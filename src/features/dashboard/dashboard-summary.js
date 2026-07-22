@@ -25,8 +25,14 @@ class DashboardSummary extends BaseElement {
       :host { display: block; }
       .grid { display: grid; gap: var(--esp-5);
         grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
-      /* Mobile: KPIs sempre em grade 2 colunas (2×2), com gap menor. */
-      @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); gap: var(--esp-3); } }
+      /* Mobile: KPIs em grade 2 colunas (2×2), gap/padding menores e VALOR que
+         encolhe + quebra — senão valores grandes (ex.: R$ 1.835.767,89) vazam do
+         cartão (overflow:hidden cortava o número no compartilhamento no celular). */
+      @media (max-width: 600px) {
+        .grid { grid-template-columns: repeat(2, 1fr); gap: var(--esp-3); }
+        .cartao { padding: var(--esp-4); min-height: 120px; }
+        .valor { font-size: var(--fs-xl); overflow-wrap: anywhere; }
+      }
       .cartao {
         position: relative; overflow: hidden; color: #fff;
         border-radius: var(--raio-lg); padding: var(--esp-5);

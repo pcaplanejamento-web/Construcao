@@ -43,6 +43,7 @@ import "../dashboard/category-breakdown.js";
 import "../dashboard/grafico-rosca.js";
 import "../dashboard/grafico-mensal.js";
 import "../despesas/despesa-table.js";
+import "../despesas/despesa-detail.js";
 import "../despesas/category-badge.js";
 import "../obras/obra-participantes.js";
 import "../obras/obra-agenda.js";
@@ -260,6 +261,9 @@ class PublicoView extends BaseElement {
       tabela.categorias = categorias;
       tabela.participantes = dataStore.participantesDaObra(obraId);
       tabela.despesas = despesas;
+      // Clicar numa despesa abre o MESMO banner da tela interna (despesa-detail),
+      // em modo somente-leitura (item 2 do pedido).
+      tabela.addEventListener("abrir", (e) => this._abrirDespesa(e.detail.despesa));
     });
     S("grade de orçamentos", () =>
       montarGradeOrcamentos(this.$("#gradeOrc"), dataStore.orcamentos().filter((x) => String(x.obra_id) === String(obraId)))
@@ -411,12 +415,14 @@ class PublicoView extends BaseElement {
 
   /* --------------------- Origem dos gráficos (read-only) ----------------- */
 
-  /** Banner de origem listando despesas — read-only (sem `aoAbrir` → só exibe). */
+  /** Banner de origem listando despesas — clicar numa linha abre o MESMO componente
+   *  da tela interna (`despesa-detail`) em somente-leitura (item 1 do pedido). */
   _bannerDespesas(titulo, descricao, despesas) {
     const rows = (despesas || []).map((d) => ({
       _item: (dataStore.item(d.item_id) || {}).nome || d.descricao || d.item || "—",
       _valor: moeda(d.valor),
       _data: d.data ? fmtData(d.data) : "—",
+      _id: d.id,
     }));
     abrirOrigemGrafico({
       titulo, descricao, linhas: rows,
@@ -425,7 +431,22 @@ class PublicoView extends BaseElement {
         { chave: "_valor", titulo: "Valor", alinhar: "dir" },
         { chave: "_data", titulo: "Data" },
       ],
+      aoAbrir: (l, modal) => {
+        const dsp = (despesas || []).find((x) => String(x.id) === String(l._id));
+        if (dsp) { modal.remove(); this._abrirDespesa(dsp); }
+      },
     });
+  }
+
+  /** Abre o banner da despesa (mesmo `despesa-detail` da tela interna, read-only). */
+  _abrirDespesa(despesa) {
+    if (!despesa) return;
+    document.querySelectorAll("despesa-detail").forEach((b) => b.remove());
+    const banner = document.createElement("despesa-detail");
+    banner.despesa = despesa;
+    banner.categorias = dataStore.categoriasDaObra(this._obraId).filter((c) => String(c.tipo || "") !== "fornecedor");
+    banner.addEventListener("fechar", () => banner.remove());
+    document.body.appendChild(banner);
   }
 
   _origemCategoria(c) {
