@@ -25,13 +25,12 @@ class DashboardSummary extends BaseElement {
       :host { display: block; }
       .grid { display: grid; gap: var(--esp-5);
         grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
-      /* Mobile: KPIs em grade 2 colunas (2×2), gap/padding menores e VALOR que
-         encolhe + quebra — senão valores grandes (ex.: R$ 1.835.767,89) vazam do
-         cartão (overflow:hidden cortava o número no compartilhamento no celular). */
+      /* Mobile: KPIs em grade 2 colunas (2×2), gap/padding menores. O VALOR fica em
+         UMA linha e a fonte ENCOLHE p/ caber (auto-fit em JS — _ajustarKpis), então
+         nada quebra nem vaza do cartão em nenhuma proporção de tela. */
       @media (max-width: 600px) {
         .grid { grid-template-columns: repeat(2, 1fr); gap: var(--esp-3); }
         .cartao { padding: var(--esp-4); min-height: 120px; }
-        .valor { font-size: var(--fs-xl); overflow-wrap: anywhere; }
       }
       .cartao {
         position: relative; overflow: hidden; color: #fff;
@@ -62,7 +61,7 @@ class DashboardSummary extends BaseElement {
         font-weight: var(--peso-semi); opacity: .9; position: relative; z-index: 1; }
       .valor { font-size: var(--fs-2xl); font-weight: var(--peso-forte); line-height: 1.1;
         font-family: var(--fonte-titulo); letter-spacing: -.02em;
-        position: relative; z-index: 1; }
+        position: relative; z-index: 1; white-space: nowrap; min-width: 0; }
       .dica { font-size: var(--fs-xs); opacity: .85; position: relative; z-index: 1; }
     `;
   }
@@ -105,6 +104,34 @@ class DashboardSummary extends BaseElement {
     this.$$(".cartao").forEach((b) =>
       b.addEventListener("click", () => this._detalhe(b.dataset.kpi))
     );
+    // Auto-fit: cada VALOR fica em uma linha; se não couber no cartão (ex.: valores
+    // grandes em cartão estreito no mobile), a fonte encolhe até caber. Reavalia a
+    // cada resize (ResizeObserver) → serve qualquer proporção de tela (mobile/desktop).
+    this._ajustarKpis();
+    if (!this._obsKpi && typeof ResizeObserver !== "undefined") {
+      this._obsKpi = new ResizeObserver(() => this._ajustarKpis());
+      const grade = this.$(".grid");
+      if (grade) this._obsKpi.observe(grade);
+      this.aoLimpar(() => { if (this._obsKpi) { this._obsKpi.disconnect(); this._obsKpi = null; } });
+    }
+  }
+
+  /** Encolhe a fonte de cada `.valor` até caber em UMA linha no cartão (sem quebrar). */
+  _ajustarKpis() {
+    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => fn();
+    raf(() => {
+      this.$$(".valor").forEach((el) => {
+        el.style.fontSize = ""; // volta ao tamanho base do CSS antes de medir
+        let size = parseFloat(getComputedStyle(el).fontSize) || 24;
+        const min = 13;
+        let guarda = 0;
+        while (el.scrollWidth > el.clientWidth + 1 && size > min && guarda < 60) {
+          size -= 1;
+          el.style.fontSize = size + "px";
+          guarda++;
+        }
+      });
+    });
   }
 
   /** Banner flutuante (ui-modal) explicando DE ONDE vem o número da KPI + composição. */

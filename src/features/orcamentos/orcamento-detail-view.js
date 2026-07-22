@@ -86,11 +86,14 @@ class OrcamentoDetailView extends BaseElement {
 
   montarConteudo() {
     const alvo = this.$("#conteudo");
+    // Somente-leitura (link público): sem voltar próprio (a publico-view provê "Voltar"),
+    // sem "+ Adicionar oferta", sem ações/edição/exclusão em massa; a oferta abre read-only.
+    const ro = dataStore.somenteLeitura();
     alvo.innerHTML = `
-      <a class="voltar" href="/cotacoes"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>${rotuloVoltar("/cotacoes")}</span></a>
+      ${ro ? "" : `<a class="voltar" href="/cotacoes"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>${rotuloVoltar("/cotacoes")}</span></a>`}
       <div class="topo" id="topo"></div>
       <ui-card mesa title="Mesa com ofertas do orçamento">
-        <ui-button slot="acoes" id="addOferta">+ Adicionar oferta</ui-button>
+        ${ro ? "" : `<ui-button slot="acoes" id="addOferta">+ Adicionar oferta</ui-button>`}
         <ui-data-table id="tabela" fluido
           empty-text="Nenhuma oferta neste orçamento ainda."></ui-data-table>
       </ui-card>
@@ -99,45 +102,47 @@ class OrcamentoDetailView extends BaseElement {
     // Tabela PADRÃO de ofertas (mesmas colunas em todo o sistema).
     this._tabela.columns = colunasOferta();
     this._tabela.setAttribute("clicavel", "");
-    this._tabela.acoes = [
-      { nome: "registrar", rotulo: "Registrar" },
-      { nome: "remover", rotulo: "Excluir", variant: "perigo" },
-    ];
-    this._tabela.addEventListener("acao", (e) => {
-      if (e.detail.acao === "registrar") abrirRegistrarDespesa(e.detail.linha);
-      else this.removerPreco(e.detail.linha);
-    });
-    // Clique na oferta → banner único (o orçamento trava ofertante/fornecedor).
-    this._tabela.addEventListener("linha", (e) => abrirOferta(e.detail.linha, { orcamento: this._orcamento }));
-    // Edição em massa: reusa o preco-form (modo orçamento); campos alterados valem p/ todas.
-    this._tabela.setAttribute("editar-massa", "");
-    this._tabela.addEventListener("editar-massa", (e) =>
-      editarEmMassa(e.detail.linhas, {
-        criarForm: (ref) => {
-          const f = document.createElement("preco-form");
-          f.preco = ref;
-          f.orcamento = this._orcamento;
-          return f;
-        },
-        reler: (ref) => dataStore.todasOfertas().find((o) => String(o.id) === String(ref.id)),
-        aplicar: (l, diff) => dataStore.atualizarOferta(l.id, diff),
-      })
-    );
-    // Exclusão em massa (a tabela já confirmou).
-    this._tabela.setAttribute("excluir-massa", "");
-    this._tabela.addEventListener("excluir-massa", async (e) => {
-      let ok = 0;
-      for (const p of e.detail.linhas || []) {
-        try {
-          await dataStore.removerPreco(p.cotacao_id || "", p.id);
-          ok++;
-        } catch (err) {
-          notificarErro(err);
+    // Clique na oferta → banner único (read-only no link; editável na tela interna).
+    this._tabela.addEventListener("linha", (e) => abrirOferta(e.detail.linha, { orcamento: this._orcamento, somenteLeitura: ro }));
+    if (!ro) {
+      this._tabela.acoes = [
+        { nome: "registrar", rotulo: "Registrar" },
+        { nome: "remover", rotulo: "Excluir", variant: "perigo" },
+      ];
+      this._tabela.addEventListener("acao", (e) => {
+        if (e.detail.acao === "registrar") abrirRegistrarDespesa(e.detail.linha);
+        else this.removerPreco(e.detail.linha);
+      });
+      // Edição em massa: reusa o preco-form (modo orçamento); campos alterados valem p/ todas.
+      this._tabela.setAttribute("editar-massa", "");
+      this._tabela.addEventListener("editar-massa", (e) =>
+        editarEmMassa(e.detail.linhas, {
+          criarForm: (ref) => {
+            const f = document.createElement("preco-form");
+            f.preco = ref;
+            f.orcamento = this._orcamento;
+            return f;
+          },
+          reler: (ref) => dataStore.todasOfertas().find((o) => String(o.id) === String(ref.id)),
+          aplicar: (l, diff) => dataStore.atualizarOferta(l.id, diff),
+        })
+      );
+      // Exclusão em massa (a tabela já confirmou).
+      this._tabela.setAttribute("excluir-massa", "");
+      this._tabela.addEventListener("excluir-massa", async (e) => {
+        let ok = 0;
+        for (const p of e.detail.linhas || []) {
+          try {
+            await dataStore.removerPreco(p.cotacao_id || "", p.id);
+            ok++;
+          } catch (err) {
+            notificarErro(err);
+          }
         }
-      }
-      if (ok) toastSucesso(`${ok} oferta(s) excluída(s).`);
-    });
-    alvo.querySelector("#addOferta").addEventListener("click", () => this.abrirPrecoForm(null));
+        if (ok) toastSucesso(`${ok} oferta(s) excluída(s).`);
+      });
+      alvo.querySelector("#addOferta").addEventListener("click", () => this.abrirPrecoForm(null));
+    }
     this._montado = true;
   }
 
@@ -145,7 +150,7 @@ class OrcamentoDetailView extends BaseElement {
     if (!this._montado) return;
     const o = this._buscar();
     if (!o) {
-      irPara("/cotacoes");
+      if (!dataStore.somenteLeitura()) irPara("/cotacoes");
       return;
     }
     this._orcamento = o;
@@ -166,6 +171,8 @@ class OrcamentoDetailView extends BaseElement {
     const ofertante = ofertanteNome(o.contato_id, o.equipe_id);
     const obra = o.obra_id ? dataStore.obra(o.obra_id) : null;
     const n = dataStore.ofertasDoOrcamento(o.id).length;
+    // Somente-leitura: sem "Editar orçamento" e a obra vira texto (não link p/ rota protegida).
+    const ro = dataStore.somenteLeitura();
     topo.innerHTML = `
       <div>
         <h1>${rotuloOrcamento(o)}</h1>
@@ -173,13 +180,14 @@ class OrcamentoDetailView extends BaseElement {
           <category-badge nome="${o.tipo || "—"}" cor="${cor}"></category-badge>
           ${forn ? `<span>· ${forn.nome}</span>` : ""}
           ${ofertante && ofertante !== "—" ? `<span>· <ui-icon name="${o.equipe_id ? "usuario" : "contato"}" size="13"></ui-icon> ${ofertante}</span>` : ""}
-          ${obra ? `· <a href="/obras/${obra.id}"><ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</a>` : ""}
+          ${obra ? (ro ? `<span>· <ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</span>` : `· <a href="/obras/${obra.id}"><ui-icon name="obra" size="14"></ui-icon> ${obra.nome}</a>`) : ""}
         </div>
         <div class="resumo">${numero(n)} oferta(s) · Total <strong>${moeda(totalOrcamento(o.id))}</strong></div>
       </div>
-      <div><ui-button id="editarOrc" variant="secundario">Editar orçamento</ui-button></div>
+      ${ro ? "" : `<div><ui-button id="editarOrc" variant="secundario">Editar orçamento</ui-button></div>`}
     `;
-    topo.querySelector("#editarOrc").addEventListener("click", () => this.editarOrcamento());
+    const btnEd = topo.querySelector("#editarOrc");
+    if (btnEd) btnEd.addEventListener("click", () => this.editarOrcamento());
   }
 
   abrirPrecoForm(preco) {

@@ -72,27 +72,30 @@ class EquipeDetailView extends BaseElement {
 
   montarConteudo() {
     const alvo = this.$("#conteudo");
+    // Somente-leitura (link público): sem voltar próprio (publico-view provê "Voltar"),
+    // sem "+ Vincular/Adicionar", sem ações de remover, sem navegar p/ rotas protegidas.
+    const ro = dataStore.somenteLeitura();
     alvo.innerHTML = `
-      <a class="voltar" href="/contatos"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>${rotuloVoltar("/contatos")}</span></a>
+      ${ro ? "" : `<a class="voltar" href="/contatos"><ui-icon name="seta-esquerda" size="18"></ui-icon><span>${rotuloVoltar("/contatos")}</span></a>`}
       <div class="topo" id="topo"></div>
       <ui-tabs id="abas">
         <div slot="obras">
           <ui-card mesa title="Mesa com obras vinculadas">
-            <ui-button slot="acoes" id="addObra">+ Vincular obra</ui-button>
-            <ui-data-table id="tabObras" fluido clicavel
+            ${ro ? "" : `<ui-button slot="acoes" id="addObra">+ Vincular obra</ui-button>`}
+            <ui-data-table id="tabObras" fluido ${ro ? "" : "clicavel"}
               empty-text="Nenhuma obra vinculada ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="membros">
           <ui-card mesa title="Mesa com membros">
-            <ui-button slot="acoes" id="addMembro">+ Adicionar membro</ui-button>
-            <ui-data-table id="tabMembros" fluido clicavel
+            ${ro ? "" : `<ui-button slot="acoes" id="addMembro">+ Adicionar membro</ui-button>`}
+            <ui-data-table id="tabMembros" fluido ${ro ? "" : "clicavel"}
               empty-text="Nenhum membro ainda."></ui-data-table>
           </ui-card>
         </div>
         <div slot="dados">
           <ui-card mesa title="Mesa com dados — recebimentos da equipe">
-            <ui-data-table id="tabDados" fluido clicavel
+            <ui-data-table id="tabDados" fluido ${ro ? "" : "clicavel"}
               empty-text="Nenhuma despesa vinculada a esta equipe ainda."></ui-data-table>
           </ui-card>
         </div>
@@ -106,22 +109,26 @@ class EquipeDetailView extends BaseElement {
 
     this._tabObras = alvo.querySelector("#tabObras");
     this._tabObras.columns = [{ chave: "_nome", titulo: "Obra" }];
-    this._tabObras.acoes = [{ nome: "remover", rotulo: "Remover", variant: "perigo" }];
-    this._tabObras.addEventListener("linha", (e) => {
-      irPara("/obras/" + e.detail.linha.id);
-    });
-    this._tabObras.addEventListener("acao", (e) => this.removerObra(e.detail.linha.id));
+    if (!ro) {
+      this._tabObras.acoes = [{ nome: "remover", rotulo: "Remover", variant: "perigo" }];
+      this._tabObras.addEventListener("linha", (e) => {
+        irPara("/obras/" + e.detail.linha.id);
+      });
+      this._tabObras.addEventListener("acao", (e) => this.removerObra(e.detail.linha.id));
+    }
 
     this._tabMembros = alvo.querySelector("#tabMembros");
     this._tabMembros.columns = [
       { chave: "_nome", titulo: "Contato", formato: (v) => avatarNomeHtml(v) },
       { chave: "_cargo", titulo: "Cargo", formato: (v) => v || "—" },
     ];
-    this._tabMembros.acoes = [{ nome: "remover", rotulo: "Remover", variant: "perigo" }];
-    this._tabMembros.addEventListener("linha", (e) => {
-      irPara("/contatos/" + e.detail.linha.id);
-    });
-    this._tabMembros.addEventListener("acao", (e) => this.removerMembro(e.detail.linha.id));
+    if (!ro) {
+      this._tabMembros.acoes = [{ nome: "remover", rotulo: "Remover", variant: "perigo" }];
+      this._tabMembros.addEventListener("linha", (e) => {
+        irPara("/contatos/" + e.detail.linha.id);
+      });
+      this._tabMembros.addEventListener("acao", (e) => this.removerMembro(e.detail.linha.id));
+    }
 
     this._tabDados = alvo.querySelector("#tabDados");
     this._tabDados.columns = [
@@ -146,12 +153,13 @@ class EquipeDetailView extends BaseElement {
             : `<span style="color:var(--cor-texto-fraco)">—</span>`,
       },
     ];
-    this._tabDados.addEventListener("linha", (e) => {
-      if (e.detail.linha.id) irPara("/obras/" + e.detail.linha.id);
-    });
-
-    alvo.querySelector("#addObra").addEventListener("click", () => this.adicionarObra());
-    alvo.querySelector("#addMembro").addEventListener("click", () => this.adicionarMembro());
+    if (!ro) {
+      this._tabDados.addEventListener("linha", (e) => {
+        if (e.detail.linha.id) irPara("/obras/" + e.detail.linha.id);
+      });
+      alvo.querySelector("#addObra").addEventListener("click", () => this.adicionarObra());
+      alvo.querySelector("#addMembro").addEventListener("click", () => this.adicionarMembro());
+    }
 
     this._montado = true;
   }
@@ -188,7 +196,7 @@ class EquipeDetailView extends BaseElement {
     if (!this._montado) return;
     const e = this._buscar();
     if (!e) {
-      irPara("/contatos");
+      if (!dataStore.somenteLeitura()) irPara("/contatos");
       return;
     }
     this._equipe = e;
@@ -207,6 +215,8 @@ class EquipeDetailView extends BaseElement {
     const topo = this.shadowRoot.querySelector("#topo");
     if (!topo) return;
     const e = this._equipe;
+    // Somente-leitura: sem "Editar equipe".
+    const ro = dataStore.somenteLeitura();
     topo.innerHTML = `
       <div>
         <h1>${e.nome || ""}</h1>
@@ -216,9 +226,10 @@ class EquipeDetailView extends BaseElement {
           <span>· ${(e.obras || []).length} obra(s)</span>
         </div>
       </div>
-      <div><ui-button id="editarEq" variant="secundario">Editar equipe</ui-button></div>
+      ${ro ? "" : `<div><ui-button id="editarEq" variant="secundario">Editar equipe</ui-button></div>`}
     `;
-    topo.querySelector("#editarEq").addEventListener("click", () => this.editarEquipe());
+    const btn = topo.querySelector("#editarEq");
+    if (btn) btn.addEventListener("click", () => this.editarEquipe());
   }
 
   async _salvarListas(patch) {

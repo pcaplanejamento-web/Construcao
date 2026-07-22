@@ -15,7 +15,6 @@ import { toastSucesso, notificarErro } from "../../core/event-bus.js";
 import { statusPrazo, textoPrazo, corPrazo, iconePrazo, ehFinalizada } from "./prazo-util.js";
 import { balancos, restoDespesa } from "../despesas/despesa-split.js";
 import { COR_CLASSIFICACAO as COR_CLASSIFICACAO_OBRA } from "../../core/classificacao.js";
-import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { corDeId } from "../shared/cor-id.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
@@ -42,6 +41,7 @@ import "../../components/ui-select.js";
 import "./obra-form.js";
 import "./obra-share-form.js";
 import "./obra-participantes.js";
+import "./obra-empresas.js";
 import "./obra-agenda.js";
 import "./obra-notas.js";
 import "../pagamentos/pagamento-form.js";
@@ -153,10 +153,7 @@ class ObraDetailView extends BaseElement {
           </ui-card>
         </div>
         <div slot="fornecedores">
-          <ui-card mesa title="Mesa com empresas da obra">
-            <ui-data-table id="tabForn" fluido clicavel
-              empty-text="Nenhuma empresa usada nesta obra ainda."></ui-data-table>
-          </ui-card>
+          <obra-empresas obra-id="${this.obraId}"></obra-empresas>
         </div>
         <div slot="pagamentos">
           <ui-tabs id="abasPag">
@@ -248,10 +245,6 @@ class ObraDetailView extends BaseElement {
     if (btnTransf) btnTransf.addEventListener("click", () => this.abrirTransferenciaEstoque());
     this._gradeOrc = alvo.querySelector("#gradeOrc");
     this._gradeEquipes = alvo.querySelector("#gradeEquipes");
-    this._tabForn = alvo.querySelector("#tabForn");
-    this._tabForn.addEventListener("linha", (e) => {
-      irPara("/fornecedores/" + e.detail.linha.id);
-    });
     this._dash = alvo.querySelector("#dash");
     this._break = alvo.querySelector("#break");
     this._rosca = alvo.querySelector("#rosca");
@@ -318,7 +311,6 @@ class ObraDetailView extends BaseElement {
       montarGradeOrcamentos(this._gradeOrc, dataStore.orcamentos().filter((x) => String(x.obra_id) === String(this.obraId)))
     );
     S("grade de equipes", () => montarGradeEquipes(this._gradeEquipes, dataStore.equipesDaObra(this.obraId)));
-    S("empresas", () => this.montarFornecedores(despesas));
     S("gráficos extras", () => this.montarGraficosExtras(despesas));
     // Tabela recebe TODAS as despesas; busca/filtro acontecem dentro da própria tabela.
     S("tabela de despesas", () => (this._tabela.despesas = despesas));
@@ -756,41 +748,6 @@ class ObraDetailView extends BaseElement {
     form.addEventListener("fechar", fechar);
     form.addEventListener("salvo", () => this.sincronizar());
     document.body.appendChild(form);
-  }
-
-  /** Aba Fornecedores: empresas usadas na obra + Total/Pago/Saldo a receber. */
-  montarFornecedores(despesas) {
-    const tab = this._tabForn;
-    if (!tab) return;
-    const { porFornecedor } = balancos(despesas);
-    const qtd = {};
-    despesas.forEach((d) => {
-      if (d.fornecedor_id) qtd[d.fornecedor_id] = (qtd[d.fornecedor_id] || 0) + 1;
-    });
-    tab.columns = [
-      { chave: "_nome", titulo: "Empresa", formato: (v) => avatarNomeHtml(v) },
-      { chave: "_tel", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },
-      { chave: "_qtd", titulo: "Despesas", alinhar: "dir" },
-      { chave: "_total", titulo: "Total", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-      {
-        chave: "_resto",
-        titulo: "Saldo a receber",
-        alinhar: "dir",
-        moeda: true,
-        formato: (v) =>
-          v > 0.01
-            ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>`
-            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
-      },
-    ];
-    tab.rows = Object.keys(porFornecedor)
-      .map((fid) => {
-        const f = dataStore.fornecedores().find((x) => String(x.id) === String(fid)) || {};
-        const v = porFornecedor[fid];
-        return { id: fid, _nome: f.nome || "—", _tel: f.telefone || "", _qtd: qtd[fid] || 0, _total: v.total, _recebido: v.recebido, _resto: v.saldoReceber };
-      })
-      .sort((a, b) => b._resto - a._resto);
   }
 
   /** Nome ao vivo de uma CHAVE de participante ("c:"/"e:"/"u:") p/ o donut de participantes. */

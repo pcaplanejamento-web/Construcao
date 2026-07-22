@@ -20,11 +20,12 @@ import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
 import { balancos } from "../despesas/despesa-split.js";
 import { corDeId } from "../shared/cor-id.js";
-import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
 import { abrirOrigemGrafico } from "../shared/vinculos.js";
 import { COR_CLASSIFICACAO } from "../../core/classificacao.js";
 import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
 import { montarGradeEquipes } from "../equipes/equipe-grade.js";
+import "../orcamentos/orcamento-detail-view.js";
+import "../equipes/equipe-detail-view.js";
 import {
   montarGradeResumos,
   previaTransferenciaHtml,
@@ -38,6 +39,8 @@ import "../../components/ui-spinner.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
 import "../../components/ui-button.js";
+import "../../components/ui-modal.js";
+import "../../components/ui-alert.js";
 import "../dashboard/dashboard-summary.js";
 import "../dashboard/category-breakdown.js";
 import "../dashboard/grafico-rosca.js";
@@ -46,6 +49,7 @@ import "../despesas/despesa-table.js";
 import "../despesas/despesa-detail.js";
 import "../despesas/category-badge.js";
 import "../obras/obra-participantes.js";
+import "../obras/obra-empresas.js";
 import "../obras/obra-agenda.js";
 import "../obras/obra-notas.js";
 
@@ -127,6 +131,7 @@ class PublicoView extends BaseElement {
     const o = d.obra || {};
     const obraId = o.id;
     this._obraId = obraId;
+    this._payload = d; // guarda p/ o "Voltar" do detalhe de orçamento/equipe
 
     this.$("#conteudo").innerHTML = `
       <div>
@@ -164,9 +169,7 @@ class PublicoView extends BaseElement {
           <ui-card mesa title="Mesa com equipes da obra"><div id="gradeEquipes"></div></ui-card>
         </div>
         <div slot="fornecedores">
-          <ui-card mesa title="Mesa com empresas da obra">
-            <ui-data-table id="tabForn" fluido empty-text="Nenhuma empresa usada nesta obra ainda."></ui-data-table>
-          </ui-card>
+          <obra-empresas obra-id="${obraId}"></obra-empresas>
         </div>
         <div slot="pagamentos">
           <ui-tabs id="abasPag">
@@ -265,11 +268,17 @@ class PublicoView extends BaseElement {
       // em modo somente-leitura (item 2 do pedido).
       tabela.addEventListener("abrir", (e) => this._abrirDespesa(e.detail.despesa));
     });
-    S("grade de orçamentos", () =>
-      montarGradeOrcamentos(this.$("#gradeOrc"), dataStore.orcamentos().filter((x) => String(x.obra_id) === String(obraId)))
-    );
-    S("grade de equipes", () => montarGradeEquipes(this.$("#gradeEquipes"), dataStore.equipesDaObra(obraId)));
-    S("empresas", () => this._montarFornecedores(despesas));
+    S("grade de orçamentos", () => {
+      montarGradeOrcamentos(this.$("#gradeOrc"), dataStore.orcamentos().filter((x) => String(x.obra_id) === String(obraId)));
+      // Clicar num card abre o DETALHE interno (orcamento-detail-view) read-only + Voltar.
+      // O card emite "abrir" (borbulha) mesmo em somente-leitura; a navegação p/ rota
+      // protegida foi gated na grade, então tratamos aqui.
+      this.$("#gradeOrc").addEventListener("abrir", (e) => this._abrirDetalhe("orcamento-detail-view", (e.detail.orcamento || {}).id));
+    });
+    S("grade de equipes", () => {
+      montarGradeEquipes(this.$("#gradeEquipes"), dataStore.equipesDaObra(obraId));
+      this.$("#gradeEquipes").addEventListener("abrir", (e) => this._abrirDetalhe("equipe-detail-view", (e.detail.equipe || {}).id));
+    });
     S("gráficos extras", () => this._montarGraficosExtras(despesas));
     S("transferências", () =>
       montarGradeResumos(this.$("#listaTransf"), dataStore.transferenciasDaObra(obraId), "transf", previaTransferenciaHtml, abrirTransferencia, "Nenhuma transferência registrada nesta obra.")
@@ -278,44 +287,6 @@ class PublicoView extends BaseElement {
       montarGradeResumos(this.$("#listaPagTransf"), dataStore.pagamentosDaObra(obraId), "pag", previaPagamentoHtml, abrirPagamento, "Nenhum pagamento registrado nesta obra.")
     );
     S("estoque", () => this._montarEstoque(categorias));
-  }
-
-  /* ------------------------------ Empresas ------------------------------ */
-
-  /** Empresas usadas na obra + Total/Recebido/Saldo a receber (espelha a obra interna,
-   *  porém SEM navegação p/ /fornecedores/:id — rota protegida). */
-  _montarFornecedores(despesas) {
-    const tab = this.$("#tabForn");
-    if (!tab) return;
-    const { porFornecedor } = balancos(despesas);
-    const qtd = {};
-    despesas.forEach((d) => {
-      if (d.fornecedor_id) qtd[d.fornecedor_id] = (qtd[d.fornecedor_id] || 0) + 1;
-    });
-    tab.columns = [
-      { chave: "_nome", titulo: "Empresa", formato: (v) => avatarNomeHtml(v) },
-      { chave: "_tel", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },
-      { chave: "_qtd", titulo: "Despesas", alinhar: "dir" },
-      { chave: "_total", titulo: "Total", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-      {
-        chave: "_resto",
-        titulo: "Saldo a receber",
-        alinhar: "dir",
-        moeda: true,
-        formato: (v) =>
-          v > 0.01
-            ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>`
-            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
-      },
-    ];
-    tab.rows = Object.keys(porFornecedor)
-      .map((fid) => {
-        const f = dataStore.fornecedores().find((x) => String(x.id) === String(fid)) || {};
-        const v = porFornecedor[fid];
-        return { id: fid, _nome: f.nome || "—", _tel: f.telefone || "", _qtd: qtd[fid] || 0, _total: v.total, _recebido: v.recebido, _resto: v.saldoReceber };
-      })
-      .sort((a, b) => b._resto - a._resto);
   }
 
   /* ------------------------------ Estoque ------------------------------- */
@@ -415,27 +386,52 @@ class PublicoView extends BaseElement {
 
   /* --------------------- Origem dos gráficos (read-only) ----------------- */
 
-  /** Banner de origem listando despesas — clicar numa linha abre o MESMO componente
-   *  da tela interna (`despesa-detail`) em somente-leitura (item 1 do pedido). */
+  /** Banner de origem de um gráfico: mostra as despesas no MESMO componente padrão
+   *  (`despesa-table`) da aba Despesas — clicar numa linha abre o `despesa-detail`
+   *  read-only (mesmo da tela interna). Responsivo (tabela desktop / cards mobile). */
   _bannerDespesas(titulo, descricao, despesas) {
-    const rows = (despesas || []).map((d) => ({
-      _item: (dataStore.item(d.item_id) || {}).nome || d.descricao || d.item || "—",
-      _valor: moeda(d.valor),
-      _data: d.data ? fmtData(d.data) : "—",
-      _id: d.id,
-    }));
-    abrirOrigemGrafico({
-      titulo, descricao, linhas: rows,
-      colunas: [
-        { chave: "_item", titulo: "Despesa" },
-        { chave: "_valor", titulo: "Valor", alinhar: "dir" },
-        { chave: "_data", titulo: "Data" },
-      ],
-      aoAbrir: (l, modal) => {
-        const dsp = (despesas || []).find((x) => String(x.id) === String(l._id));
-        if (dsp) { modal.remove(); this._abrirDespesa(dsp); }
-      },
-    });
+    const modal = document.createElement("ui-modal");
+    modal.setAttribute("open", "");
+    modal.setAttribute("title", "Origem · " + (titulo || ""));
+    const corpo = document.createElement("div");
+    if (descricao) {
+      const alerta = document.createElement("ui-alert");
+      alerta.setAttribute("tipo", "info");
+      alerta.style.cssText = "display:block;margin-bottom:var(--esp-3)";
+      alerta.mensagem = descricao;
+      corpo.appendChild(alerta);
+    }
+    const tabela = document.createElement("despesa-table");
+    corpo.appendChild(tabela);
+    modal.appendChild(corpo);
+    const rod = document.createElement("div");
+    rod.setAttribute("slot", "rodape");
+    const btn = document.createElement("ui-button");
+    btn.textContent = "Fechar";
+    btn.addEventListener("click", () => modal.remove());
+    rod.appendChild(btn);
+    modal.appendChild(rod);
+    modal.addEventListener("fechar", () => modal.remove());
+    document.body.appendChild(modal);
+    // Alimenta o MESMO componente padrão de despesa (display-only via store + somenteLeitura).
+    tabela.categorias = dataStore.categoriasDaObra(this._obraId).filter((c) => String(c.tipo || "") !== "fornecedor");
+    tabela.participantes = dataStore.participantesDaObra(this._obraId);
+    tabela.despesas = despesas || [];
+    tabela.addEventListener("abrir", (e) => { modal.remove(); this._abrirDespesa(e.detail.despesa); });
+  }
+
+  /** Troca o conteúdo pelo DETALHE interno (orcamento-detail-view / equipe-detail-view)
+   *  em somente-leitura + botão "Voltar" (reusa os MESMOS componentes internos). */
+  _abrirDetalhe(tag, id) {
+    if (!id) return;
+    const alvo = this.$("#conteudo");
+    alvo.innerHTML = `
+      <ui-button id="voltarDet" variant="secundario"><ui-icon name="seta-esquerda" size="16"></ui-icon> Voltar</ui-button>
+      <div id="detalhe"></div>`;
+    this.$("#voltarDet").addEventListener("click", () => this.pintar(this._payload));
+    const el = document.createElement(tag);
+    el.setAttribute("id", id);
+    this.$("#detalhe").appendChild(el);
   }
 
   /** Abre o banner da despesa (mesmo `despesa-detail` da tela interna, read-only). */
