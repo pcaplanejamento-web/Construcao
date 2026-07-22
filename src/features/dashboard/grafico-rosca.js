@@ -51,11 +51,21 @@ class GraficoRosca extends BaseElement {
       svg { width: 130px; height: 130px; flex: none; }
       .legenda { flex: 1; min-width: 140px; max-height: 100%; overflow-y: auto;
         display: flex; flex-direction: column; gap: var(--esp-2); padding-right: var(--esp-1); }
-      .li { display: flex; align-items: center; gap: var(--esp-2); font-size: var(--fs-sm); }
-      .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-      .li .nome { color: var(--cor-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .li .val { margin-left: auto; color: var(--cor-texto-suave); white-space: nowrap; }
+      /* Item da legenda: NOME (inteiro, pode quebrar em palavras) em cima e VALOR
+         embaixo → mostra TUDO em qualquer largura, sem cortar ("I.." → "Investimento")
+         e sem quebrar letra-a-letra. Serve cartão estreito (mobile e 3 colunas). */
+      .li { display: flex; align-items: flex-start; gap: var(--esp-2); font-size: var(--fs-sm); }
+      .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; margin-top: 4px; }
+      .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+      .li .nome { color: var(--cor-texto); overflow-wrap: break-word; }
+      .li .val { color: var(--cor-texto-suave); }
       .vazio { color: var(--cor-texto-fraco); font-size: var(--fs-sm); }
+      /* Mobile (cartão estreito): empilha a legenda ABAIXO do donut, em largura
+         total, e mostra TODOS os itens (sem corte). Serve interno e link. */
+      @media (max-width: 560px) {
+        .wrap { flex-direction: column; gap: var(--esp-4); align-items: center; }
+        .legenda { width: 100%; min-width: 0; max-height: none; overflow-y: visible; }
+      }
       /* Interativo (item 4): legenda clicável abre o banner de origem. */
       .legenda.clicavel .li { cursor: pointer; border-radius: var(--raio-sm); padding: 2px 4px; margin: 0 -4px; }
       .legenda.clicavel .li:hover { background: var(--cor-superficie-2); }
@@ -87,8 +97,7 @@ class GraficoRosca extends BaseElement {
       .map(
         (c, i) =>
           `<div class="li" data-i="${i}"><span class="dot" style="background:${c.cor || "var(--cor-neutro)"}"></span>
-           <span class="nome">${c.nome}</span>
-           <span class="val">${valTxt(c)}</span></div>`
+           <span class="txt"><span class="nome">${c.nome}</span><span class="val">${valTxt(c)}</span></span></div>`
       )
       .join("");
 

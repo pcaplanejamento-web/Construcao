@@ -81,6 +81,21 @@ class UiTabs extends BaseElement {
          inferior. Sem alterar font-weight/size → não há reflow nem deslocamento. */
       button.ativo { color: var(--cor-primaria); border-bottom-color: var(--cor-primaria); }
 
+      /* Variante SEGMENTADA (atributo segmentado) — pílula estilo o toggle
+         Calendário/Agenda da agenda. Ideal p/ trocas de 2 opções (Estoque/Consumidos,
+         Transferências/Pagamentos). MESMA lógica de swipe/paginação (no painel) —
+         só muda o visual da barra. Alvos >= 40px de altura (touch). */
+      .abas-wrap.segmentado .barra { display: inline-flex; gap: 0; width: auto; max-width: 100%;
+        border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-md);
+        overflow: hidden; margin-bottom: var(--esp-5); }
+      .abas-wrap.segmentado button { min-height: 40px; padding: 0 var(--esp-5);
+        border: none; border-bottom: none; margin-bottom: 0; border-radius: 0;
+        background: var(--cor-superficie); color: var(--cor-texto-suave); font-weight: var(--peso-semi); }
+      .abas-wrap.segmentado button + button { border-left: 1px solid var(--cor-borda-forte); }
+      .abas-wrap.segmentado button.ativo { background: var(--cor-primaria); color: #fff; }
+      .abas-wrap.segmentado button.ativo:hover { color: #fff; }
+      .abas-wrap.segmentado .fade { display: none; }
+
       /* Paginação 2D no toque: o PAINEL é a "janela"; a TRILHA desliza acompanhando
          o dedo e a aba vizinha entra de lado. Em repouso há só uma célula (100%).
          O clip horizontal só é ligado (via JS) durante o arraste — assim o repouso
@@ -94,16 +109,18 @@ class UiTabs extends BaseElement {
 
   template() {
     const ativo = this.ativo;
+    // Variante segmentada (pílula): sem ícones (texto puro, como o toggle da agenda).
+    const segmentado = this.hasAttribute("segmentado");
     const botoes = this.abas
       .map(
         (a) =>
           `<button data-id="${a.id}" class="${a.id === ativo ? "ativo" : ""}">${
-            a.icone ? `<ui-icon name="${a.icone}" size="16"></ui-icon>` : ""
+            a.icone && !segmentado ? `<ui-icon name="${a.icone}" size="16"></ui-icon>` : ""
           }${a.rotulo}</button>`
       )
       .join("");
     return `
-      <div class="abas-wrap">
+      <div class="abas-wrap${segmentado ? " segmentado" : ""}">
         <div class="barra" role="tablist">${botoes}</div>
         <span class="fade fade-esq"></span>
         <span class="fade fade-dir"></span>

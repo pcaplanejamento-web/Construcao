@@ -156,7 +156,7 @@ class ObraDetailView extends BaseElement {
           <obra-empresas obra-id="${this.obraId}"></obra-empresas>
         </div>
         <div slot="pagamentos">
-          <ui-tabs id="abasPag">
+          <ui-tabs id="abasPag" segmentado>
             <div slot="transferencias">
               <ui-card mesa title="Mesa com transferências da obra">
                 <ui-button slot="acoes" id="addPag">Enviar transferência</ui-button>
@@ -171,7 +171,7 @@ class ObraDetailView extends BaseElement {
           </ui-tabs>
         </div>
         <div slot="estoque">
-          <ui-tabs id="abasEstoque">
+          <ui-tabs id="abasEstoque" segmentado>
             <div slot="emEstoque">
               <ui-card mesa title="Mesa com itens em estoque">
                 <div slot="acoes" style="display:flex;gap:var(--esp-2);flex-wrap:wrap">

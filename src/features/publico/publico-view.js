@@ -104,19 +104,34 @@ class PublicoView extends BaseElement {
 
   async carregar() {
     const alvo = this.$("#conteudo");
+    // Modo GRUPO: quando montado por <publico-grupo-view> com grupo-token + obra-id,
+    // busca a obra escolhida via o link do grupo (sem exigir link próprio da obra).
+    const grupoToken = this.getAttribute("grupo-token");
+    const obraId = this.getAttribute("obra-id");
+    // CACHE-FIRST (otimização de carregamento): guarda o último payload em
+    // sessionStorage por token → refresh/reabrir o link renderiza NA HORA e só
+    // busca a versão fresca em 2º plano (re-render apenas se mudou). Sobrevive ao F5.
+    const chave = "pub:" + (grupoToken && obraId ? grupoToken + ":" + obraId : this.token);
+    const antigo = (() => { try { return sessionStorage.getItem(chave); } catch (e) { return null; } })();
+    let cacheHit = false;
+    if (antigo) {
+      try { const dc = JSON.parse(antigo); if (dc && dc.obra) { this.pintar(dc); cacheHit = true; } } catch (e) { /* cache inválido */ }
+    }
     try {
-      // Modo GRUPO: quando montado por <publico-grupo-view> com grupo-token + obra-id,
-      // busca a obra escolhida via o link do grupo (sem exigir link próprio da obra).
-      const grupoToken = this.getAttribute("grupo-token");
-      const obraId = this.getAttribute("obra-id");
       const d = grupoToken && obraId
         ? await api.call("publico.grupoObra", { token: grupoToken, obra_id: obraId })
         : await api.call("publico.obra", { token: this.token });
-      this.pintar(d);
+      const novo = JSON.stringify(d);
+      try { sessionStorage.setItem(chave, novo); } catch (e) { /* cota/indisponível */ }
+      // Re-renderiza só se não havia cache OU os dados mudaram (evita "flash" à toa).
+      if (!cacheHit || novo !== antigo) this.pintar(d);
     } catch (e) {
-      alvo.innerHTML = `<ui-card title="Link indisponível"><p>${
-        e.message || "Este link não está mais válido."
-      }</p></ui-card>`;
+      // Falhou a rede: se já mostramos o cache, mantém; senão, mostra o aviso.
+      if (!cacheHit) {
+        alvo.innerHTML = `<ui-card title="Link indisponível"><p>${
+          e.message || "Este link não está mais válido."
+        }</p></ui-card>`;
+      }
     }
   }
 
@@ -172,7 +187,7 @@ class PublicoView extends BaseElement {
           <obra-empresas obra-id="${obraId}"></obra-empresas>
         </div>
         <div slot="pagamentos">
-          <ui-tabs id="abasPag">
+          <ui-tabs id="abasPag" segmentado>
             <div slot="transferencias">
               <ui-card mesa title="Mesa com transferências da obra"><div id="listaTransf"></div></ui-card>
             </div>
@@ -182,7 +197,7 @@ class PublicoView extends BaseElement {
           </ui-tabs>
         </div>
         <div slot="estoque">
-          <ui-tabs id="abasEstoque">
+          <ui-tabs id="abasEstoque" segmentado>
             <div slot="emEstoque">
               <ui-card mesa title="Mesa com itens em estoque">
                 <ui-data-table id="tabEstoque" fluido
