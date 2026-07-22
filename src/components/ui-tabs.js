@@ -168,6 +168,13 @@ class UiTabs extends BaseElement {
    * mais interno pagina (trava compartilhada `UiTabs._paginando`).
    */
   _ligarSwipeAbas() {
+    // Variante SEGMENTADA (pílula de 2 opções, ex.: Estoque/Consumidos,
+    // Transferências/Pagamentos): a troca é por TAP no botão — o SWIPE fica
+    // RESERVADO às abas de cima da obra (Transferências e pagamentos → Estoque →
+    // Agenda…). Sem isto, a sub-aba interna "sequestrava" o swipe (trava
+    // `_paginando`, mais interno vence) e não dava p/ navegar as abas principais
+    // deslizando sobre o conteúdo dela.
+    if (this.hasAttribute("segmentado")) return;
     const painel = this.$(".painel");
     if (!painel) return;
     this._sw = null;
