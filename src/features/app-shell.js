@@ -222,8 +222,8 @@ class AppShell extends BaseElement {
     // Durante o carregamento pós-login a rota ainda é /login, então ficam ocultos
     // até o conteúdo interno renderizar.
     const path = location.pathname || "/";
-    const ehLogin = path === "/login";
-    const ehPublico = path.startsWith("/publico");
+    const ehLogin = path === "/login" || path.endsWith("/login");
+    const ehPublico = path.indexOf("/publico") >= 0; // robusto ao base-href (GitHub Pages)
     const autenticado = auth.estaAutenticado();
     const mostrarHeader = !ehLogin && (autenticado || ehPublico);
     const mostrarSidebar = autenticado && !ehLogin && !ehPublico;

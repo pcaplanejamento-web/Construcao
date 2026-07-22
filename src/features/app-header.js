@@ -81,11 +81,18 @@ class AppHeader extends BaseElement {
     `;
   }
 
+  /** Rota do link público (`/publico...` ou `/publico-grupo...`), robusta ao base-href. */
+  _rotaPublica() {
+    return (location.pathname || "").indexOf("/publico") >= 0;
+  }
+
   template() {
     const logoImg = `<img src="src/assets/dattaobra.png" alt="" onerror="this.style.display='none'" />`;
-    // Modo SOMENTE LEITURA (link público, sem sessão): mesma marca, sem
-    // menu/usuário/sair — apenas o selo "Somente leitura".
-    if (!auth.estaAutenticado()) {
+    // Modo SOMENTE LEITURA (link público): mesma marca, SEM menu/usuário/sair —
+    // apenas o selo "Somente leitura". Vale quando NÃO há sessão E também quando a
+    // ROTA é pública (mesmo que um usuário logado abra o link → sem acesso ao
+    // usuário/menu no compartilhamento).
+    if (!auth.estaAutenticado() || this._rotaPublica()) {
       return `
         <div class="barra">
           <div class="marca-bloco"><span class="marca">${logoImg} <span class="wordmark">Dattaobra</span></span></div>
@@ -116,6 +123,10 @@ class AppHeader extends BaseElement {
   aoConectar() {
     this.aoLimpar(bus.on(EVENTOS.AUTH, () => this.renderizar()));
     this.aoLimpar(bus.on(EVENTOS.TEMA, () => this.renderizar()));
+    // Trocar de/para uma rota pública re-renderiza (esconde menu/usuário no link).
+    const onRota = () => this.renderizar();
+    window.addEventListener("rotamudou", onRota);
+    this.aoLimpar(() => window.removeEventListener("rotamudou", onRota));
   }
 
   aposRender() {

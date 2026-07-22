@@ -28,6 +28,20 @@ function tokenAtual() {
   }
 }
 
+// --- Trava GLOBAL de somente-leitura (link público) -------------------------
+// Defesa em profundidade: no link compartilhado (sem sessão) NENHUMA edição pode
+// sair daqui. O data-store liga esta trava ao hidratar a visão pública
+// (`hidratarPublico`) e a desliga ao voltar p/ a sessão autenticada. Só as LEITURAS
+// públicas (`publico.*` — obra/grupo/grupoObra, usadas pelo link e pelo prefetch de
+// grupo) passam; qualquer outra action (toda mutação) é BLOQUEADA antes da rede,
+// mesmo que algum componente escape do gating de UI. É o backstop de "proteja as edições".
+let _modoSomenteLeitura = false;
+const _ACAO_LEITURA_PUBLICA = /^publico\./; // publico.obra / publico.grupo / publico.grupoObra
+/** Liga/desliga a trava (chamado pelo data-store nas 4 transições de estado). */
+export function definirModoSomenteLeitura(v) {
+  _modoSomenteLeitura = !!v;
+}
+
 /**
  * Executa uma action no backend.
  * @param {string} action  ex.: "obras.criar"
@@ -40,6 +54,12 @@ export async function call(action, data = {}) {
       "CONFIG",
       "API não configurada. Defina API_URL em src/core/config.js (veja docs/SETUP-E-DEPLOY.md)."
     );
+  }
+
+  // Trava de somente-leitura: no link público, só passam as leituras `publico.*`.
+  // Toda outra action (mutação) é barrada aqui — nada de edição sai do front.
+  if (_modoSomenteLeitura && !_ACAO_LEITURA_PUBLICA.test(String(action || ""))) {
+    throw new ApiError("SOMENTE_LEITURA", "Este é um link somente-leitura — edições não são permitidas.");
   }
 
   const payload = { action, token: tokenAtual(), data };
@@ -81,4 +101,4 @@ export async function call(action, data = {}) {
   return json.data;
 }
 
-export const api = { call };
+export const api = { call, definirModoSomenteLeitura };

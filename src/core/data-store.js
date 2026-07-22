@@ -124,6 +124,7 @@ function restaurarCache() {
     // `somenteLeitura: false` — restaurar a sessão do usuário SEMPRE sai do modo
     // somente-leitura (caso o store tenha passado pela visão pública de um link).
     store.set({ ...obj.dados, carregado: true, somenteLeitura: false });
+    api.definirModoSomenteLeitura(false);
     return true;
   } catch (e) {
     return false;
@@ -138,6 +139,7 @@ function limparCache() {
     /* ignora */
   }
   store.set({ ...ESTADO_VAZIO });
+  api.definirModoSomenteLeitura(false);
 }
 
 /* ----------------------- Carga via snapshot -------------------------- */
@@ -178,6 +180,7 @@ function _mapearSnapshot(d) {
 
 function _aplicarSnapshot(d) {
   store.set({ ..._mapearSnapshot(d), carregado: true, somenteLeitura: false });
+  api.definirModoSomenteLeitura(false); // sessão autenticada: libera as mutações
   _mesclarCoresClassificacao();
   persistir();
 }
@@ -191,6 +194,7 @@ function _aplicarSnapshot(d) {
  */
 function hidratarPublico(d) {
   store.set({ ..._mapearSnapshot(d || {}), carregado: true, somenteLeitura: true });
+  api.definirModoSomenteLeitura(true); // trava GLOBAL: nenhuma mutação sai do api-client
   _mesclarCoresClassificacao();
 }
 
@@ -218,6 +222,9 @@ async function inicializar() {
  */
 let _semConexao = false;
 async function atualizarEmSegundoPlano() {
+  // Em modo somente-leitura (link público) NÃO recarrega o snapshot autenticado —
+  // isso sobrescreveria a obra pública no store (e a trava barraria a chamada).
+  if (store.get().somenteLeitura) return;
   try {
     const d = await api.call("dados.snapshot");
     _aplicarSnapshot(d);

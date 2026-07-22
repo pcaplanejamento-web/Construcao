@@ -488,7 +488,7 @@ function _payloadObra(obra) {
   obra.total_gasto = totalGasto;
   obra.ehDono = false; // o visitante público nunca é dono
   obra.dono_nome = dono.nome || "";
-  obra.dono_email = dono.email || "";
+  obra.dono_email = ""; // NÃO expõe o e-mail do dono no link público (privacidade)
 
   const snap = _montarSnapshot(dono, [obra], { publico: true });
   // Conveniência p/ o cabeçalho da <publico-view> e o modo grupo (obra escolhida).
