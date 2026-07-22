@@ -6,6 +6,7 @@
  * Propriedade: .nota = { id, titulo, texto, autor_nome, atualizado_em, cor }
  */
 import { BaseElement } from "../../components/base-element.js";
+import { dataStore } from "../../core/data-store.js";
 import { fundoNota, tintaNota, bordaNota } from "./nota-cores.js";
 import "../../components/ui-icon.js";
 
@@ -68,10 +69,10 @@ class NotaCard extends BaseElement {
         <div class="rodape">
           <span class="quem">${quem ? `<ui-icon name="usuario" size="12"></ui-icon> ${esc(quem)}` : ""}</span>
           ${data ? `<span>${esc(data)}</span>` : ""}
-          <span class="acoes">
+          ${dataStore.somenteLeitura() ? "" : `<span class="acoes">
             <button class="ic" id="editar" title="Editar" aria-label="Editar"><ui-icon name="editar" size="16"></ui-icon></button>
             <button class="ic" id="excluir" title="Excluir" aria-label="Excluir"><ui-icon name="excluir" size="16"></ui-icon></button>
-          </span>
+          </span>`}
         </div>
       </div>`;
   }
@@ -81,8 +82,11 @@ class NotaCard extends BaseElement {
       if (e.target.closest(".acoes")) return; // botões não abrem o card
       this.emitir("abrir", { nota: this.nota });
     });
-    this.$("#editar").addEventListener("click", () => this.emitir("editar", { nota: this.nota }));
-    this.$("#excluir").addEventListener("click", () => this.emitir("excluir", { nota: this.nota }));
+    // Somente-leitura (link público): sem botões de editar/excluir (não renderizados).
+    const btnEditar = this.$("#editar");
+    if (btnEditar) btnEditar.addEventListener("click", () => this.emitir("editar", { nota: this.nota }));
+    const btnExcluir = this.$("#excluir");
+    if (btnExcluir) btnExcluir.addEventListener("click", () => this.emitir("excluir", { nota: this.nota }));
   }
 }
 

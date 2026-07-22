@@ -466,125 +466,33 @@ function _logAcessoLink(obraId, token) {
 /**
  * Monta o payload PÚBLICO (somente leitura) de UMA obra. Reusado por publico.obra
  * (link da obra) e publico.grupoObra (link do grupo → obra escolhida pelo visitante).
+ *
+ * Retorna um SNAPSHOT no MESMO formato do autenticado (via `_montarSnapshot`,
+ * Snapshot.gs), porém escopado a ESTA obra + o que a norteia: entidades
+ * referenciadas (contatos/empresas/equipes/itens, com fechamento transitivo),
+ * categorias, cotações/ofertas dos orçamentos da obra, financeiro e estoque. Assim
+ * a <publico-view> hidrata o data-store e monta os MESMOS componentes internos
+ * (despesa-table, orçamento, equipe, participantes, estoque, notas…) — sem réplicas.
+ * `opcoes.publico` omite dados do dono não essenciais (config/grupos/usuários).
+ * `obra`/`resumo` no topo servem o cabeçalho da view e o modo grupo.
  */
 function _payloadObra(obra) {
-  const despesas = repoFiltrar(SCHEMA.DESPESAS, function (d) {
-    return String(d.obra_id) === String(obra.id);
-  });
-  const catMap = mapaCategorias(obra.usuario_id);
-  const resumo = _resumoEmMemoria(obra, despesas, catMap); // reusa Snapshot.gs
+  const dono = buscarUsuarioPorId(obra.usuario_id) || { id: obra.usuario_id, nome: "", email: "" };
 
-  // Nome do item RE-DERIVADO ao vivo (reflete renome); `d.item` é só fallback.
-  const itens = {};
-  repoListar(SCHEMA.ITENS).forEach(function (i) {
-    itens[i.id] = i;
+  // Enriquece a obra como `obrasListar` (total_gasto/ehDono/dono_*) — é um snapshot
+  // de 1 obra, então somamos as despesas dela aqui.
+  var totalGasto = 0;
+  repoListar(SCHEMA.DESPESAS).forEach(function (d) {
+    if (String(d.obra_id) === String(obra.id)) totalGasto += Number(d.valor) || 0;
   });
+  obra.total_gasto = totalGasto;
+  obra.ehDono = false; // o visitante público nunca é dono
+  obra.dono_nome = dono.nome || "";
+  obra.dono_email = dono.email || "";
 
-  const lista = despesas
-    .map(function (d) {
-      const c = catMap[d.categoria_id] || { nome: "Sem subclassificação", cor: "#94a3b8" };
-      return {
-        item: (itens[d.item_id] || {}).nome || d.item,
-        valor: Number(d.valor) || 0,
-        data: d.data,
-        classificacao: d.classificacao || "", // Material | Serviço
-        categoria_nome: c.nome, // subclassificação
-        categoria_cor: c.cor,
-      };
-    })
-    .sort(function (a, b) {
-      return String(b.data).localeCompare(String(a.data));
-    });
-
-  // Dados das DEMAIS abas (visão pública = todas as abas, somente leitura).
-  const dono = obra.usuario_id;
-  const despesasRaw = despesas.map(_lerDespesa); // mesma forma do snapshot autenticado
-  const participantes = listarParticipantesObra(obra.id);
-  const transferencias = listarTransferenciasUsuario(dono).filter(function (t) {
-    return String(t.obra_id) === String(obra.id);
-  });
-  const pagamentos = listarPagamentosUsuario(dono).filter(function (p) {
-    return String(p.obra_id) === String(obra.id);
-  });
-  const orcamentos = listarOrcamentosUsuario(dono).filter(function (o) {
-    return String(o.obra_id) === String(obra.id);
-  });
-
-  // Nomes (fornecedor/contato/equipe) — só os REFERENCIADOS nesta obra (privacidade:
-  // não vaza a lista completa de contatos/fornecedores do dono).
-  const fIds = {};
-  const cIds = {};
-  const eIds = {};
-  function _addChave(ch) {
-    const s = String(ch || "");
-    if (s.indexOf("c:") === 0) cIds[s.slice(2)] = true;
-    else if (s.indexOf("e:") === 0) eIds[s.slice(2)] = true;
-  }
-  participantes.forEach(function (p) {
-    _addChave(p.chave);
-  });
-  despesasRaw.forEach(function (d) {
-    if (d.fornecedor_id) fIds[d.fornecedor_id] = true;
-    if (d.ofertante_contato_id) cIds[d.ofertante_contato_id] = true;
-    if (d.ofertante_equipe_id) eIds[d.ofertante_equipe_id] = true;
-    (d.pagamentos_realizados || []).forEach(function (lv) {
-      _addChave(lv.pagador);
-      (lv.distribuicao || []).forEach(function (x) {
-        _addChave(x.chave);
-      });
-    });
-  });
-  transferencias.concat(pagamentos).forEach(function (t) {
-    if (t.fornecedor_id) fIds[t.fornecedor_id] = true;
-    if (t.recebedor_contato_id) cIds[t.recebedor_contato_id] = true;
-    if (t.recebedor_equipe_id) eIds[t.recebedor_equipe_id] = true;
-    _addChave(t.pagador_chave);
-  });
-  const fornecedores = listarFornecedoresUsuario(dono).filter(function (f) {
-    return fIds[f.id];
-  });
-  const contatos = listarContatosUsuario(dono).filter(function (c) {
-    return cIds[c.id];
-  });
-  const equipes = listarEquipesUsuario(dono).filter(function (e) {
-    return eIds[e.id];
-  });
-
-  // Estoque (movimentos da obra) p/ o gráfico "Quantidade em estoque por item" no
-  // compartilhamento — o front deriva o saldo com o helper puro emEstoqueDaObra.
-  // `itensRef` = só os itens REFERENCIADOS (privacidade: não vaza o catálogo do dono).
-  const estoqueMov = listarMovimentosDeObras([obra.id]);
-  const iIds = {};
-  despesasRaw.forEach(function (d) { if (d.item_id) iIds[d.item_id] = true; });
-  estoqueMov.forEach(function (m) { if (m.item_id) iIds[m.item_id] = true; });
-  const itensRef = Object.keys(iIds).map(function (id) {
-    const it = itens[id] || {};
-    return { id: id, nome: it.nome || "—", unidade: it.unidade || "" };
-  });
-
-  return {
-    obra: {
-      id: obra.id,
-      nome: obra.nome,
-      endereco: obra.endereco,
-      descricao: obra.descricao,
-      orcamento: Number(obra.orcamento) || 0,
-      status: obra.status,
-    },
-    resumo: resumo,
-    despesas: lista, // itens (formatado p/ a tabela "Mesa com itens")
-    despesasRaw: despesasRaw, // cru (p/ balanços/acerto/fornecedores no front)
-    participantes: participantes,
-    categorias: listarCategoriasUsuario(dono),
-    fornecedores: fornecedores,
-    contatos: contatos,
-    equipes: equipes,
-    orcamentos: orcamentos,
-    transferencias: transferencias,
-    pagamentos: pagamentos,
-    tiposTransferencia: listarTiposTransferenciaUsuario(dono),
-    estoque: estoqueMov, // movimentos da obra (front deriva o saldo por item)
-    itens: itensRef, // só os itens referenciados (nome/unidade)
-    servidor_em: agoraIso(),
-  };
+  const snap = _montarSnapshot(dono, [obra], { publico: true });
+  // Conveniência p/ o cabeçalho da <publico-view> e o modo grupo (obra escolhida).
+  snap.obra = obra;
+  snap.resumo = (snap.resumos || {})[obra.id] || null;
+  return snap;
 }

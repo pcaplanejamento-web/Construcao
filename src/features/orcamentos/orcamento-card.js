@@ -88,10 +88,10 @@ class OrcamentoCard extends BaseElement {
           <span>${numero(ofertas.length)}</span>
         </div>
         ${log}
-        <div class="acoes">
+        ${dataStore.somenteLeitura() ? "" : `<div class="acoes">
           <button id="editar">Editar</button>
           <button id="remover" class="perigo">Excluir</button>
-        </div>
+        </div>`}
       </div>
     `;
   }
@@ -101,8 +101,11 @@ class OrcamentoCard extends BaseElement {
       if (e.target.closest(".acoes")) return;
       this.emitir("abrir", { orcamento: this.orcamento });
     });
-    this.$("#editar").addEventListener("click", () => this.emitir("editar", { orcamento: this.orcamento }));
-    this.$("#remover").addEventListener("click", () => this.emitir("remover", { orcamento: this.orcamento }));
+    // Somente-leitura (link público): sem botões de editar/excluir (não renderizados).
+    const btnEditar = this.$("#editar");
+    if (btnEditar) btnEditar.addEventListener("click", () => this.emitir("editar", { orcamento: this.orcamento }));
+    const btnRemover = this.$("#remover");
+    if (btnRemover) btnRemover.addEventListener("click", () => this.emitir("remover", { orcamento: this.orcamento }));
   }
 }
 

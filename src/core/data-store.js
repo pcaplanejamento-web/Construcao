@@ -35,6 +35,7 @@ const CACHE_VERSAO = 8; // bump: coleção grupos (pastas de obras)
 
 const ESTADO_VAZIO = {
   carregado: false,
+  somenteLeitura: false, // TRUE só na visão pública (link) — desliga toda edição nos componentes
   usuario: null,
   config: {},
   categorias: [],
@@ -120,7 +121,9 @@ function restaurarCache() {
     if (!bruto) return false;
     const obj = JSON.parse(bruto);
     if (!obj || obj.versao !== CACHE_VERSAO || !obj.dados) return false;
-    store.set({ ...obj.dados, carregado: true });
+    // `somenteLeitura: false` — restaurar a sessão do usuário SEMPRE sai do modo
+    // somente-leitura (caso o store tenha passado pela visão pública de um link).
+    store.set({ ...obj.dados, carregado: true, somenteLeitura: false });
     return true;
   } catch (e) {
     return false;
@@ -139,9 +142,11 @@ function limparCache() {
 
 /* ----------------------- Carga via snapshot -------------------------- */
 
-function _aplicarSnapshot(d) {
-  store.set({
-    carregado: true,
+/** Mapeia um snapshot (autenticado OU público) → fatias do store. Compartilhado por
+ *  `_aplicarSnapshot` e `hidratarPublico` para NÃO haver divergência de formato: o
+ *  payload público de 1 obra (`_payloadObra`/`_montarSnapshot`) tem as MESMAS chaves. */
+function _mapearSnapshot(d) {
+  return {
     usuario: d.usuario,
     config: d.config || {},
     categorias: d.categorias || [],
@@ -168,9 +173,25 @@ function _aplicarSnapshot(d) {
     repasses: d.repasses || [],
     estoque: d.estoque || [],
     usuarios: d.usuarios || [],
-  });
+  };
+}
+
+function _aplicarSnapshot(d) {
+  store.set({ ..._mapearSnapshot(d), carregado: true, somenteLeitura: false });
   _mesclarCoresClassificacao();
   persistir();
+}
+
+/**
+ * Hidrata o store com o snapshot PÚBLICO de 1 obra (link compartilhado, sem login)
+ * e liga `somenteLeitura` → os MESMOS componentes internos (despesa-table, orçamento,
+ * equipe, participantes, estoque, notas…) renderizam a obra em modo display-only.
+ * NÃO persiste (sem usuário logado, `_chave()` é null e `persistir()` já é no-op —
+ * mas explicitamos: nada do link vai para o cache/localStorage).
+ */
+function hidratarPublico(d) {
+  store.set({ ..._mapearSnapshot(d || {}), carregado: true, somenteLeitura: true });
+  _mesclarCoresClassificacao();
 }
 
 /** Mescla as cores das classificações EXTRAS (admin) no mapa compartilhado
@@ -210,6 +231,8 @@ async function atualizarEmSegundoPlano() {
 
 const get = () => store.get();
 const carregado = () => store.get().carregado;
+/** TRUE só na visão pública (link) — os componentes escondem toda ação de edição. */
+const somenteLeitura = () => store.get().somenteLeitura === true;
 const usuario = () => store.get().usuario;
 const config = () => store.get().config;
 const categorias = () => store.get().categorias;
@@ -1892,6 +1915,8 @@ export const dataStore = {
   subscribe: store.subscribe,
   get,
   carregado,
+  somenteLeitura,
+  hidratarPublico,
   restaurarCache,
   inicializar,
   atualizarEmSegundoPlano,

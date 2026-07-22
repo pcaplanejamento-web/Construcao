@@ -27,15 +27,18 @@ class ObraNotas extends BaseElement {
   }
 
   template() {
+    // Somente-leitura (link público): sem "+ Nova nota" (só leitura das notas).
+    const novaBtn = dataStore.somenteLeitura() ? "" : `<ui-button slot="acoes" id="nova">+ Nova nota</ui-button>`;
     return `
       <ui-card mesa title="Mesa com as notas da obra">
-        <ui-button slot="acoes" id="nova">+ Nova nota</ui-button>
+        ${novaBtn}
         <div id="corpo"></div>
       </ui-card>`;
   }
 
   aoConectar() {
-    this.$("#nova").addEventListener("click", () => this.abrirForm());
+    const btnNova = this.$("#nova");
+    if (btnNova) btnNova.addEventListener("click", () => this.abrirForm());
     this.pintar();
     this.aoLimpar(dataStore.subscribe(() => this.pintar()));
   }
@@ -48,14 +51,19 @@ class ObraNotas extends BaseElement {
       corpo.innerHTML = `<p class="vazio">Nenhuma nota ainda. Crie a primeira em "+ Nova nota".</p>`;
       return;
     }
+    // Somente-leitura (link público): cards display-only — o form de nota é de edição,
+    // então não abrimos/editamos/excluímos (nota-card também esconde seus botões).
+    const ro = dataStore.somenteLeitura();
     const grade = document.createElement("div");
     grade.className = "grade";
     notas.forEach((n) => {
       const card = document.createElement("nota-card");
       card.nota = n;
-      card.addEventListener("abrir", (e) => this.abrirForm(e.detail.nota));
-      card.addEventListener("editar", (e) => this.abrirForm(e.detail.nota));
-      card.addEventListener("excluir", (e) => this.excluir(e.detail.nota));
+      if (!ro) {
+        card.addEventListener("abrir", (e) => this.abrirForm(e.detail.nota));
+        card.addEventListener("editar", (e) => this.abrirForm(e.detail.nota));
+        card.addEventListener("excluir", (e) => this.excluir(e.detail.nota));
+      }
       grade.appendChild(card);
     });
     corpo.replaceChildren(grade);

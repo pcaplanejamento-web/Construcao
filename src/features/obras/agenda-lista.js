@@ -8,6 +8,7 @@
  * Não toca em rede. Reusa as cores (agenda-cores.js) e os tokens. Responsivo.
  */
 import { BaseElement } from "../../components/base-element.js";
+import { dataStore } from "../../core/data-store.js";
 import { corEvento } from "./agenda-cores.js";
 import "../../components/ui-button.js";
 
@@ -120,7 +121,10 @@ class AgendaLista extends BaseElement {
   }
 
   template() {
-    const cabecalho = `<div class="cab"><ui-button id="novo" tamanho="sm">+ Novo evento</ui-button></div>`;
+    // Somente-leitura (link público): sem cabeçalho "+ Novo evento".
+    const cabecalho = dataStore.somenteLeitura()
+      ? ""
+      : `<div class="cab"><ui-button id="novo" tamanho="sm">+ Novo evento</ui-button></div>`;
     const porDia = this._porDia();
     const dias = Object.keys(porDia).sort((a, b) => a.localeCompare(b)); // ascendente
     if (!dias.length) {

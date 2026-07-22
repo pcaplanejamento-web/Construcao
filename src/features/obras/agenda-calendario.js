@@ -9,6 +9,7 @@
  * Responsivo: no mobile o Mês compacta (pontos + painel do dia) e a Semana empilha.
  */
 import { BaseElement } from "../../components/base-element.js";
+import { dataStore } from "../../core/data-store.js";
 import { corEvento } from "./agenda-cores.js";
 import "../../components/ui-button.js";
 
@@ -185,7 +186,8 @@ class AgendaCalendario extends BaseElement {
           `<button class="linha-ev" data-id="${esc(ev.id)}"><span class="pt" style="background:${corEvento(ev.cor)}"></span>${horaDe(ev) ? "<b>" + horaDe(ev) + "</b>&nbsp;" : ""}${esc(ev.titulo)}</button>`
         ).join("")
       : `<p class="vazio">Nenhum evento neste dia.</p>`;
-    return `<div class="painel"><div class="painel-cab"><span>${rotulo}</span><ui-button id="novoDia" tamanho="sm">+ Novo evento</ui-button></div>${linhas}</div>`;
+    const novoDiaBtn = dataStore.somenteLeitura() ? "" : `<ui-button id="novoDia" tamanho="sm">+ Novo evento</ui-button>`;
+    return `<div class="painel"><div class="painel-cab"><span>${rotulo}</span>${novoDiaBtn}</div>${linhas}</div>`;
   }
 
   _semanaHtml() {
@@ -218,7 +220,7 @@ class AgendaCalendario extends BaseElement {
           <button class="modo ${this._view === "mes" ? "ativo" : ""}" data-modo="mes">Mês</button>
           <button class="modo ${this._view === "semana" ? "ativo" : ""}" data-modo="semana">Semana</button>
         </div>
-        <ui-button id="novo">+ Novo evento</ui-button>
+        ${dataStore.somenteLeitura() ? "" : `<ui-button id="novo">+ Novo evento</ui-button>`}
       </div>
       ${this._view === "mes" ? this._mesHtml() : this._semanaHtml()}
     `;
@@ -231,7 +233,10 @@ class AgendaCalendario extends BaseElement {
     this.$$(".modo").forEach((b) =>
       b.addEventListener("click", () => { this._view = b.dataset.modo; this._diaSel = null; this.renderizar(); })
     );
-    this.$("#novo").addEventListener("click", () => this.emitir("novo"));
+    // Somente-leitura (link público): sem criar evento (botões/colunas não disparam).
+    const ro = dataStore.somenteLeitura();
+    const btnNovo = this.$("#novo");
+    if (btnNovo) btnNovo.addEventListener("click", () => this.emitir("novo"));
 
     // Chips (mês + semana) → abrir/editar evento.
     this.$$(".chip").forEach((c) =>
@@ -248,7 +253,7 @@ class AgendaCalendario extends BaseElement {
       this.$$(".linha-ev").forEach((l) =>
         l.addEventListener("click", () => this._abrirEvento(l.dataset.id))
       );
-    } else {
+    } else if (!ro) {
       // Semana: clique na coluna (fora do chip) → novo evento naquele dia.
       this.$$(".col").forEach((col) =>
         col.addEventListener("click", () => this.emitir("dia-novo", { data: col.dataset.ymd }))

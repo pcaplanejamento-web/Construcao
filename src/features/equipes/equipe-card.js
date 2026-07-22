@@ -6,6 +6,7 @@
  */
 import { BaseElement } from "../../components/base-element.js";
 import { numero, data as fmtData } from "../../core/formatters.js";
+import { dataStore } from "../../core/data-store.js";
 import { liderNome } from "./equipe-util.js";
 import "../../components/ui-badge.js";
 import "../../components/ui-icon.js";
@@ -75,10 +76,10 @@ class EquipeCard extends BaseElement {
           <span>${numero((e.obras || []).length)}</span>
         </div>
         ${log}
-        <div class="acoes">
+        ${dataStore.somenteLeitura() ? "" : `<div class="acoes">
           <button id="editar">Editar</button>
           <button id="remover" class="perigo">Excluir</button>
-        </div>
+        </div>`}
       </div>
     `;
   }
@@ -88,8 +89,11 @@ class EquipeCard extends BaseElement {
       if (e.target.closest(".acoes")) return;
       this.emitir("abrir", { equipe: this.equipe });
     });
-    this.$("#editar").addEventListener("click", () => this.emitir("editar", { equipe: this.equipe }));
-    this.$("#remover").addEventListener("click", () => this.emitir("remover", { equipe: this.equipe }));
+    // Somente-leitura (link público): sem botões de editar/excluir (não renderizados).
+    const btnEditar = this.$("#editar");
+    if (btnEditar) btnEditar.addEventListener("click", () => this.emitir("editar", { equipe: this.equipe }));
+    const btnRemover = this.$("#remover");
+    if (btnRemover) btnRemover.addEventListener("click", () => this.emitir("remover", { equipe: this.equipe }));
   }
 }
 

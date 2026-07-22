@@ -1,37 +1,54 @@
 /**
  * <publico-view> — Visão SOMENTE LEITURA de uma obra via link público.
  *
- * Rota: /publico/:token (sem login). Busca publico.obra(token) e mostra a obra
- * INTEIRA com TODAS as abas (Gráficos / Despesas / Acerto de contas / Orçamentos /
- * Equipes / Fornecedores / Transferências) — **sem nenhuma ação de edição**.
- * É um componente ISOLADO (não reusa obra-detail-view) → zero risco à tela
- * autenticada. Reusa os helpers PUROS (balancos/acerto) + ui-tabs + ui-data-table +
- * dashboard-summary + category-breakdown (display-only).
+ * Rota: /publico/:token (sem login) — ou modo GRUPO (montada por <publico-grupo-view>
+ * com grupo-token + obra-id). Mostra a obra INTEIRA com TODAS as abas, usando os
+ * MESMOS componentes internos da tela autenticada (despesa-table, orçamento, equipe,
+ * participantes, estoque, notas, agenda, gráficos, transferências) — sem réplicas.
+ *
+ * Como: HIDRATA o data-store singleton com o snapshot público da obra
+ * (`dataStore.hidratarPublico`, que liga `somenteLeitura`) e monta os componentes de
+ * domínio, que resolvem tudo pelo store como na obra interna. O modo somente-leitura
+ * (global) esconde toda ação de editar/criar/excluir e navegação para rotas protegidas.
+ * A visão é a CASCA (não reusa obra-detail-view, o "coração"): monta os componentes
+ * reais em vez de tabelas na mão. `hidratarPublico` NÃO persiste (o cache do usuário
+ * logado, se houver, fica intacto e é restaurado ao sair — ver `aoConectar`).
  */
 import { BaseElement } from "../../components/base-element.js";
 import { api } from "../../core/api-client.js";
+import { dataStore } from "../../core/data-store.js";
 import { moeda, data as fmtData } from "../../core/formatters.js";
-import { balancos, acerto } from "../despesas/despesa-split.js";
-import { emEstoqueDaObra } from "../estoque/estoque.js";
+import { balancos } from "../despesas/despesa-split.js";
 import { corDeId } from "../shared/cor-id.js";
+import { avatarNomeHtml, whatsappBtnHtml } from "../shared/avatar.js";
+import { abrirOrigemGrafico } from "../shared/vinculos.js";
+import { COR_CLASSIFICACAO } from "../../core/classificacao.js";
+import { montarGradeOrcamentos } from "../orcamentos/orcamento-grade.js";
+import { montarGradeEquipes } from "../equipes/equipe-grade.js";
+import {
+  montarGradeResumos,
+  previaTransferenciaHtml,
+  previaPagamentoHtml,
+  abrirTransferencia,
+  abrirPagamento,
+} from "../pagamentos/pagamento-util.js";
 import "../../components/ui-card.js";
 import "../../components/ui-icon.js";
 import "../../components/ui-spinner.js";
 import "../../components/ui-tabs.js";
 import "../../components/ui-data-table.js";
-import "../../components/ui-modal.js";
 import "../../components/ui-button.js";
 import "../dashboard/dashboard-summary.js";
 import "../dashboard/category-breakdown.js";
 import "../dashboard/grafico-rosca.js";
 import "../dashboard/grafico-mensal.js";
+import "../despesas/despesa-table.js";
 import "../despesas/category-badge.js";
+import "../obras/obra-participantes.js";
+import "../obras/obra-agenda.js";
+import "../obras/obra-notas.js";
 
-import { COR_CLASSIFICACAO } from "../../core/classificacao.js";
-const cap = (s) => {
-  const t = String(s || "");
-  return t.charAt(0).toUpperCase() + t.slice(1);
-};
+const nf3 = (n) => (Math.round((Number(n) || 0) * 1000) / 1000).toLocaleString("pt-BR");
 
 class PublicoView extends BaseElement {
   get token() {
@@ -49,23 +66,13 @@ class PublicoView extends BaseElement {
         font-size: var(--fs-sm); color: var(--cor-texto-suave);
         border: 1px solid var(--cor-borda-forte); border-radius: var(--raio-completo);
         padding: 4px 12px; }
-      .colunas { display: grid; gap: var(--esp-5); grid-template-columns: 2fr 1fr; }
-      .colunas > * { min-width: 0; }
-      @media (max-width: 860px) { .colunas { grid-template-columns: 1fr; } }
-      /* Todos os gráficos (mesmos componentes da obra) numa grade de 3 colunas. */
+      /* Gráficos: MESMA grade de 3 colunas da obra interna. */
       .graficos { display: grid; gap: var(--esp-5); grid-template-columns: repeat(3, 1fr); }
       .graficos > * { min-width: 0; height: 340px; }
       @media (max-width: 900px) {
         .graficos { grid-template-columns: 1fr; }
         .graficos > * { height: auto; min-height: 300px; }
       }
-      .acertos { display: flex; flex-direction: column; gap: var(--esp-2); }
-      .acerto-item { display: flex; align-items: center; gap: var(--esp-2);
-        padding: var(--esp-2) var(--esp-3); border: 1px solid var(--cor-borda);
-        border-radius: var(--raio-sm); background: var(--cor-superficie); }
-      .acerto-item .seta { color: var(--cor-texto-fraco); }
-      .acerto-item .valor { margin-left: auto; font-weight: var(--peso-semi); color: var(--cor-erro); }
-      .ok { display: inline-flex; align-items: center; gap: 6px; color: var(--cor-sucesso); font-size: var(--fs-sm); }
     `;
   }
 
@@ -75,6 +82,10 @@ class PublicoView extends BaseElement {
 
   aoConectar() {
     this._ligado = true;
+    // Se sair da visão pública e havia uma sessão AUTENTICADA carregada, restaura o
+    // cache do usuário (o link hidratou o store singleton em modo somente-leitura;
+    // `hidratarPublico` não persiste → o localStorage do usuário está intacto).
+    this.aoLimpar(() => { if (this._eraAutenticado) dataStore.restaurarCache(); });
     // Payload já buscado (link de grupo com prefetch/cache) → renderiza SEM refazer a chamada.
     if (this._injetado) this.pintar(this._injetado);
     else this.carregar();
@@ -104,35 +115,18 @@ class PublicoView extends BaseElement {
     }
   }
 
-  /* ----------------------------- Resolução de nomes ----------------------- */
-  _maps(d) {
-    const cont = {};
-    (d.contatos || []).forEach((c) => (cont[String(c.id)] = c.nome));
-    const eqp = {};
-    (d.equipes || []).forEach((e) => (eqp[String(e.id)] = e.nome));
-    const part = {};
-    (d.participantes || []).forEach((p) => (part[p.chave] = p.nome));
-    this._nm = { cont, eqp, part };
-  }
-  _nomeChave(ch) {
-    const s = String(ch || "");
-    if (this._nm.part[s]) return this._nm.part[s];
-    if (s.indexOf("c:") === 0) return this._nm.cont[s.slice(2)] || "—";
-    if (s.indexOf("e:") === 0) return (this._nm.eqp[s.slice(2)] || "—") + " (grupo)";
-    if (s.indexOf("u:") === 0) return "Usuário";
-    return s || "—";
-  }
-  _nomeContato(id) {
-    return this._nm.cont[String(id)] || "—";
-  }
-  _nomeRecebedor(t) {
-    if (t.recebedor_equipe_id) return (this._nm.eqp[String(t.recebedor_equipe_id)] || "—") + " (grupo)";
-    return this._nomeContato(t.recebedor_contato_id);
-  }
+  /* ------------------------------- Render ------------------------------- */
 
   pintar(d) {
-    this._maps(d);
+    // Preserva a sessão autenticada (se houver) p/ restaurar ao sair; então hidrata o
+    // store com a obra pública (liga `somenteLeitura` → os componentes viram display-only).
+    this._eraAutenticado = this._eraAutenticado || (dataStore.carregado() && !dataStore.somenteLeitura() && !!dataStore.usuario());
+    dataStore.hidratarPublico(d);
+
     const o = d.obra || {};
+    const obraId = o.id;
+    this._obraId = obraId;
+
     this.$("#conteudo").innerHTML = `
       <div>
         <h1>${o.nome || "Obra"}</h1>
@@ -152,232 +146,332 @@ class PublicoView extends BaseElement {
           <ui-card><category-breakdown id="gEst" titulo="Quantidade em estoque por item" vazio="Nenhum item em estoque."></category-breakdown></ui-card>
         </div>
         <div slot="despesas">
-          <ui-card mesa title="Mesa com itens"><ui-data-table id="tDesp" fluido empty-text="Nenhuma despesa registrada."></ui-data-table></ui-card>
+          <ui-card mesa title="Mesa com despesas da obra">
+            <despesa-table id="tabela"></despesa-table>
+          </ui-card>
         </div>
-        <div slot="acerto">
-          <ui-card mesa title="Acerto de contas"><ui-data-table id="tAcerto" fluido empty-text="Sem participantes."></ui-data-table></ui-card>
-          <ui-card mesa title="Quem deve a quem"><div id="qdaq"></div></ui-card>
+        <div slot="participantes">
+          <obra-participantes obra-id="${obraId}"></obra-participantes>
+        </div>
+        <div slot="responsaveis">
+          <obra-participantes obra-id="${obraId}" modo="responsaveis"></obra-participantes>
         </div>
         <div slot="orcamentos">
-          <ui-card mesa title="Mesa com orçamentos"><ui-data-table id="tOrc" fluido empty-text="Nenhum orçamento."></ui-data-table></ui-card>
+          <ui-card mesa title="Mesa com orçamentos da obra"><div id="gradeOrc"></div></ui-card>
         </div>
         <div slot="equipes">
-          <ui-card mesa title="Mesa com equipes"><ui-data-table id="tEq" fluido empty-text="Nenhuma equipe."></ui-data-table></ui-card>
+          <ui-card mesa title="Mesa com equipes da obra"><div id="gradeEquipes"></div></ui-card>
         </div>
         <div slot="fornecedores">
-          <ui-card mesa title="Mesa com empresas"><ui-data-table id="tForn" fluido empty-text="Nenhuma empresa."></ui-data-table></ui-card>
+          <ui-card mesa title="Mesa com empresas da obra">
+            <ui-data-table id="tabForn" fluido empty-text="Nenhuma empresa usada nesta obra ainda."></ui-data-table>
+          </ui-card>
         </div>
-        <div slot="transferencias">
-          <ui-card mesa title="Mesa com transferências"><ui-data-table id="tTransf" fluido empty-text="Nenhuma transferência."></ui-data-table></ui-card>
+        <div slot="pagamentos">
+          <ui-tabs id="abasPag">
+            <div slot="transferencias">
+              <ui-card mesa title="Mesa com transferências da obra"><div id="listaTransf"></div></ui-card>
+            </div>
+            <div slot="pagamentos">
+              <ui-card mesa title="Mesa com pagamentos da obra"><div id="listaPagTransf"></div></ui-card>
+            </div>
+          </ui-tabs>
+        </div>
+        <div slot="estoque">
+          <ui-tabs id="abasEstoque">
+            <div slot="emEstoque">
+              <ui-card mesa title="Mesa com itens em estoque">
+                <ui-data-table id="tabEstoque" fluido
+                  empty-text="Nenhum item em estoque."></ui-data-table>
+              </ui-card>
+            </div>
+            <div slot="consumidos">
+              <ui-card mesa title="Mesa com itens consumidos">
+                <ui-data-table id="tabConsumido" fluido
+                  empty-text="Nenhum item consumido nesta obra."></ui-data-table>
+              </ui-card>
+            </div>
+          </ui-tabs>
+        </div>
+        <div slot="agenda">
+          <obra-agenda obra-id="${obraId}"></obra-agenda>
+        </div>
+        <div slot="notas">
+          <obra-notas obra-id="${obraId}"></obra-notas>
         </div>
       </ui-tabs>
     `;
+
     this.$("#abas").abas = [
       { id: "graficos", rotulo: "Gráficos", icone: "grafico" },
       { id: "despesas", rotulo: "Despesas", icone: "recibo" },
-      { id: "acerto", rotulo: "Acerto de contas", icone: "usuarios" },
+      { id: "participantes", rotulo: "Participantes", icone: "usuario" },
+      { id: "responsaveis", rotulo: "Responsáveis", icone: "seguranca" },
       { id: "orcamentos", rotulo: "Orçamentos", icone: "carteira" },
-      { id: "equipes", rotulo: "Equipes", icone: "usuarios" },
+      { id: "equipes", rotulo: "Equipes", icone: "usuario" },
       { id: "fornecedores", rotulo: "Empresas", icone: "fornecedor" },
-      { id: "transferencias", rotulo: "Transferências", icone: "cifrao" },
+      { id: "pagamentos", rotulo: "Transferências e pagamentos", icone: "cifrao" },
+      { id: "estoque", rotulo: "Estoque", icone: "tag" },
+      { id: "agenda", rotulo: "Agenda", icone: "relogio" },
+      { id: "notas", rotulo: "Notas", icone: "recibo" },
     ];
+    const abasPag = this.$("#abasPag");
+    if (abasPag)
+      abasPag.abas = [
+        { id: "transferencias", rotulo: "Transferências", icone: "cifrao" },
+        { id: "pagamentos", rotulo: "Pagamentos", icone: "recibo" },
+      ];
+    const abasEstoque = this.$("#abasEstoque");
+    if (abasEstoque)
+      abasEstoque.abas = [
+        { id: "emEstoque", rotulo: "Estoque", icone: "tag" },
+        { id: "consumidos", rotulo: "Consumidos", icone: "recibo" },
+      ];
 
-    // Gráficos — TODOS os mesmos componentes da obra, somente leitura + drill-down.
-    const resumo = d.resumo || {};
-    const despRaw = d.despesasRaw || [];
-    const { porChave, porFornecedor, porOfertante } = balancos(despRaw);
-    const byId = {};
-    despRaw.forEach((x) => (byId[String(x.id)] = x));
-    const itemMap = {};
-    (d.itens || []).forEach((i) => (itemMap[String(i.id)] = i));
-    const nomeItem = (id) => (itemMap[String(id)] || {}).nome || "—";
-    const nf = (n) => (Math.round((Number(n) || 0) * 1000) / 1000).toLocaleString("pt-BR");
-    const DESP_COLS = [
-      { chave: "_item", titulo: "Despesa" },
-      { chave: "_valor", titulo: "Valor", alinhar: "dir" },
-      { chave: "_data", titulo: "Data" },
-    ];
-    const despRows = (arr) => arr.map((x) => ({ _item: nomeItem(x.item_id), _valor: moeda(x.valor), _data: fmtData(x.data) }));
+    // --- Alimenta os componentes a partir do store hidratado (espelha o `sincronizar`
+    //     da obra interna). Como é somente-leitura, o store não muda → pintar 1× basta. ---
+    const categorias = dataStore.categoriasDaObra(obraId).filter((c) => String(c.tipo || "") !== "fornecedor");
+    const resumo = dataStore.resumo(obraId);
+    const despesas = dataStore.despesas(obraId);
+    this._despesas = despesas;
 
-    this.$("#dash").resumo = resumo;
-
-    this.$("#break").aoSelecionar = (c) =>
-      this._origem("Categoria · " + c.nome, DESP_COLS, despRows(despRaw.filter((x) => String(x.categoria_id) === String(c.categoria_id))));
-    this.$("#break").porCategoria = resumo.por_subclassificacao || resumo.por_categoria || [];
-
-    this.$("#rosca").aoSelecionar = (c) => {
-      const alvo = c.nome === "Sem classificação" ? "" : c.nome;
-      this._origem("Classificação · " + c.nome, DESP_COLS, despRows(despRaw.filter((x) => String(x.classificacao || "") === String(alvo))));
+    const S = (rotulo, fn) => {
+      try { fn(); } catch (e) { console.error("[publico-view] falha ao montar " + rotulo, e); }
     };
-    this.$("#rosca").porCategoria = resumo.por_classificacao || [];
 
-    this.$("#mensal").aoSelecionar = (c) =>
-      this._origem("Mês · " + (c.rotulo || c.mes), DESP_COLS, despRows(despRaw.filter((x) => String(x.data || "").startsWith(c.mes))));
-    this.$("#mensal").despesas = despRaw;
-
-    // Por ofertante (UNIFICADO: contato "c:" OU equipe "e:") — junta representante + ofertante-equipe.
-    this.$("#gOfertante").aoSelecionar = (c) =>
-      this._origem("Ofertante · " + c.nome, DESP_COLS, despRows(despRaw.filter((x) => {
-        const k = x.ofertante_contato_id ? "c:" + x.ofertante_contato_id : (x.ofertante_equipe_id ? "e:" + x.ofertante_equipe_id : "");
-        return k === c.chave;
-      })));
-    this.$("#gOfertante").porCategoria = Object.keys(porOfertante)
-      .map((ch) => ({ nome: this._nomeChave(ch), cor: corDeId(ch), total: Number(porOfertante[ch]) || 0, chave: ch }))
-      .filter((x) => x.total > 0.01).sort((a, b) => b.total - a.total);
-
-    this.$("#gEmp").aoSelecionar = (c) =>
-      this._origem("Empresa · " + c.nome, DESP_COLS, despRows(despRaw.filter((x) => String(x.fornecedor_id) === String(c.fornecedor_id))));
-    this.$("#gEmp").porCategoria = Object.keys(porFornecedor)
-      .map((fid) => ({ nome: this._nomeForn(d, fid), cor: corDeId(fid), total: Number(porFornecedor[fid].total) || 0, fornecedor_id: fid }))
-      .filter((x) => x.total > 0.01).sort((a, b) => b.total - a.total);
-
-    // Quantidade em estoque por item — MESMO componente de barras (item 2).
-    const ROTULO_MOV = { entrada_despesa: "Compra (despesa)", entrada_manual: "Entrada manual", entrada_transferencia: "Recebido por transferência", saida_transferencia: "Enviado por transferência", consumo: "Consumo", retorno: "Retorno" };
-    this.$("#gEst").aoSelecionar = (c) =>
-      this._origem("Estoque · " + c.nome,
-        [{ chave: "_tipo", titulo: "Movimento" }, { chave: "_qtd", titulo: "Quantidade", alinhar: "dir" }, { chave: "_data", titulo: "Data" }],
-        (d.estoque || []).filter((m) => String(m.item_id) === String(c.item_id)).map((m) => ({ _tipo: ROTULO_MOV[m.tipo] || m.tipo, _qtd: nf(m.quantidade) + (m.unidade ? " " + m.unidade : ""), _data: fmtData(m.data) })));
-    this.$("#gEst").formato = (c) => nf(c.total) + (c.unidade ? " " + c.unidade : "");
-    this.$("#gEst").porCategoria = emEstoqueDaObra(d.estoque || [], o.id)
-      .map((it) => ({ nome: nomeItem(it.item_id), cor: corDeId(it.item_id), total: Number(it.em_estoque) || 0, unidade: it.unidade || "", item_id: it.item_id }))
-      .filter((x) => x.total > 0.0001).sort((a, b) => b.total - a.total);
-
-    // Despesas (itens)
-    this.$("#tDesp").columns = [
-      { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
-      { chave: "item", titulo: "Item" },
-      {
-        chave: "classificacao",
-        titulo: "Classificação",
-        formato: (v) =>
-          v
-            ? `<category-badge nome="${v}" cor="${COR_CLASSIFICACAO[v] || "var(--cor-neutro)"}"></category-badge>`
-            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
-      },
-      {
-        chave: "categoria_nome",
-        titulo: "Categoria",
-        secundaria: true,
-        formato: (nome, linha) =>
-          nome
-            ? `<category-badge nome="${nome}" cor="${linha.categoria_cor || ""}"></category-badge>`
-            : `<span style="color:var(--cor-texto-fraco)">—</span>`,
-      },
-      { chave: "valor", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-    ];
-    this.$("#tDesp").rows = d.despesas || [];
-
-    // Acerto de contas (balanços por participante + quem deve a quem) — helpers PUROS.
-    // (despRaw/porChave/porFornecedor já calculados no bloco de Gráficos acima.)
-    const participantes = d.participantes || [];
-    const rowsAcerto = participantes.map((p) => {
-      const b = porChave[p.chave] || { pago: 0, recebido: 0, saldoApagar: 0, saldoReceber: 0 };
-      return { nome: p.nome, _pago: b.pago || 0, _recebido: b.recebido || 0, _saldoApagar: b.saldoApagar || 0, _saldoReceber: b.saldoReceber || 0 };
+    S("dashboard", () => (this.$("#dash").resumo = resumo));
+    S("gráfico por categoria", () => {
+      const g = this.$("#break");
+      g.aoSelecionar = (c) => this._origemCategoria(c);
+      g.porCategoria = resumo.por_subclassificacao || resumo.por_categoria || [];
     });
-    this.$("#tAcerto").columns = [
-      { chave: "nome", titulo: "Participante" },
-      { chave: "_pago", titulo: "Pago", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-      { chave: "_recebido", titulo: "Recebido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-      { chave: "_saldoApagar", titulo: "Saldo a pagar", alinhar: "dir", moeda: true,
-        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-erro)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`) },
-      { chave: "_saldoReceber", titulo: "Saldo a receber", alinhar: "dir", moeda: true,
-        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`) },
-    ];
-    this.$("#tAcerto").rows = rowsAcerto;
-    const { acertos } = acerto(despRaw, participantes);
-    this.$("#qdaq").innerHTML = acertos.length
-      ? `<div class="acertos">${acertos
-          .map(
-            (a) =>
-              `<div class="acerto-item"><span>${a.de_nome}</span><span class="seta">→</span><span>${a.para_nome}</span><span class="valor">${moeda(a.valor)}</span></div>`
-          )
-          .join("")}</div>`
-      : `<div class="ok"><ui-icon name="sucesso" size="16"></ui-icon> Sem pendências — tudo acertado.</div>`;
+    S("gráfico por classificação", () => {
+      const g = this.$("#rosca");
+      g.aoSelecionar = (c) => this._origemClassificacao(c);
+      g.porCategoria = resumo.por_classificacao || [];
+    });
+    S("gráfico mensal", () => {
+      const g = this.$("#mensal");
+      g.aoSelecionar = (c) => this._origemMes(c);
+      g.despesas = despesas;
+    });
+    S("tabela de despesas", () => {
+      const tabela = this.$("#tabela");
+      tabela.categorias = categorias;
+      tabela.participantes = dataStore.participantesDaObra(obraId);
+      tabela.despesas = despesas;
+    });
+    S("grade de orçamentos", () =>
+      montarGradeOrcamentos(this.$("#gradeOrc"), dataStore.orcamentos().filter((x) => String(x.obra_id) === String(obraId)))
+    );
+    S("grade de equipes", () => montarGradeEquipes(this.$("#gradeEquipes"), dataStore.equipesDaObra(obraId)));
+    S("empresas", () => this._montarFornecedores(despesas));
+    S("gráficos extras", () => this._montarGraficosExtras(despesas));
+    S("transferências", () =>
+      montarGradeResumos(this.$("#listaTransf"), dataStore.transferenciasDaObra(obraId), "transf", previaTransferenciaHtml, abrirTransferencia, "Nenhuma transferência registrada nesta obra.")
+    );
+    S("pagamentos", () =>
+      montarGradeResumos(this.$("#listaPagTransf"), dataStore.pagamentosDaObra(obraId), "pag", previaPagamentoHtml, abrirPagamento, "Nenhum pagamento registrado nesta obra.")
+    );
+    S("estoque", () => this._montarEstoque(categorias));
+  }
 
-    // Orçamentos
-    this.$("#tOrc").columns = [
-      { chave: "nome", titulo: "Orçamento" },
-      { chave: "status", titulo: "Status", formato: (v) => v || "—" },
-      { chave: "criado_em", titulo: "Criado", secundaria: true, formato: (v) => (v ? fmtData(v) : "—") },
-    ];
-    this.$("#tOrc").rows = d.orcamentos || [];
+  /* ------------------------------ Empresas ------------------------------ */
 
-    // Equipes
-    this.$("#tEq").columns = [
-      { chave: "nome", titulo: "Equipe" },
-      {
-        chave: "membros",
-        titulo: "Integrantes",
-        alinhar: "dir",
-        formato: (m, l) => String((Array.isArray(m) ? m.length : 0) + (l.lider_id ? 1 : 0)),
-      },
-    ];
-    this.$("#tEq").rows = d.equipes || [];
-
-    // Fornecedores (Total / Recebido / Saldo a receber) — balancos.porFornecedor.
-    this.$("#tForn").columns = [
-      { chave: "nome", titulo: "Empresa" },
+  /** Empresas usadas na obra + Total/Recebido/Saldo a receber (espelha a obra interna,
+   *  porém SEM navegação p/ /fornecedores/:id — rota protegida). */
+  _montarFornecedores(despesas) {
+    const tab = this.$("#tabForn");
+    if (!tab) return;
+    const { porFornecedor } = balancos(despesas);
+    const qtd = {};
+    despesas.forEach((d) => {
+      if (d.fornecedor_id) qtd[d.fornecedor_id] = (qtd[d.fornecedor_id] || 0) + 1;
+    });
+    tab.columns = [
+      { chave: "_nome", titulo: "Empresa", formato: (v) => avatarNomeHtml(v) },
+      { chave: "_tel", titulo: "", formato: (v) => whatsappBtnHtml(v), largura: "52px" },
+      { chave: "_qtd", titulo: "Despesas", alinhar: "dir" },
       { chave: "_total", titulo: "Total", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
       { chave: "_recebido", titulo: "Recebido", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-      { chave: "_saldoReceber", titulo: "Saldo a receber", alinhar: "dir", moeda: true,
-        formato: (v) => (v > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>` : `<span style="color:var(--cor-texto-fraco)">—</span>`) },
-    ];
-    this.$("#tForn").rows = Object.keys(porFornecedor).map((fid) => {
-      const v = porFornecedor[fid];
-      return { nome: this._nomeForn(d, fid), _total: v.total, _recebido: v.recebido, _saldoReceber: v.saldoReceber };
-    });
-
-    // Transferências
-    this.$("#tTransf").columns = [
-      { chave: "data", titulo: "Data", formato: (v) => fmtData(v) },
-      { chave: "valor_total", titulo: "Valor", alinhar: "dir", moeda: true, formato: (v) => moeda(v) },
-      { chave: "tipo", titulo: "Tipo", formato: (v) => cap(v || "dinheiro") },
-      { chave: "pagador_chave", titulo: "Pagou", formato: (v) => this._nomeChave(v) },
-      { chave: "_recebedor", titulo: "Recebedor", formato: (_, l) => this._nomeRecebedor(l) },
-      { chave: "pagamento_ids", titulo: "Pagamentos", alinhar: "dir", formato: (v) => String((v || []).length) },
       {
-        chave: "comprovante_url",
-        titulo: "Comprovante",
+        chave: "_resto",
+        titulo: "Saldo a receber",
+        alinhar: "dir",
+        moeda: true,
         formato: (v) =>
-          v
-            ? `<a href="${v}" target="_blank" rel="noopener">Ver comprovante</a>`
+          v > 0.01
+            ? `<strong style="color:var(--cor-sucesso)">${moeda(v)}</strong>`
             : `<span style="color:var(--cor-texto-fraco)">—</span>`,
       },
     ];
-    this.$("#tTransf").rows = d.transferencias || [];
+    tab.rows = Object.keys(porFornecedor)
+      .map((fid) => {
+        const f = dataStore.fornecedores().find((x) => String(x.id) === String(fid)) || {};
+        const v = porFornecedor[fid];
+        return { id: fid, _nome: f.nome || "—", _tel: f.telefone || "", _qtd: qtd[fid] || 0, _total: v.total, _recebido: v.recebido, _resto: v.saldoReceber };
+      })
+      .sort((a, b) => b._resto - a._resto);
   }
 
-  /** Nome do fornecedor pelo id (mapa próprio de fornecedores do payload). */
-  _nomeForn(d, fid) {
-    const f = (d.fornecedores || []).find((x) => String(x.id) === String(fid));
-    return f ? f.nome : "—";
+  /* ------------------------------ Estoque ------------------------------- */
+
+  /** Tabelas Estoque e Consumidos (consolidação derivada) — display-only (sem ações). */
+  _montarEstoque(categorias) {
+    const tabEstoque = this.$("#tabEstoque");
+    const tabConsumido = this.$("#tabConsumido");
+    if (!tabEstoque || !tabConsumido) return;
+    const mapaCat = {};
+    (categorias || []).forEach((c) => (mapaCat[String(c.id)] = c));
+
+    const nomeItem = (it) => (dataStore.item(it.item_id) || {}).nome || "—";
+    const subBadge = (it) => {
+      const c = mapaCat[String(it.categoria_id)];
+      return c
+        ? `<category-badge nome="${c.nome}" cor="${c.cor || "var(--cor-neutro)"}"></category-badge>`
+        : `<span style="color:var(--cor-texto-fraco)">Sem categoria</span>`;
+    };
+    const classBadge = (it) =>
+      it.classificacao
+        ? `<category-badge nome="${it.classificacao}" cor="${COR_CLASSIFICACAO[it.classificacao] || "var(--cor-neutro)"}"></category-badge>`
+        : "—";
+    const unidade = (it) =>
+      (it.unidade || "—") + (it.unidades && it.unidades.length > 1 ? ` <span title="Unidades divergentes: ${it.unidades.join(", ")}" style="color:var(--cor-aviso)">⚠</span>` : "");
+
+    const colunas = (chaveQtd, tituloQtd) => [
+      { chave: "_item", titulo: "Item" },
+      { chave: "_class", titulo: "Classificação", formato: (v, l) => classBadge(l) },
+      { chave: "_sub", titulo: "Categoria", formato: (v, l) => subBadge(l) },
+      { chave: "unidade", titulo: "Unidade", formato: (v, l) => unidade(l) },
+      { chave: chaveQtd, titulo: tituloQtd, alinhar: "dir", formato: (v) => `<strong>${nf3(v)}</strong>` },
+    ];
+    const linha = (it) => Object.assign({}, it, { _item: nomeItem(it) });
+
+    tabEstoque.columns = colunas("em_estoque", "Em estoque");
+    tabEstoque.rows = dataStore.estoqueDaObra(this._obraId).map(linha).sort((a, b) => String(a._item).localeCompare(String(b._item)));
+    tabConsumido.columns = colunas("consumido", "Consumido");
+    tabConsumido.rows = dataStore.estoqueConsumidoDaObra(this._obraId).map(linha).sort((a, b) => String(a._item).localeCompare(String(b._item)));
   }
 
-  /**
-   * Banner de ORIGEM (item 4) na visão pública — somente leitura (sem navegação/edição).
-   * Compõe ui-modal + ui-data-table (isolado; não puxa o data-store autenticado).
-   */
-  _origem(titulo, colunas, linhas) {
-    const modal = document.createElement("ui-modal");
-    modal.setAttribute("open", "");
-    modal.setAttribute("title", "Origem · " + titulo);
-    const corpo = document.createElement("div");
-    const tab = document.createElement("ui-data-table");
-    tab.setAttribute("fluido", "");
-    tab.setAttribute("empty-text", "Sem registros.");
-    tab.columns = colunas;
-    tab.rows = linhas;
-    corpo.appendChild(tab);
-    modal.appendChild(corpo);
-    const rod = document.createElement("div");
-    rod.setAttribute("slot", "rodape");
-    const btn = document.createElement("ui-button");
-    btn.textContent = "Fechar";
-    btn.addEventListener("click", () => modal.remove());
-    rod.appendChild(btn);
-    modal.appendChild(rod);
-    modal.addEventListener("fechar", () => modal.remove());
-    document.body.appendChild(modal);
+  /* ------------------------- Gráficos extras ---------------------------- */
+
+  /** Nome ao vivo de uma CHAVE de participante ("c:"/"e:"/"u:") p/ o gráfico de ofertante. */
+  _nomeDaChave(ch) {
+    const s = String(ch || "");
+    if (s.indexOf("c:") === 0) return (dataStore.contatos().find((x) => String(x.id) === s.slice(2)) || {}).nome || "Contato";
+    if (s.indexOf("e:") === 0) return (dataStore.equipes().find((x) => String(x.id) === s.slice(2)) || {}).nome || "Grupo";
+    if (s.indexOf("u:") === 0) return dataStore.usuarioNome(s.slice(2)) || "Usuário";
+    return "—";
+  }
+
+  /** Alimenta Ofertante / Empresa / Estoque (mesmos componentes de barras da obra interna). */
+  _montarGraficosExtras(despesas) {
+    const { porFornecedor, porOfertante } = balancos(despesas);
+
+    const gOfertante = this.$("#gOfertante");
+    if (gOfertante) {
+      gOfertante.aoSelecionar = (c) => this._origemOfertante(c);
+      gOfertante.porCategoria = Object.keys(porOfertante)
+        .map((ch) => ({ nome: this._nomeDaChave(ch), cor: corDeId(ch), total: Number(porOfertante[ch]) || 0, chave: ch }))
+        .filter((x) => x.total > 0.01)
+        .sort((a, b) => b.total - a.total);
+    }
+
+    const gEmp = this.$("#gEmp");
+    if (gEmp) {
+      gEmp.aoSelecionar = (c) => this._origemEmpresa(c);
+      gEmp.porCategoria = Object.keys(porFornecedor)
+        .map((fid) => ({
+          nome: (dataStore.fornecedores().find((f) => String(f.id) === String(fid)) || {}).nome || "—",
+          cor: corDeId(fid),
+          total: Number(porFornecedor[fid].total) || 0,
+          fornecedor_id: fid,
+        }))
+        .filter((x) => x.total > 0.01)
+        .sort((a, b) => b.total - a.total);
+    }
+
+    const gEst = this.$("#gEst");
+    if (gEst) {
+      gEst.aoSelecionar = (c) => this._origemEstoqueItem(c);
+      gEst.formato = (c) => nf3(c.total) + (c.unidade ? " " + c.unidade : "");
+      gEst.porCategoria = dataStore
+        .estoqueDaObra(this._obraId)
+        .map((it) => ({
+          nome: (dataStore.item(it.item_id) || {}).nome || "—",
+          cor: corDeId(it.item_id),
+          total: Number(it.em_estoque) || 0,
+          unidade: it.unidade || "",
+          item_id: it.item_id,
+        }))
+        .filter((x) => x.total > 0.0001)
+        .sort((a, b) => b.total - a.total);
+    }
+  }
+
+  /* --------------------- Origem dos gráficos (read-only) ----------------- */
+
+  /** Banner de origem listando despesas — read-only (sem `aoAbrir` → só exibe). */
+  _bannerDespesas(titulo, descricao, despesas) {
+    const rows = (despesas || []).map((d) => ({
+      _item: (dataStore.item(d.item_id) || {}).nome || d.descricao || d.item || "—",
+      _valor: moeda(d.valor),
+      _data: d.data ? fmtData(d.data) : "—",
+    }));
+    abrirOrigemGrafico({
+      titulo, descricao, linhas: rows,
+      colunas: [
+        { chave: "_item", titulo: "Despesa" },
+        { chave: "_valor", titulo: "Valor", alinhar: "dir" },
+        { chave: "_data", titulo: "Data" },
+      ],
+    });
+  }
+
+  _origemCategoria(c) {
+    const ds = (this._despesas || []).filter((d) => String(d.categoria_id) === String(c.categoria_id));
+    this._bannerDespesas("Categoria · " + c.nome, "Despesas desta categoria.", ds);
+  }
+  _origemClassificacao(c) {
+    const alvo = c.nome === "Sem classificação" ? "" : c.nome;
+    const ds = (this._despesas || []).filter((d) => String(d.classificacao || "") === String(alvo));
+    this._bannerDespesas("Classificação · " + c.nome, "Despesas desta classificação.", ds);
+  }
+  _origemMes(c) {
+    const ds = (this._despesas || []).filter((d) => String(d.data || "").startsWith(c.mes));
+    this._bannerDespesas("Mês · " + (c.rotulo || c.mes), "Despesas deste mês.", ds);
+  }
+  _origemEmpresa(c) {
+    const ds = (this._despesas || []).filter((d) => String(d.fornecedor_id) === String(c.fornecedor_id));
+    this._bannerDespesas("Empresa · " + c.nome, "Despesas desta empresa.", ds);
+  }
+  _origemOfertante(c) {
+    const ds = (this._despesas || []).filter((d) => {
+      const k = d.ofertante_contato_id ? "c:" + d.ofertante_contato_id : (d.ofertante_equipe_id ? "e:" + d.ofertante_equipe_id : "");
+      return k === c.chave;
+    });
+    this._bannerDespesas("Ofertante · " + c.nome, "Despesas ofertadas/vendidas por este ofertante.", ds);
+  }
+  /** Estoque: movimentos do item (read-only; sem navegar p/ outra obra — rota protegida). */
+  _origemEstoqueItem(c) {
+    const ROTULO_MOV = {
+      entrada_despesa: "Compra (despesa)", entrada_manual: "Entrada manual",
+      entrada_transferencia: "Recebido por transferência", saida_transferencia: "Enviado por transferência",
+      consumo: "Consumo", retorno: "Retorno",
+    };
+    const linhas = dataStore
+      .movimentosDoItemEstoque(this._obraId, c.item_id)
+      .map((m) => ({ _tipo: ROTULO_MOV[m.tipo] || m.tipo, _qtd: nf3(m.quantidade) + (m.unidade ? " " + m.unidade : ""), _data: m.data ? fmtData(m.data) : "—" }));
+    abrirOrigemGrafico({
+      titulo: "Estoque · " + c.nome,
+      descricao: "Movimentos deste item no estoque da obra.",
+      linhas,
+      colunas: [
+        { chave: "_tipo", titulo: "Movimento" },
+        { chave: "_qtd", titulo: "Quantidade", alinhar: "dir" },
+        { chave: "_data", titulo: "Data" },
+      ],
+    });
   }
 }
 

@@ -291,6 +291,9 @@ export function abrirPagamento(pagamento) {
 export function abrirTransferencia(transferencia) {
   if (!transferencia) return;
   const t = transferencia;
+  // Somente-leitura (link público): banner display-only — sem anexar/substituir/remover
+  // comprovante e sem "Excluir transferência". `abrirPagamento` já é display-only.
+  const ro = dataStore.somenteLeitura();
   const empresa = nomeFornecedor(t.fornecedor_id);
   const obra = dataStore.obra(t.obra_id);
   const pagamentos = dataStore.pagamentosDaTransferencia(t.id);
@@ -390,49 +393,59 @@ export function abrirTransferencia(transferencia) {
         ehImagem && fid
           ? `<img class="tf-cmp-preview" src="https://drive.google.com/thumbnail?id=${fid}&sz=w1600" alt="Comprovante" loading="lazy">`
           : `<iframe class="tf-cmp-preview" src="${fid ? "https://drive.google.com/file/d/" + fid + "/preview" : String(t.comprovante_url).replace("/view", "/preview")}" title="Comprovante" loading="lazy"></iframe>`;
+      // Somente-leitura: só VER (abrir + preview); sem Substituir/Remover.
+      const acoesEdit = ro
+        ? ""
+        : `<button type="button" id="cmpSubst">Substituir</button>` +
+          `<button type="button" class="rem" id="cmpRem">Remover</button>`;
       cmp.innerHTML =
         `<div class="tf-cmp-acoes">` +
         `<a class="chip" href="${t.comprovante_url}" target="_blank" rel="noopener">📎 Abrir em nova aba${nome}</a>` +
-        `<button type="button" id="cmpSubst">Substituir</button>` +
-        `<button type="button" class="rem" id="cmpRem">Remover</button>` +
+        acoesEdit +
         `</div>` +
         previewHtml;
-      cmp.querySelector("#cmpSubst").addEventListener("click", () => _escolherEAnexarComprovante(t, modal));
-      cmp.querySelector("#cmpRem").addEventListener("click", async () => {
-        const ok = await confirmar({
-          titulo: "Remover comprovante",
-          mensagem: "Remover o comprovante desta transferência? O arquivo será excluído do Drive.",
-          perigo: true,
-          rotuloOk: "Remover",
+      if (!ro) {
+        cmp.querySelector("#cmpSubst").addEventListener("click", () => _escolherEAnexarComprovante(t, modal));
+        cmp.querySelector("#cmpRem").addEventListener("click", async () => {
+          const ok = await confirmar({
+            titulo: "Remover comprovante",
+            mensagem: "Remover o comprovante desta transferência? O arquivo será excluído do Drive.",
+            perigo: true,
+            rotuloOk: "Remover",
+          });
+          if (!ok) return;
+          try {
+            const at = await dataStore.removerComprovanteTransferencia(t.id);
+            toastSucesso("Comprovante removido.");
+            modal.remove();
+            abrirTransferencia(at);
+          } catch (e) {
+            notificarErro(e);
+          }
         });
-        if (!ok) return;
-        try {
-          const at = await dataStore.removerComprovanteTransferencia(t.id);
-          toastSucesso("Comprovante removido.");
-          modal.remove();
-          abrirTransferencia(at);
-        } catch (e) {
-          notificarErro(e);
-        }
-      });
-    } else {
+      }
+    } else if (!ro) {
       cmp.innerHTML = `<button type="button" id="cmpAdd">Anexar comprovante</button>`;
       cmp.querySelector("#cmpAdd").addEventListener("click", () => _escolherEAnexarComprovante(t, modal));
+    } else {
+      cmp.innerHTML = `<p class="muted">Sem comprovante.</p>`;
     }
   }
 
   const rod = document.createElement("div");
   rod.setAttribute("slot", "rodape");
-  const excluir = document.createElement("ui-button");
-  excluir.setAttribute("variant", "perigo");
-  excluir.textContent = "Excluir transferência";
-  excluir.addEventListener("click", async () => {
-    if (await excluirTransferenciaComAviso(t)) modal.remove();
-  });
+  if (!ro) {
+    const excluir = document.createElement("ui-button");
+    excluir.setAttribute("variant", "perigo");
+    excluir.textContent = "Excluir transferência";
+    excluir.addEventListener("click", async () => {
+      if (await excluirTransferenciaComAviso(t)) modal.remove();
+    });
+    rod.appendChild(excluir);
+  }
   const btn = document.createElement("ui-button");
   btn.textContent = "Fechar";
   btn.addEventListener("click", () => modal.remove());
-  rod.appendChild(excluir);
   rod.appendChild(btn);
   modal.appendChild(rod);
 

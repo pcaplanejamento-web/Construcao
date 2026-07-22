@@ -41,14 +41,19 @@ export function montarGradeOrcamentos(el, lista) {
   const grid = document.createElement("div");
   grid.style.cssText =
     "display:grid; gap: var(--esp-4); grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));";
+  // Somente-leitura (link público): cards display-only — sem navegação p/ a rota
+  // protegida /orcamentos/:id e sem editar/excluir (os botões nem são renderizados).
+  const ro = dataStore.somenteLeitura();
   lista.forEach((o) => {
     const card = document.createElement("orcamento-card");
     card.orcamento = o;
-    card.addEventListener("abrir", (e) => {
-      irPara("/orcamentos/" + e.detail.orcamento.id);
-    });
-    card.addEventListener("editar", (e) => _abrirForm(e.detail.orcamento));
-    card.addEventListener("remover", (e) => _remover(e.detail.orcamento));
+    if (!ro) {
+      card.addEventListener("abrir", (e) => {
+        irPara("/orcamentos/" + e.detail.orcamento.id);
+      });
+      card.addEventListener("editar", (e) => _abrirForm(e.detail.orcamento));
+      card.addEventListener("remover", (e) => _remover(e.detail.orcamento));
+    }
     grid.appendChild(card);
   });
   el.replaceChildren(grid);

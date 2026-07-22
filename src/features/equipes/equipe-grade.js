@@ -40,14 +40,19 @@ export function montarGradeEquipes(el, lista) {
   const grid = document.createElement("div");
   grid.style.cssText =
     "display:grid; gap: var(--esp-4); grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));";
+  // Somente-leitura (link público): cards display-only — sem navegação p/ a rota
+  // protegida /equipes/:id e sem editar/excluir (os botões nem são renderizados).
+  const ro = dataStore.somenteLeitura();
   lista.forEach((e) => {
     const card = document.createElement("equipe-card");
     card.equipe = e;
-    card.addEventListener("abrir", (ev) => {
-      irPara("/equipes/" + ev.detail.equipe.id);
-    });
-    card.addEventListener("editar", (ev) => _abrirForm(ev.detail.equipe));
-    card.addEventListener("remover", (ev) => _remover(ev.detail.equipe));
+    if (!ro) {
+      card.addEventListener("abrir", (ev) => {
+        irPara("/equipes/" + ev.detail.equipe.id);
+      });
+      card.addEventListener("editar", (ev) => _abrirForm(ev.detail.equipe));
+      card.addEventListener("remover", (ev) => _remover(ev.detail.equipe));
+    }
     grid.appendChild(card);
   });
   el.replaceChildren(grid);

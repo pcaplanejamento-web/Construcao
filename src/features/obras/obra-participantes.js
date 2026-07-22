@@ -66,10 +66,14 @@ class ObraParticipantes extends BaseElement {
 
   template() {
     const resp = this.modo === "responsaveis";
+    // Somente-leitura (link público): sem botão de adicionar/definir (display-only).
+    const acaoBtn = dataStore.somenteLeitura()
+      ? ""
+      : `<ui-button slot="acoes" id="acao">${resp ? "Definir responsáveis" : "+ Adicionar contato"}</ui-button>`;
     return `
       <div class="grupos">
         <ui-card mesa title="${resp ? "Responsáveis" : "Participantes"} — acerto de contas">
-          <ui-button slot="acoes" id="acao">${resp ? "Definir responsáveis" : "+ Adicionar contato"}</ui-button>
+          ${acaoBtn}
           <div id="lista"></div>
         </ui-card>
         <ui-card mesa title="Quem deve a quem"><div id="acertos"></div></ui-card>
@@ -78,7 +82,8 @@ class ObraParticipantes extends BaseElement {
   }
 
   aoConectar() {
-    this.$("#acao").addEventListener("click", () => this.abrirAcao());
+    const btnAcao = this.$("#acao");
+    if (btnAcao) btnAcao.addEventListener("click", () => this.abrirAcao());
     // Responsivo: desktop = tabela; mobile (≤820px) = cards estilo agenda.
     this._mq = window.matchMedia("(max-width: 820px)");
     this._onMq = () => this.pintar();
@@ -183,19 +188,23 @@ class ObraParticipantes extends BaseElement {
               : `<span style="color:var(--cor-texto-fraco)">—</span>`,
         },
       ];
-      tabela.acoes = [
-        this.modo === "responsaveis"
-          ? { nome: "tirar", rotulo: "Tirar responsável", variant: "perigo" }
-          : { nome: "remover", rotulo: "Remover", variant: "perigo" },
-      ];
+      // Somente-leitura: sem ação de remover/tirar e sem navegação p/ rotas protegidas.
+      const ro = dataStore.somenteLeitura();
+      if (!ro) {
+        tabela.acoes = [
+          this.modo === "responsaveis"
+            ? { nome: "tirar", rotulo: "Tirar responsável", variant: "perigo" }
+            : { nome: "remover", rotulo: "Remover", variant: "perigo" },
+        ];
+        tabela.addEventListener("acao", (e) => this.acao(e.detail.acao, e.detail.linha));
+        // Linha clicável → tela do contato (ou da equipe). Dono/usuários não têm página.
+        tabela.addEventListener("linha", (e) => {
+          const l = e.detail.linha || {};
+          if (l._cid) irPara("/contatos/" + l._cid);
+          else if (l._eid) irPara("/equipes/" + l._eid);
+        });
+      }
       tabela.rows = rows;
-      tabela.addEventListener("acao", (e) => this.acao(e.detail.acao, e.detail.linha));
-      // Linha clicável → tela do contato (ou da equipe). Dono/usuários não têm página.
-      tabela.addEventListener("linha", (e) => {
-        const l = e.detail.linha || {};
-        if (l._cid) irPara("/contatos/" + l._cid);
-        else if (l._eid) irPara("/equipes/" + l._eid);
-      });
       lista.replaceChildren(tabela);
     }
 
@@ -285,7 +294,8 @@ class ObraParticipantes extends BaseElement {
     const areceber = p._saldoReceber > 0.01 ? `<strong style="color:var(--cor-sucesso)">${moeda(p._saldoReceber)}</strong>` : "—";
     const resp = this.modo === "responsaveis";
     // Derivado (só aparece por ter recebido/pago) NÃO é removível manualmente.
-    const podeRemover = !p._derivado && (resp || (p.tipo === "contato" && p.id));
+    // Somente-leitura (link público): nunca mostra o botão remover.
+    const podeRemover = !dataStore.somenteLeitura() && !p._derivado && (resp || (p.tipo === "contato" && p.id));
     const rotuloRem = resp ? "Tirar dos responsáveis" : "Remover participante";
     const btnRem = podeRemover
       ? `<button type="button" data-acao-linha="remover" aria-label="${rotuloRem}" title="${rotuloRem}"
@@ -314,6 +324,7 @@ class ObraParticipantes extends BaseElement {
     lg.semSwipeAcao = true; // remover é pelo botão; arraste horizontal troca de aba
     lg.render = (p) => this._cardParticipante(p);
     lg.addEventListener("abrir", (e) => {
+      if (dataStore.somenteLeitura()) return; // link público: sem navegação p/ rota protegida
       const l = e.detail.item || {};
       if (l._cid) irPara("/contatos/" + l._cid);
       else if (l._eid) irPara("/equipes/" + l._eid);

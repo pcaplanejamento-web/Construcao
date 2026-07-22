@@ -95,6 +95,23 @@ function dadosSnapshot(data, sessao) {
 
   // Obras acessíveis (próprias + compartilhadas), com ehDono/dono/total_gasto.
   const obras = obrasListar(data, sessao).obras;
+  return _montarSnapshot(u, obras, { role: sessao.role });
+}
+
+/**
+ * Monta o snapshot (estado completo) a partir do DONO `u` e de uma lista de
+ * `obras` já enriquecidas (ehDono/dono/total_gasto). Extraído de `dadosSnapshot`
+ * para ser REUSADO pelo link público (`_payloadObra` → 1 obra), garantindo que a
+ * visão pública tenha EXATAMENTE o mesmo formato do snapshot autenticado — assim
+ * os MESMOS componentes internos (despesa-table, orçamento, equipe, participantes,
+ * estoque, notas…) funcionam no link sem réplicas.
+ *
+ * `opcoes`: { role?: inclui a lista de usuários (painel admin); publico?: true →
+ * omite dados do dono não essenciais (config, grupos, lista de usuários) e reduz
+ * `usuario` a { id, nome } — o link expõe só a obra e o que a norteia. }
+ */
+function _montarSnapshot(u, obras, opcoes) {
+  opcoes = opcoes || {};
   const idsAcc = {};
   obras.forEach(function (o) {
     idsAcc[o.id] = true;
@@ -356,11 +373,11 @@ function dadosSnapshot(data, sessao) {
   });
 
   const snapshot = {
-    usuario: usuarioPublico(u),
-    config: montarConfigUsuario(u.id),
+    usuario: opcoes.publico ? { id: u.id, nome: u.nome } : usuarioPublico(u),
+    config: opcoes.publico ? {} : montarConfigUsuario(u.id),
     categorias: categorias,
     obras: obras,
-    grupos: listarGruposUsuario(u.id),
+    grupos: opcoes.publico ? [] : listarGruposUsuario(u.id),
     despesas: despesasPorObra,
     resumos: resumos,
     categoriasPorObra: categoriasPorObra,
@@ -385,8 +402,8 @@ function dadosSnapshot(data, sessao) {
     servidor_em: agoraIso(),
   };
 
-  // Admin: inclui a lista de usuários para o painel administrativo.
-  if (sessao.role === ROLES.ADMIN) {
+  // Admin: inclui a lista de usuários para o painel administrativo (nunca no público).
+  if (!opcoes.publico && opcoes.role === ROLES.ADMIN) {
     snapshot.usuarios = repoListar(SCHEMA.USUARIOS).map(usuarioPublico);
   }
   return snapshot;

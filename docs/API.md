@@ -113,6 +113,8 @@ avisa a janela-mãe (`postMessage`) e se fecha.
 |--------|--------|---------|
 | `dados.snapshot` | `{}` | `{ usuario, config, categorias, obras, despesas:{obraId:[...]}, resumos:{obraId:{...}}, categoriasPorObra:{obraId:[...]}, participantesPorObra:{obraId:[...]}, fornecedores:[...], contatos:[...], cargos:[...], itens:[...], cotacoes:[...], ofertas:[...], historicoPorCotacao:{cotacaoId:[...]}, orcamentos:[...], usuarios?, servidor_em }` — TUDO numa chamada (carregamento único + cache). `ofertas` é a **lista plana** de todas as ofertas do usuário (independentes da cotação). `usuarios` só para admin. |
 
+> **`_montarSnapshot(u, obras, opcoes)`** (Snapshot.gs) é o builder EXTRAÍDO de `dados.snapshot`: recebe o dono + a lista de obras (já enriquecidas) e monta o snapshot. Reusado por **`publico.obra`/`publico.grupoObra`** (`_payloadObra` → `_montarSnapshot(dono,[obra],{publico:true})`) → o link público tem **exatamente o mesmo formato** do snapshot autenticado, escopado a 1 obra. `opcoes.publico` omite `config`/`grupos`/lista de usuários e reduz `usuario` a `{id,nome}`.
+
 ### Obras (próprias + compartilhadas)
 Cada obra inclui `ehDono` (bool), `dono_nome`/`dono_email` e `total_gasto`.
 Editar/remover/compartilhar exigem ser o **dono**; ver e lançar despesas valem
@@ -147,9 +149,9 @@ para dono **e** colaboradores.
 ### Público (sem login — somente leitura)
 | Action | `data` | Retorno |
 |--------|--------|---------|
-| `publico.obra` | `{ token }` | Obra INTEIRA p/ a visão pública somente-leitura (todas as abas): `{ obra:{id,nome,endereco,descricao,orcamento,status}, resumo, despesas:[{item,valor,data,classificacao,categoria_nome,categoria_cor}] (itens), despesasRaw (cru → balanços/acerto/gráficos), participantes, categorias, fornecedores, contatos, equipes, itens:[{id,nome,unidade}] (estes **só os referenciados** nesta obra — privacidade), estoque:[movimentos da obra] (p/ o gráfico "Quantidade em estoque por item" — o front deriva o saldo com emEstoqueDaObra), orcamentos, transferencias, pagamentos, tiposTransferencia }` — **não** expõe usuários/observações nem dados de outras obras do dono |
+| `publico.obra` | `{ token }` | **Snapshot público da obra** — **MESMO formato do `dados.snapshot`** autenticado, porém escopado a **1 obra** + o que a norteia. Via `_payloadObra(obra)` → `_montarSnapshot(dono, [obra], { publico:true })` (Snapshot.gs, o **mesmo builder** do snapshot logado). Devolve `{ usuario:{id,nome}, config:{}, categorias, obras:[obra], grupos:[], despesas:{obraId:[raw]}, resumos, categoriasPorObra, participantesPorObra, notasPorObra, fornecedores, contatos, cargos, tiposTransferencia, classificacoesItem, itens, cotacoes, precosPorCotacao, ofertas, historicoPorCotacao, orcamentos, equipes, transferencias, pagamentos, repasses, estoque, obra, resumo, servidor_em }`. Catálogo (contatos/empresas/itens/equipes) + cotações/ofertas entram **só os REFERENCIADOS** pela obra (fechamento transitivo — privacidade). O front **hidrata o data-store** (`dataStore.hidratarPublico`) e monta os MESMOS componentes internos em somente-leitura. **Não** expõe `config`/`grupos`/lista de usuários do dono nem dados de outras obras. `obra`/`resumo` no topo são conveniência p/ o cabeçalho/modo-grupo. |
 | `publico.grupo` | `{ token }` | `{ grupo:{nome}, obras:[{id,nome,endereco,status,orcamento,total_gasto}] }` — lista das obras do GRUPO p/ o visitante escolher (link do grupo) |
-| `publico.grupoObra` | `{ token, obra_id }` | Payload COMPLETO de uma obra do grupo (mesmo de `publico.obra`, via `_payloadObra`) — valida o token do grupo + a obra pertencer ao grupo |
+| `publico.grupoObra` | `{ token, obra_id }` | Snapshot público COMPLETO de uma obra do grupo (**mesmo de `publico.obra`**, via `_payloadObra`) — valida o token do grupo + a obra pertencer ao grupo |
 
 ### Usuários (autenticado)
 | Action | `data` | Retorno |

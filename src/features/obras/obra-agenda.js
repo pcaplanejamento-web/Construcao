@@ -67,7 +67,7 @@ class ObraAgenda extends BaseElement {
           ${this.conectado && syncAgendaLigada() ? `<ui-button id="sincronizar" variant="secundario" tamanho="sm">Sincronizar agora</ui-button>` : ""}
         </div>
         ${
-          this.conectado
+          this.conectado || dataStore.somenteLeitura()
             ? ""
             : `<div class="hint">Conecte sua conta Google no <a id="irPerfil">perfil</a> para criar eventos e sincronizar com o Google Calendar. Este calendário já mostra despesas, transferências, notas e o prazo da obra — sem precisar de conexão.</div>`
         }
@@ -76,9 +76,12 @@ class ObraAgenda extends BaseElement {
   }
 
   aoConectar() {
+    // Somente-leitura (link público): NUNCA toca o Google (rota protegida) — a agenda
+    // mostra só as marcações do app (despesas/transferências/notas/prazo), do store.
+    const ro = dataStore.somenteLeitura();
     // CACHE-FIRST: estado da conexão vem do config (cache), eventos avulsos do
     // Google vêm do localStorage — a agenda aparece na hora, sem esperar rede.
-    this._google = { conectado: googleConectado() };
+    this._google = { conectado: ro ? false : googleConectado() };
     this._googleEventos = this._google.conectado ? this._lerCacheGoogle() : [];
     this._estado = "pronto";
     this.renderizar();
@@ -149,12 +152,17 @@ class ObraAgenda extends BaseElement {
   pintar(recriar) {
     const corpo = this.$("#corpo");
     if (!corpo) return;
+    // Somente-leitura (link público): sem criar evento (os componentes escondem o
+    // "+ Novo evento"); só abrir a marcação em modo detalhe.
+    const ro = dataStore.somenteLeitura();
     if (this._vista === "calendario") {
       let cal = corpo.querySelector("agenda-calendario");
       if (!cal || recriar) {
         cal = document.createElement("agenda-calendario");
-        cal.addEventListener("novo", () => this.abrirForm());
-        cal.addEventListener("dia-novo", (e) => this.abrirForm({ inicio: e.detail.data + "T09:00" }));
+        if (!ro) {
+          cal.addEventListener("novo", () => this.abrirForm());
+          cal.addEventListener("dia-novo", (e) => this.abrirForm({ inicio: e.detail.data + "T09:00" }));
+        }
         cal.addEventListener("evento-abrir", (e) => this._abrirMarcacao(e.detail.evento));
         corpo.replaceChildren(cal);
       }
@@ -163,7 +171,7 @@ class ObraAgenda extends BaseElement {
       let lista = corpo.querySelector("agenda-lista");
       if (!lista || recriar) {
         lista = document.createElement("agenda-lista");
-        lista.addEventListener("novo", () => this.abrirForm());
+        if (!ro) lista.addEventListener("novo", () => this.abrirForm());
         lista.addEventListener("evento-abrir", (e) => this._abrirMarcacao(e.detail.evento));
         corpo.replaceChildren(lista);
       }

@@ -113,10 +113,10 @@ class DespesaTable extends BaseElement {
         </div>
         <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px">
           <small style="color:var(--cor-texto-fraco)">${fmtData(d.data)}</small>
-          <div style="display:flex;gap:2px;flex:none;margin:-4px -6px -6px 0">
+          ${dataStore.somenteLeitura() ? "" : `<div style="display:flex;gap:2px;flex:none;margin:-4px -6px -6px 0">
             ${btn("editar", "Editar despesa", "var(--cor-texto-suave)")}
             ${btn("excluir", "Excluir despesa", "var(--cor-erro)")}
-          </div>
+          </div>`}
         </div>
       </div>`;
     return `<div style="display:flex;align-items:stretch;gap:6px;width:100%;min-width:0">${stripe}${corpo}</div>`;
@@ -269,10 +269,15 @@ class DespesaTable extends BaseElement {
             : `<span style="color:var(--cor-texto-fraco)">—</span>`,
       },
     ];
-    tabela.acoes = [
-      { nome: "editar", rotulo: "Editar" },
-      { nome: "remover", rotulo: "Excluir", variant: "perigo" },
-    ];
+    // Somente-leitura (link público): tabela DISPLAY-ONLY — sem ações de linha, sem
+    // seleção/ações em massa. O clique na linha ("abrir") segue emitindo, mas a view
+    // pública não o escuta. Flag global `somenteLeitura` (default false → interno intacto).
+    const ro = dataStore.somenteLeitura();
+    if (!ro)
+      tabela.acoes = [
+        { nome: "editar", rotulo: "Editar" },
+        { nome: "remover", rotulo: "Excluir", variant: "perigo" },
+      ];
     // OBS.: os eventos internos (ui-data-table / ui-lista-gestos) são `composed`,
     // então sem `stopPropagation` eles atravessariam o shadow e chegariam ao
     // ouvinte da obra-detail JUNTO com o evento re-emitido aqui — abrindo DOIS
@@ -300,22 +305,24 @@ class DespesaTable extends BaseElement {
     });
     // Exclusão em massa: a CONFIRMAÇÃO é da obra-detail (`removerMassa` oferece apagar os
     // pagamentos antes) — `sem-confirmar-massa` evita o diálogo genérico duplicado da tabela.
-    tabela.setAttribute("excluir-massa", "");
-    tabela.setAttribute("sem-confirmar-massa", "");
-    tabela.addEventListener("excluir-massa", (e) => {
-      e.stopPropagation();
-      this.emitir("excluir-massa", { despesas: e.detail.linhas });
-    });
-    // Ações em massa nas selecionadas: lançar pagamento + definir responsabilidade.
-    tabela.acoesMassa = [
-      { nome: "pagar", rotulo: "Registrar pagamento" },
-      { nome: "responsavel", rotulo: "Definir responsabilidade" },
-      { nome: "editar-lote", rotulo: "Editar selecionadas" },
-    ];
-    tabela.addEventListener("acao-massa", (e) => {
-      e.stopPropagation();
-      this.emitir("acao-massa", { acao: e.detail.acao, despesas: e.detail.linhas });
-    });
+    if (!ro) {
+      tabela.setAttribute("excluir-massa", "");
+      tabela.setAttribute("sem-confirmar-massa", "");
+      tabela.addEventListener("excluir-massa", (e) => {
+        e.stopPropagation();
+        this.emitir("excluir-massa", { despesas: e.detail.linhas });
+      });
+      // Ações em massa nas selecionadas: lançar pagamento + definir responsabilidade.
+      tabela.acoesMassa = [
+        { nome: "pagar", rotulo: "Registrar pagamento" },
+        { nome: "responsavel", rotulo: "Definir responsabilidade" },
+        { nome: "editar-lote", rotulo: "Editar selecionadas" },
+      ];
+      tabela.addEventListener("acao-massa", (e) => {
+        e.stopPropagation();
+        this.emitir("acao-massa", { acao: e.detail.acao, despesas: e.detail.linhas });
+      });
+    }
     // Busca no cabeçalho do card (a tabela interna não alcança o card por estar no shadow).
     injetarBuscaNoCard(this, tabela);
 
@@ -325,11 +332,12 @@ class DespesaTable extends BaseElement {
     // Despesa NÃO usa "puxar" p/ editar/excluir — usa os BOTÕES por linha (acao-linha).
     // Assim o arraste horizontal fica livre p/ o swipe de troca de aba.
     lista.semSwipeAcao = true;
-    lista.acoesMassa = [
-      { nome: "pagar", rotulo: "Registrar pagamento" },
-      { nome: "responsavel", rotulo: "Definir responsabilidade" },
-      { nome: "editar-lote", rotulo: "Editar selecionadas" },
-    ];
+    if (!ro)
+      lista.acoesMassa = [
+        { nome: "pagar", rotulo: "Registrar pagamento" },
+        { nome: "responsavel", rotulo: "Definir responsabilidade" },
+        { nome: "editar-lote", rotulo: "Editar selecionadas" },
+      ];
     lista.addEventListener("abrir", (e) => { e.stopPropagation(); this.emitir("abrir", { despesa: e.detail.item }); });
     // Tocar na FAIXA de orçamento (mobile) → seleciona todas as despesas do mesmo orçamento.
     lista.addEventListener("grupo", (e) => {
