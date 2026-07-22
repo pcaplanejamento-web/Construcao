@@ -23,6 +23,11 @@ function esc(s) {
 }
 
 class PublicoGrupoView extends BaseElement {
+  constructor() {
+    super();
+    this._cache = {}; // obra_id -> payload já carregado (prefetch); abrir/trocar vira instantâneo
+  }
+
   get token() {
     return this.getAttribute("token");
   }
@@ -70,10 +75,32 @@ class PublicoGrupoView extends BaseElement {
     try {
       this._d = await api.call("publico.grupo", { token: this.token });
       this.pintarLista();
+      this._prefetch(); // pré-carrega TODAS as obras em 2º plano → trocar entre elas é instantâneo
     } catch (e) {
       this.$("#conteudo").innerHTML = `<ui-card title="Link indisponível"><p>${
         e.message || "Este link não está mais válido."
       }</p></ui-card>`;
+    }
+  }
+
+  /** Pré-carrega o payload COMPLETO de todas as obras do grupo (cache em memória). */
+  async _prefetch() {
+    if (this._prefetching) return;
+    this._prefetching = true;
+    try {
+      const ids = ((this._d && this._d.obras) || []).map((o) => o.id).filter((id) => !this._cache[id]);
+      const LOTE = 2; // concorrência leve p/ não sobrecarregar o backend
+      for (let i = 0; i < ids.length; i += LOTE) {
+        await Promise.all(
+          ids.slice(i, i + LOTE).map((id) =>
+            api.call("publico.grupoObra", { token: this.token, obra_id: id })
+              .then((d) => { this._cache[id] = d; })
+              .catch(() => { /* silencioso — tenta ao abrir */ })
+          )
+        );
+      }
+    } finally {
+      this._prefetching = false;
     }
   }
 
@@ -123,10 +150,23 @@ class PublicoGrupoView extends BaseElement {
       <ui-button class="voltar" id="voltar" variant="secundario"><ui-icon name="seta-esquerda" size="16"></ui-icon> Voltar aos empreendimentos</ui-button>
       <div id="pub"></div>`;
     this.$("#voltar").addEventListener("click", () => this.pintarLista());
+    const pub = this.$("#pub");
+    // Cache do prefetch → abre INSTANTÂNEO, sem recarregar.
+    if (this._cache[o.id]) { this._montarPub(pub, this._cache[o.id]); return; }
+    // Ainda não pré-carregada: busca UMA vez, guarda no cache e monta.
+    pub.innerHTML = `<ui-spinner centro text="Abrindo obra..."></ui-spinner>`;
+    const alvo = o.id;
+    this._abrindo = alvo;
+    api.call("publico.grupoObra", { token: this.token, obra_id: o.id })
+      .then((d) => { this._cache[o.id] = d; if (this._abrindo === alvo) this._montarPub(pub, d); })
+      .catch(() => { if (this._abrindo === alvo) pub.innerHTML = `<p class="vazio">Não foi possível abrir esta obra.</p>`; });
+  }
+
+  /** Monta a <publico-view> com o payload JÁ carregado (mostrar → sem nova chamada). */
+  _montarPub(container, d) {
     const pv = document.createElement("publico-view");
-    pv.setAttribute("grupo-token", this.token);
-    pv.setAttribute("obra-id", o.id);
-    this.$("#pub").appendChild(pv);
+    pv.mostrar(d);
+    container.replaceChildren(pv);
   }
 }
 

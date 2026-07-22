@@ -74,7 +74,16 @@ class PublicoView extends BaseElement {
   }
 
   aoConectar() {
-    this.carregar();
+    this._ligado = true;
+    // Payload já buscado (link de grupo com prefetch/cache) → renderiza SEM refazer a chamada.
+    if (this._injetado) this.pintar(this._injetado);
+    else this.carregar();
+  }
+
+  /** Renderiza a partir de um payload JÁ carregado (evita recarregar ao trocar de obra no grupo). */
+  mostrar(d) {
+    this._injetado = d;
+    if (this._ligado) this.pintar(d);
   }
 
   async carregar() {
